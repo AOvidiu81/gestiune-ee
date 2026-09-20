@@ -2913,5 +2913,11 @@ if(dayStart && (dayStart.driver1 || dayStart.plate)){
   findOrCreateSession().then(()=> render());
 }
 </script>
+<script>
+// service worker: face aplicația instalabilă și o pornește repede
+if("serviceWorker" in navigator){
+  window.addEventListener("load", () => navigator.serviceWorker.register("sw.js").catch(e => console.warn("sw:", e)));
+}
+</script>
 </body>
 </html>
