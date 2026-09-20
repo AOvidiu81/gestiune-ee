@@ -1,9 +1,78 @@
 {
-  "name": "GestiuneEE - Euro Ecologic",
+  "name": "GestiuneEE — Euro Ecologic",
   "short_name": "GestiuneEE",
+  "description": "Stoc, mișcări de echipamente, clienți, contracte și anexe — Euro Ecologic.",
+  "lang": "ro",
+  "id": "/gestiune-ee/",
   "start_url": "./index.html",
+  "scope": "./",
   "display": "standalone",
+  "orientation": "any",
   "background_color": "#f3f5f4",
   "theme_color": "#1b5e3a",
-  "icons": []
+  "categories": [
+    "business",
+    "productivity"
+  ],
+  "icons": [
+    {
+      "src": "icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/maskable-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "icons/maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Mișcare nouă",
+      "short_name": "Mișcare",
+      "url": "./index.html#miscari",
+      "icons": [
+        {
+          "src": "icons/icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    },
+    {
+      "name": "Verificarea datelor",
+      "short_name": "Verificare",
+      "url": "./index.html#verificare",
+      "icons": [
+        {
+          "src": "icons/icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    },
+    {
+      "name": "Stoc",
+      "short_name": "Stoc",
+      "url": "./index.html#stoc",
+      "icons": [
+        {
+          "src": "icons/icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    }
+  ]
 }
