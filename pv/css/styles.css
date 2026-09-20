@@ -1,0 +1,418 @@
+/* styles.css — interfata aplicatiei (nu documentul tiparit, vezi print.css) */
+
+:root {
+  --brand-primary: #0b3b66;
+  --brand-primary-dark: #082a4a;
+  --brand-accent: #12939c;
+  --brand-accent-light: #e3f6f6;
+  --ink: #16233c;
+  --ink-soft: #4a5872;
+  --surface: #f4f7fb;
+  --surface-card: #ffffff;
+  --border: #dfe6f0;
+  --danger: #d24865;
+  --danger-light: #fde7ec;
+  --success: #1d7b3a;
+  --success-light: #e6f5ea;
+  --radius-lg: 18px;
+  --radius-md: 14px;
+  --radius-sm: 10px;
+  --shadow-card: 0 8px 24px rgba(11, 45, 79, 0.08);
+  --shadow-elevated: 0 14px 34px rgba(11, 45, 79, 0.16);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-top: env(safe-area-inset-top, 0px);
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  height: 100%;
+  background: var(--surface);
+  color: var(--ink);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  -webkit-tap-highlight-color: transparent;
+  overscroll-behavior-y: none;
+}
+
+#app { position: relative; height: 100%; }
+#screen-stack { position: absolute; inset: 0; overflow: hidden; }
+
+.screen {
+  position: absolute;
+  inset: 0;
+  background: var(--surface);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  transform: translateX(100%);
+  transition: transform 220ms cubic-bezier(0.22, 1, 0.36, 1);
+  z-index: 1;
+}
+.screen:first-child { transform: translateX(0); z-index: 0; }
+.screen.screen-in { transform: translateX(0); }
+.screen.screen-out { transform: translateX(100%); }
+
+.screen-scroll { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; padding: 16px 16px calc(24px + var(--safe-bottom)); }
+
+.topbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: calc(10px + var(--safe-top)) 8px 10px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.topbar-dark { background: #0d1b2a; border-bottom-color: #1a2d42; }
+.topbar-title { font-weight: 700; font-size: 17px; flex: 1; }
+.topbar-title-light { color: #fff; }
+.topbar-spacer { width: 36px; }
+.icon-btn {
+  width: 38px; height: 38px; border-radius: 50%; border: none; background: transparent;
+  font-size: 20px; display: flex; align-items: center; justify-content: center; color: var(--ink);
+  cursor: pointer;
+}
+.icon-btn:active { background: rgba(11, 59, 102, 0.08); }
+.icon-btn-light { color: #fff; }
+.icon-btn-light:active { background: rgba(255,255,255,0.12); }
+
+/* Buttons */
+.btn {
+  font: inherit;
+  font-weight: 700;
+  font-size: 15px;
+  border-radius: var(--radius-sm);
+  border: none;
+  padding: 13px 18px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: transform 90ms ease, opacity 90ms ease;
+}
+.btn:active { transform: scale(0.98); }
+.btn:disabled { opacity: 0.45; cursor: not-allowed; }
+.btn-block { width: 100%; }
+.btn-primary { background: var(--brand-primary); color: #fff; }
+.btn-danger { background: var(--danger); color: #fff; }
+.btn-outline { background: #fff; color: var(--brand-primary); border: 1.5px solid #c7d3e4; }
+.btn-outline-error { border-color: var(--danger); color: var(--danger); }
+.btn-text { background: transparent; color: var(--brand-primary); }
+.btn-icon { font-size: 16px; }
+
+/* Cards / sections */
+.section-card {
+  background: var(--surface-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 16px;
+  margin-bottom: 14px;
+}
+.section-title { margin: 0 0 12px; font-size: 15px; font-weight: 700; }
+
+/* Fields */
+.field { margin-bottom: 12px; }
+.field-label { display: block; font-size: 12.5px; font-weight: 700; color: var(--ink-soft); margin-bottom: 6px; }
+.field-input {
+  width: 100%;
+  font: inherit;
+  font-size: 15px;
+  padding: 12px 14px;
+  border-radius: var(--radius-sm);
+  border: 1.4px solid #d8dfea;
+  background: #fff;
+  color: var(--ink);
+}
+.field-input:focus { outline: none; border-color: var(--brand-primary); }
+.field-input-error { border-color: var(--danger); }
+.field-error { color: var(--danger); font-size: 12px; margin-top: 4px; }
+textarea.field-input { resize: vertical; }
+select.field-input { appearance: none; background-image: linear-gradient(45deg, transparent 50%, #6b7a94 50%), linear-gradient(135deg, #6b7a94 50%, transparent 50%); background-position: calc(100% - 18px) calc(50% - 3px), calc(100% - 13px) calc(50% - 3px); background-size: 5px 5px, 5px 5px; background-repeat: no-repeat; }
+
+/* Camp de data (ZZ-LL-AAAA + mini-calendar propriu, Luni prima zi) — vezi
+   dateField() din components.js. */
+.date-field-row { display: flex; gap: 8px; }
+.date-field-input { flex: 1; min-width: 0; }
+.date-field-btn {
+  flex-shrink: 0;
+  width: 46px;
+  border-radius: var(--radius-sm);
+  border: 1.4px solid #d8dfea;
+  background: #fff;
+  font-size: 18px;
+  cursor: pointer;
+}
+.date-field-btn:active { background: rgba(11, 59, 102, 0.08); }
+.date-cal-panel {
+  position: fixed;
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-elevated);
+  padding: 10px;
+  z-index: 640;
+}
+.date-cal-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
+.date-cal-title { font-weight: 700; font-size: 14px; color: var(--ink); }
+.date-cal-nav {
+  width: 32px; height: 32px; border-radius: 50%; border: none; background: transparent;
+  font-size: 18px; color: var(--brand-primary); cursor: pointer;
+}
+.date-cal-nav:active { background: rgba(11, 59, 102, 0.08); }
+.date-cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; }
+.date-cal-weekday { text-align: center; font-size: 11px; font-weight: 700; color: var(--ink-soft); padding: 4px 0; }
+.date-cal-day {
+  aspect-ratio: 1;
+  border: none;
+  background: transparent;
+  border-radius: 8px;
+  font-size: 13px;
+  color: var(--ink);
+  cursor: pointer;
+}
+.date-cal-day:active { background: rgba(11, 59, 102, 0.1); }
+.date-cal-day-muted { color: #c3cbdb; cursor: default; }
+.date-cal-day-today { box-shadow: inset 0 0 0 1.4px var(--brand-accent); }
+.date-cal-day-selected { background: var(--brand-primary); color: #fff; font-weight: 700; }
+
+/* Selection tiles (main menu) */
+.tile {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 10px 12px;
+  box-shadow: var(--shadow-card);
+  cursor: pointer;
+  text-align: left;
+}
+.tile:active { transform: scale(0.99); }
+.tile-icon { width: 44px; height: 44px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 20px; flex-shrink: 0; }
+.tile-label { flex: 1; font-weight: 700; font-size: 17px; color: var(--brand-primary); }
+.tile-sub { font-size: 12.5px; color: var(--ink-soft); margin-top: 2px; }
+.tile-chevron { color: inherit; font-size: 20px; opacity: 0.6; }
+
+/* Toast */
+#toast-host { position: fixed; left: 0; right: 0; bottom: calc(18px + var(--safe-bottom)); display: flex; justify-content: center; z-index: 500; pointer-events: none; }
+.toast {
+  background: #1f2937;
+  color: #fff;
+  padding: 12px 18px;
+  border-radius: 12px;
+  font-size: 14px;
+  max-width: 86%;
+  box-shadow: var(--shadow-elevated);
+  opacity: 0;
+  transform: translateY(10px);
+  transition: opacity 180ms ease, transform 180ms ease;
+}
+.toast-danger { background: var(--danger); }
+.toast-show { opacity: 1; transform: translateY(0); }
+
+/* Modal / bottom sheet */
+.modal-overlay {
+  position: fixed; inset: 0; background: rgba(10, 20, 35, 0.42);
+  display: flex; align-items: center; justify-content: center; z-index: 600;
+  opacity: 0; transition: opacity 180ms ease; padding: 20px;
+}
+.modal-overlay.modal-show { opacity: 1; }
+.modal-overlay-sheet { align-items: flex-end; padding: 0; }
+.modal-card {
+  background: #fff; border-radius: 18px; padding: 18px; width: 100%; max-width: 420px;
+  box-shadow: var(--shadow-elevated);
+  transform: scale(0.96); transition: transform 180ms ease;
+}
+.modal-overlay.modal-show .modal-card { transform: scale(1); }
+.sheet-card {
+  background: #fff; border-radius: 20px 20px 0 0; padding: 16px 16px calc(16px + var(--safe-bottom));
+  width: 100%; max-height: 78vh; display: flex; flex-direction: column;
+  transform: translateY(16px); transition: transform 180ms ease;
+}
+.modal-overlay.modal-show .sheet-card { transform: translateY(0); }
+.modal-title { font-weight: 700; font-size: 16px; margin-bottom: 10px; }
+.modal-body { overflow-y: auto; }
+.modal-message { font-size: 14.5px; color: var(--ink-soft); line-height: 1.4; }
+.modal-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 16px; }
+.modal-actions .btn { padding: 10px 16px; }
+
+.pick-list { display: flex; flex-direction: column; }
+.pick-item { text-align: left; background: none; border: none; border-bottom: 1px solid var(--border); padding: 14px 6px; font-size: 15.5px; color: var(--ink); }
+.pick-item:last-child { border-bottom: none; }
+.pick-item:active { background: var(--surface); }
+.pick-empty { padding: 20px 6px; color: var(--ink-soft); text-align: center; }
+.pick-check-row { display: flex; align-items: center; gap: 10px; padding: 10px 4px; border-bottom: 1px solid var(--border); font-size: 15px; }
+.pick-check-row input { width: 18px; height: 18px; }
+
+/* Bottom action bar on forms */
+.bottom-actions {
+  padding: 10px 14px calc(10px + var(--safe-bottom));
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+/* Signature screen */
+.signature-screen { display: flex; flex-direction: column; height: 100%; background: var(--surface); }
+/* Chenarul de desenat trebuie sa RAMANA VIZUAL neschimbat (ingust, "in
+   picioare") INDIFERENT daca soferul intoarce telefonul fizic sau nu —
+   pozitia trebuie sa ramana fixa pe ecran, exact ca in versiunea originala.
+   In loc sa detectam din JS cand fereastra devine "culcata" si sa rotim
+   chenarul cu transform (fragil — depindea de un window.resize care nu se
+   declanseaza identic pe toate telefoanele/versiunile de Chrome, si putea
+   iesi in contradictie cu reflow-ul natural al paginii), latimea/inaltimea
+   chenarului se calculeaza direct din unitatile vmin/vmax: vmin e mereu
+   dimensiunea MICA a ecranului (latimea in portret, inaltimea in landscape)
+   si vmax mereu cea MARE — asa chenarul ramane ingust indiferent de
+   orientare, garantat de CSS, fara nicio detectare in JS. In completare,
+   app.js incearca sa blocheze orientarea pe portret prin Screen Orientation
+   API (screen.orientation.lock), ca pagina sa nu mai faca deloc reflow cand
+   telefonul e intors — dar chenarul ramane ingust chiar si acolo unde
+   blocarea nu e suportata. Cerneala e capturata mereu in acest sistem de
+   coordonate FIX (ingust/vertical) — rotatia catre forma orizontala se
+   aplica o singura data, neconditionat, la salvare (vezi save() din
+   captureSignatureScreen, components.js), pentru ca soferul intoarce
+   intotdeauna telefonul fizic ca sa semneze confortabil. */
+.signature-row-wrap { flex: 1; min-height: 0; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+.signature-row {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 12px;
+  padding: 10px 14px;
+  box-sizing: border-box;
+  width: 85vmin;
+  height: 92vmax;
+  max-width: 100%;
+  max-height: 100%;
+}
+.signature-canvas-wrap { flex: 1; background: #fff; border: 1px solid var(--border); border-radius: 12px; box-shadow: var(--shadow-card); position: relative; overflow: hidden; touch-action: none; min-height: 0; min-width: 0; }
+.signature-canvas { width: 100%; height: 100%; touch-action: none; display: block; }
+/* flex:0 0 56px = grosimea benzii (56px), pe axa principala (verticala) a
+   lui .signature-row — align-items:stretch pe parinte face ca banda sa
+   ocupe intotdeauna toata latimea chenarului. */
+.sig-side-btn { flex: 0 0 56px; border: none; border-radius: 12px; font-size: 22px; display: flex; align-items: center; justify-content: center; }
+.sig-clear { background: #f7d9df; color: #8f3145; }
+.sig-ok { background: #ddf4d7; color: #256b29; }
+.signature-hint { text-align: center; font-size: 12.5px; color: var(--ink-soft); padding: 0 20px calc(22px + env(safe-area-inset-bottom, 0px)); }
+
+/* GPS screen */
+.gps-screen { height: 100%; background: #0d1b2a; color: #fff; display: flex; flex-direction: column; }
+.gps-content { flex: 1; display: flex; flex-direction: column; align-items: center; padding: 20px 24px calc(16px + var(--safe-bottom)); }
+.gps-ring {
+  width: 168px; height: 168px; border-radius: 50%; border: 6px solid #4a5872;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  margin-top: 18px;
+}
+.gps-ring-loading { color: rgba(255,255,255,0.6); }
+.gps-ring-value { font-size: 24px; font-weight: 700; }
+.gps-ring-label { font-size: 12px; font-weight: 700; letter-spacing: 1px; margin-top: 4px; }
+.gps-coords { margin-top: 22px; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.12); border-radius: 12px; padding: 12px 16px; text-align: center; font-family: monospace; font-size: 13px; color: rgba(255,255,255,0.8); }
+.gps-location { margin-top: 10px; text-align: center; font-size: 13px; color: rgba(255,255,255,0.75); padding: 0 8px; }
+.gps-status { margin-top: 18px; font-size: 14px; text-align: center; color: rgba(255,255,255,0.6); }
+.gps-spacer { flex: 1; }
+.gps-action-btn { background: #3a4658; color: rgba(255,255,255,0.4); margin-top: 10px; }
+.gps-action-ready { background: #2e7d32; color: #fff; }
+.gps-skip { color: rgba(255,255,255,0.45); margin-top: 10px; }
+
+/* Product group cards inside PV form */
+.product-group {
+  background: #fff; border: 1px solid var(--border); border-radius: 12px; padding: 12px; margin-bottom: 10px;
+}
+.product-group.has-error { border-color: var(--danger); }
+.product-group-head { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+.product-group-head .grow { flex: 1; font-weight: 700; }
+.field-with-action { display: flex; align-items: flex-end; gap: 8px; margin-bottom: 8px; }
+.field-with-action .field { flex: 1; margin-bottom: 0; }
+.pick-action-btn { flex-shrink: 0; width: 42px; height: 42px; border-radius: 10px; border: 1px solid var(--brand-primary); background: #eef1ff; color: var(--brand-primary); font-size: 18px; display: flex; align-items: center; justify-content: center; }
+.pick-action-btn:disabled { opacity: 0.4; }
+.series-row { display: flex; gap: 8px; margin-bottom: 6px; align-items: center; }
+.series-row .field { flex: 1; margin-bottom: 0; }
+.series-remove { flex-shrink: 0; width: 34px; height: 34px; border: none; background: none; color: var(--danger); font-size: 18px; }
+.series-input-wrap { display: flex; align-items: stretch; border-radius: var(--radius-sm); border: 1.4px solid #d8dfea; background: #fff; overflow: hidden; }
+.series-input-wrap:focus-within { border-color: var(--brand-primary); }
+.series-prefix { display: flex; align-items: center; padding: 0 6px 0 14px; font-size: 15px; font-weight: 700; color: var(--ink-soft); background: #f4f6fa; border-right: 1.4px solid #d8dfea; }
+.series-input-wrap .series-suffix-input { flex: 1; border: none; border-radius: 0; min-width: 0; }
+.series-input-wrap .series-suffix-input:focus { outline: none; }
+.checkbox-row { display: flex; align-items: flex-start; gap: 10px; padding: 8px 2px; }
+.checkbox-row input { width: 19px; height: 19px; margin-top: 1px; flex-shrink: 0; }
+.checkbox-row .checkbox-label { font-size: 14px; font-weight: 600; }
+.checkbox-row .checkbox-sub { font-size: 12px; color: var(--ink-soft); margin-top: 1px; }
+
+.aux-summary { min-height: 44px; border: 1.4px solid #d8dfea; border-radius: 10px; padding: 11px 14px; font-size: 14.5px; color: var(--ink-soft); display: flex; align-items: center; }
+
+.warning-box { display: flex; align-items: flex-start; gap: 8px; background: var(--danger-light); border: 1px solid #f0b8c4; color: #8f2b41; padding: 10px 12px; border-radius: 10px; font-size: 13px; margin-top: 8px; }
+.info-box { display: flex; gap: 8px; background: var(--brand-accent-light); border: 1px solid #b9e3e3; color: #0d5a5f; padding: 12px; border-radius: 10px; font-size: 13.5px; margin-top: 4px; }
+
+.photo-item { margin-bottom: 12px; }
+.photo-item-head { display: flex; align-items: center; margin-bottom: 6px; }
+.photo-item-head .grow { flex: 1; font-weight: 700; font-size: 13px; }
+.photo-thumb { width: 100%; height: 180px; object-fit: cover; border-radius: 10px; border: 1px solid var(--border); }
+.photo-remove-btn { background: none; border: none; color: var(--danger); font-size: 13px; font-weight: 700; }
+
+.hint-text { font-size: 12px; color: var(--danger); margin: 6px 0 2px; }
+
+.whatsapp-btn { border-color: #188c44 !important; color: #188c44 !important; }
+
+/* History */
+.history-card {
+  background: #fff; border: 1px solid var(--border); border-radius: 14px; padding: 14px; margin-bottom: 10px; box-shadow: var(--shadow-card);
+}
+.history-card-top { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.history-pv-number { font-weight: 700; color: var(--brand-primary); }
+.history-date { font-size: 12px; color: var(--ink-soft); }
+.history-client { font-size: 15px; font-weight: 700; margin-top: 4px; }
+.history-meta { font-size: 12.5px; color: var(--ink-soft); margin-top: 2px; }
+.history-badge { display: inline-block; font-size: 10.5px; font-weight: 700; padding: 3px 8px; border-radius: 999px; margin-top: 8px; letter-spacing: 0.3px; }
+.history-actions { display: flex; gap: 8px; margin-top: 10px; }
+.history-actions .btn { padding: 9px 12px; font-size: 13px; }
+.empty-state { text-align: center; color: var(--ink-soft); padding: 60px 20px; font-size: 14.5px; }
+
+/* Settings list */
+.list-item { display: flex; align-items: center; justify-content: space-between; background: #fff; border: 1px solid var(--border); border-radius: 12px; padding: 12px 14px; margin-bottom: 8px; }
+.list-item-main { font-weight: 700; }
+.list-item-sub { font-size: 12.5px; color: var(--ink-soft); margin-top: 2px; }
+.list-item-actions { display: flex; gap: 6px; }
+.list-item-actions button { border: none; background: none; font-size: 16px; padding: 6px; color: var(--ink-soft); }
+.list-item-actions button.danger { color: var(--danger); }
+
+/* Preview screen */
+.preview-screen { height: 100%; display: flex; flex-direction: column; background: #dde3ec; }
+.preview-badge { position: absolute; top: 54px; right: 16px; background: #fff; border: 1px solid var(--danger); color: var(--danger); font-size: 11px; font-weight: 700; padding: 3px 8px; border-radius: 999px; z-index: 2; }
+/* touch-action:pan-y — lasam browserul sa faca singur scroll-ul vertical
+   normal (un deget, nezoomat), dar ii spunem sa NU incerce el insusi sa
+   interpreteze un gest cu 2 degete (pinch/zoom nativ de pagina) — acel gest
+   il preluam noi in JS (openPrintPreview, pdf-print.js), scopit STRICT la
+   continutul documentului, ca bara de sus (butonul Inapoi) si bara de jos
+   sa ramana mereu la marime normala si accesibile, indiferent cat de mult
+   e marit documentul. Cat timp e zoomat (.preview-scroller.zoomed),
+   dezactivam scroll-ul nativ complet — panoram noi, prin transform. */
+.preview-scroller { flex: 1; overflow-y: auto; padding: 14px 12px calc(14px + var(--safe-bottom)); touch-action: pan-y; position: relative; }
+.preview-scroller.zoomed { overflow: hidden; touch-action: none; }
+.preview-pages { display: flex; flex-direction: column; align-items: center; gap: 18px; transform-origin: 0 0; }
+.preview-page-frame { position: relative; overflow: hidden; box-shadow: var(--shadow-elevated); border-radius: 2px; }
+.preview-page-frame .doc-page { position: absolute; top: 0; left: 0; }
+.preview-bottom-bar { padding: 12px 14px calc(12px + var(--safe-bottom)); background: #fff; border-top: 1px solid var(--border); flex-shrink: 0; display: flex; flex-direction: column; gap: 10px; }
+.preview-zoom-hint { position: absolute; left: 50%; bottom: 14px; transform: translateX(-50%); background: rgba(0,0,0,0.66); color: #fff; font-size: 12px; padding: 6px 14px; border-radius: 999px; z-index: 3; pointer-events: none; opacity: 0; transition: opacity 0.25s; }
+.preview-zoom-hint.visible { opacity: 1; }
+.preview-zoom-reset { position: absolute; top: 10px; right: 10px; z-index: 3; background: rgba(0,0,0,0.66); color: #fff; border: none; border-radius: 999px; font-size: 12px; font-weight: 700; padding: 7px 14px; display: none; }
+.preview-scroller.zoomed .preview-zoom-reset { display: block; }
+
+/* Setup / onboarding */
+.setup-progress { display: flex; gap: 6px; padding: 0 4px 16px; }
+.setup-progress-dot { flex: 1; height: 4px; border-radius: 2px; background: var(--border); }
+.setup-progress-dot.active { background: var(--brand-primary); }
+.setup-progress-dot.done { background: var(--success); }
+.brand-logo { display: block; margin: 6px auto 4px; height: 52px; object-fit: contain; }
+.app-version-tag { display: block; text-align: center; margin: 0 auto 18px; font-size: 11.5px; font-weight: 600; letter-spacing: 0.2px; color: var(--ink-soft); opacity: 0.75; }
+
+@media (min-width: 640px) {
+  .screen-scroll, .bottom-actions, .preview-bottom-bar { padding-left: max(16px, calc((100% - 560px) / 2)); padding-right: max(16px, calc((100% - 560px) / 2)); }
+}
