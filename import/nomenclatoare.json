@@ -1,0 +1,186 @@
+{
+ "stare": [
+  "ACTIV",
+  "INACTIV",
+  "ANULAT"
+ ],
+ "id_tip": [
+  "CUI",
+  "CIF",
+  "CNP"
+ ],
+ "atr": [
+  "RO",
+  "IR"
+ ],
+ "forma": [
+  "CHIRIE",
+  "SERVISARE",
+  "EVENIMENT",
+  "ALTELE",
+  "TRANSPORT"
+ ],
+ "produse": [
+  "TOALETE",
+  "LAVOARE",
+  "PISOARE",
+  "GARD",
+  "CLEME",
+  "TALPI",
+  "CONTAINER",
+  "CAB PAZA",
+  "IBC",
+  "TOALETE PROPRII",
+  "FOSA SEPTICA",
+  "RULOTA VIP",
+  "POARTA MARE",
+  "POARTA MICA",
+  "ROATA",
+  "CORDON",
+  "TOALETA",
+  "PANZA VERDE"
+ ],
+ "model": [
+  "CLASIC",
+  "CU LAV.INT.",
+  "MIC",
+  "MARE",
+  "F6 (2,5*1,2M)",
+  "F2 (3,5*2M)",
+  "BIROU",
+  "SANITAR 14 WC",
+  "SANITAR 6 WC",
+  "SANITAR 2 WC",
+  "SANITAR DUS",
+  "SANITAR MIXT",
+  "CASIERIE",
+  "0,5M3",
+  "1M3",
+  "MIXT",
+  "HANDY",
+  "SIMPLU",
+  "10 M3",
+  "4 M3",
+  "VIDANJABIL",
+  "5 INTRARI",
+  "3 INTRARI",
+  "SUSTINERE",
+  "PRINDERE",
+  "PROPRIE",
+  "SECOND HAND",
+  "DAUNA TOTALA",
+  "SEMI TRANSPARENT"
+ ],
+ "um": [
+  "BUC",
+  "ML"
+ ],
+ "moneda": [
+  "RON",
+  "EURO"
+ ],
+ "status_miscare": [
+  "AMPLASARE",
+  "SUPLIMENTARE",
+  "RIDICARE",
+  "REDUCERE",
+  "FACTURAT",
+  "ANULAT",
+  "PLATIT",
+  "FACT. AVANS",
+  "EVENIMENT-A",
+  "EVENIMENT-R",
+  "SERVISARE",
+  "TransferIN",
+  "TransferOUT",
+  "FACT. PROF.",
+  "VANZARE",
+  "SPONSORIZARE"
+ ],
+ "soferi": [
+  "A. STEFAN",
+  "P. DANUT",
+  "R. ADRIAN",
+  "S. FLAVIAN",
+  "A. OVIDIU",
+  "C. MIHAI"
+ ],
+ "frecv_servisare": [
+  "3 / Sap",
+  "3 / Sap_2",
+  "3 / Sap_3",
+  "2 / Sap",
+  "2 / Sap_2",
+  "1 / Sap",
+  "2 / Luna",
+  "1 / Luna",
+  "La Cerere",
+  "Suspend.",
+  "Conf.Contract"
+ ],
+ "tip_servisare": [
+  "3 / Sap",
+  "2 / Sap",
+  "1 / Sap",
+  "2 / LUNA",
+  "1 / LUNA",
+  "La Cerere",
+  "SUSPENDAT",
+  "Conf.Contract",
+  "Zilnic"
+ ],
+ "depozite": [
+  "HD",
+  "AR",
+  "CJ",
+  "SB",
+  "HR",
+  "DJ",
+  "BC",
+  "BUC",
+  "IS",
+  "MS",
+  "BV",
+  "CT",
+  "BR"
+ ],
+ "masini": [
+  {
+   "marca": "MERCEDES-1",
+   "nr": "HR 95 EEC",
+   "pozitie": "TITULAR"
+  },
+  {
+   "marca": "MERCEDES",
+   "nr": "HR 28 ECC",
+   "pozitie": "AJUTOR"
+  },
+  {
+   "marca": "MERCEDES-2",
+   "nr": "HR 38 EEC",
+   "pozitie": "--"
+  },
+  {
+   "marca": "RENAULT",
+   "nr": "HR 13 ECC",
+   "pozitie": ""
+  }
+ ],
+ "stoc_start": {
+  "data": "2023-07-31",
+  "inchiriate": {
+   "TOALETE": 259,
+   "LAVOARE": 1,
+   "GARD": 63,
+   "CONTAINER": 0,
+   "CAB PAZA": 0
+  },
+  "depozit": {
+   "TOALETE": 22,
+   "LAVOARE": 4,
+   "GARD": 0,
+   "CONTAINER": 2,
+   "CAB PAZA": 0
+  }
+ }
+}
