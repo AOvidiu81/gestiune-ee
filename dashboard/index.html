@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dashboard Euro Ecologic</title>
+
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#ff8a3d">
+<link rel="icon" href="icon-192.png" type="image/png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Dashboard EE">
+<meta name="mobile-web-app-capable" content="yes">
+
+<style>
+  :root{
+    --bg: #10161c;
+    --panel: #171f27;
+    --panel-2: #1d2732;
+    --border: #2a3540;
+    --text: #e7edf2;
+    --text-dim: #93a3b0;
+    --accent: #ff8a3d;
+    --accent-2: #3ddc97;
+    --activ: #3ddc97;
+    --inactiv: #ff5d5d;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--bg); color:var(--text); font-family:'Segoe UI', Roboto, Arial, sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:1000px; margin:0 auto; padding:16px 16px 60px;}
+
+  header{
+    display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px;
+    padding:6px 2px 16px; border-bottom:1px solid var(--border); margin-bottom:16px;
+  }
+  header h1{font-size:1.2rem; margin:0; font-weight:700;}
+  header h1 span{color:var(--accent);}
+  .live-badge{
+    display:flex; align-items:center; gap:6px; font-size:0.78rem; color:var(--text-dim);
+    background:var(--panel-2); border:1px solid var(--border); padding:5px 12px; border-radius:20px;
+  }
+  .live-dot{width:8px; height:8px; border-radius:50%; background:var(--activ); animation:pulse 1.6s infinite;}
+  @keyframes pulse{0%{opacity:1;} 50%{opacity:0.3;} 100%{opacity:1;}}
+
+  .filter-row{display:flex; gap:8px; margin-bottom:16px; flex-wrap:wrap;}
+  .filter-row select, .filter-row input{
+    background:var(--panel-2); color:var(--text); border:1px solid var(--border); border-radius:9px;
+    padding:9px 12px; font-size:0.9rem;
+  }
+  .date-filter-wrap{position:relative; display:inline-block;}
+  .date-filter-wrap input[type="date"]{
+    position:absolute; inset:0; width:100%; height:100%; opacity:0; cursor:pointer; z-index:2; margin:0;
+  }
+  .date-filter-label{
+    background:var(--panel-2); color:var(--text); border:1px solid var(--border); border-radius:9px;
+    padding:9px 12px; font-size:0.9rem; white-space:nowrap; pointer-events:none;
+  }
+
+  .summary-bar{
+    display:grid; grid-template-columns:repeat(auto-fit, minmax(120px,1fr)); gap:10px; margin-bottom:18px;
+  }
+  .summary-card{
+    background:var(--panel); border:1px solid var(--border); border-radius:12px; padding:14px; text-align:center;
+  }
+  .summary-card .num{font-size:1.6rem; font-weight:800; color:var(--accent-2);}
+  .summary-card .lbl{font-size:0.76rem; color:var(--text-dim); margin-top:2px;}
+
+  .session-list{display:flex; flex-direction:column; gap:12px;}
+  .session-card{
+    background:var(--panel); border:1px solid var(--border); border-radius:14px; padding:16px;
+    position:relative; overflow:hidden;
+  }
+  .session-card::before{content:''; position:absolute; left:0; top:0; bottom:0; width:4px;}
+  .session-card.activa::before{background:var(--activ);}
+  .session-card.finalizata::before{background:var(--text-dim);}
+
+  .session-top{display:flex; justify-content:space-between; align-items:flex-start; gap:10px; margin-bottom:8px;}
+  .session-drivers{font-weight:700; font-size:1.02rem;}
+  .session-vehicle{font-size:0.82rem; color:var(--text-dim); margin-top:2px;}
+  .status-badge{
+    font-size:0.68rem; font-weight:800; padding:4px 10px; border-radius:20px; text-transform:uppercase;
+    white-space:nowrap;
+  }
+  .status-badge.activa{background:rgba(61,220,151,0.15); color:var(--activ); border:1px solid rgba(61,220,151,0.4);}
+  .status-badge.finalizata{background:rgba(147,163,176,0.15); color:var(--text-dim); border:1px solid var(--border);}
+
+  .session-stats{display:flex; gap:18px; flex-wrap:wrap; margin-top:10px;}
+  .stat{text-align:center;}
+  .stat b{display:block; font-size:1.15rem; color:var(--text);}
+  .stat span{font-size:0.72rem; color:var(--text-dim);}
+
+  .session-km{font-size:0.78rem; color:var(--text-dim); margin-top:10px;}
+  .session-time{font-size:0.72rem; color:var(--text-dim); margin-top:6px;}
+  .session-locations{display:flex; flex-wrap:wrap; gap:6px 14px; margin-top:8px;}
+  .finalize-btn{
+    margin-top:12px; width:100%; padding:10px; border-radius:10px; border:1px solid rgba(61,220,151,0.4);
+    background:rgba(61,220,151,0.12); color:var(--activ); font-weight:700; font-size:0.85rem; cursor:pointer;
+  }
+  .finalize-btn:hover{background:rgba(61,220,151,0.22);}
+  .finalize-btn:disabled{opacity:0.5; cursor:default;}
+  .loc-depot{font-size:0.75rem; color:var(--activ); font-weight:700;}
+  .loc-pending{font-size:0.75rem; color:var(--text-dim); font-weight:600;}
+
+  .empty{text-align:center; color:var(--text-dim); padding:50px 10px;}
+  .error-box{
+    background:rgba(255,93,93,0.12); border:1px solid rgba(255,93,93,0.4); color:var(--inactiv);
+    border-radius:10px; padding:12px 14px; margin-bottom:16px; font-size:0.85rem;
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Dashboard <span>Euro Ecologic</span></h1>
+    <div class="live-badge"><div class="live-dot"></div> Live</div>
+  </header>
+
+  <div id="errorBox"></div>
+
+  <div class="filter-row">
+    <div class="date-filter-wrap">
+      <input type="date" id="dateFilter">
+      <div class="date-filter-label" id="dateFilterLabel"></div>
+    </div>
+    <select id="statusFilter">
+      <option value="TOATE">Toate rutele</option>
+      <option value="activa">Doar active</option>
+      <option value="finalizata">Doar finalizate</option>
+    </select>
+  </div>
+
+  <div class="summary-bar" id="summaryBar"></div>
+  <div class="session-list" id="sessionList"></div>
+  <div style="text-align:center; margin-top:14px; font-size:0.68rem; color:var(--text-dim); opacity:0.6;">Build: 24 Iulie 2026</div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+const SUPABASE_URL = 'https://xrveoxmsdvryzyemmkqx.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_P1TSfVqqbyr3L-elKVgopg_1FpIpkv4';
+const sb = (typeof supabase !== 'undefined') ? supabase.createClient(SUPABASE_URL, SUPABASE_KEY) : null;
+
+const dateFilter = document.getElementById('dateFilter');
+const dateFilterLabel = document.getElementById('dateFilterLabel');
+
+const DAY_ABBR_RO = ['Dum','Lun','Mar','Mie','Joi','Vin','Sâm'];
+const MONTH_ABBR_RO = ['Ian','Feb','Mar','Apr','Mai','Iun','Iul','Aug','Sep','Oct','Noi','Dec'];
+function updateDateFilterLabel(){
+  if(!dateFilter.value){ dateFilterLabel.textContent = ''; return; }
+  const d = new Date(dateFilter.value+'T00:00:00');
+  const day = DAY_ABBR_RO[d.getDay()];
+  const dd = String(d.getDate()).padStart(2,'0');
+  const mmm = MONTH_ABBR_RO[d.getMonth()];
+  dateFilterLabel.textContent = `${day}, ${dd}-${mmm}-${d.getFullYear()}`;
+}
+const statusFilter = document.getElementById('statusFilter');
+const summaryBar = document.getElementById('summaryBar');
+const sessionList = document.getElementById('sessionList');
+const errorBox = document.getElementById('errorBox');
+
+dateFilter.value = new Date().toISOString().slice(0,10);
+updateDateFilterLabel();
+
+function pad2(n){ return String(n).padStart(2,'0'); }
+function fmtTime(iso){
+  if(!iso) return '-';
+  const d = new Date(iso);
+  return pad2(d.getHours())+':'+pad2(d.getMinutes());
+}
+
+async function loadDashboard(){
+  if(!sb){
+    errorBox.innerHTML = '<div class="error-box">⚠️ Nu s-a putut încărca conexiunea la baza de date. Verifică internetul și reîncarcă pagina.</div>';
+    return;
+  }
+  errorBox.innerHTML = '';
+
+  const dateVal = dateFilter.value;
+  const statusVal = statusFilter.value;
+
+  let query = sb.from('route_sessions').select('*').eq('session_date', dateVal).order('created_at', {ascending:false});
+  if(statusVal !== 'TOATE') query = query.eq('status', statusVal);
+
+  const { data: sessions, error } = await query;
+  if(error){
+    errorBox.innerHTML = `<div class="error-box">⚠️ Eroare la citirea datelor: ${error.message}</div>`;
+    return;
+  }
+
+  if(!sessions || sessions.length === 0){
+    summaryBar.innerHTML = '';
+    sessionList.innerHTML = '<div class="empty">Nicio rută pentru data selectată.</div>';
+    return;
+  }
+
+  const sessionIds = sessions.map(s=>s.id);
+  const { data: allVisits, error: visitsErr } = await sb
+    .from('visit_logs')
+    .select('*')
+    .in('session_id', sessionIds);
+  if(visitsErr){
+    errorBox.innerHTML = `<div class="error-box">⚠️ Eroare la citirea vizitelor: ${visitsErr.message}</div>`;
+  }
+  const visitsBySession = {};
+  (allVisits||[]).forEach(v=>{
+    visitsBySession[v.session_id] = visitsBySession[v.session_id] || [];
+    visitsBySession[v.session_id].push(v);
+  });
+
+  // Summary
+  const activeCount = sessions.filter(s=>s.status==='activa').length;
+  const finishedCount = sessions.filter(s=>s.status==='finalizata').length;
+  const totalVisits = (allVisits||[]).length;
+  summaryBar.innerHTML = `
+    <div class="summary-card"><div class="num">${sessions.length}</div><div class="lbl">Rute azi</div></div>
+    <div class="summary-card"><div class="num">${activeCount}</div><div class="lbl">Active acum</div></div>
+    <div class="summary-card"><div class="num">${finishedCount}</div><div class="lbl">Finalizate</div></div>
+    <div class="summary-card"><div class="num">${totalVisits}</div><div class="lbl">Vizite totale</div></div>
+  `;
+
+  function sortModeLabelDash(sortVal){
+  if(sortVal === 'depot') return '🧭 GPS optimizat';
+  if(sortVal && sortVal !== '') return `🕐 Istoric W${sortVal}`;
+  return '✖ Ordine normală';
+}
+
+const DEPOT = {lat: 45.8065, lon: 22.9256}; // Peștiș, jud. Hunedoara
+const DEPOT_RADIUS_KM = 0.03; // 30 metri
+
+function haversineDash(lat1, lon1, lat2, lon2){
+  const R = 6371;
+  const dLat = (lat2-lat1) * Math.PI/180;
+  const dLon = (lon2-lon1) * Math.PI/180;
+  const a = Math.sin(dLat/2)**2 + Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLon/2)**2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+}
+
+const geocodeCache = {};
+const geocodeQueue = [];
+let geocodeBusy = false;
+
+function reverseGeocode(lat, lon, callback){
+  const key = `${lat.toFixed(5)},${lon.toFixed(5)}`;
+  if(geocodeCache[key]){ callback(geocodeCache[key]); return; }
+  geocodeQueue.push({lat, lon, key, callback});
+  processGeocodeQueue();
+}
+
+async function processGeocodeQueue(){
+  if(geocodeBusy || geocodeQueue.length === 0) return;
+  geocodeBusy = true;
+  const item = geocodeQueue.shift();
+  try{
+    const resp = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${item.lat}&lon=${item.lon}&zoom=18&addressdetails=1`,
+      { headers: {'Accept-Language': 'ro'} });
+    const data = await resp.json();
+    const addr = data.address || {};
+    const jud = (addr.county || addr.state || '').replace(/^Jude(t|ț)ul\s+/i, '');
+    const localitate = addr.city || addr.town || addr.village || addr.municipality || '';
+    const strada = [addr.road, addr.house_number].filter(Boolean).join(' ');
+    const formatted = [jud, localitate, strada].filter(Boolean).join(', ') || 'Adresă necunoscută';
+    geocodeCache[item.key] = formatted;
+    item.callback(formatted);
+  }catch(err){
+    console.error('Eroare geocodare:', err);
+    item.callback('Adresă indisponibilă');
+  }
+  setTimeout(()=>{ geocodeBusy = false; processGeocodeQueue(); }, 1100); // respectă limita Nominatim (max 1/sec)
+}
+
+function locationBadge(lat, lon, spanId, label){
+  if(lat == null || lon == null) return '';
+  const distKm = haversineDash(lat, lon, DEPOT.lat, DEPOT.lon);
+  if(distKm <= DEPOT_RADIUS_KM){
+    return `<span class="loc-depot">✅ ${label} Depozit</span>`;
+  }
+  reverseGeocode(lat, lon, (addr)=>{
+    const el = document.getElementById(spanId);
+    if(el) el.textContent = `📍 ${addr}`;
+  });
+  return `<span class="loc-pending" id="${spanId}">📍 Se localizează...</span>`;
+}
+
+function fmtDuration(startIso, endIso){
+  if(!startIso || !endIso) return null;
+  const ms = new Date(endIso) - new Date(startIso);
+  if(!isFinite(ms) || ms < 0) return null;
+  const totalMin = Math.round(ms/60000);
+  const h = Math.floor(totalMin/60);
+  const m = totalMin%60;
+  return h > 0 ? `${h}h ${m}min` : `${m}min`;
+}
+
+sessionList.innerHTML = sessions.map(s=>{
+    const visits = visitsBySession[s.id] || [];
+    const normal = visits.filter(v=>!v.obs && v.arrive_time).length;
+    const la = visits.filter(v=>v.obs==='LA').length;
+    const omis = visits.filter(v=>v.obs==='O').length;
+    const drivers = [s.driver1, s.driver2].filter(Boolean).join(' & ') || 'Fără șofer';
+    const vehicle = [s.vehicle_brand, s.vehicle_plate].filter(Boolean).join(' - ') || '-';
+    const kmDriven = (s.km_start!=null && s.km_end!=null) ? (s.km_end - s.km_start) : null;
+    const kmLine = (s.km_start!=null || s.km_end!=null)
+      ? `Km: ${s.km_start ?? '-'} → ${s.km_end ?? '-'}` + (kmDriven!=null ? ` (${kmDriven} km)` : '')
+      : '';
+    const duration = fmtDuration(s.created_at, s.updated_at);
+    const ziuaLabel = s.last_ziua ? (s.last_ziua === 'TOATE' ? 'Toate zilele' : s.last_ziua) : null;
+    const routeInfoParts = [];
+    if(s.zona) routeInfoParts.push(`📍 ${s.zona}`);
+    if(ziuaLabel) routeInfoParts.push(`${ziuaLabel} · ${sortModeLabelDash(s.last_sort_mode)}`);
+    const routeInfoLine = routeInfoParts.join(' &nbsp;·&nbsp; ');
+    const startLocHtml = locationBadge(s.start_lat, s.start_lon, `loc-start-${s.id}`, 'Pornit');
+    const endLocHtml = locationBadge(s.end_lat, s.end_lon, `loc-end-${s.id}`, 'Finalizat');
+    return `
+    <div class="session-card ${s.status}">
+      <div class="session-top">
+        <div>
+          <div class="session-drivers">${drivers}</div>
+          <div class="session-vehicle">${vehicle}</div>
+          ${routeInfoLine ? `<div class="session-vehicle" style="color:var(--accent-2);">${routeInfoLine}</div>` : ''}
+        </div>
+        <div class="status-badge ${s.status}">${s.status === 'activa' ? '🟢 Activă' : '⚪ Finalizată'}</div>
+      </div>
+      <div class="session-stats">
+        <div class="stat"><b>${normal}</b><span>Normal</span></div>
+        <div class="stat"><b>${la}</b><span>Lipsă acces</span></div>
+        <div class="stat"><b>${omis}</b><span>Omis</span></div>
+        <div class="stat"><b>${visits.length}</b><span>Total</span></div>
+      </div>
+      ${kmLine ? `<div class="session-km">${kmLine}</div>` : ''}
+      ${kmDriven!=null ? `<div class="session-km">Km parcurși: ${kmDriven} km</div>` : ''}
+      <div class="session-time">Pornit la ${fmtTime(s.created_at)}${s.updated_at ? ' · ultima actualizare ' + fmtTime(s.updated_at) : ''}</div>
+      ${duration ? `<div class="session-time">Timp efectuat: ${duration}</div>` : ''}
+      ${(startLocHtml || endLocHtml) ? `<div class="session-locations">${startLocHtml}${endLocHtml}</div>` : ''}
+      ${s.status === 'activa' ? `<button class="finalize-btn" data-session-id="${s.id}">✅ Finalizează ruta</button>` : ''}
+    </div>`;
+  }).join('');
+}
+
+dateFilter.addEventListener('change', ()=>{ updateDateFilterLabel(); loadDashboard(); });
+statusFilter.addEventListener('change', loadDashboard);
+
+sessionList.addEventListener('click', async (e)=>{
+  const btn = e.target.closest('.finalize-btn');
+  if(!btn) return;
+  const sessionId = btn.getAttribute('data-session-id');
+  if(!confirm('Sigur vrei să marchezi această rută ca finalizată? Șoferul nu va mai putea continua vizitele pe ea.')) return;
+  btn.disabled = true;
+  btn.textContent = 'Se finalizează...';
+  try{
+    const { error } = await sb.from('route_sessions')
+      .update({ status: 'finalizata', updated_at: new Date().toISOString() })
+      .eq('id', sessionId);
+    if(error) throw error;
+    loadDashboard();
+  }catch(err){
+    alert('Eroare la finalizare: ' + err.message);
+    btn.disabled = false;
+    btn.textContent = '✅ Finalizează ruta';
+  }
+});
+
+loadDashboard();
+
+// Live updates: re-load whenever anything changes in either table
+if(sb){
+  sb.channel('dashboard-updates')
+    .on('postgres_changes', {event:'*', schema:'public', table:'route_sessions'}, loadDashboard)
+    .on('postgres_changes', {event:'*', schema:'public', table:'visit_logs'}, loadDashboard)
+    .subscribe();
+
+  // Fallback safety-net polling every 20s in case realtime misses an event
+  setInterval(loadDashboard, 20000);
+}
+</script>
+<script>
+// service worker: face aplicatia instalabila si o porneste repede
+if("serviceWorker" in navigator){
+  window.addEventListener("load", () => navigator.serviceWorker.register("sw.js").catch(e => console.warn("sw:", e)));
+}
+</script>
+</body>
+</html>
