@@ -6,6 +6,11 @@
 <title>GestiuneEE – Euro Ecologic</title>
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#1b5e3a">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="GestiuneEE">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
@@ -69,6 +74,7 @@
 <body>
 <header>
   <h1>GestiuneEE <span class="muted" style="color:#cfe6d7;font-weight:400">Euro Ecologic</span></h1>
+  <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
   <span class="ver">v1.0</span>
   <span id="conn" class="ver">●</span>
 </header>
@@ -340,6 +346,7 @@ document.querySelectorAll("nav button").forEach(b=>b.onclick=()=>{
   if(b.dataset.p==="stoc") loadStoc();
   if(b.dataset.p==="miscari" && !MISC.length) loadMiscari();
   if(b.dataset.p==="verificare") loadVerif();
+  try{ history.replaceState(null,"","#"+b.dataset.p); }catch(e){}
 });
 
 // ================= INIT =================
@@ -689,6 +696,33 @@ async function verifSterge(){
   const b=$("v-badge"); const n=Math.max(0,(+b.textContent||1)-1); b.textContent=n; b.style.display=n?"":"none";
   randVerif();
 }
+
+// ================= INSTALARE (PWA) =================
+let promptInstalare = null;
+window.addEventListener("beforeinstallprompt", (e) => {
+  e.preventDefault(); promptInstalare = e;
+  $("btn-instaleaza").style.display = "";
+});
+async function instaleaza(){
+  if(!promptInstalare){ toast("Deschide meniul browserului și alege „Instalează aplicația”"); return; }
+  promptInstalare.prompt();
+  const { outcome } = await promptInstalare.userChoice;
+  promptInstalare = null; $("btn-instaleaza").style.display = "none";
+  if(outcome === "accepted") toast("Se instalează…");
+}
+window.addEventListener("appinstalled", () => {
+  $("btn-instaleaza").style.display = "none"; toast("Aplicația a fost instalată");
+});
+if("serviceWorker" in navigator){
+  window.addEventListener("load", () => navigator.serviceWorker.register("sw.js").catch(e => console.warn("sw:", e)));
+}
+// scurtăturile din manifest (#stoc, #miscari, #clienti, #nomenclatoare, #verificare)
+function deschideSectiune(nume){
+  const b = nume && document.querySelector('nav button[data-p="' + nume + '"]');
+  if(b && !b.classList.contains("on")) b.click();
+}
+window.addEventListener("load", () => deschideSectiune((location.hash || "").replace("#", "")));
+window.addEventListener("hashchange", () => deschideSectiune((location.hash || "").replace("#", "")));
 
 init();
 </script>
