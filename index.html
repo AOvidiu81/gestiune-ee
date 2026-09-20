@@ -77,6 +77,7 @@
   <button data-p="miscari">Mișcări</button>
   <button data-p="clienti">Clienți & Contracte</button>
   <button data-p="nomenclatoare">Nomenclatoare</button>
+  <button data-p="verificare">Verificare <span id="v-badge" class="badge" style="display:none">0</span></button>
 </nav>
 <main>
 
@@ -161,6 +162,38 @@
       <div><b>Depozite</b><div id="n-dep"></div><div class="row" style="margin-top:6px"><input id="nd-cod" placeholder="Cod (HD)"><input id="nd-nume" placeholder="Nume (HUNEDOARA)"><button class="btn sm" onclick="addDepozit()">+</button></div></div>
       <div><b>Șoferi</b><div id="n-sof"></div><div class="row" style="margin-top:6px"><input id="ns-nume" placeholder="Nume șofer"><button class="btn sm" onclick="addSofer()">+</button></div></div>
       <div><b>Mașini</b><div id="n-mas"></div><div class="row" style="margin-top:6px"><input id="nm-marca" placeholder="Marcă"><input id="nm-nr" placeholder="Nr."><button class="btn sm" onclick="addMasina()">+</button></div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= VERIFICARE ================= -->
+<section class="page" id="p-verificare">
+  <div class="card noprint">
+    <h3 style="margin:0 0 6px;color:var(--g)">Verificarea datelor</h3>
+    <p class="muted" style="margin:0 0 10px">Rândurile aduse din Excel și din aplicația de rute așteaptă confirmarea ta. Le vezi pe rând: confirmi, corectezi sau ștergi. Ce adaugi tu din aplicație e considerat verificat din start.</p>
+    <div class="row">
+      <div class="search"><label>Verificat de</label><input id="v-cine" placeholder="numele tău"></div>
+      <div style="flex:0"><button class="btn sec" onclick="loadVerif()">Reîncarcă</button></div>
+    </div>
+  </div>
+
+  <div id="v-sectiuni" class="stoc-grid"></div>
+
+  <div class="card" id="v-lucru" style="display:none">
+    <div class="row" style="align-items:center">
+      <div style="flex:0"><button class="btn sec" onclick="inchideVerif()">← Înapoi</button></div>
+      <div><b id="v-titlu"></b> <span class="muted" id="v-progres"></span>
+        <div style="height:6px;background:var(--gl);border-radius:3px;margin-top:6px;overflow:hidden"><div id="v-bara" style="height:100%;width:0;background:var(--g);transition:width .2s"></div></div>
+      </div>
+    </div>
+    <div id="v-campuri" class="grid3" style="margin-top:14px"></div>
+    <div id="v-context" class="muted" style="margin-top:8px"></div>
+    <div style="margin-top:10px"><label>Notă (opțional)</label><input id="v-nota" placeholder="ex: preț renegociat, locație mutată"></div>
+    <div class="row" style="margin-top:14px">
+      <div style="flex:0"><button class="btn danger" onclick="verifSterge()">Șterge rândul</button></div>
+      <div style="flex:1"></div>
+      <div style="flex:0"><button class="btn sec" style="white-space:nowrap" onclick="verifSari()">Sari peste</button></div>
+      <div style="flex:0"><button class="btn" style="white-space:nowrap" onclick="verifConfirma()">Confirmă ✓</button></div>
     </div>
   </div>
 </section>
@@ -306,6 +339,7 @@ document.querySelectorAll("nav button").forEach(b=>b.onclick=()=>{
   document.querySelectorAll(".page").forEach(p=>p.classList.remove("on")); $("p-"+b.dataset.p).classList.add("on");
   if(b.dataset.p==="stoc") loadStoc();
   if(b.dataset.p==="miscari" && !MISC.length) loadMiscari();
+  if(b.dataset.p==="verificare") loadVerif();
 });
 
 // ================= INIT =================
@@ -325,7 +359,7 @@ async function init(){
     NOM={}; n.data.forEach(r=>{(NOM[r.tip]=NOM[r.tip]||[]).push(r);});
     DEP=d.data||[]; SOF=s.data||[]; MAS=m.data||[]; CLI=c.data||[]; CTR=k.data||[]; ANX=a.data||[]; SI=si.data||[];
     $("conn").textContent="● online"; $("conn").style.color="#9fe0b8";
-    fillAll(); await loadStoc();
+    fillAll(); await loadStoc(); loadVerif();
   }catch(e){ console.error(e); $("conn").textContent="● eroare conexiune"; $("conn").style.color="#ffb4ae"; toast("Nu m-am putut conecta la baza de date: "+e.message,true); }
 }
 const nomv = tip => (NOM[tip]||[]).map(r=>r.valoare);
@@ -531,6 +565,129 @@ async function saveStocInitial(){
   const rec={depozit:$("si-dep").value,produs:$("si-prod").value,inchiriate:+$("si-inch").value||0,in_depozit:+$("si-dep2").value||0,data_referinta:$("si-data").value||today()};
   const {error}=await db.from("stoc_initial").upsert(rec,{onConflict:"depozit,produs"}); if(error){toast(error.message,true);return;}
   SI=(await db.from("stoc_initial").select("*").order("depozit")).data; renderStocInitial(); toast("Stoc inițial salvat"); loadStoc();
+}
+
+// ================= VERIFICARE =================
+const V_DEF = {
+  clienti: { titlu:'Clienți', cap:r=>r.nume, campuri:[
+    {c:'nume',l:'Nume client'},{c:'id_tip',l:'Tip ID',nom:'id_tip'},{c:'atr',l:'Atribut fiscal',nom:'atr',gol:1},
+    {c:'cui',l:'CUI / CIF / CNP'},{c:'pers_resp',l:'Pers. responsabilă'},{c:'telefon',l:'Telefon'},{c:'email',l:'Email'},
+    {c:'observatii',l:'Observații'}]},
+  contracte: { titlu:'Contracte', sel:'*, clienti(nume)', cap:r=>'CTR '+r.nr_ctr, ctx:r=>r.clienti?('Client: '+r.clienti.nume):'', campuri:[
+    {c:'nr_ctr',l:'Nr. contract'},{c:'data_emitere',l:'Data emitere',t:'date'},{c:'data_expirare',l:'Data expirare',t:'date'},
+    {c:'expirare_text',l:'Expirare (text)'},{c:'stare',l:'Stare',nom:'stare'}]},
+  anexe: { titlu:'Anexe (locații contractate)', sel:'*, contracte(nr_ctr, clienti(nume))',
+    cap:r=>(r.anexa||'anexă')+' — '+[r.loc,r.sat].filter(Boolean).join(', '),
+    ctx:r=>r.contracte?('Contract '+r.contracte.nr_ctr+(r.contracte.clienti?' · '+r.contracte.clienti.nume:'')):'', campuri:[
+    {c:'anexa',l:'Anexa nr.'},{c:'data_emitere',l:'Emitere',t:'date'},{c:'data_expirare',l:'Expirare',t:'date'},
+    {c:'jud',l:'Județ'},{c:'loc',l:'Localitate / Comună'},{c:'sat',l:'Sat / Stradă / Locație'},
+    {c:'forma',l:'Forma',nom:'forma'},{c:'produs',l:'Produs',nom:'produs'},{c:'model',l:'Model',nom:'model',gol:1},
+    {c:'um',l:'UM',nom:'um'},{c:'cant',l:'Cantitate',t:'number'},{c:'pret',l:'Preț',t:'number',pas:'0.01'},
+    {c:'moneda',l:'Monedă',nom:'moneda'},{c:'scadent',l:'Scadent (zile)',t:'number'},{c:'status',l:'Status'}]},
+  clients: { titlu:'Puncte de servisare (rute)', cap:r=>(r.client||'punct')+' — '+[r.localitate,r.locatie].filter(Boolean).join(', '), campuri:[
+    {c:'client',l:'Client'},{c:'status',l:'Status',opt:['ACTIV','INACTIV']},{c:'ziua',l:'Ziua',opt:['LUN','MAR','MIE','JOI','VIN']},
+    {c:'masina',l:'Traseu / Mașina'},{c:'jud',l:'Județ'},{c:'localitate',l:'Localitate / Comună'},{c:'locatie',l:'Locație / Sat'},
+    {c:'toalete',l:'Toalete',t:'number'},{c:'containere',l:'Containere',t:'number'},{c:'garduri',l:'Garduri',t:'number'},
+    {c:'frecventa',l:'Frecvență servisare'},{c:'telefon',l:'Telefon'},
+    {c:'lat',l:'Latitudine',t:'number',pas:'0.000001'},{c:'lon',l:'Longitudine',t:'number',pas:'0.000001'}]},
+  masini: { titlu:'Mașini', cap:r=>r.marca+' — '+r.nr, campuri:[
+    {c:'marca',l:'Marcă'},{c:'nr',l:'Număr'},{c:'pozitie',l:'Poziție'}]},
+  soferi: { titlu:'Șoferi', cap:r=>r.nume, campuri:[{c:'nume',l:'Nume'}]},
+  depozite:{ titlu:'Depozite', cap:r=>r.cod+' — '+r.nume, campuri:[{c:'cod',l:'Cod'},{c:'nume',l:'Nume'}]}
+};
+let V_TABEL=null, V_RANDURI=[], V_IDX=0, V_RAMAS=0, V_FACUTE=0;
+
+try{ const n=localStorage.getItem('gee_cine'); if(n) $("v-cine").value=n; }catch(e){}
+$("v-cine").addEventListener("change",()=>{ try{ localStorage.setItem('gee_cine',$("v-cine").value); }catch(e){} });
+
+async function loadVerif(){
+  const {data,error}=await db.from("v_verificare").select("*");
+  if(error){toast(error.message,true);return;}
+  const ord=Object.keys(V_DEF);
+  data.sort((a,b)=>ord.indexOf(a.tabel)-ord.indexOf(b.tabel));
+  const totalRamas=data.reduce((s,r)=>s+r.de_verificat,0);
+  const b=$("v-badge"); b.textContent=totalRamas; b.style.display=totalRamas?"":"none";
+  $("v-sectiuni").innerHTML=data.map(r=>{
+    const proc=r.total? Math.round(r.verificate*100/r.total):100;
+    const gata=r.de_verificat===0;
+    return `<div class="stoc"><h4>${esc(r.sectiune)}</h4>
+      <div class="n"><span class="muted">de verificat</span><b class="${gata?'pos':'neg'}">${r.de_verificat}</b></div>
+      <div class="n"><span class="muted">verificate</span><b>${r.verificate} / ${r.total}</b></div>
+      <div style="height:6px;background:var(--gl);border-radius:3px;margin:8px 0;overflow:hidden"><div style="height:100%;width:${proc}%;background:var(--g)"></div></div>
+      <button class="btn sm ${gata?'sec':''}" style="width:100%" onclick="startVerif('${r.tabel}')" ${gata?'disabled':''}>${gata?'✓ gata':'Începe verificarea'}</button>
+    </div>`;
+  }).join("");
+}
+
+async function startVerif(tabel){
+  V_TABEL=tabel; V_IDX=0; V_FACUTE=0;
+  const d=V_DEF[tabel];
+  const q=await db.from(tabel).select(d.sel||"*").eq("verificat",false).limit(50);
+  if(q.error){toast(q.error.message,true);return;}
+  V_RANDURI=q.data||[];
+  const c=await db.from(tabel).select("*",{count:"exact",head:true}).eq("verificat",false);
+  V_RAMAS=c.count||V_RANDURI.length;
+  if(!V_RANDURI.length){ toast("Nu mai e nimic de verificat aici"); loadVerif(); return; }
+  $("v-sectiuni").style.display="none"; $("v-lucru").style.display="";
+  randVerif();
+}
+function inchideVerif(){ $("v-lucru").style.display="none"; $("v-sectiuni").style.display=""; V_TABEL=null; loadVerif(); }
+
+function randVerif(){
+  const d=V_DEF[V_TABEL];
+  if(V_IDX>=V_RANDURI.length){ toast("Gata lotul acesta"); inchideVerif(); return; }
+  const r=V_RANDURI[V_IDX];
+  $("v-titlu").textContent=d.cap(r);
+  const ramas=V_RAMAS-V_FACUTE;
+  $("v-progres").textContent=`· ${V_FACUTE} verificate acum, ${ramas} rămase din ${d.titlu.toLowerCase()}`;
+  $("v-bara").style.width=(V_RAMAS? (V_FACUTE*100/V_RAMAS):0)+"%";
+  $("v-context").textContent=d.ctx? d.ctx(r):"";
+  $("v-nota").value=r.note_verificare||"";
+  $("v-campuri").innerHTML=d.campuri.map(f=>{
+    const val=r[f.c]==null?"":r[f.c];
+    if(f.nom||f.opt){
+      const lista=f.opt||nomv(f.nom);
+      const optiuni=(f.gol||f.opt?['']:[]).concat(lista);
+      const set=new Set(optiuni); if(val!==""&&!set.has(val)) optiuni.unshift(val);
+      return `<div><label>${esc(f.l)}</label><select data-c="${f.c}">${optiuni.map(o=>`<option value="${esc(o)}" ${String(o)===String(val)?"selected":""}>${esc(o)||"—"}</option>`).join("")}</select></div>`;
+    }
+    return `<div><label>${esc(f.l)}</label><input data-c="${f.c}" type="${f.t||'text'}" ${f.pas?`step="${f.pas}"`:""} value="${esc(val)}"></div>`;
+  }).join("");
+}
+function citesteCampuri(){
+  const rec={};
+  document.querySelectorAll("#v-campuri [data-c]").forEach(el=>{
+    let v=el.value;
+    if(el.type==="number") v = v===""? null : Number(v);
+    else if(v==="") v=null;
+    rec[el.dataset.c]=v;
+  });
+  return rec;
+}
+async function verifConfirma(){
+  const r=V_RANDURI[V_IDX];
+  const rec=citesteCampuri();
+  rec.verificat=true;
+  rec.verificat_de=$("v-cine").value.trim()||null;
+  rec.note_verificare=$("v-nota").value.trim()||null;
+  const {error}=await db.from(V_TABEL).update(rec).eq("id",r.id);
+  if(error){toast(error.message,true);return;}
+  V_FACUTE++; V_IDX++; toast("Confirmat");
+  const b=$("v-badge"); const n=Math.max(0,(+b.textContent||1)-1); b.textContent=n; b.style.display=n?"":"none";
+  randVerif();
+}
+function verifSari(){ V_IDX++; randVerif(); }
+async function verifSterge(){
+  const r=V_RANDURI[V_IDX];
+  let av="";
+  if(V_TABEL==="clienti") av=" Atenție: se șterg și contractele și anexele acestui client.";
+  if(V_TABEL==="contracte") av=" Atenție: se șterg și anexele acestui contract.";
+  if(!confirm("Ștergi definitiv acest rând?"+av)) return;
+  const {error}=await db.from(V_TABEL).delete().eq("id",r.id);
+  if(error){toast(error.message,true);return;}
+  V_RAMAS--; V_IDX++; toast("Șters");
+  const b=$("v-badge"); const n=Math.max(0,(+b.textContent||1)-1); b.textContent=n; b.style.display=n?"":"none";
+  randVerif();
 }
 
 init();
