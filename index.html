@@ -75,7 +75,7 @@
 <header>
   <h1>GestiuneEE <span class="muted" style="color:#cfe6d7;font-weight:400">Euro Ecologic</span></h1>
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
-  <span class="ver">v1.0</span>
+  <span class="ver">v1.1</span>
   <span id="conn" class="ver">●</span>
 </header>
 <nav>
@@ -83,6 +83,7 @@
   <button data-p="miscari">Mișcări</button>
   <button data-p="clienti">Clienți & Contracte</button>
   <button data-p="nomenclatoare">Nomenclatoare</button>
+  <button data-p="admin">Administrare</button>
   <button data-p="verificare">Verificare <span id="v-badge" class="badge" style="display:none">0</span></button>
 </nav>
 <main>
@@ -164,12 +165,37 @@
   </div>
   <div class="card">
     <h3 style="margin:0 0 6px;color:var(--g)">Depozite / Șoferi / Mașini</h3>
-    <div class="grid3">
-      <div><b>Depozite</b><div id="n-dep"></div><div class="row" style="margin-top:6px"><input id="nd-cod" placeholder="Cod (HD)"><input id="nd-nume" placeholder="Nume (HUNEDOARA)"><button class="btn sm" onclick="addDepozit()">+</button></div></div>
-      <div><b>Șoferi</b><div id="n-sof"></div><div class="row" style="margin-top:6px"><input id="ns-nume" placeholder="Nume șofer"><button class="btn sm" onclick="addSofer()">+</button></div></div>
-      <div><b>Mașini</b><div id="n-mas"></div><div class="row" style="margin-top:6px"><input id="nm-marca" placeholder="Marcă"><input id="nm-nr" placeholder="Nr."><button class="btn sm" onclick="addMasina()">+</button></div></div>
+    <p class="muted">Acestea se administrează acum din fila <b>Administrare</b>, împreună cu produsele pentru PV-uri și punctele de rută. De acolo se alimentează și aplicațiile de rute și PV-uri.</p>
+    <div class="grid3" style="margin-top:8px">
+      <div><b>Depozite</b><div id="n-dep"></div></div>
+      <div><b>Șoferi</b><div id="n-sof"></div></div>
+      <div><b>Mașini</b><div id="n-mas"></div></div>
     </div>
+    <div style="margin-top:12px"><button class="btn sec" onclick="location.hash='#admin'">Deschide Administrare</button></div>
   </div>
+</section>
+
+<!-- ================= ADMINISTRARE ================= -->
+<section class="page" id="p-admin">
+  <div class="card noprint">
+    <div class="row">
+      <div style="flex:0;min-width:190px"><label>Secțiune</label>
+        <select id="a-tabel" onchange="adminSchimba()">
+          <option value="soferi">Angajați &amp; șoferi</option>
+          <option value="masini">Mașini</option>
+          <option value="depozite">Depozite</option>
+          <option value="products">Produse (PV-uri)</option>
+          <option value="clients">Puncte de rută</option>
+        </select>
+      </div>
+      <div><label>Caută</label><input id="a-cauta" placeholder="scrie pentru a filtra…" oninput="renderAdmin()"></div>
+      <div style="flex:0"><label>&nbsp;</label><button class="btn" onclick="adminNou()">+ Adaugă</button></div>
+      <div style="flex:0"><label>&nbsp;</label><button class="btn sec" onclick="adminIncarca()">Reîncarcă</button></div>
+      <div style="flex:0"><label>&nbsp;</label><button class="btn sec" onclick="adminExport()">Export Excel</button></div>
+    </div>
+    <p class="muted" id="a-nota" style="margin:10px 0 0"></p>
+  </div>
+  <div class="card"><div class="tw"><table id="a-tbl"></table></div></div>
 </section>
 
 <!-- ================= VERIFICARE ================= -->
@@ -320,6 +346,16 @@
   </div>
 </div>
 
+<div class="modal" id="mod-admin"><div class="box">
+  <h3 id="a-titlu">Editare</h3>
+  <div class="grid3" id="a-form"></div>
+  <div class="row" style="margin-top:16px;justify-content:flex-end">
+    <div style="flex:0"><button class="btn danger" id="a-btn-sterge" onclick="adminSterge()">Șterge</button></div>
+    <div style="flex:0"><button class="btn sec" onclick="closeModal('mod-admin')">Renunță</button></div>
+    <div style="flex:0"><button class="btn" onclick="adminSalveaza()">Salvează</button></div>
+  </div>
+</div></div>
+
 <div class="toast" id="toast"></div>
 
 <script>
@@ -345,6 +381,7 @@ document.querySelectorAll("nav button").forEach(b=>b.onclick=()=>{
   document.querySelectorAll(".page").forEach(p=>p.classList.remove("on")); $("p-"+b.dataset.p).classList.add("on");
   if(b.dataset.p==="stoc") loadStoc();
   if(b.dataset.p==="miscari" && !MISC.length) loadMiscari();
+  if(b.dataset.p==="admin") adminIncarca();
   if(b.dataset.p==="verificare") loadVerif();
   try{ history.replaceState(null,"","#"+b.dataset.p); }catch(e){}
 });
@@ -561,9 +598,6 @@ function renderNomSmall(){
   $("n-sof").innerHTML=SOF.map(s=>`<div>${esc(s.nume)}</div>`).join("");
   $("n-mas").innerHTML=MAS.map(m=>`<div>${esc(m.marca)} – ${esc(m.nr)} ${esc(m.pozitie||"")}</div>`).join("");
 }
-async function addDepozit(){ const cod=$("nd-cod").value.trim().toUpperCase(), nume=$("nd-nume").value.trim().toUpperCase(); if(!cod||!nume) return; const {error}=await db.from("depozite").insert({cod,nume,ordine:DEP.length}); if(error){toast(error.message,true);return;} DEP=(await db.from("depozite").select("*").eq("activ",true).order("ordine")).data; $("nd-cod").value="";$("nd-nume").value=""; fillAll(); }
-async function addSofer(){ const nume=$("ns-nume").value.trim().toUpperCase(); if(!nume) return; const {error}=await db.from("soferi").insert({nume}); if(error){toast(error.message,true);return;} SOF=(await db.from("soferi").select("*").eq("activ",true).order("nume")).data; $("ns-nume").value=""; renderNomSmall(); }
-async function addMasina(){ const marca=$("nm-marca").value.trim().toUpperCase(), nr=$("nm-nr").value.trim().toUpperCase(); if(!marca||!nr) return; const {error}=await db.from("masini").insert({marca,nr}); if(error){toast(error.message,true);return;} MAS=(await db.from("masini").select("*").eq("activ",true).order("marca")).data; $("nm-marca").value="";$("nm-nr").value=""; renderNomSmall(); }
 function renderStocInitial(){
   $("si-tbl").innerHTML=`<tr><th>Depozit</th><th>Produs</th><th>Închiriate</th><th>În depozit</th><th>Data referință</th><th></th></tr>`+SI.map(r=>`<tr><td>${esc(r.depozit)}</td><td>${esc(r.produs)}</td><td>${r.inchiriate}</td><td>${r.in_depozit}</td><td>${fmtD(r.data_referinta)}</td><td><button class="btn sm sec" onclick="editSI(${r.id})">Edit</button></td></tr>`).join("");
 }
@@ -695,6 +729,207 @@ async function verifSterge(){
   V_RAMAS--; V_IDX++; toast("Șters");
   const b=$("v-badge"); const n=Math.max(0,(+b.textContent||1)-1); b.textContent=n; b.style.display=n?"":"none";
   randVerif();
+}
+
+
+// ================= ADMINISTRARE =================
+const A_DEF = {
+  soferi:{
+    titlu:"Angajați & șoferi", ord:"nume",
+    nota:"Lista de aici alimentează ecranul „Șoferi” din aplicația de rute. Un om dezactivat dispare de acolo, dar rămâne în istoricul rutelor.",
+    lista:[["nume","Nume complet"],["nume_scurt","Scurt"],["rol","Rol"],["functie","Funcție"],["telefon","Telefon"],["activ","Activ"]],
+    campuri:[
+      {c:"nume",e:"Nume complet",t:"text",req:1,up:1},
+      {c:"nume_scurt",e:"Nume scurt (ca în Excel)",t:"text",up:1},
+      {c:"rol",e:"Rol",t:"sel",op:["sofer","admin","manager"]},
+      {c:"functie",e:"Funcție",t:"text"},
+      {c:"telefon",e:"Telefon",t:"text"},
+      {c:"email",e:"E-mail",t:"text"},
+      {c:"depozit_id",e:"Depozit",t:"ref",ref:"depozite"},
+      {c:"masina_id",e:"Mașina",t:"ref",ref:"masini"},
+      {c:"data_angajare",e:"Data angajării",t:"date"},
+      {c:"data_nasterii",e:"Data nașterii",t:"date"},
+      {c:"ci_serie",e:"CI serie",t:"text",up:1},
+      {c:"ci_numar",e:"CI număr",t:"text"},
+      {c:"nr_contract",e:"Nr. contract",t:"text"},
+      {c:"ordine",e:"Ordine",t:"num"},
+      {c:"activ",e:"Activ",t:"bool"}
+    ]
+  },
+  masini:{
+    titlu:"Mașini", ord:"nr",
+    nota:"Numerele de aici apar în aplicația de rute, la „Numere”. Marca se alege din lista „marca” de la Nomenclatoare.",
+    lista:[["marca","Marcă"],["nr","Număr"],["pozitie","Poziție"],["activ","Activ"]],
+    campuri:[
+      {c:"marca",e:"Marcă",t:"nom",nom:"marca",req:1,up:1},
+      {c:"nr",e:"Număr",t:"text",req:1,up:1},
+      {c:"pozitie",e:"Poziție / observații",t:"text"},
+      {c:"depozit_id",e:"Depozit",t:"ref",ref:"depozite"},
+      {c:"ordine",e:"Ordine",t:"num"},
+      {c:"activ",e:"Activ",t:"bool"}
+    ]
+  },
+  depozite:{
+    titlu:"Depozite", ord:"ordine",
+    nota:"Aceleași depozite sunt folosite de gestiune și de aplicația de PV-uri.",
+    lista:[["cod","Cod"],["nume","Nume"],["tip","Tip"],["adresa","Adresă"],["reprezentant_nume","Reprezentant"],["activ","Activ"]],
+    campuri:[
+      {c:"cod",e:"Cod",t:"text",req:1,up:1},
+      {c:"nume",e:"Nume",t:"text",req:1,up:1},
+      {c:"tip",e:"Tip",t:"sel",op:["principal","secundar"]},
+      {c:"adresa",e:"Adresă",t:"text"},
+      {c:"cuvant_contract",e:"Cuvânt contract",t:"text"},
+      {c:"reprezentant_nume",e:"Reprezentant",t:"text"},
+      {c:"reprezentant_functie",e:"Funcția lui",t:"text"},
+      {c:"reprezentant_telefon",e:"Telefon",t:"text"},
+      {c:"reprezentant_email",e:"E-mail",t:"text"},
+      {c:"reprezentant_cod_acces",e:"Cod acces",t:"text"},
+      {c:"ordine",e:"Ordine",t:"num"},
+      {c:"activ",e:"Activ",t:"bool"}
+    ]
+  },
+  products:{
+    titlu:"Produse (PV-uri)", ord:"model",
+    nota:"Produsele folosite la întocmirea proceselor verbale. Lista este separată de „produs” din gestiune pentru că are alt nivel de detaliu (produs + model).",
+    lista:[["model","Produs"],["type","Model"],["active","Activ"]],
+    campuri:[
+      {c:"model",e:"Produs",t:"text",req:1,up:1},
+      {c:"type",e:"Model / tip",t:"text",up:1},
+      {c:"active",e:"Activ",t:"bool"}
+    ]
+  },
+  clients:{
+    titlu:"Puncte de rută", ord:"client",
+    nota:"Punctele de servisare din aplicația de rute. Coordonatele se folosesc la navigare.",
+    lista:[["client_key","Cod"],["client","Client"],["jud","Jud."],["localitate","Localitate"],["ziua","Ziua"],["masina","Mașina"],["frecventa","Frecvență"],["status","Status"]],
+    campuri:[
+      {c:"client_key",e:"Cod punct",t:"text",req:1},
+      {c:"client",e:"Client",t:"text",up:1},
+      {c:"jud",e:"Județ",t:"text",up:1},
+      {c:"localitate",e:"Localitate",t:"text",up:1},
+      {c:"locatie",e:"Locație",t:"text"},
+      {c:"ziua",e:"Ziua",t:"text",up:1},
+      {c:"masina",e:"Mașina",t:"text",up:1},
+      {c:"frecventa",e:"Frecvență",t:"nom",nom:"frecv_servisare"},
+      {c:"telefon",e:"Telefon",t:"text"},
+      {c:"toalete",e:"Toalete",t:"num"},
+      {c:"containere",e:"Containere",t:"num"},
+      {c:"garduri",e:"Garduri",t:"num"},
+      {c:"lat",e:"Latitudine",t:"num"},
+      {c:"lon",e:"Longitudine",t:"num"},
+      {c:"cartela",e:"Cartelă",t:"bool"},
+      {c:"status",e:"Status",t:"text",up:1}
+    ]
+  }
+};
+let A_TBL="soferi", A_ROWS=[], A_ID=null;
+
+function adminSchimba(){ A_TBL=$("a-tabel").value; $("a-cauta").value=""; adminIncarca(); }
+async function adminIncarca(){
+  const d=A_DEF[A_TBL];
+  $("a-nota").textContent=d.nota;
+  const {data,error}=await db.from(A_TBL).select("*").order(d.ord,{nullsFirst:false});
+  if(error){ toast(error.message,true); return; }
+  A_ROWS=data||[]; renderAdmin();
+}
+function adminCelula(r,c){
+  const v=r[c];
+  if(v===true) return "Da"; if(v===false) return "Nu";
+  if(v==null||v==="") return "";
+  return String(v);
+}
+function renderAdmin(){
+  const d=A_DEF[A_TBL], q=($("a-cauta").value||"").trim().toLowerCase();
+  const rows=q ? A_ROWS.filter(r=>Object.values(r).some(v=>v!=null&&String(v).toLowerCase().includes(q))) : A_ROWS;
+  $("a-tbl").innerHTML =
+    "<thead><tr>"+d.lista.map(([,e])=>`<th>${esc(e)}</th>`).join("")+"<th></th></tr></thead><tbody>"+
+    rows.map(r=>{
+      const inactiv = (r.activ===false || r.active===false);
+      return `<tr${inactiv?' style="opacity:.45"':''}>`+
+        d.lista.map(([c])=>`<td>${esc(adminCelula(r,c))}</td>`).join("")+
+        `<td class="actions"><button class="btn sm sec" onclick="adminEdit('${String(r.id).replace(/'/g,"")}')">Editează</button></td></tr>`;
+    }).join("")+"</tbody>";
+  const n=rows.length, tot=A_ROWS.length;
+  $("a-nota").textContent = d.nota + "  —  " + (q ? `${n} din ${tot} rânduri` : `${tot} rânduri`);
+}
+function adminOptiuniRef(ref){
+  if(ref==="depozite") return DEP.map(x=>({v:x.id,t:x.nume}));
+  return MAS.map(x=>({v:x.id,t:(x.marca||"")+" "+(x.nr||"")}));
+}
+function adminCampHtml(f){
+  const id="af-"+f.c;
+  if(f.t==="bool") return `<div><label>${esc(f.e)}</label><select id="${id}"><option value="true">Da</option><option value="false">Nu</option></select></div>`;
+  if(f.t==="sel")  return `<div><label>${esc(f.e)}</label><select id="${id}">${f.op.map(o=>`<option value="${esc(o)}">${esc(o)}</option>`).join("")}</select></div>`;
+  if(f.t==="ref")  return `<div><label>${esc(f.e)}</label><select id="${id}"><option value="">—</option>${adminOptiuniRef(f.ref).map(o=>`<option value="${o.v}">${esc(o.t)}</option>`).join("")}</select></div>`;
+  if(f.t==="nom")  return `<div><label>${esc(f.e)}</label><input id="${id}" list="dl-${f.c}"><datalist id="dl-${f.c}">${nomv(f.nom).map(o=>`<option value="${esc(o)}">`).join("")}</datalist></div>`;
+  const tip = f.t==="num" ? "number" : f.t==="date" ? "date" : "text";
+  const pas = f.t==="num" ? ' step="any"' : "";
+  return `<div><label>${esc(f.e)}</label><input id="${id}" type="${tip}"${pas}></div>`;
+}
+function adminDeschide(rec){
+  const d=A_DEF[A_TBL];
+  $("a-titlu").textContent = (rec ? "Editează" : "Adaugă") + " — " + d.titlu;
+  $("a-form").innerHTML = d.campuri.map(adminCampHtml).join("");
+  d.campuri.forEach(f=>{
+    const el=$("af-"+f.c); if(!el) return;
+    let v = rec ? rec[f.c] : null;
+    if(f.t==="bool") el.value = (v===false) ? "false" : "true";
+    else if(v==null) el.value = "";
+    else el.value = String(v);
+  });
+  $("a-btn-sterge").style.display = rec ? "" : "none";
+  $("mod-admin").classList.add("on");
+}
+function adminNou(){ A_ID=null; adminDeschide(null); }
+function adminEdit(id){
+  const r=A_ROWS.find(x=>String(x.id)===String(id));
+  if(!r){ toast("Rândul nu mai există, reîncarcă lista",true); return; }
+  A_ID=r.id; adminDeschide(r);
+}
+async function adminSalveaza(){
+  const d=A_DEF[A_TBL], rec={};
+  for(const f of d.campuri){
+    const el=$("af-"+f.c); if(!el) continue;
+    let v=(el.value||"").trim();
+    if(f.t==="bool"){ rec[f.c] = (v==="true"); continue; }
+    if(v===""){ rec[f.c]=null; }
+    else if(f.t==="num"){ const n=Number(v); rec[f.c]=isNaN(n)?null:n; }
+    else if(f.t==="ref"){ rec[f.c]=Number(v)||null; }
+    else { rec[f.c] = f.up ? v.toUpperCase() : v; }
+    if(f.req && (rec[f.c]===null||rec[f.c]==="")){ toast("Completează „"+f.e+"”",true); el.focus(); return; }
+  }
+  if(A_TBL==="clients" && !A_ID && !rec.client_key)
+    rec.client_key = "P"+Date.now().toString(36).toUpperCase();
+  const q = A_ID ? db.from(A_TBL).update(rec).eq("id",A_ID) : db.from(A_TBL).insert(rec);
+  const {error}=await q;
+  if(error){ toast(error.message,true); return; }
+  closeModal("mod-admin"); toast(A_ID ? "Modificare salvată" : "Adăugat");
+  await adminReimprospateaza();
+}
+async function adminSterge(){
+  if(!A_ID) return;
+  const d=A_DEF[A_TBL];
+  if(!confirm("Ștergi definitiv acest rând din „"+d.titlu+"”?\n\nDacă vrei doar să nu mai apară în aplicații, pune „Activ = Nu” și salvează.")) return;
+  const {error}=await db.from(A_TBL).delete().eq("id",A_ID);
+  if(error){ toast(error.message,true); return; }
+  closeModal("mod-admin"); toast("Șters");
+  await adminReimprospateaza();
+}
+async function adminReimprospateaza(){
+  const [d,s,m]=await Promise.all([
+    db.from("depozite").select("*").eq("activ",true).order("ordine"),
+    db.from("soferi").select("*").eq("activ",true).order("nume"),
+    db.from("masini").select("*").eq("activ",true).order("marca")
+  ]);
+  DEP=d.data||DEP; SOF=s.data||SOF; MAS=m.data||MAS;
+  renderNomSmall(); fillAll();
+  await adminIncarca(); loadVerif();
+}
+function adminExport(){
+  const d=A_DEF[A_TBL];
+  const ws=XLSX.utils.json_to_sheet(A_ROWS);
+  const wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,ws,A_TBL.toUpperCase().slice(0,28));
+  XLSX.writeFile(wb,`${d.titlu.replace(/[^\wăâîșțĂÂÎȘȚ]+/g,"_")}_${today()}.xlsx`);
 }
 
 // ================= INSTALARE (PWA) =================
