@@ -874,6 +874,7 @@ function adminDeschide(rec){
     const el=$("af-"+f.c); if(!el) return;
     let v = rec ? rec[f.c] : null;
     if(f.t==="bool") el.value = (v===false) ? "false" : "true";
+    else if(f.t==="sel") el.value = (v==null||v==="") ? f.op[0] : String(v);
     else if(v==null) el.value = "";
     else el.value = String(v);
   });
