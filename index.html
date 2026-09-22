@@ -75,13 +75,14 @@
 <header>
   <h1>GestiuneEE <span class="muted" style="color:#cfe6d7;font-weight:400">Euro Ecologic</span></h1>
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
-  <span class="ver">v1.3</span>
+  <span class="ver">v1.4</span>
   <span id="conn" class="ver">●</span>
 </header>
 <nav>
   <button class="on" data-p="stoc">Stoc</button>
   <button data-p="miscari">Mișcări</button>
   <button data-p="clienti">Clienți & Contracte</button>
+  <button data-p="rapoarte">Rapoarte</button>
   <button data-p="rute">Monitorizare rute</button>
   <button data-p="admin">Administrare</button>
   <button data-p="verificare">Verificare <span id="v-badge" class="badge" style="display:none">0</span></button>
@@ -139,6 +140,31 @@
 </section>
 
 <!-- ================= NOMENCLATOARE ================= -->
+<!-- ================= RAPOARTE ================= -->
+<section class="page" id="p-rapoarte">
+  <div class="card noprint">
+    <div class="row">
+      <div style="flex:0;min-width:180px"><label>Raport</label>
+        <select id="r-tip" onchange="genereazaRaport()">
+          <option value="facturare">Facturare lunară</option>
+          <option value="luna">Raport lună (pe zile)</option>
+        </select>
+      </div>
+      <div style="flex:0"><label>An</label><select id="r-an" onchange="genereazaRaport()"></select></div>
+      <div style="flex:0"><label>Luna</label><select id="r-luna" onchange="genereazaRaport()"></select></div>
+      <div><label>Client</label><input id="r-client" list="dl-clienti" placeholder="toți" oninput="genereazaRaport()"></div>
+      <div style="flex:0"><label>Județ</label><select id="r-jud" onchange="genereazaRaport()"></select></div>
+      <div style="flex:0"><label>Stare contract</label><select id="r-stare" onchange="genereazaRaport()"></select></div>
+      <div style="flex:0"><label>TVA %</label><input id="r-tva" type="number" value="21" step="1" oninput="genereazaRaport()"></div>
+      <div style="flex:0"><label>&nbsp;</label><button class="btn sec" onclick="exportRaport()">Export Excel</button></div>
+      <div style="flex:0"><label>&nbsp;</label><button class="btn sec" onclick="window.print()">PDF / Print</button></div>
+    </div>
+    <div class="kpi" id="r-kpi" style="margin-top:12px"></div>
+    <p class="muted" id="r-nota" style="margin:4px 0 0"></p>
+  </div>
+  <div class="card"><div class="tw"><table id="r-tbl"></table></div></div>
+</section>
+
 <!-- ================= MONITORIZARE RUTE ================= -->
 <section class="page" id="p-rute">
   <div class="card noprint">
@@ -388,6 +414,7 @@ document.querySelectorAll("nav button").forEach(b=>b.onclick=()=>{
   document.querySelectorAll(".page").forEach(p=>p.classList.remove("on")); $("p-"+b.dataset.p).classList.add("on");
   if(b.dataset.p==="stoc") loadStoc();
   if(b.dataset.p==="miscari" && !MISC.length) loadMiscari();
+  if(b.dataset.p==="rapoarte") genereazaRaport();
   if(b.dataset.p==="rute") deschideRute();
   if(b.dataset.p==="admin") adminSchimba();
   if(b.dataset.p==="verificare") loadVerif();
@@ -427,7 +454,7 @@ function fillAll(){
   const y=new Date().getFullYear(); const yrs=[]; for(let i=y;i>=2023;i--) yrs.push(i); fill("f-an",yrs,"Toți"); $("f-an").value=y;
   $("f-luna").innerHTML='<option value="">Toate</option>'+LUNI.map((l,i)=>`<option value="${i+1}">${l}</option>`).join("");
   $("dl-clienti").innerHTML=CLI.map(c=>`<option value="${esc(c.nume)}">`).join("");
-  fill("n-tip",Object.keys(NOM).sort()); renderNom(); renderStocInitial(); renderClienti();
+  fill("n-tip",Object.keys(NOM).sort()); renderNom(); renderStocInitial(); renderClienti(); initRapoarte();
   $("si-data").value=new Date().toISOString().slice(0,10);
 }
 
@@ -734,6 +761,151 @@ async function verifSterge(){
   randVerif();
 }
 
+
+// ================= RAPOARTE =================
+// Replică paginile FACTURARE și RAPORT-LUNA din fișierul Excel lunar.
+// Sursa: anexe + contracte + clienți (poziții) și mișcările lunii (schimbările pe zile).
+let R_RANDURI = [], R_ANTET = [], R_NUME = "Raport", R_NUM = new Set();
+
+const zileInLuna = (an, luna) => new Date(an, luna, 0).getDate();
+const dtz = s => s ? new Date(s + "T00:00:00") : null;
+const zi2 = n => (n < 10 ? "0" : "") + n;
+const dRO = d => d ? zi2(d.getDate()) + "." + zi2(d.getMonth() + 1) + "." + d.getFullYear() : "";
+const bani = n => (+n || 0).toLocaleString("ro-RO", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+function initRapoarte(){
+  const acum = new Date(), y = acum.getFullYear();
+  const ani = []; for(let i = y + 1; i >= 2023; i--) ani.push(i);
+  fill("r-an", ani);
+  if(!$("r-luna").options.length){
+    $("r-luna").innerHTML = LUNI.map((l, i) => `<option value="${i+1}">${l}</option>`).join("");
+    $("r-luna").value = acum.getMonth() + 1;
+    $("r-an").value = y;
+  }
+  fill("r-jud", [...new Set(ANX.map(a => a.jud).filter(Boolean))].sort(), "toate");
+  fill("r-stare", nomv("stare"), "toate");
+}
+
+// pozițiile active în luna aleasă, cu numărul de zile facturabile
+function randuriRaport(){
+  const an = +$("r-an").value, luna = +$("r-luna").value;
+  const p1 = new Date(an, luna - 1, 1), pN = new Date(an, luna, 0);
+  const fc = ($("r-client").value || "").trim().toLowerCase();
+  const fj = $("r-jud").value, fs = $("r-stare").value;
+  const out = [];
+  for(const a of ANX){
+    const c = CTR.find(x => x.id === a.contract_id); if(!c) continue;
+    const k = CLI.find(x => x.id === c.client_id);   if(!k) continue;
+    if(fc && !(k.nume || "").toLowerCase().includes(fc)) continue;
+    if(fj && a.jud !== fj) continue;
+    if(fs && (c.stare || "") !== fs) continue;
+    const em = dtz(a.data_emitere), ex = dtz(a.data_expirare);
+    if(em && em > pN) continue;   // nu începuse încă
+    if(ex && ex < p1) continue;   // se terminase
+    const de = (em && em > p1) ? em : p1;
+    const la = (ex && ex < pN) ? ex : pN;
+    let zile = Math.round((la - de) / 86400000) + 1;
+    if(zile < 0) zile = 0;
+    if(String(a.status || "").toUpperCase().includes("RIDICARE")) zile = 0;
+    out.push({ a, c, k, de, la, zile, an, luna, p1, pN });
+  }
+  out.sort((x, y) => (x.k.nume || "").localeCompare(y.k.nume || "") || (x.a.anexa || "").localeCompare(y.a.anexa || ""));
+  return out;
+}
+
+async function genereazaRaport(){
+  if(!ANX.length){ return; }
+  if($("r-tip").value === "facturare") raportFacturare(); else await raportLuna();
+}
+
+function raportFacturare(){
+  const tva = (+$("r-tva").value || 0) / 100;
+  const r = randuriRaport();
+  R_ANTET = ["STARE","NR. CTR","EMITERE CTR","EXPIRARE CTR","NUME CLIENT","ID","ATR.","NUMAR","ANEXA NR",
+             "EMITERE ANEXA","EXPIRARE ANEXA","JUD","LOCALITATE","SAT / LOCATIE / STRADA","FORMA","PRODUS",
+             "MODEL","UM","CANT.","PRET","MONEDA","STATUS","INCEPUT LUNA","SFARSIT LUNA","NR Z.",
+             "VALOARE FARA TVA","VALOARE CU TVA","SCADENT"];
+  R_NUM = new Set([18, 19, 24, 25, 26]);
+  R_RANDURI = r.map(x => {
+    const cant = +x.a.cant || 0, pret = +x.a.pret || 0;
+    const fara = Math.round(x.zile * pret * cant * 100) / 100;
+    return [ x.c.stare || "", x.c.nr_ctr || "", dRO(dtz(x.c.data_emitere)),
+             x.c.data_expirare ? dRO(dtz(x.c.data_expirare)) : (x.c.expirare_text || ""),
+             x.k.nume || "", x.k.id_tip || "", x.k.atr || "", x.k.cui || "", x.a.anexa || "",
+             dRO(dtz(x.a.data_emitere)),
+             x.a.data_expirare ? dRO(dtz(x.a.data_expirare)) : (x.a.expirare_text || ""),
+             x.a.jud || "", x.a.loc || "", x.a.sat || "", x.a.forma || "", x.a.produs || "",
+             x.a.model || "", x.a.um || "", cant, pret, x.a.moneda || "", x.a.status || "",
+             dRO(x.de), dRO(x.la), x.zile, fara, Math.round(fara * (1 + tva) * 100) / 100,
+             x.a.scadent === null || x.a.scadent === undefined ? "" : x.a.scadent ];
+  });
+  R_NUME = "Facturare";
+  const pe = {};
+  R_RANDURI.forEach(f => { const m = f[20] || "RON"; pe[m] = pe[m] || [0, 0]; pe[m][0] += f[25]; pe[m][1] += f[26]; });
+  $("r-kpi").innerHTML = `<div>Poziții<b>${R_RANDURI.length}</b></div>` +
+    Object.keys(pe).sort().map(m => `<div>Fără TVA (${esc(m)})<b>${bani(pe[m][0])}</b></div><div>Cu TVA (${esc(m)})<b>${bani(pe[m][1])}</b></div>`).join("");
+  $("r-nota").textContent = "Numărul de zile se calculează din perioada în care anexa e valabilă în luna aleasă. Anexele cu statusul RIDICARE se trec cu 0 zile, ca în Excel.";
+  deseneazaRaport();
+}
+
+async function miscariLuna(an, luna){
+  const de = `${an}-${zi2(luna)}-01`, la = `${an}-${zi2(luna)}-${zi2(zileInLuna(an, luna))}`;
+  const { data, error } = await db.from("miscari").select("*").gte("data", de).lte("data", la);
+  if(error){ toast(error.message, true); return []; }
+  return data || [];
+}
+
+async function raportLuna(){
+  const r = randuriRaport();
+  const an = +$("r-an").value, luna = +$("r-luna").value, nz = zileInLuna(an, luna);
+  const p1 = new Date(an, luna - 1, 1);
+  const mis = await miscariLuna(an, luna);
+  R_ANTET = ["NR. CTR","NUMELE FIRMEI","LOCATIA DE LIVRARE","NR. ANEXA","DATA LIVRARE","PRODUS","MODEL",
+             "LIVRAT DIN DEPOZIT","RETUR IN DEPOZIT","0"];
+  for(let d = 1; d <= nz; d++) R_ANTET.push(String(d));
+  R_NUM = new Set(); for(let i = 9; i < R_ANTET.length; i++) R_NUM.add(i);
+  R_RANDURI = r.map(x => {
+    const cant = +x.a.cant || 0, em = dtz(x.a.data_emitere);
+    const zile = new Array(nz).fill("");
+    let col0 = "", dep = "", ret = "";
+    if(em && em < p1) col0 = cant;
+    else if(em && em.getFullYear() === an && em.getMonth() + 1 === luna) zile[em.getDate() - 1] = cant;
+    for(const m of mis){
+      if((m.client || "") !== (x.k.nume || "")) continue;
+      if((m.loc || "") !== (x.a.loc || "")) continue;
+      if((m.produs || "") !== (x.a.produs || "")) continue;
+      const md = dtz(m.data); if(!md) continue;
+      const semn = /RIDICARE|REDUCERE|EVENIMENT-R/.test(m.tip_miscare || "") ? -1 : 1;
+      const i = md.getDate() - 1;
+      zile[i] = (+zile[i] || 0) + semn * (+m.buc || 0);
+      if(semn > 0) dep = m.depozit || dep; else ret = m.depozit || ret;
+    }
+    return [ x.c.nr_ctr || "", x.k.nume || "", [x.a.loc, x.a.sat].filter(Boolean).join(", "),
+             x.a.anexa || "", dRO(em), x.a.produs || "", x.a.model || "", dep, ret, col0, ...zile ];
+  });
+  R_NUME = "Raport_luna";
+  const buc = R_RANDURI.reduce((s, f) => s + (+f[9] || 0) + f.slice(10).reduce((t, v) => t + (+v || 0), 0), 0);
+  $("r-kpi").innerHTML = `<div>Poziții<b>${R_RANDURI.length}</b></div><div>Bucăți<b>${buc}</b></div><div>Mișcări în lună<b>${mis.length}</b></div>`;
+  $("r-nota").textContent = "Coloana „0” = ce era deja amplasat la începutul lunii. Zilele 1–" + nz +
+    " arată amplasările și ridicările înregistrate în luna aceea. Depozitul apare doar acolo unde există o mișcare înregistrată.";
+  deseneazaRaport();
+}
+
+function deseneazaRaport(){
+  $("r-tbl").innerHTML =
+    "<thead><tr>" + R_ANTET.map(h => `<th>${esc(h)}</th>`).join("") + "</tr></thead><tbody>" +
+    R_RANDURI.map(f => "<tr>" + f.map((v, i) =>
+      `<td${R_NUM.has(i) ? ' style="text-align:right"' : ''}>${esc(v === null || v === undefined ? "" : v)}</td>`
+    ).join("") + "</tr>").join("") + "</tbody>";
+}
+
+function exportRaport(){
+  if(!R_RANDURI.length){ toast("Nu e nimic de exportat", true); return; }
+  const ws = XLSX.utils.aoa_to_sheet([R_ANTET, ...R_RANDURI]);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, R_NUME.slice(0, 28));
+  XLSX.writeFile(wb, `${R_NUME}_${$("r-an").value}-${zi2(+$("r-luna").value)}.xlsx`);
+}
 
 // ================= MONITORIZARE RUTE =================
 // Ecranul de monitorizare rulează din folderul dashboard/, ca să existe un singur cod:
