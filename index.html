@@ -72,10 +72,23 @@
 </style>
 </head>
 <body>
+<div id="ecran-login" style="position:fixed;inset:0;z-index:200;background:var(--g);display:flex;align-items:center;justify-content:center;padding:20px">
+  <div style="background:#fff;border-radius:14px;padding:26px;width:100%;max-width:380px;box-shadow:0 10px 40px rgba(0,0,0,.25)">
+    <h2 style="margin:0 0 4px;color:var(--g);font-size:20px">GestiuneEE</h2>
+    <p class="muted" style="margin:0 0 18px">Euro Ecologic — intră în cont ca să continui.</p>
+    <div style="margin-bottom:10px"><label>Utilizator</label><input id="lg-user" autocomplete="username" autocapitalize="none" spellcheck="false"></div>
+    <div style="margin-bottom:14px"><label>Parolă</label><input id="lg-parola" type="password" autocomplete="current-password"></div>
+    <button class="btn" id="lg-buton" style="width:100%" onclick="intra()">Intră în cont</button>
+    <p id="lg-eroare" style="color:var(--red);font-size:13px;margin:12px 0 0;min-height:18px"></p>
+  </div>
+</div>
+
 <header>
   <h1>GestiuneEE <span class="muted" style="color:#cfe6d7;font-weight:400">Euro Ecologic</span></h1>
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
-  <span class="ver">v1.7</span>
+  <span class="ver">v1.8</span>
+  <span id="cine" class="ver" style="display:none;opacity:1;font-weight:600"></span>
+  <button id="btn-iesi" class="btn sec" style="display:none;padding:5px 11px;font-size:12px" onclick="iesi()">Ieși</button>
   <span id="conn" class="ver">●</span>
 </header>
 <nav>
@@ -1477,6 +1490,71 @@ function adminExport(){
   XLSX.writeFile(wb,`${d.titlu.replace(/[^\wăâîșțĂÂÎȘȚ]+/g,"_")}_${today()}.xlsx`);
 }
 
+// ================= AUTENTIFICARE =================
+// Acelasi cont ca la adminul de PV-uri: numele de utilizator devine o adresa interna.
+// In gestiune intra doar rolurile admin si manager; soferii au aplicatiile lor.
+let UTILIZATOR = null;
+const emailDinUtilizator = u =>
+  `pv-sofer-${String(u || "").trim().toLowerCase().replace(/[^a-z0-9._-]/g, "")}@eurowc.ro`;
+
+async function porneste(){
+  try{
+    const { data } = await db.auth.getSession();
+    if(data && data.session && await incarcaProfil(data.session.user.id)) return;
+  }catch(e){ console.warn("sesiune:", e); }
+  aratiLogin();
+}
+
+async function incarcaProfil(id){
+  const { data, error } = await db.from("profiles")
+    .select("id, username, full_name, role, active").eq("id", id).maybeSingle();
+  if(error || !data){ await db.auth.signOut(); aratiLogin("Nu am găsit profilul acestui cont."); return false; }
+  if(!data.active){ await db.auth.signOut(); aratiLogin("Contul acesta este dezactivat."); return false; }
+  if(data.role !== "admin" && data.role !== "manager"){
+    await db.auth.signOut();
+    aratiLogin("Contul acesta nu are acces la gestiune. Șoferii folosesc aplicațiile de rute și de procese verbale.");
+    return false;
+  }
+  UTILIZATOR = data;
+  $("ecran-login").style.display = "none";
+  $("cine").textContent = data.full_name || data.username;
+  $("cine").style.display = "";
+  $("btn-iesi").style.display = "";
+  const vc = $("v-cine");
+  if(vc && !vc.value) vc.value = data.full_name || data.username;
+  init();
+  return true;
+}
+
+function aratiLogin(mesaj){
+  $("ecran-login").style.display = "flex";
+  $("lg-eroare").textContent = mesaj || "";
+  setTimeout(() => { try{ $("lg-user").focus(); }catch(e){} }, 100);
+}
+
+async function intra(){
+  const u = $("lg-user").value.trim(), p = $("lg-parola").value;
+  if(!u || !p){ $("lg-eroare").textContent = "Completează utilizatorul și parola."; return; }
+  $("lg-buton").disabled = true; $("lg-buton").textContent = "Se verifică…";
+  $("lg-eroare").textContent = "";
+  const { data, error } = await db.auth.signInWithPassword({ email: emailDinUtilizator(u), password: p });
+  $("lg-buton").disabled = false; $("lg-buton").textContent = "Intră în cont";
+  if(error || !data || !data.user){ $("lg-eroare").textContent = "Utilizator sau parolă greșită."; return; }
+  $("lg-parola").value = "";
+  await incarcaProfil(data.user.id);
+}
+
+async function iesi(){
+  if(!confirm("Ieși din cont?")) return;
+  await db.auth.signOut();
+  location.reload();
+}
+
+document.addEventListener("keydown", e => {
+  if(e.key === "Enter" && $("ecran-login").style.display !== "none" &&
+     (e.target.id === "lg-user" || e.target.id === "lg-parola")) intra();
+});
+
 // ================= INSTALARE (PWA) =================
 let promptInstalare = null;
 window.addEventListener("beforeinstallprompt", (e) => {
@@ -1505,7 +1583,7 @@ function deschideSectiune(nume){
 window.addEventListener("load", () => deschideSectiune((location.hash || "").replace("#", "")));
 window.addEventListener("hashchange", () => deschideSectiune((location.hash || "").replace("#", "")));
 
-init();
+porneste();
 </script>
 </body>
 </html>
