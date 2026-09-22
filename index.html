@@ -75,13 +75,14 @@
 <header>
   <h1>GestiuneEE <span class="muted" style="color:#cfe6d7;font-weight:400">Euro Ecologic</span></h1>
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
-  <span class="ver">v1.2</span>
+  <span class="ver">v1.3</span>
   <span id="conn" class="ver">●</span>
 </header>
 <nav>
   <button class="on" data-p="stoc">Stoc</button>
   <button data-p="miscari">Mișcări</button>
   <button data-p="clienti">Clienți & Contracte</button>
+  <button data-p="rute">Monitorizare rute</button>
   <button data-p="admin">Administrare</button>
   <button data-p="verificare">Verificare <span id="v-badge" class="badge" style="display:none">0</span></button>
 </nav>
@@ -138,6 +139,20 @@
 </section>
 
 <!-- ================= NOMENCLATOARE ================= -->
+<!-- ================= MONITORIZARE RUTE ================= -->
+<section class="page" id="p-rute">
+  <div class="card noprint">
+    <div class="row">
+      <div><p class="muted" style="margin:0">Cine e pe teren acum, cu ce mașină, câte vizite a făcut și câți kilometri. Se reîmprospătează singură la 20 de secunde.</p></div>
+      <div style="flex:0"><button class="btn sec" onclick="reincarcaRute()">Reîmprospătează</button></div>
+      <div style="flex:0"><button class="btn sec" onclick="window.open('dashboard/','_blank')">Deschide separat ↗</button></div>
+    </div>
+  </div>
+  <div class="card" style="padding:0;overflow:hidden">
+    <iframe id="rute-frame" title="Monitorizare rute" style="width:100%;height:calc(100vh - 215px);min-height:470px;border:0;display:block"></iframe>
+  </div>
+</section>
+
 <!-- ================= ADMINISTRARE ================= -->
 <section class="page" id="p-admin">
   <div class="card noprint">
@@ -373,6 +388,7 @@ document.querySelectorAll("nav button").forEach(b=>b.onclick=()=>{
   document.querySelectorAll(".page").forEach(p=>p.classList.remove("on")); $("p-"+b.dataset.p).classList.add("on");
   if(b.dataset.p==="stoc") loadStoc();
   if(b.dataset.p==="miscari" && !MISC.length) loadMiscari();
+  if(b.dataset.p==="rute") deschideRute();
   if(b.dataset.p==="admin") adminSchimba();
   if(b.dataset.p==="verificare") loadVerif();
   try{ history.replaceState(null,"","#"+b.dataset.p); }catch(e){}
@@ -718,6 +734,12 @@ async function verifSterge(){
   randVerif();
 }
 
+
+// ================= MONITORIZARE RUTE =================
+// Ecranul de monitorizare rulează din folderul dashboard/, ca să existe un singur cod:
+// aceeași pagină se deschide și singură, la /dashboard/. Se încarcă abia la prima deschidere.
+function deschideRute(){ const f = $("rute-frame"); if(!f.getAttribute("src")) f.src = "dashboard/"; }
+function reincarcaRute(){ $("rute-frame").src = "dashboard/?t=" + Date.now(); }
 
 // ================= ADMINISTRARE =================
 const A_DEF = {
