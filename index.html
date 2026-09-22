@@ -86,7 +86,7 @@
 <header>
   <h1>GestiuneEE <span class="muted" style="color:#cfe6d7;font-weight:400">Euro Ecologic</span></h1>
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
-  <span class="ver">v1.9</span>
+  <span class="ver">v2.0</span>
   <span id="cine" class="ver" style="display:none;opacity:1;font-weight:600"></span>
   <button id="btn-iesi" class="btn sec" style="display:none;padding:5px 11px;font-size:12px" onclick="iesi()">Ieși</button>
   <span id="conn" class="ver">●</span>
@@ -247,6 +247,9 @@
             <option value="_liste">Liste (produse, modele, funcții…)</option>
             <option value="_stoc">Stoc inițial</option>
           </optgroup>
+          <optgroup label="Din teren">
+            <option value="_pv">Procese verbale</option>
+          </optgroup>
         </select>
       </div>
       <div id="a-w-cauta"><label>Caută</label><input id="a-cauta" placeholder="scrie pentru a filtra…" oninput="renderAdmin()"></div>
@@ -267,6 +270,19 @@
       <div style="flex:0"><label>&nbsp;</label><button class="btn" onclick="addNom()">Adaugă</button></div>
     </div>
     <div class="tw" style="margin-top:10px;max-height:60vh"><table id="n-tbl"></table></div>
+  </div>
+
+  <div class="card" id="a-card-pv" style="display:none">
+    <div class="row">
+      <div style="flex:0;min-width:180px"><label>Șofer</label><select id="pv-sofer" onchange="loadPV()"></select></div>
+      <div style="flex:0;min-width:150px"><label>Tip</label><select id="pv-tip" onchange="loadPV()"><option value="">toate</option><option value="AMPLASARE">Amplasare</option><option value="RIDICARE">Ridicare</option><option value="SERVISARE">Servisare</option><option value="LIPSA ACCES">Lipsă acces</option><option value="VANZARE">Vânzare</option></select></div>
+      <div style="flex:0"><label>De la</label><input id="pv-de" type="date" onchange="loadPV()"></div>
+      <div style="flex:0"><label>Până la</label><input id="pv-la" type="date" onchange="loadPV()"></div>
+      <div style="flex:0"><label>Câte</label><select id="pv-limita" onchange="loadPV()"><option>200</option><option>500</option><option>1000</option></select></div>
+      <div style="flex:0"><label>&nbsp;</label><button class="btn sec" onclick="loadPV()">Reîncarcă</button></div>
+      <div style="flex:0"><label>&nbsp;</label><button class="btn sec" onclick="exportPV()">Export Excel</button></div>
+    </div>
+    <div class="tw" style="margin-top:10px"><table id="pv-tbl"></table></div>
   </div>
 
   <div class="card" id="a-card-stoc" style="display:none">
@@ -1375,6 +1391,66 @@ async function contSterge(userId){
   }catch(e){ toast(e.message, true); }
 }
 
+// ================= PROCESE VERBALE =================
+// Documentele intocmite de soferi pe telefon si urcate in Supabase.
+let PV = [], PV_SOFERI_GATA = false;
+const PV_TIPURI = { AMPLASARE:"Amplasare", RIDICARE:"Ridicare", SERVISARE:"Servisare", "LIPSA ACCES":"Lipsă acces", VANZARE:"Vânzare" };
+const pvNumar = v => { const m = /^(PV[A-Z]*)_(\d{5})$/.exec(v || ""); return m ? m[1] + " - " + m[2] : (v || "—"); };
+const pvMarime = b => { if(!b) return "—"; const k = b / 1024; return k < 1024 ? Math.round(k) + " KB" : (k / 1024).toFixed(1) + " MB"; };
+
+async function loadPV(){
+  if(!PV_SOFERI_GATA){
+    await incarcaConturi();
+    $("pv-sofer").innerHTML = '<option value="">toți</option>' +
+      CONTURI.filter(c => c.role === "driver").map(c => `<option value="${c.id}">${esc(c.full_name)}</option>`).join("");
+    PV_SOFERI_GATA = true;
+  }
+  const { data, error } = await db.rpc("list_pv_records", {
+    p_driver_id:    $("pv-sofer").value || null,
+    p_process_type: $("pv-tip").value || null,
+    p_date_from:    $("pv-de").value || null,
+    p_date_to:      $("pv-la").value || null,
+    p_limit:        +$("pv-limita").value || 200
+  });
+  if(error){ toast(error.message, true); return; }
+  PV = data || [];
+  const octeti = PV.reduce((s, r) => s + (+r.file_size || 0), 0);
+  $("a-nota").textContent = "Procesele verbale întocmite de șoferi pe telefon și urcate aici. " +
+    PV.length + " documente · " + pvMarime(octeti) + " în total.";
+  $("pv-tbl").innerHTML =
+    "<thead><tr><th>Data</th><th>Nr. PV</th><th>Tip</th><th>Client</th><th>Locație</th>" +
+    "<th>Șofer</th><th>Mașina</th><th>Mărime</th><th></th></tr></thead><tbody>" +
+    PV.map(r => {
+      const d = new Date(r.created_at);
+      return `<tr><td>${d.toLocaleDateString("ro-RO")} ${d.toLocaleTimeString("ro-RO",{hour:"2-digit",minute:"2-digit"})}</td>` +
+        `<td><b>${esc(pvNumar(r.pv_number))}</b></td>` +
+        `<td>${esc(PV_TIPURI[r.process_type] || r.process_type || "—")}</td>` +
+        `<td>${esc(r.client_name || "—")}</td>` +
+        `<td>${r.county ? "<b>[" + esc(r.county) + "]</b> " : ""}${esc(r.location || "—")}</td>` +
+        `<td>${esc(r.driver_name || "—")}</td><td>${esc(r.car_number || "—")}</td>` +
+        `<td style="text-align:right">${pvMarime(r.file_size)}</td>` +
+        `<td class="actions">${r.storage_path ? `<button class="btn sm sec" onclick="pvDeschide('${esc(r.storage_path)}')">Deschide</button>` : ""}</td></tr>`;
+    }).join("") + "</tbody>";
+}
+
+async function pvDeschide(cale){
+  const { data, error } = await db.storage.from("pv-documents").createSignedUrl(cale, 120);
+  if(error || !data){ toast(error ? error.message : "Nu am putut deschide documentul", true); return; }
+  window.open(data.signedUrl, "_blank");
+}
+
+function exportPV(){
+  if(!PV.length){ toast("Nu e nimic de exportat", true); return; }
+  const ws = XLSX.utils.json_to_sheet(PV.map(r => ({
+    DATA: r.created_at, "NR PV": pvNumar(r.pv_number), TIP: PV_TIPURI[r.process_type] || r.process_type,
+    CLIENT: r.client_name, JUDET: r.county, LOCATIE: r.location, SOFER: r.driver_name,
+    DEPOZIT: r.depot_name, MASINA: r.car_number, MARIME: r.file_size
+  })));
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "PROCESE VERBALE");
+  XLSX.writeFile(wb, `Procese_verbale_${today()}.xlsx`);
+}
+
 // ================= MONITORIZARE RUTE =================
 // Ecranul de monitorizare rulează din folderul dashboard/, ca să existe un singur cod:
 // aceeași pagină se deschide și singură, la /dashboard/. Se încarcă abia la prima deschidere.
@@ -1478,11 +1554,14 @@ function adminSchimba(){
   $("a-card-crud").style.display  = eTabel ? "" : "none";
   $("a-card-liste").style.display = (v === "_liste") ? "" : "none";
   $("a-card-stoc").style.display  = (v === "_stoc")  ? "" : "none";
+  $("a-card-pv").style.display    = (v === "_pv")    ? "" : "none";
   ["a-w-cauta","a-w-nou","a-w-reload","a-w-export"].forEach(id => $(id).style.display = eTabel ? "" : "none");
   if(!eTabel){
     $("a-nota").textContent = (v === "_liste")
       ? "Listele care apar în formularele aplicației: produse, modele, tipuri de mișcare, frecvențe, funcții, mărci. „Efect stoc” se completează doar la tipurile de mișcare."
+      : (v === "_pv") ? "Se încarcă…"
       : "Valorile de pornire pe depozit și produs (celulele START din Excel). Mișcările înregistrate după data de referință se adună sau se scad din acestea.";
+    if(v === "_pv"){ loadPV(); return; }
     if(v === "_liste") renderNom(); else renderStocInitial();
     return;
   }
