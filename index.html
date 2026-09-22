@@ -75,7 +75,7 @@
 <header>
   <h1>GestiuneEE <span class="muted" style="color:#cfe6d7;font-weight:400">Euro Ecologic</span></h1>
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
-  <span class="ver">v1.4</span>
+  <span class="ver">v1.5</span>
   <span id="conn" class="ver">●</span>
 </header>
 <nav>
@@ -864,6 +864,7 @@ async function raportLuna(){
              "LIVRAT DIN DEPOZIT","RETUR IN DEPOZIT","0"];
   for(let d = 1; d <= nz; d++) R_ANTET.push(String(d));
   R_NUM = new Set(); for(let i = 9; i < R_ANTET.length; i++) R_NUM.add(i);
+  const folosite = new Set();
   R_RANDURI = r.map(x => {
     const cant = +x.a.cant || 0, em = dtz(x.a.data_emitere);
     const zile = new Array(nz).fill("");
@@ -875,17 +876,39 @@ async function raportLuna(){
       if((m.loc || "") !== (x.a.loc || "")) continue;
       if((m.produs || "") !== (x.a.produs || "")) continue;
       const md = dtz(m.data); if(!md) continue;
-      const semn = /RIDICARE|REDUCERE|EVENIMENT-R/.test(m.tip_miscare || "") ? -1 : 1;
+      folosite.add(m.id);
+      const b = +m.buc || 0;              // bucățile sunt salvate deja cu semn (minus la ridicări)
       const i = md.getDate() - 1;
-      zile[i] = (+zile[i] || 0) + semn * (+m.buc || 0);
-      if(semn > 0) dep = m.depozit || dep; else ret = m.depozit || ret;
+      zile[i] = (+zile[i] || 0) + b;
+      if(b >= 0) dep = m.depozit || dep; else ret = m.depozit || ret;
     }
     return [ x.c.nr_ctr || "", x.k.nume || "", [x.a.loc, x.a.sat].filter(Boolean).join(", "),
              x.a.anexa || "", dRO(em), x.a.produs || "", x.a.model || "", dep, ret, col0, ...zile ];
   });
+  // mișcările care nu se potrivesc cu nicio anexă nu trebuie să dispară din raport
+  const ramase = mis.filter(m => !folosite.has(m.id));
+  if(ramase.length){
+    const gr = {};
+    for(const m of ramase){
+      const cheie = [m.contract || "", m.client || "", m.loc || "", m.sat || "", m.produs || "", m.model || ""].join("\u0001");
+      (gr[cheie] = gr[cheie] || []).push(m);
+    }
+    for(const cheie of Object.keys(gr).sort()){
+      const [ctr, cl, lo, sa, pr, mo] = cheie.split("\u0001");
+      const zile = new Array(nz).fill(""); let dep = "", ret = "";
+      for(const m of gr[cheie]){
+        const md = dtz(m.data); if(!md) continue;
+        const b = +m.buc || 0, i = md.getDate() - 1;
+        zile[i] = (+zile[i] || 0) + b;
+        if(b >= 0) dep = m.depozit || dep; else ret = m.depozit || ret;
+      }
+      R_RANDURI.push([ ctr, cl, [lo, sa].filter(Boolean).join(", "), "— fără anexă —", "", pr, mo, dep, ret, "", ...zile ]);
+    }
+  }
   R_NUME = "Raport_luna";
   const buc = R_RANDURI.reduce((s, f) => s + (+f[9] || 0) + f.slice(10).reduce((t, v) => t + (+v || 0), 0), 0);
-  $("r-kpi").innerHTML = `<div>Poziții<b>${R_RANDURI.length}</b></div><div>Bucăți<b>${buc}</b></div><div>Mișcări în lună<b>${mis.length}</b></div>`;
+  $("r-kpi").innerHTML = `<div>Poziții<b>${R_RANDURI.length}</b></div><div>Bucăți<b>${buc}</b></div><div>Mișcări în lună<b>${mis.length}</b></div>` +
+    (ramase.length ? `<div>Fără anexă<b>${ramase.length}</b></div>` : "");
   $("r-nota").textContent = "Coloana „0” = ce era deja amplasat la începutul lunii. Zilele 1–" + nz +
     " arată amplasările și ridicările înregistrate în luna aceea. Depozitul apare doar acolo unde există o mișcare înregistrată.";
   deseneazaRaport();
