@@ -75,7 +75,7 @@
 <header>
   <h1>GestiuneEE <span class="muted" style="color:#cfe6d7;font-weight:400">Euro Ecologic</span></h1>
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
-  <span class="ver">v1.5</span>
+  <span class="ver">v1.6</span>
   <span id="conn" class="ver">●</span>
 </header>
 <nav>
@@ -83,6 +83,7 @@
   <button data-p="miscari">Mișcări</button>
   <button data-p="clienti">Clienți & Contracte</button>
   <button data-p="rapoarte">Rapoarte</button>
+  <button data-p="documente">Registru documente</button>
   <button data-p="rute">Monitorizare rute</button>
   <button data-p="admin">Administrare</button>
   <button data-p="verificare">Verificare <span id="v-badge" class="badge" style="display:none">0</span></button>
@@ -163,6 +164,23 @@
     <p class="muted" id="r-nota" style="margin:4px 0 0"></p>
   </div>
   <div class="card"><div class="tw"><table id="r-tbl"></table></div></div>
+</section>
+
+<!-- ================= REGISTRU DOCUMENTE ================= -->
+<section class="page" id="p-documente">
+  <div class="card noprint">
+    <div class="row">
+      <div style="flex:0"><label>An</label><select id="g-an" onchange="renderDoc()"></select></div>
+      <div style="flex:0"><label>Primire</label><select id="g-prim" onchange="renderDoc()"></select></div>
+      <div><label>Caută</label><input id="g-cauta" placeholder="client, nr. contract, tip document…" oninput="renderDoc()"></div>
+      <div style="flex:0"><label>&nbsp;</label><button class="btn" onclick="docNou()">+ Document</button></div>
+      <div style="flex:0"><label>&nbsp;</label><button class="btn sec" onclick="loadDoc()">Reîncarcă</button></div>
+      <div style="flex:0"><label>&nbsp;</label><button class="btn sec" onclick="exportDoc()">Export Excel</button></div>
+      <div style="flex:0"><label>&nbsp;</label><button class="btn sec" onclick="window.print()">PDF / Print</button></div>
+    </div>
+    <div class="kpi" id="g-kpi" style="margin-top:12px"></div>
+  </div>
+  <div class="card"><div class="tw"><table id="g-tbl"></table></div></div>
 </section>
 
 <!-- ================= MONITORIZARE RUTE ================= -->
@@ -379,6 +397,27 @@
   </div>
 </div>
 
+<div class="modal" id="mod-doc"><div class="box" style="max-width:720px">
+  <h3 id="g-titlu">Document</h3>
+  <input type="hidden" id="gd-id">
+  <div class="grid3">
+    <div><label>Data trimiterii</label><input id="gd-data" type="date"></div>
+    <div><label>Tip document</label><input id="gd-tip" list="dl-tipdoc"><datalist id="dl-tipdoc"></datalist></div>
+    <div><label>Nr. contract</label><input id="gd-ref" list="dl-contracte"><datalist id="dl-contracte"></datalist></div>
+    <div><label>Client</label><input id="gd-den" list="dl-clienti"></div>
+    <div><label>Trimitere</label><select id="gd-strim"></select></div>
+    <div><label>Retrimiteri</label><input id="gd-retr" type="number" min="0" value="0"></div>
+    <div><label>Primire</label><select id="gd-sprim"></select></div>
+    <div><label>Data primirii</label><input id="gd-dprim" type="date"></div>
+    <div style="grid-column:1/-1"><label>Observații</label><input id="gd-obs"></div>
+  </div>
+  <div class="row" style="margin-top:16px;justify-content:flex-end">
+    <div style="flex:0"><button class="btn danger" id="gd-sterge" onclick="docSterge()">Șterge</button></div>
+    <div style="flex:0"><button class="btn sec" onclick="closeModal('mod-doc')">Renunță</button></div>
+    <div style="flex:0"><button class="btn" onclick="docSalveaza()">Salvează</button></div>
+  </div>
+</div></div>
+
 <div class="modal" id="mod-admin"><div class="box">
   <h3 id="a-titlu">Editare</h3>
   <div class="grid3" id="a-form"></div>
@@ -415,6 +454,7 @@ document.querySelectorAll("nav button").forEach(b=>b.onclick=()=>{
   if(b.dataset.p==="stoc") loadStoc();
   if(b.dataset.p==="miscari" && !MISC.length) loadMiscari();
   if(b.dataset.p==="rapoarte") genereazaRaport();
+  if(b.dataset.p==="documente" && !DOC.length) loadDoc();
   if(b.dataset.p==="rute") deschideRute();
   if(b.dataset.p==="admin") adminSchimba();
   if(b.dataset.p==="verificare") loadVerif();
@@ -928,6 +968,143 @@ function exportRaport(){
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, R_NUME.slice(0, 28));
   XLSX.writeFile(wb, `${R_NUME}_${$("r-an").value}-${zi2(+$("r-luna").value)}.xlsx`);
+}
+
+// ================= REGISTRU DOCUMENTE =================
+// Replică pagina REG DOCUMENTE din Excel: ce s-a trimis clientului și dacă s-a primit înapoi.
+let DOC = [];
+
+async function loadDoc(){
+  const { data, error } = await db.from("documente")
+    .select("*").order("data_trimitere", { ascending: false }).order("id", { ascending: false });
+  if(error){ toast(error.message, true); return; }
+  DOC = data || [];
+  const ani = [...new Set(DOC.map(d => (d.data_trimitere || "").slice(0, 4)).filter(Boolean))].sort().reverse();
+  fill("g-an", ani, "toți");
+  fill("g-prim", nomv("status_prim"), "toate");
+  fill("gd-strim", nomv("status_trim"));
+  fill("gd-sprim", nomv("status_prim"), "—");
+  $("dl-tipdoc").innerHTML = nomv("tip_document").map(v => `<option value="${esc(v)}">`).join("");
+  $("dl-contracte").innerHTML = CTR.map(c => `<option value="${esc(c.nr_ctr)}">`).join("");
+  renderDoc();
+}
+
+function docFiltrate(){
+  const an = $("g-an").value, sp = $("g-prim").value, q = ($("g-cauta").value || "").trim().toLowerCase();
+  return DOC.filter(d => {
+    if(an && (d.data_trimitere || "").slice(0, 4) !== an) return false;
+    if(sp && (d.status_prim || "") !== sp) return false;
+    if(q && ![d.tip_document, d.referinta, d.denumire, d.observatii].join(" ").toLowerCase().includes(q)) return false;
+    return true;
+  });
+}
+
+function renderDoc(){
+  const r = docFiltrate();
+  $("g-tbl").innerHTML =
+    "<thead><tr><th>Data</th><th>Tip document</th><th>Nr. contract</th><th>Client</th><th>Trimis</th>" +
+    "<th>Primire</th><th>Data primirii</th><th>Observații</th><th></th></tr></thead><tbody>" +
+    r.map(d => {
+      const neprimit = (d.status_prim || "") !== "PRIMIT";
+      return `<tr${neprimit ? ' style="background:#fffaf0"' : ''}>` +
+        `<td>${fmtD(d.data_trimitere)}</td><td>${esc(d.tip_document)}</td>` +
+        `<td>${esc(d.referinta || "")}</td><td>${esc(d.denumire || "")}</td>` +
+        `<td>${esc(d.status_trim || "")}${d.retrimiteri ? ` <span class="pill p-T">+${d.retrimiteri}</span>` : ""}</td>` +
+        `<td>${d.status_prim === "PRIMIT" ? '<span class="pill p-A">PRIMIT</span>'
+             : `<span class="pill p-X">${esc(d.status_prim || "—")}</span>`}</td>` +
+        `<td>${fmtD(d.data_primire)}</td><td>${esc(d.observatii || "")}</td>` +
+        `<td class="actions">${neprimit
+            ? `<button class="btn sm" onclick="docPrimit(${d.id})">Primit azi</button> <button class="btn sm sec" onclick="docRetrimis(${d.id})">Retrimis azi</button> `
+            : ""}<button class="btn sm sec" onclick="docEdit(${d.id})">Editează</button></td></tr>`;
+    }).join("") + "</tbody>";
+  const neprimite = r.filter(d => (d.status_prim || "") !== "PRIMIT").length;
+  const retrimise = r.filter(d => d.retrimiteri > 0).length;
+  $("g-kpi").innerHTML = `<div>Documente<b>${r.length}</b></div>` +
+    `<div>Neprimite<b>${neprimite}</b></div><div>Cu retrimiteri<b>${retrimise}</b></div>`;
+}
+
+async function docPrimit(id){
+  const { error } = await db.from("documente").update({ status_prim: "PRIMIT", data_primire: today() }).eq("id", id);
+  if(error){ toast(error.message, true); return; }
+  toast("Marcat ca primit"); await loadDoc();
+}
+
+async function docRetrimis(id){
+  const d = DOC.find(x => x.id === id); if(!d) return;
+  const { error } = await db.from("documente")
+    .update({ retrimiteri: (d.retrimiteri || 0) + 1, data_trimitere: today(), status_trim: "TRIMIS" }).eq("id", id);
+  if(error){ toast(error.message, true); return; }
+  toast("Marcat ca retrimis azi"); await loadDoc();
+}
+
+function docDeschide(d){
+  $("g-titlu").textContent = d ? "Editează documentul" : "Document nou";
+  $("gd-id").value    = d ? d.id : "";
+  $("gd-data").value  = d ? (d.data_trimitere || "") : today();
+  $("gd-tip").value   = d ? (d.tip_document || "") : "";
+  $("gd-ref").value   = d ? (d.referinta || "") : "";
+  $("gd-den").value   = d ? (d.denumire || "") : "";
+  $("gd-strim").value = d ? (d.status_trim || "TRIMIS") : "TRIMIS";
+  $("gd-retr").value  = d ? (d.retrimiteri || 0) : 0;
+  $("gd-sprim").value = d ? (d.status_prim || "") : "";
+  $("gd-dprim").value = d ? (d.data_primire || "") : "";
+  $("gd-obs").value   = d ? (d.observatii || "") : "";
+  $("gd-sterge").style.display = d ? "" : "none";
+  $("mod-doc").classList.add("on");
+}
+function docNou(){ docDeschide(null); }
+function docEdit(id){
+  const d = DOC.find(x => x.id === id);
+  if(!d){ toast("Documentul nu mai există, reîncarcă lista", true); return; }
+  docDeschide(d);
+}
+
+async function docSalveaza(){
+  const tip = $("gd-tip").value.trim();
+  if(!tip){ toast("Completează tipul documentului", true); $("gd-tip").focus(); return; }
+  const ref = $("gd-ref").value.trim().toUpperCase();
+  const den = $("gd-den").value.trim();
+  const c = CTR.find(x => (x.nr_ctr || "").toUpperCase() === ref);
+  const k = CLI.find(x => (x.nume || "").toLowerCase() === den.toLowerCase());
+  const rec = {
+    data_trimitere: $("gd-data").value || null,
+    tip_document: tip.toUpperCase(),
+    referinta: ref || null,
+    contract_id: c ? c.id : null,
+    denumire: den || null,
+    client_id: k ? k.id : (c ? c.client_id : null),
+    status_trim: $("gd-strim").value || null,
+    retrimiteri: +$("gd-retr").value || 0,
+    status_prim: $("gd-sprim").value || null,
+    data_primire: $("gd-dprim").value || null,
+    observatii: $("gd-obs").value.trim() || null
+  };
+  const id = $("gd-id").value;
+  const { error } = id ? await db.from("documente").update(rec).eq("id", id)
+                       : await db.from("documente").insert(rec);
+  if(error){ toast(error.message, true); return; }
+  closeModal("mod-doc"); toast(id ? "Document actualizat" : "Document adăugat"); await loadDoc();
+}
+
+async function docSterge(){
+  const id = $("gd-id").value; if(!id) return;
+  if(!confirm("Ștergi definitiv acest document din registru?")) return;
+  const { error } = await db.from("documente").delete().eq("id", id);
+  if(error){ toast(error.message, true); return; }
+  closeModal("mod-doc"); toast("Șters"); await loadDoc();
+}
+
+function exportDoc(){
+  const r = docFiltrate();
+  if(!r.length){ toast("Nu e nimic de exportat", true); return; }
+  const ws = XLSX.utils.json_to_sheet(r.map(d => ({
+    DATA_TRIMITERE: d.data_trimitere, "TIP DOCUMENT": d.tip_document, REFERINTA: d.referinta,
+    DENUMIRE: d.denumire, STATUS_TRIM: d.status_trim, RETRIMITERI: d.retrimiteri,
+    STATUS_PRIM: d.status_prim, DATA_PRIM: d.data_primire, OBSERVATII: d.observatii
+  })));
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "REG DOCUMENTE");
+  XLSX.writeFile(wb, `Registru_documente_${today()}.xlsx`);
 }
 
 // ================= MONITORIZARE RUTE =================
