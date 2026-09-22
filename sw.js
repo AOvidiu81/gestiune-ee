@@ -1,7 +1,7 @@
 // sw.js — GestiuneEE. Ține aplicația instalabilă și o pornește repede,
 // dar NU păstrează niciodată în memorie datele din Supabase: acelea trebuie
 // să fie mereu proaspete.
-const VERSIUNE = 'gestiune-ee-v1.7';
+const VERSIUNE = 'gestiune-ee-v1.8';
 const SCHELET = [
   './',
   './index.html',
