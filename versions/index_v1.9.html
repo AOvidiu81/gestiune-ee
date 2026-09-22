@@ -1,0 +1,1703 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GestiuneEE – Euro Ecologic</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#1b5e3a">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="GestiuneEE">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+  :root{--g:#1b5e3a;--g2:#2e7d4f;--gl:#e6f3ea;--bg:#f3f5f4;--card:#fff;--tx:#1e2a24;--mut:#6b7a72;--bd:#d9e0dc;--red:#b3261e;--amb:#b26a00;--blue:#1d4ed8}
+  *{box-sizing:border-box}
+  body{margin:0;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--tx);font-size:14px}
+  header{background:var(--g);color:#fff;padding:10px 16px;display:flex;align-items:center;gap:12px;position:sticky;top:0;z-index:20}
+  header h1{font-size:17px;margin:0;font-weight:600;flex:1}
+  header .ver{font-size:11px;opacity:.75}
+  nav{display:flex;background:#fff;border-bottom:1px solid var(--bd);overflow-x:auto;position:sticky;top:44px;z-index:19}
+  nav button{flex:1;min-width:110px;border:0;background:none;padding:12px 8px;font-size:13px;font-weight:600;color:var(--mut);cursor:pointer;border-bottom:3px solid transparent;white-space:nowrap}
+  nav button.on{color:var(--g);border-bottom-color:var(--g)}
+  main{padding:14px;max-width:1400px;margin:0 auto}
+  .page{display:none}.page.on{display:block}
+  .card{background:var(--card);border:1px solid var(--bd);border-radius:10px;padding:14px;margin-bottom:14px}
+  .row{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end}
+  .row>*{flex:1;min-width:120px}
+  label{display:block;font-size:11px;font-weight:600;color:var(--mut);margin-bottom:3px;text-transform:uppercase;letter-spacing:.03em}
+  input,select,textarea{width:100%;padding:8px 9px;border:1px solid var(--bd);border-radius:7px;font-size:14px;background:#fff;color:var(--tx)}
+  input:focus,select:focus,textarea:focus{outline:2px solid var(--g2);border-color:var(--g2)}
+  button.btn{background:var(--g);color:#fff;border:0;border-radius:7px;padding:9px 14px;font-weight:600;cursor:pointer;font-size:14px}
+  button.btn.sec{background:#fff;color:var(--g);border:1px solid var(--g)}
+  button.btn.danger{background:var(--red)}
+  button.btn.sm{padding:5px 9px;font-size:12px}
+  button.btn:disabled{opacity:.5;cursor:default}
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  th,td{padding:7px 8px;border-bottom:1px solid var(--bd);text-align:left;vertical-align:top;white-space:nowrap}
+  th{background:var(--gl);color:var(--g);font-size:11px;text-transform:uppercase;letter-spacing:.03em;position:sticky;top:0}
+  tr:hover td{background:#fafcfb}
+  .tw{overflow:auto;max-height:70vh;border:1px solid var(--bd);border-radius:8px}
+  .pill{display:inline-block;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:700}
+  .p-A{background:#dcefe3;color:#145c34}.p-R{background:#fde3e1;color:#8a1d17}.p-S{background:#e1e8fb;color:#1e3a8a}.p-T{background:#fff1d6;color:#7a4a00}.p-X{background:#eee;color:#444}
+  .flag{display:inline-block;width:26px;height:26px;line-height:26px;text-align:center;border-radius:6px;border:1px solid var(--bd);font-weight:700;cursor:pointer;user-select:none;font-size:12px}
+  .flag.V{background:#dcefe3;color:#145c34;border-color:#9ccfb0}.flag.L{background:#fff1d6;color:#7a4a00}.flag.X{background:#fde3e1;color:#8a1d17}
+  .stoc-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:12px}
+  .stoc{background:#fff;border:1px solid var(--bd);border-radius:10px;padding:12px}
+  .stoc h4{margin:0 0 8px;font-size:13px;color:var(--g)}
+  .stoc .n{display:flex;justify-content:space-between;padding:3px 0;font-size:13px}
+  .stoc .n b{font-size:16px}
+  .stoc .tot{border-top:1px solid var(--bd);margin-top:6px;padding-top:6px;font-weight:700}
+  .muted{color:var(--mut);font-size:12px}
+  .modal{position:fixed;inset:0;background:rgba(0,0,0,.45);display:none;align-items:flex-start;justify-content:center;padding:20px 10px;z-index:50;overflow:auto}
+  .modal.on{display:flex}
+  .modal .box{background:#fff;border-radius:12px;padding:18px;width:100%;max-width:820px}
+  .modal h3{margin:0 0 12px;color:var(--g)}
+  .grid3{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px}
+  .toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:#222;color:#fff;padding:10px 16px;border-radius:8px;font-size:13px;display:none;z-index:99}
+  .toast.on{display:block}
+  .kpi{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px}
+  .kpi div{background:var(--gl);border-radius:8px;padding:8px 12px;font-size:12px;color:var(--g)}
+  .kpi div b{display:block;font-size:18px}
+  .neg{color:var(--red);font-weight:700}.pos{color:#145c34;font-weight:700}
+  .actions{white-space:nowrap}
+  .search{max-width:320px}
+  details summary{cursor:pointer;font-weight:600;color:var(--g);padding:6px 0}
+  .badge{background:var(--g);color:#fff;border-radius:10px;padding:1px 7px;font-size:11px;margin-left:6px}
+  @media print{header,nav,.noprint{display:none!important}main{padding:0}.tw{max-height:none;overflow:visible;border:0}body{background:#fff}th{position:static}}
+  @media (max-width:640px){th,td{padding:6px 5px;font-size:12px}}
+</style>
+</head>
+<body>
+<div id="ecran-login" style="position:fixed;inset:0;z-index:200;background:var(--g);display:flex;align-items:center;justify-content:center;padding:20px">
+  <div style="background:#fff;border-radius:14px;padding:26px;width:100%;max-width:380px;box-shadow:0 10px 40px rgba(0,0,0,.25)">
+    <h2 style="margin:0 0 4px;color:var(--g);font-size:20px">GestiuneEE</h2>
+    <p class="muted" style="margin:0 0 18px">Euro Ecologic — intră în cont ca să continui.</p>
+    <div style="margin-bottom:10px"><label>Utilizator</label><input id="lg-user" autocomplete="username" autocapitalize="none" spellcheck="false"></div>
+    <div style="margin-bottom:14px"><label>Parolă</label><input id="lg-parola" type="password" autocomplete="current-password"></div>
+    <button class="btn" id="lg-buton" style="width:100%" onclick="intra()">Intră în cont</button>
+    <p id="lg-eroare" style="color:var(--red);font-size:13px;margin:12px 0 0;min-height:18px"></p>
+  </div>
+</div>
+
+<header>
+  <h1>GestiuneEE <span class="muted" style="color:#cfe6d7;font-weight:400">Euro Ecologic</span></h1>
+  <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
+  <span class="ver">v1.9</span>
+  <span id="cine" class="ver" style="display:none;opacity:1;font-weight:600"></span>
+  <button id="btn-iesi" class="btn sec" style="display:none;padding:5px 11px;font-size:12px" onclick="iesi()">Ieși</button>
+  <span id="conn" class="ver">●</span>
+</header>
+<nav>
+  <button class="on" data-p="atentie">De urmărit <span id="t-badge" class="badge" style="display:none">0</span></button>
+  <button data-p="stoc">Stoc</button>
+  <button data-p="miscari">Mișcări</button>
+  <button data-p="clienti">Clienți & Contracte</button>
+  <button data-p="rapoarte">Rapoarte</button>
+  <button data-p="documente">Registru documente</button>
+  <button data-p="rute">Monitorizare rute</button>
+  <button data-p="admin">Administrare</button>
+  <button data-p="verificare">Verificare <span id="v-badge" class="badge" style="display:none">0</span></button>
+</nav>
+<main>
+
+<!-- ================= DE URMĂRIT ================= -->
+<section class="page on" id="p-atentie">
+  <div class="card noprint">
+    <div class="row">
+      <div style="flex:0"><label>Expirări în următoarele</label><select id="t-zile" onchange="loadAtentie()"><option value="30">30 de zile</option><option value="60">60 de zile</option><option value="90" selected>90 de zile</option><option value="180">180 de zile</option></select></div>
+      <div style="flex:0"><label>Documente neprimite de peste</label><select id="t-prag" onchange="loadAtentie()"><option value="7">7 zile</option><option value="14">14 zile</option><option value="30" selected>30 de zile</option><option value="60">60 de zile</option></select></div>
+      <div style="flex:0"><label>&nbsp;</label><button class="btn sec" onclick="loadAtentie()">Reverifică</button></div>
+    </div>
+    <div id="t-placi" class="kpi" style="margin-top:12px"></div>
+    <p class="muted" id="t-gol" style="display:none;margin:10px 0 0">Nimic de urmărit acum. Tot ce e în aplicație pare în regulă.</p>
+  </div>
+  <div class="card" id="t-detaliu" style="display:none">
+    <h3 id="t-titlu" style="margin:0 0 4px;color:var(--g)"></h3>
+    <p class="muted" id="t-nota" style="margin:0 0 10px"></p>
+    <div class="tw"><table id="t-tbl"></table></div>
+    <div style="margin-top:10px"><button class="btn sec" onclick="exportAtentie()">Export Excel</button></div>
+  </div>
+</section>
+
+<!-- ================= STOC ================= -->
+<section class="page" id="p-stoc">
+  <div class="card noprint">
+    <div class="row">
+      <div><label>Depozit</label><select id="st-dep"><option value="">Toate</option></select></div>
+      <div style="flex:0"><button class="btn" onclick="loadStoc()">Reîncarcă</button></div>
+      <div style="flex:0"><button class="btn sec" onclick="exportStoc()">Export Excel</button></div>
+      <div style="flex:0"><button class="btn sec" onclick="window.print()">PDF / Print</button></div>
+    </div>
+  </div>
+  <div id="stoc-grid" class="stoc-grid"></div>
+  <div class="card" style="margin-top:14px">
+    <details><summary>Tabel stoc (format Excel: ÎNCHIRIATE / DEPOZIT / TOTAL)</summary>
+      <div class="tw" style="margin-top:8px"><table id="stoc-tbl"></table></div>
+    </details>
+  </div>
+</section>
+
+<!-- ================= MISCARI ================= -->
+<section class="page" id="p-miscari">
+  <div class="card noprint">
+    <div class="row">
+      <div><label>An</label><select id="f-an"></select></div>
+      <div><label>Luna</label><select id="f-luna"><option value="">Toate</option></select></div>
+      <div><label>Mișcare</label><select id="f-tip"><option value="">Toate</option></select></div>
+      <div><label>Produs</label><select id="f-prod"><option value="">Toate</option></select></div>
+      <div><label>Depozit</label><select id="f-dep"><option value="">Toate</option></select></div>
+      <div><label>Caută (client / localitate / contract)</label><input id="f-q" placeholder="ex: ACOMIN"></div>
+      <div style="flex:0"><button class="btn" onclick="loadMiscari()">Filtrează</button></div>
+      <div style="flex:0"><button class="btn" onclick="openMiscare()">+ Mișcare nouă</button></div>
+      <div style="flex:0"><button class="btn sec" onclick="exportMiscari()">Export Excel</button></div>
+      <div style="flex:0"><button class="btn sec" onclick="window.print()">PDF / Print</button></div>
+    </div>
+  </div>
+  <div class="kpi" id="m-kpi"></div>
+  <div class="tw"><table id="m-tbl"></table></div>
+</section>
+
+<!-- ================= CLIENTI ================= -->
+<section class="page" id="p-clienti">
+  <div class="card noprint">
+    <div class="row">
+      <div class="search"><label>Caută client / CUI / contract</label><input id="c-q" oninput="renderClienti()"></div>
+      <div style="flex:0"><button class="btn" onclick="openClient()">+ Client nou</button></div>
+      <div style="flex:0"><button class="btn sec" onclick="exportClienti()">Export Excel</button></div>
+    </div>
+  </div>
+  <div id="c-list"></div>
+</section>
+
+<!-- ================= NOMENCLATOARE ================= -->
+<!-- ================= RAPOARTE ================= -->
+<section class="page" id="p-rapoarte">
+  <div class="card noprint">
+    <div class="row">
+      <div style="flex:0;min-width:180px"><label>Raport</label>
+        <select id="r-tip" onchange="genereazaRaport()">
+          <option value="facturare">Facturare lunară</option>
+          <option value="luna">Raport lună (pe zile)</option>
+        </select>
+      </div>
+      <div style="flex:0"><label>An</label><select id="r-an" onchange="genereazaRaport()"></select></div>
+      <div style="flex:0"><label>Luna</label><select id="r-luna" onchange="genereazaRaport()"></select></div>
+      <div><label>Client</label><input id="r-client" list="dl-clienti" placeholder="toți" oninput="genereazaRaport()"></div>
+      <div style="flex:0"><label>Județ</label><select id="r-jud" onchange="genereazaRaport()"></select></div>
+      <div style="flex:0"><label>Stare contract</label><select id="r-stare" onchange="genereazaRaport()"></select></div>
+      <div style="flex:0"><label>TVA %</label><input id="r-tva" type="number" value="21" step="1" oninput="genereazaRaport()"></div>
+      <div style="flex:0"><label>&nbsp;</label><button class="btn sec" onclick="exportRaport()">Export Excel</button></div>
+      <div style="flex:0"><label>&nbsp;</label><button class="btn sec" onclick="window.print()">PDF / Print</button></div>
+    </div>
+    <div class="kpi" id="r-kpi" style="margin-top:12px"></div>
+    <p class="muted" id="r-nota" style="margin:4px 0 0"></p>
+  </div>
+  <div class="card"><div class="tw"><table id="r-tbl"></table></div></div>
+</section>
+
+<!-- ================= REGISTRU DOCUMENTE ================= -->
+<section class="page" id="p-documente">
+  <div class="card noprint">
+    <div class="row">
+      <div style="flex:0"><label>An</label><select id="g-an" onchange="renderDoc()"></select></div>
+      <div style="flex:0"><label>Primire</label><select id="g-prim" onchange="renderDoc()"></select></div>
+      <div><label>Caută</label><input id="g-cauta" placeholder="client, nr. contract, tip document…" oninput="renderDoc()"></div>
+      <div style="flex:0"><label>&nbsp;</label><button class="btn" onclick="docNou()">+ Document</button></div>
+      <div style="flex:0"><label>&nbsp;</label><button class="btn sec" onclick="loadDoc()">Reîncarcă</button></div>
+      <div style="flex:0"><label>&nbsp;</label><button class="btn sec" onclick="exportDoc()">Export Excel</button></div>
+      <div style="flex:0"><label>&nbsp;</label><button class="btn sec" onclick="window.print()">PDF / Print</button></div>
+    </div>
+    <div class="kpi" id="g-kpi" style="margin-top:12px"></div>
+  </div>
+  <div class="card"><div class="tw"><table id="g-tbl"></table></div></div>
+</section>
+
+<!-- ================= MONITORIZARE RUTE ================= -->
+<section class="page" id="p-rute">
+  <div class="card noprint">
+    <div class="row">
+      <div><p class="muted" style="margin:0">Cine e pe teren acum, cu ce mașină, câte vizite a făcut și câți kilometri. Se reîmprospătează singură la 20 de secunde.</p></div>
+      <div style="flex:0"><button class="btn sec" onclick="reincarcaRute()">Reîmprospătează</button></div>
+      <div style="flex:0"><button class="btn sec" onclick="window.open('dashboard/','_blank')">Deschide separat ↗</button></div>
+    </div>
+  </div>
+  <div class="card" style="padding:0;overflow:hidden">
+    <iframe id="rute-frame" title="Monitorizare rute" style="width:100%;height:calc(100vh - 215px);min-height:470px;border:0;display:block"></iframe>
+  </div>
+</section>
+
+<!-- ================= ADMINISTRARE ================= -->
+<section class="page" id="p-admin">
+  <div class="card noprint">
+    <div class="row">
+      <div style="flex:0;min-width:210px"><label>Secțiune</label>
+        <select id="a-tabel" onchange="adminSchimba()">
+          <optgroup label="Oameni și resurse">
+            <option value="soferi">Angajați</option>
+            <option value="masini">Mașini</option>
+            <option value="depozite">Depozite</option>
+            <option value="products">Produse (PV-uri)</option>
+            <option value="clients">Puncte de rută</option>
+          </optgroup>
+          <optgroup label="Liste și valori de pornire">
+            <option value="_liste">Liste (produse, modele, funcții…)</option>
+            <option value="_stoc">Stoc inițial</option>
+          </optgroup>
+        </select>
+      </div>
+      <div id="a-w-cauta"><label>Caută</label><input id="a-cauta" placeholder="scrie pentru a filtra…" oninput="renderAdmin()"></div>
+      <div style="flex:0" id="a-w-nou"><label>&nbsp;</label><button class="btn" onclick="adminNou()">+ Adaugă</button></div>
+      <div style="flex:0" id="a-w-reload"><label>&nbsp;</label><button class="btn sec" onclick="adminIncarca()">Reîncarcă</button></div>
+      <div style="flex:0" id="a-w-export"><label>&nbsp;</label><button class="btn sec" onclick="adminExport()">Export Excel</button></div>
+    </div>
+    <p class="muted" id="a-nota" style="margin:10px 0 0"></p>
+  </div>
+
+  <div class="card" id="a-card-crud"><div class="tw"><table id="a-tbl"></table></div></div>
+
+  <div class="card" id="a-card-liste" style="display:none">
+    <div class="row">
+      <div><label>Listă</label><select id="n-tip" onchange="renderNom()"></select></div>
+      <div><label>Valoare nouă</label><input id="n-val"></div>
+      <div id="n-efect-wrap" style="display:none"><label>Efect stoc</label><select id="n-efect"><option value="inchiriere">inchiriere (+/- închiriate)</option><option value="depozit_in">depozit_in (+ depozit)</option><option value="depozit_out">depozit_out (- depozit)</option><option value="niciun">niciun efect</option></select></div>
+      <div style="flex:0"><label>&nbsp;</label><button class="btn" onclick="addNom()">Adaugă</button></div>
+    </div>
+    <div class="tw" style="margin-top:10px;max-height:60vh"><table id="n-tbl"></table></div>
+  </div>
+
+  <div class="card" id="a-card-stoc" style="display:none">
+    <div class="tw"><table id="si-tbl"></table></div>
+    <div class="row" style="margin-top:10px">
+      <div><label>Depozit</label><select id="si-dep"></select></div>
+      <div><label>Produs</label><select id="si-prod"></select></div>
+      <div><label>Închiriate</label><input id="si-inch" type="number" value="0"></div>
+      <div><label>În depozit</label><input id="si-dep2" type="number" value="0"></div>
+      <div><label>Data referință</label><input id="si-data" type="date"></div>
+      <div style="flex:0"><label>&nbsp;</label><button class="btn" onclick="saveStocInitial()">Salvează</button></div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= VERIFICARE ================= -->
+<section class="page" id="p-verificare">
+  <div class="card noprint">
+    <h3 style="margin:0 0 6px;color:var(--g)">Verificarea datelor</h3>
+    <p class="muted" style="margin:0 0 10px">Rândurile aduse din Excel și din aplicația de rute așteaptă confirmarea ta. Le vezi pe rând: confirmi, corectezi sau ștergi. Ce adaugi tu din aplicație e considerat verificat din start.</p>
+    <div class="row">
+      <div class="search"><label>Verificat de</label><input id="v-cine" placeholder="numele tău"></div>
+      <div style="flex:0"><button class="btn sec" onclick="loadVerif()">Reîncarcă</button></div>
+    </div>
+  </div>
+
+  <div id="v-sectiuni" class="stoc-grid"></div>
+
+  <div class="card" id="v-lucru" style="display:none">
+    <div class="row" style="align-items:center">
+      <div style="flex:0"><button class="btn sec" onclick="inchideVerif()">← Înapoi</button></div>
+      <div><b id="v-titlu"></b> <span class="muted" id="v-progres"></span>
+        <div style="height:6px;background:var(--gl);border-radius:3px;margin-top:6px;overflow:hidden"><div id="v-bara" style="height:100%;width:0;background:var(--g);transition:width .2s"></div></div>
+      </div>
+    </div>
+    <div id="v-campuri" class="grid3" style="margin-top:14px"></div>
+    <div id="v-context" class="muted" style="margin-top:8px"></div>
+    <div style="margin-top:10px"><label>Notă (opțional)</label><input id="v-nota" placeholder="ex: preț renegociat, locație mutată"></div>
+    <div class="row" style="margin-top:14px">
+      <div style="flex:0"><button class="btn danger" onclick="verifSterge()">Șterge rândul</button></div>
+      <div style="flex:1"></div>
+      <div style="flex:0"><button class="btn sec" style="white-space:nowrap" onclick="verifSari()">Sari peste</button></div>
+      <div style="flex:0"><button class="btn" style="white-space:nowrap" onclick="verifConfirma()">Confirmă ✓</button></div>
+    </div>
+  </div>
+</section>
+</main>
+
+<!-- ================= MODAL MISCARE ================= -->
+<div class="modal" id="mod-m">
+  <div class="box">
+    <h3 id="mm-title">Mișcare nouă</h3>
+    <input type="hidden" id="mm-id">
+    <div class="grid3">
+      <div><label>Data</label><input type="date" id="mm-data"></div>
+      <div><label>Mișcare</label><select id="mm-tip"></select></div>
+      <div><label>Buc (pozitiv; semnul se pune automat)</label><input type="number" id="mm-buc" min="0" value="1"></div>
+      <div><label>Produs</label><select id="mm-prod"></select></div>
+      <div><label>Model</label><select id="mm-model"></select></div>
+      <div><label>Client</label><input id="mm-client" list="dl-clienti" placeholder="scrie și alege"><datalist id="dl-clienti"></datalist></div>
+      <div><label>Locație contractată (autocompletare)</label><select id="mm-anexa"><option value="">— alege din anexe —</option></select></div>
+      <div><label>Județ</label><input id="mm-jud"></div>
+      <div><label>Loc. / Com.</label><input id="mm-loc"></div>
+      <div><label>Sat / Str. / Locație</label><input id="mm-sat"></div>
+      <div><label>Contract (depozit)</label><select id="mm-contract"></select></div>
+      <div><label>Depozit</label><select id="mm-dep"></select></div>
+      <div><label>Pers. resp.</label><input id="mm-pers"></div>
+      <div><label>Telefon</label><input id="mm-tel"></div>
+      <div><label>Frecv. serv.</label><select id="mm-frecv"><option value=""></option></select></div>
+    </div>
+    <div style="margin-top:12px"><label>Verificări (apasă pentru a schimba: - → V → L → X)</label>
+      <div style="display:flex;gap:14px;flex-wrap:wrap" id="mm-flags">
+        <span>Rpt <span class="flag" data-f="rpt">-</span></span>
+        <span>RT <span class="flag" data-f="rt">-</span></span>
+        <span>FAC <span class="flag" data-f="fac">-</span></span>
+        <span>PV <span class="flag" data-f="pv">-</span></span>
+        <span>ACT <span class="flag" data-f="act">-</span></span>
+        <span>WaAp <span class="flag" data-f="waap">-</span></span>
+      </div>
+    </div>
+    <div style="margin-top:10px"><label>Observații</label><textarea id="mm-obs" rows="2"></textarea></div>
+    <div class="row" style="margin-top:14px;justify-content:flex-end">
+      <div style="flex:0"><button class="btn danger" id="mm-del" onclick="deleteMiscare()" style="display:none">Șterge</button></div>
+      <div style="flex:1"></div>
+      <div style="flex:0"><button class="btn sec" onclick="closeModal('mod-m')">Anulează</button></div>
+      <div style="flex:0"><button class="btn" onclick="saveMiscare()">Salvează</button></div>
+    </div>
+  </div>
+</div>
+
+<!-- ================= MODAL CLIENT ================= -->
+<div class="modal" id="mod-c">
+  <div class="box">
+    <h3 id="mc-title">Client nou</h3>
+    <input type="hidden" id="mc-id">
+    <div class="grid3">
+      <div><label>Nume client</label><input id="mc-nume"></div>
+      <div><label>Tip ID</label><select id="mc-idtip"></select></div>
+      <div><label>Atribut fiscal</label><select id="mc-atr"><option value=""></option></select></div>
+      <div><label>CUI / CIF / CNP</label><input id="mc-cui"></div>
+      <div><label>Pers. resp.</label><input id="mc-pers"></div>
+      <div><label>Telefon</label><input id="mc-tel"></div>
+      <div><label>Email</label><input id="mc-email"></div>
+    </div>
+    <div style="margin-top:10px"><label>Observații</label><textarea id="mc-obs" rows="2"></textarea></div>
+    <div class="row" style="margin-top:14px;justify-content:flex-end">
+      <div style="flex:1"></div>
+      <div style="flex:0"><button class="btn sec" onclick="closeModal('mod-c')">Anulează</button></div>
+      <div style="flex:0"><button class="btn" onclick="saveClient()">Salvează</button></div>
+    </div>
+  </div>
+</div>
+
+<!-- ================= MODAL CONTRACT / ANEXA ================= -->
+<div class="modal" id="mod-k">
+  <div class="box">
+    <h3 id="mk-title">Contract nou</h3>
+    <input type="hidden" id="mk-id"><input type="hidden" id="mk-client">
+    <div class="grid3">
+      <div><label>Nr. contract</label><input id="mk-nr" placeholder="ex: 1551 HD"></div>
+      <div><label>Data emitere</label><input type="date" id="mk-de"></div>
+      <div><label>Data expirare</label><input type="date" id="mk-dx"></div>
+      <div><label>Expirare (text, ex: NEDETERMINAT)</label><input id="mk-xt"></div>
+      <div><label>Stare</label><select id="mk-stare"></select></div>
+    </div>
+    <div class="row" style="margin-top:14px;justify-content:flex-end">
+      <div style="flex:1"></div>
+      <div style="flex:0"><button class="btn sec" onclick="closeModal('mod-k')">Anulează</button></div>
+      <div style="flex:0"><button class="btn" onclick="saveContract()">Salvează</button></div>
+    </div>
+  </div>
+</div>
+<div class="modal" id="mod-a">
+  <div class="box">
+    <h3 id="ma-title">Anexă nouă</h3>
+    <input type="hidden" id="ma-id"><input type="hidden" id="ma-contract">
+    <div class="grid3">
+      <div><label>Anexa nr.</label><input id="ma-an" placeholder="ANEXA NR 1"></div>
+      <div><label>Data emitere</label><input type="date" id="ma-de"></div>
+      <div><label>Data expirare</label><input type="date" id="ma-dx"></div>
+      <div><label>Expirare (text)</label><input id="ma-xt"></div>
+      <div><label>Județ</label><input id="ma-jud"></div>
+      <div><label>Loc. / Com.</label><input id="ma-loc"></div>
+      <div><label>Sat / Str. / Locație</label><input id="ma-sat"></div>
+      <div><label>Forma</label><select id="ma-forma"></select></div>
+      <div><label>Produs</label><select id="ma-prod"></select></div>
+      <div><label>Model</label><select id="ma-model"></select></div>
+      <div><label>UM</label><select id="ma-um"></select></div>
+      <div><label>Cant.</label><input type="number" id="ma-cant" value="1"></div>
+      <div><label>Preț</label><input type="number" step="0.01" id="ma-pret" value="0"></div>
+      <div><label>Monedă</label><select id="ma-moneda"></select></div>
+      <div><label>Scadent (zile)</label><input type="number" id="ma-scad" value="30"></div>
+      <div><label>Status</label><input id="ma-status" placeholder="AMPLASARE / RIDICARE / ..."></div>
+    </div>
+    <div class="row" style="margin-top:14px;justify-content:flex-end">
+      <div style="flex:0"><button class="btn danger" id="ma-del" style="display:none" onclick="deleteAnexa()">Șterge</button></div>
+      <div style="flex:1"></div>
+      <div style="flex:0"><button class="btn sec" onclick="closeModal('mod-a')">Anulează</button></div>
+      <div style="flex:0"><button class="btn" onclick="saveAnexa()">Salvează</button></div>
+    </div>
+  </div>
+</div>
+
+<div class="modal" id="mod-doc"><div class="box" style="max-width:720px">
+  <h3 id="g-titlu">Document</h3>
+  <input type="hidden" id="gd-id">
+  <div class="grid3">
+    <div><label>Data trimiterii</label><input id="gd-data" type="date"></div>
+    <div><label>Tip document</label><input id="gd-tip" list="dl-tipdoc"><datalist id="dl-tipdoc"></datalist></div>
+    <div><label>Nr. contract</label><input id="gd-ref" list="dl-contracte"><datalist id="dl-contracte"></datalist></div>
+    <div><label>Client</label><input id="gd-den" list="dl-clienti"></div>
+    <div><label>Trimitere</label><select id="gd-strim"></select></div>
+    <div><label>Retrimiteri</label><input id="gd-retr" type="number" min="0" value="0"></div>
+    <div><label>Primire</label><select id="gd-sprim"></select></div>
+    <div><label>Data primirii</label><input id="gd-dprim" type="date"></div>
+    <div style="grid-column:1/-1"><label>Observații</label><input id="gd-obs"></div>
+  </div>
+  <div class="row" style="margin-top:16px;justify-content:flex-end">
+    <div style="flex:0"><button class="btn danger" id="gd-sterge" onclick="docSterge()">Șterge</button></div>
+    <div style="flex:0"><button class="btn sec" onclick="closeModal('mod-doc')">Renunță</button></div>
+    <div style="flex:0"><button class="btn" onclick="docSalveaza()">Salvează</button></div>
+  </div>
+</div></div>
+
+<div class="modal" id="mod-admin"><div class="box">
+  <h3 id="a-titlu">Editare</h3>
+  <div class="grid3" id="a-form"></div>
+  <div class="row" style="margin-top:16px;justify-content:flex-end">
+    <div style="flex:0"><button class="btn danger" id="a-btn-sterge" onclick="adminSterge()">Șterge</button></div>
+    <div style="flex:0"><button class="btn sec" onclick="closeModal('mod-admin')">Renunță</button></div>
+    <div style="flex:0"><button class="btn" onclick="adminSalveaza()">Salvează</button></div>
+  </div>
+</div></div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ================= CONFIG =================
+const SUPABASE_URL = "https://xrveoxmsdvryzyemmkqx.supabase.co";
+const SUPABASE_KEY = "sb_publishable_P1TSfVqqbyr3L-elKVgopg_1FpIpkv4";
+const db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+const LUNI = ["IAN","FEB","MAR","APR","MAI","IUN","IUL","AUG","SEP","OCT","NOI","DEC"];
+const FLAGS = ["-","V","L","X"];
+
+// cache
+let NOM = {}, DEP = [], SOF = [], MAS = [], CLI = [], CTR = [], ANX = [], MISC = [], STOC = [], SI = [];
+const $ = id => document.getElementById(id);
+const esc = s => (s==null?"":String(s)).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const fmtD = d => d ? d.split("-").reverse().join(".") : "";
+function toast(m, err){ const t=$("toast"); t.textContent=m; t.style.background=err?"#b3261e":"#222"; t.classList.add("on"); setTimeout(()=>t.classList.remove("on"),2600); }
+function closeModal(id){ $(id).classList.remove("on"); }
+function fill(sel, arr, blank){ const s=$(sel); const cur=s.value; s.innerHTML=(blank!==undefined?`<option value="">${blank}</option>`:"")+arr.map(v=>`<option value="${esc(v)}">${esc(v)}</option>`).join(""); if(cur) s.value=cur; }
+
+// ================= NAV =================
+document.querySelectorAll("nav button").forEach(b=>b.onclick=()=>{
+  document.querySelectorAll("nav button").forEach(x=>x.classList.remove("on")); b.classList.add("on");
+  document.querySelectorAll(".page").forEach(p=>p.classList.remove("on")); $("p-"+b.dataset.p).classList.add("on");
+  if(b.dataset.p==="atentie") loadAtentie();
+  if(b.dataset.p==="stoc") loadStoc();
+  if(b.dataset.p==="miscari" && !MISC.length) loadMiscari();
+  if(b.dataset.p==="rapoarte") genereazaRaport();
+  if(b.dataset.p==="documente" && !DOC.length) loadDoc();
+  if(b.dataset.p==="rute") deschideRute();
+  if(b.dataset.p==="admin") adminSchimba();
+  if(b.dataset.p==="verificare") loadVerif();
+  try{ history.replaceState(null,"","#"+b.dataset.p); }catch(e){}
+});
+
+// ================= INIT =================
+async function init(){
+  try{
+    const [n,d,s,m,c,k,a,si] = await Promise.all([
+      db.from("nomenclatoare").select("*").eq("activ",true).order("ordine"),
+      db.from("depozite").select("*").eq("activ",true).order("ordine"),
+      db.from("soferi").select("*").eq("activ",true).order("nume"),
+      db.from("masini").select("*").eq("activ",true).order("marca"),
+      db.from("clienti").select("*").order("nume"),
+      db.from("contracte").select("*").order("nr_ctr"),
+      db.from("anexe").select("*").order("id"),
+      db.from("stoc_initial").select("*").order("depozit")
+    ]);
+    if(n.error) throw n.error;
+    NOM={}; n.data.forEach(r=>{(NOM[r.tip]=NOM[r.tip]||[]).push(r);});
+    DEP=d.data||[]; SOF=s.data||[]; MAS=m.data||[]; CLI=c.data||[]; CTR=k.data||[]; ANX=a.data||[]; SI=si.data||[];
+    $("conn").textContent="● online"; $("conn").style.color="#9fe0b8";
+    fillAll(); await loadStoc(); loadVerif(); loadAtentie();
+  }catch(e){ console.error(e); $("conn").textContent="● eroare conexiune"; $("conn").style.color="#ffb4ae"; toast("Nu m-am putut conecta la baza de date: "+e.message,true); }
+}
+const nomv = tip => (NOM[tip]||[]).map(r=>r.valoare);
+function fillAll(){
+  const deps = DEP.map(d=>d.nume);
+  fill("st-dep",deps,"Toate"); fill("f-dep",deps,"Toate"); fill("mm-dep",deps); fill("mm-contract",deps); fill("si-dep",deps);
+  fill("f-tip",nomv("tip_miscare"),"Toate"); fill("mm-tip",nomv("tip_miscare"));
+  fill("f-prod",nomv("produs"),"Toate"); fill("mm-prod",nomv("produs")); fill("si-prod",nomv("produs")); fill("ma-prod",nomv("produs"));
+  fill("mm-model",nomv("model"),""); fill("ma-model",nomv("model"),"");
+  fill("mm-frecv",nomv("frecv_servisare"),"");
+  fill("mc-idtip",nomv("id_tip")); fill("mc-atr",nomv("atr"),"");
+  fill("mk-stare",nomv("stare")); fill("ma-forma",nomv("forma")); fill("ma-um",nomv("um")); fill("ma-moneda",nomv("moneda"));
+  const y=new Date().getFullYear(); const yrs=[]; for(let i=y;i>=2023;i--) yrs.push(i); fill("f-an",yrs,"Toți"); $("f-an").value=y;
+  $("f-luna").innerHTML='<option value="">Toate</option>'+LUNI.map((l,i)=>`<option value="${i+1}">${l}</option>`).join("");
+  $("dl-clienti").innerHTML=CLI.map(c=>`<option value="${esc(c.nume)}">`).join("");
+  fill("n-tip",Object.keys(NOM).sort()); renderNom(); renderStocInitial(); renderClienti(); initRapoarte();
+  $("si-data").value=new Date().toISOString().slice(0,10);
+}
+
+// ================= STOC =================
+async function loadStoc(){
+  const {data,error}=await db.from("v_stoc").select("*").order("depozit").order("produs");
+  if(error){toast(error.message,true);return;}
+  STOC=data; renderStoc();
+}
+$("st-dep").onchange=renderStoc;
+function renderStoc(){
+  const f=$("st-dep").value; const rows=STOC.filter(r=>!f||r.depozit===f);
+  const byDep={}; rows.forEach(r=>{(byDep[r.depozit]=byDep[r.depozit]||[]).push(r);});
+  const order=nomv("produs");
+  $("stoc-grid").innerHTML=Object.keys(byDep).sort().map(dep=>{
+    const rs=byDep[dep].sort((a,b)=>order.indexOf(a.produs)-order.indexOf(b.produs));
+    const tI=rs.reduce((s,r)=>s+r.inchiriate,0), tD=rs.reduce((s,r)=>s+r.in_depozit,0);
+    return `<div class="stoc"><h4>${esc(dep)}</h4>`+rs.map(r=>`<div class="n"><span>${esc(r.produs)}</span><span><span class="muted">înch.</span> <b>${r.inchiriate}</b> &nbsp; <span class="muted">dep.</span> <b>${r.in_depozit}</b> &nbsp; <span class="muted">tot.</span> <b>${r.total}</b></span></div>`).join("")+
+      `<div class="n tot"><span>TOTAL</span><span>${tI} + ${tD} = ${tI+tD}</span></div></div>`;
+  }).join("") || '<p class="muted">Nu există stoc definit. Setează stocul inițial în Nomenclatoare.</p>';
+  // tabel format Excel
+  const prods=[...new Set(rows.map(r=>r.produs))].sort((a,b)=>order.indexOf(a)-order.indexOf(b));
+  let h=`<tr><th>Depozit</th><th></th>${prods.map(p=>`<th>${esc(p)}</th>`).join("")}</tr>`;
+  Object.keys(byDep).sort().forEach(dep=>{
+    const g=k=>prods.map(p=>{const r=byDep[dep].find(x=>x.produs===p);return `<td>${r?r[k]:0}</td>`;}).join("");
+    h+=`<tr><td rowspan="3"><b>${esc(dep)}</b></td><td>ÎNCHIRIATE</td>${g("inchiriate")}</tr><tr><td>DEPOZIT</td>${g("in_depozit")}</tr><tr><td><b>TOTAL</b></td>${g("total")}</tr>`;
+  });
+  $("stoc-tbl").innerHTML=h;
+}
+function exportStoc(){
+  const ws=XLSX.utils.json_to_sheet(STOC.map(r=>({DEPOZIT:r.depozit,PRODUS:r.produs,INCHIRIATE:r.inchiriate,DEPOZIT_STOC:r.in_depozit,TOTAL:r.total})));
+  const wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,ws,"STOC"); XLSX.writeFile(wb,`Stoc_${today()}.xlsx`);
+}
+const today=()=>new Date().toISOString().slice(0,10);
+
+// ================= MISCARI =================
+async function loadMiscari(){
+  let q=db.from("miscari").select("*").order("data",{ascending:false}).order("id",{ascending:false}).limit(3000);
+  const an=$("f-an").value, luna=$("f-luna").value;
+  if(an){ const m=luna?+luna:null; const from=m?`${an}-${String(m).padStart(2,"0")}-01`:`${an}-01-01`; const to=m?new Date(an,m,0).toISOString().slice(0,10):`${an}-12-31`; q=q.gte("data",from).lte("data",to); }
+  if($("f-tip").value) q=q.eq("tip_miscare",$("f-tip").value);
+  if($("f-prod").value) q=q.eq("produs",$("f-prod").value);
+  if($("f-dep").value) q=q.eq("depozit",$("f-dep").value);
+  const s=$("f-q").value.trim(); if(s) q=q.or(`client.ilike.%${s}%,loc.ilike.%${s}%,sat.ilike.%${s}%,contract.ilike.%${s}%,jud.ilike.%${s}%`);
+  const {data,error}=await q; if(error){toast(error.message,true);return;}
+  MISC=data; renderMiscari();
+}
+$("f-q").addEventListener("keydown",e=>{if(e.key==="Enter")loadMiscari();});
+function pill(t){ const c=/AMPLASARE|EVENIMENT-A|SUPLIMENTARE/.test(t)?"A":/RIDICARE|EVENIMENT-R|REDUCERE/.test(t)?"R":/SERVISARE/.test(t)?"S":/Transfer|VANZARE/.test(t)?"T":"X"; return `<span class="pill p-${c}">${esc(t)}</span>`; }
+function renderMiscari(){
+  const sumA=MISC.filter(r=>r.buc>0).reduce((s,r)=>s+r.buc,0), sumR=MISC.filter(r=>r.buc<0).reduce((s,r)=>s+r.buc,0);
+  $("m-kpi").innerHTML=`<div>Înregistrări<b>${MISC.length}</b></div><div>Amplasate (+)<b>${sumA}</b></div><div>Ridicate (−)<b>${sumR}</b></div><div>Net<b>${sumA+sumR}</b></div>`;
+  const fl=(v)=>`<span class="flag ${esc(v)}" style="cursor:default">${esc(v||"-")}</span>`;
+  let h=`<tr><th>Data</th><th>Mișcare</th><th>Buc</th><th>Produs</th><th>Model</th><th>Client</th><th>Jud</th><th>Loc./Com.</th><th>Sat/Str./Locație</th><th>Contract</th><th>Depozit</th><th>Pers. resp.</th><th>Telefon</th><th>Rpt</th><th>RT</th><th>FAC</th><th>PV</th><th>ACT</th><th>WaAp</th><th>Frecv.</th><th class="noprint"></th></tr>`;
+  h+=MISC.map(r=>`<tr><td>${fmtD(r.data)}</td><td>${pill(r.tip_miscare)}</td><td class="${r.buc<0?"neg":"pos"}">${r.buc}</td><td>${esc(r.produs)}</td><td>${esc(r.model)}</td><td><b>${esc(r.client)}</b></td><td>${esc(r.jud)}</td><td>${esc(r.loc)}</td><td>${esc(r.sat)}</td><td>${esc(r.contract)}</td><td>${esc(r.depozit)}</td><td>${esc(r.pers_resp)}</td><td>${esc(r.telefon)}</td><td>${fl(r.rpt)}</td><td>${fl(r.rt)}</td><td>${fl(r.fac)}</td><td>${fl(r.pv)}</td><td>${fl(r.act)}</td><td>${fl(r.waap)}</td><td>${esc(r.frecv_serv)}</td><td class="noprint actions"><button class="btn sm sec" onclick="openMiscare(${r.id})">Edit</button></td></tr>`).join("");
+  $("m-tbl").innerHTML=h||"<tr><td>Nicio mișcare.</td></tr>";
+}
+function exportMiscari(){
+  const rows=MISC.map(r=>({AN:r.data.slice(0,4),LUNA:LUNI[+r.data.slice(5,7)-1],DATA:fmtD(r.data),MISCARE:r.tip_miscare,BUC:r.buc,PRODUSE:r.produs,MODEL:r.model,CLIENT:r.client,JUD:r.jud,"LOC. / COM.":r.loc,"SAT / STR. / LOCATIE":r.sat,CONTRACT:r.contract,DEPOZIT:r.depozit,"PERS RESP":r.pers_resp,TELEFON:r.telefon,Rpt:r.rpt,RT:r.rt,FAC:r.fac,PV:r.pv,ACT:r.act,WaAp:r.waap,"Frecv. Serv":r.frecv_serv,OBS:r.observatii}));
+  const ws=XLSX.utils.json_to_sheet(rows); const wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,ws,"MUTARI-VERIFICARI"); XLSX.writeFile(wb,`Miscari_${today()}.xlsx`);
+}
+// ---- flags
+document.querySelectorAll("#mm-flags .flag").forEach(f=>f.onclick=()=>{ const i=(FLAGS.indexOf(f.textContent)+1)%FLAGS.length; setFlag(f,FLAGS[i]); });
+function setFlag(el,v){ el.textContent=v; el.className="flag "+(v==="-"?"":v); }
+// ---- client -> anexe autocompletare
+$("mm-client").addEventListener("change",fillAnexeForClient);
+$("mm-client").addEventListener("input",fillAnexeForClient);
+function fillAnexeForClient(){
+  const c=CLI.find(x=>x.nume.toLowerCase()===$("mm-client").value.trim().toLowerCase());
+  const sel=$("mm-anexa"); sel.innerHTML='<option value="">— alege din anexe —</option>';
+  if(!c) return;
+  const ks=CTR.filter(k=>k.client_id===c.id).map(k=>k.id);
+  ANX.filter(a=>ks.includes(a.contract_id)).forEach(a=>{ const k=CTR.find(x=>x.id===a.contract_id); sel.innerHTML+=`<option value="${a.id}">${esc(k?k.nr_ctr:"")} · ${esc(a.anexa||"")} · ${esc(a.jud)} ${esc(a.loc)} – ${esc(a.sat)} · ${a.cant} ${esc(a.produs)} ${esc(a.model||"")}</option>`; });
+  if(c.pers_resp && !$("mm-pers").value) $("mm-pers").value=c.pers_resp;
+  if(c.telefon && !$("mm-tel").value) $("mm-tel").value=c.telefon;
+}
+$("mm-anexa").onchange=()=>{ const a=ANX.find(x=>x.id==$("mm-anexa").value); if(!a) return; $("mm-jud").value=a.jud||""; $("mm-loc").value=a.loc||""; $("mm-sat").value=a.sat||""; if(a.produs) $("mm-prod").value=a.produs; if(a.model) $("mm-model").value=a.model; if(a.cant) $("mm-buc").value=a.cant; };
+function openMiscare(id){
+  const r=id?MISC.find(x=>x.id===id):null;
+  $("mm-title").textContent=r?"Editare mișcare":"Mișcare nouă"; $("mm-id").value=r?r.id:""; $("mm-del").style.display=r?"":"none";
+  $("mm-data").value=r?r.data:today(); $("mm-tip").value=r?r.tip_miscare:"AMPLASARE"; $("mm-buc").value=r?Math.abs(r.buc):1;
+  $("mm-prod").value=r?r.produs:"TOALETE"; $("mm-model").value=r?(r.model||""):"CLASIC"; $("mm-client").value=r?(r.client||""):"";
+  $("mm-jud").value=r?(r.jud||""):""; $("mm-loc").value=r?(r.loc||""):""; $("mm-sat").value=r?(r.sat||""):"";
+  $("mm-contract").value=r?(r.contract||"HUNEDOARA"):"HUNEDOARA"; $("mm-dep").value=r?(r.depozit||"HUNEDOARA"):"HUNEDOARA";
+  $("mm-pers").value=r?(r.pers_resp||""):""; $("mm-tel").value=r?(r.telefon||""):""; $("mm-frecv").value=r?(r.frecv_serv||""):""; $("mm-obs").value=r?(r.observatii||""):"";
+  document.querySelectorAll("#mm-flags .flag").forEach(f=>setFlag(f,r?(r[f.dataset.f]||"-"):(f.dataset.f==="waap"?"V":"-")));
+  fillAnexeForClient(); $("mod-m").classList.add("on");
+}
+const NEG=/RIDICARE|EVENIMENT-R|REDUCERE|TransferOUT|VANZARE/;
+async function saveMiscare(){
+  const tip=$("mm-tip").value; let buc=Math.abs(+$("mm-buc").value||0); if(!buc){toast("Introdu numărul de bucăți",true);return;}
+  if(NEG.test(tip)) buc=-buc;
+  const client=$("mm-client").value.trim(); const c=CLI.find(x=>x.nume.toLowerCase()===client.toLowerCase());
+  const rec={data:$("mm-data").value,tip_miscare:tip,buc,produs:$("mm-prod").value,model:$("mm-model").value||null,client_id:c?c.id:null,client:client||null,
+    jud:$("mm-jud").value||null,loc:$("mm-loc").value||null,sat:$("mm-sat").value||null,contract:$("mm-contract").value||null,depozit:$("mm-dep").value||null,
+    pers_resp:$("mm-pers").value||null,telefon:$("mm-tel").value||null,frecv_serv:$("mm-frecv").value||null,observatii:$("mm-obs").value||null};
+  document.querySelectorAll("#mm-flags .flag").forEach(f=>rec[f.dataset.f]=f.textContent);
+  const id=$("mm-id").value;
+  const {error}= id? await db.from("miscari").update(rec).eq("id",id) : await db.from("miscari").insert(rec);
+  if(error){toast(error.message,true);return;}
+  closeModal("mod-m"); toast("Mișcare salvată"); await loadMiscari(); loadStoc();
+}
+async function deleteMiscare(){
+  if(!confirm("Ștergi această mișcare?")) return;
+  const {error}=await db.from("miscari").delete().eq("id",$("mm-id").value); if(error){toast(error.message,true);return;}
+  closeModal("mod-m"); toast("Ștearsă"); await loadMiscari(); loadStoc();
+}
+
+// ================= CLIENTI =================
+function renderClienti(){
+  const q=($("c-q").value||"").toLowerCase();
+  const list=CLI.filter(c=>{ if(!q) return true; const ks=CTR.filter(k=>k.client_id===c.id).map(k=>k.nr_ctr).join(" "); return (c.nume+" "+(c.cui||"")+" "+ks).toLowerCase().includes(q); });
+  $("c-list").innerHTML=list.map(c=>{
+    const ks=CTR.filter(k=>k.client_id===c.id);
+    return `<div class="card"><details ${q?"open":""}><summary>${esc(c.nume)} <span class="muted">${esc(c.id_tip||"")} ${esc(c.atr||"")} ${esc(c.cui||"")}</span><span class="badge">${ks.length} ctr</span> <button class="btn sm sec noprint" onclick="event.preventDefault();openClient(${c.id})">Edit</button> <button class="btn sm noprint" onclick="event.preventDefault();openContract(null,${c.id})">+ Contract</button></summary>`+
+      ks.map(k=>{ const an=ANX.filter(a=>a.contract_id===k.id);
+        return `<div style="margin:8px 0 4px;padding-left:8px;border-left:3px solid var(--gl)"><b>CTR ${esc(k.nr_ctr)}</b> <span class="muted">${fmtD(k.data_emitere)} → ${k.data_expirare?fmtD(k.data_expirare):esc(k.expirare_text||"")} · ${esc(k.stare)}</span> <button class="btn sm sec noprint" onclick="openContract(${k.id})">Edit</button> <button class="btn sm noprint" onclick="openAnexa(null,${k.id})">+ Anexă</button>
+        <div class="tw" style="max-height:none;margin-top:4px"><table><tr><th>Anexa</th><th>Emitere</th><th>Expirare</th><th>Jud</th><th>Loc.</th><th>Locație</th><th>Forma</th><th>Produs</th><th>Model</th><th>Cant</th><th>Preț</th><th>Status</th><th class="noprint"></th></tr>`+
+        an.map(a=>`<tr><td>${esc(a.anexa)}</td><td>${fmtD(a.data_emitere)}</td><td>${a.data_expirare?fmtD(a.data_expirare):esc(a.expirare_text)}</td><td>${esc(a.jud)}</td><td>${esc(a.loc)}</td><td>${esc(a.sat)}</td><td>${esc(a.forma)}</td><td>${esc(a.produs)}</td><td>${esc(a.model)}</td><td>${a.cant}</td><td>${a.pret} ${esc(a.moneda)}</td><td>${esc(a.status)}</td><td class="noprint"><button class="btn sm sec" onclick="openAnexa(${a.id})">Edit</button></td></tr>`).join("")+`</table></div></div>`; }).join("")+`</details></div>`;
+  }).join("")||'<p class="muted">Niciun client.</p>';
+}
+function openClient(id){
+  const c=id?CLI.find(x=>x.id===id):null; $("mc-title").textContent=c?"Editare client":"Client nou"; $("mc-id").value=c?c.id:"";
+  $("mc-nume").value=c?c.nume:""; $("mc-idtip").value=c?(c.id_tip||"CUI"):"CUI"; $("mc-atr").value=c?(c.atr||""):"RO"; $("mc-cui").value=c?(c.cui||""):"";
+  $("mc-pers").value=c?(c.pers_resp||""):""; $("mc-tel").value=c?(c.telefon||""):""; $("mc-email").value=c?(c.email||""):""; $("mc-obs").value=c?(c.observatii||""):"";
+  $("mod-c").classList.add("on");
+}
+async function saveClient(){
+  const rec={nume:$("mc-nume").value.trim().toUpperCase(),id_tip:$("mc-idtip").value,atr:$("mc-atr").value||null,cui:$("mc-cui").value||null,pers_resp:$("mc-pers").value||null,telefon:$("mc-tel").value||null,email:$("mc-email").value||null,observatii:$("mc-obs").value||null};
+  if(!rec.nume){toast("Numele este obligatoriu",true);return;}
+  const id=$("mc-id").value; const {error}= id? await db.from("clienti").update(rec).eq("id",id) : await db.from("clienti").insert(rec);
+  if(error){toast(error.message,true);return;} closeModal("mod-c"); toast("Client salvat"); await reloadClienti();
+}
+async function reloadClienti(){ const [c,k,a]=await Promise.all([db.from("clienti").select("*").order("nume"),db.from("contracte").select("*").order("nr_ctr"),db.from("anexe").select("*").order("id")]); CLI=c.data||[];CTR=k.data||[];ANX=a.data||[]; $("dl-clienti").innerHTML=CLI.map(x=>`<option value="${esc(x.nume)}">`).join(""); renderClienti(); }
+function openContract(id,clientId){
+  const k=id?CTR.find(x=>x.id===id):null; $("mk-title").textContent=k?"Editare contract":"Contract nou"; $("mk-id").value=k?k.id:""; $("mk-client").value=k?k.client_id:clientId;
+  $("mk-nr").value=k?k.nr_ctr:""; $("mk-de").value=k?(k.data_emitere||""):today(); $("mk-dx").value=k?(k.data_expirare||""):""; $("mk-xt").value=k?(k.expirare_text||""):""; $("mk-stare").value=k?k.stare:"ACTIV";
+  $("mod-k").classList.add("on");
+}
+async function saveContract(){
+  const rec={client_id:+$("mk-client").value,nr_ctr:$("mk-nr").value.trim(),data_emitere:$("mk-de").value||null,data_expirare:$("mk-dx").value||null,expirare_text:$("mk-xt").value||null,stare:$("mk-stare").value};
+  if(!rec.nr_ctr){toast("Nr. contract obligatoriu",true);return;}
+  const id=$("mk-id").value; const {error}= id? await db.from("contracte").update(rec).eq("id",id) : await db.from("contracte").insert(rec);
+  if(error){toast(error.message,true);return;} closeModal("mod-k"); toast("Contract salvat"); await reloadClienti();
+}
+function openAnexa(id,contractId){
+  const a=id?ANX.find(x=>x.id===id):null; $("ma-title").textContent=a?"Editare anexă":"Anexă nouă"; $("ma-id").value=a?a.id:""; $("ma-contract").value=a?a.contract_id:contractId; $("ma-del").style.display=a?"":"none";
+  $("ma-an").value=a?(a.anexa||""):""; $("ma-de").value=a?(a.data_emitere||""):today(); $("ma-dx").value=a?(a.data_expirare||""):""; $("ma-xt").value=a?(a.expirare_text||""):"";
+  $("ma-jud").value=a?(a.jud||""):"HD"; $("ma-loc").value=a?(a.loc||""):""; $("ma-sat").value=a?(a.sat||""):""; $("ma-forma").value=a?(a.forma||"CHIRIE"):"CHIRIE";
+  $("ma-prod").value=a?(a.produs||"TOALETE"):"TOALETE"; $("ma-model").value=a?(a.model||""):"CLASIC"; $("ma-um").value=a?(a.um||"BUC"):"BUC"; $("ma-cant").value=a?a.cant:1; $("ma-pret").value=a?a.pret:0; $("ma-moneda").value=a?(a.moneda||"RON"):"RON"; $("ma-scad").value=a?a.scadent:30; $("ma-status").value=a?(a.status||""):"";
+  $("mod-a").classList.add("on");
+}
+async function saveAnexa(){
+  const rec={contract_id:+$("ma-contract").value,anexa:$("ma-an").value||null,data_emitere:$("ma-de").value||null,data_expirare:$("ma-dx").value||null,expirare_text:$("ma-xt").value||null,jud:$("ma-jud").value||null,loc:$("ma-loc").value||null,sat:$("ma-sat").value||null,forma:$("ma-forma").value,produs:$("ma-prod").value,model:$("ma-model").value||null,um:$("ma-um").value,cant:+$("ma-cant").value||0,pret:+$("ma-pret").value||0,moneda:$("ma-moneda").value,scadent:+$("ma-scad").value||30,status:$("ma-status").value||null};
+  const id=$("ma-id").value; const {error}= id? await db.from("anexe").update(rec).eq("id",id) : await db.from("anexe").insert(rec);
+  if(error){toast(error.message,true);return;} closeModal("mod-a"); toast("Anexă salvată"); await reloadClienti();
+}
+async function deleteAnexa(){ if(!confirm("Ștergi anexa?")) return; const {error}=await db.from("anexe").delete().eq("id",$("ma-id").value); if(error){toast(error.message,true);return;} closeModal("mod-a"); await reloadClienti(); }
+function exportClienti(){
+  const rows=[]; CLI.forEach(c=>CTR.filter(k=>k.client_id===c.id).forEach(k=>{ const an=ANX.filter(a=>a.contract_id===k.id); (an.length?an:[{}]).forEach(a=>rows.push({STARE:k.stare,"NR. CTR.":k.nr_ctr,"DATA EMITERE CTR":fmtD(k.data_emitere),"DATA EXPIRARE CTR":k.data_expirare?fmtD(k.data_expirare):k.expirare_text,"NUME CLIENT":c.nume,ID:c.id_tip,"ATR.":c.atr,NUMAR:c.cui,"ANEXA NR:":a.anexa,"DATA EMITERE ANEXA":fmtD(a.data_emitere),"DATA EXPIRARE ANEXA":a.data_expirare?fmtD(a.data_expirare):a.expirare_text,JUDET:a.jud,"LOCALITATE / COMUNA":a.loc,"SAT / LOCATIE / STRADA":a.sat,FORMA:a.forma,PRODUS:a.produs,MODEL:a.model,UM:a.um,"CANT.":a.cant,PRET:a.pret,MONEDA:a.moneda,STATUS:a.status,SCADENT:a.scadent})); }));
+  const ws=XLSX.utils.json_to_sheet(rows); const wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,ws,"FACTURARE"); XLSX.writeFile(wb,`Contracte_${today()}.xlsx`);
+}
+
+// ================= NOMENCLATOARE =================
+function renderNom(){
+  const tip=$("n-tip").value; $("n-efect-wrap").style.display=tip==="tip_miscare"?"":"none";
+  const rows=NOM[tip]||[];
+  $("n-tbl").innerHTML=`<tr><th>Valoare</th>${tip==="tip_miscare"?"<th>Efect stoc</th>":""}<th></th></tr>`+rows.map(r=>`<tr><td>${esc(r.valoare)}</td>${tip==="tip_miscare"?`<td><select onchange="setEfect(${r.id},this.value)"><option ${r.efect_stoc==="inchiriere"?"selected":""}>inchiriere</option><option ${r.efect_stoc==="depozit_in"?"selected":""}>depozit_in</option><option ${r.efect_stoc==="depozit_out"?"selected":""}>depozit_out</option><option ${!r.efect_stoc||r.efect_stoc==="niciun"?"selected":""}>niciun</option></select></td>`:""}<td><button class="btn sm danger" onclick="delNom(${r.id})">✕</button></td></tr>`).join("");
+}
+async function addNom(){ const tip=$("n-tip").value, v=$("n-val").value.trim(); if(!v) return; const rec={tip,valoare:v,ordine:(NOM[tip]||[]).length}; if(tip==="tip_miscare") rec.efect_stoc=$("n-efect").value; const {error}=await db.from("nomenclatoare").insert(rec); if(error){toast(error.message,true);return;} $("n-val").value=""; await reloadNom(); }
+async function setEfect(id,v){ const {error}=await db.from("nomenclatoare").update({efect_stoc:v}).eq("id",id); if(error) toast(error.message,true); else {toast("Efect actualizat"); loadStoc();} }
+async function delNom(id){ if(!confirm("Dezactivezi această valoare?")) return; await db.from("nomenclatoare").update({activ:false}).eq("id",id); await reloadNom(); }
+async function reloadNom(){ const n=await db.from("nomenclatoare").select("*").eq("activ",true).order("ordine"); NOM={}; (n.data||[]).forEach(r=>{(NOM[r.tip]=NOM[r.tip]||[]).push(r);}); renderNom(); fillAll(); }
+function renderStocInitial(){
+  $("si-tbl").innerHTML=`<tr><th>Depozit</th><th>Produs</th><th>Închiriate</th><th>În depozit</th><th>Data referință</th><th></th></tr>`+SI.map(r=>`<tr><td>${esc(r.depozit)}</td><td>${esc(r.produs)}</td><td>${r.inchiriate}</td><td>${r.in_depozit}</td><td>${fmtD(r.data_referinta)}</td><td><button class="btn sm sec" onclick="editSI(${r.id})">Edit</button></td></tr>`).join("");
+}
+function editSI(id){ const r=SI.find(x=>x.id===id); $("si-dep").value=r.depozit; $("si-prod").value=r.produs; $("si-inch").value=r.inchiriate; $("si-dep2").value=r.in_depozit; $("si-data").value=r.data_referinta; window.scrollTo({top:0,behavior:"smooth"}); }
+async function saveStocInitial(){
+  const rec={depozit:$("si-dep").value,produs:$("si-prod").value,inchiriate:+$("si-inch").value||0,in_depozit:+$("si-dep2").value||0,data_referinta:$("si-data").value||today()};
+  const {error}=await db.from("stoc_initial").upsert(rec,{onConflict:"depozit,produs"}); if(error){toast(error.message,true);return;}
+  SI=(await db.from("stoc_initial").select("*").order("depozit")).data; renderStocInitial(); toast("Stoc inițial salvat"); loadStoc();
+}
+
+// ================= VERIFICARE =================
+const V_DEF = {
+  clienti: { titlu:'Clienți', cap:r=>r.nume, campuri:[
+    {c:'nume',l:'Nume client'},{c:'id_tip',l:'Tip ID',nom:'id_tip'},{c:'atr',l:'Atribut fiscal',nom:'atr',gol:1},
+    {c:'cui',l:'CUI / CIF / CNP'},{c:'pers_resp',l:'Pers. responsabilă'},{c:'telefon',l:'Telefon'},{c:'email',l:'Email'},
+    {c:'observatii',l:'Observații'}]},
+  contracte: { titlu:'Contracte', sel:'*, clienti(nume)', cap:r=>'CTR '+r.nr_ctr, ctx:r=>r.clienti?('Client: '+r.clienti.nume):'', campuri:[
+    {c:'nr_ctr',l:'Nr. contract'},{c:'data_emitere',l:'Data emitere',t:'date'},{c:'data_expirare',l:'Data expirare',t:'date'},
+    {c:'expirare_text',l:'Expirare (text)'},{c:'stare',l:'Stare',nom:'stare'}]},
+  anexe: { titlu:'Anexe (locații contractate)', sel:'*, contracte(nr_ctr, clienti(nume))',
+    cap:r=>(r.anexa||'anexă')+' — '+[r.loc,r.sat].filter(Boolean).join(', '),
+    ctx:r=>r.contracte?('Contract '+r.contracte.nr_ctr+(r.contracte.clienti?' · '+r.contracte.clienti.nume:'')):'', campuri:[
+    {c:'anexa',l:'Anexa nr.'},{c:'data_emitere',l:'Emitere',t:'date'},{c:'data_expirare',l:'Expirare',t:'date'},
+    {c:'jud',l:'Județ'},{c:'loc',l:'Localitate / Comună'},{c:'sat',l:'Sat / Stradă / Locație'},
+    {c:'forma',l:'Forma',nom:'forma'},{c:'produs',l:'Produs',nom:'produs'},{c:'model',l:'Model',nom:'model',gol:1},
+    {c:'um',l:'UM',nom:'um'},{c:'cant',l:'Cantitate',t:'number'},{c:'pret',l:'Preț',t:'number',pas:'0.01'},
+    {c:'moneda',l:'Monedă',nom:'moneda'},{c:'scadent',l:'Scadent (zile)',t:'number'},{c:'status',l:'Status'}]},
+  clients: { titlu:'Puncte de servisare (rute)', cap:r=>(r.client||'punct')+' — '+[r.localitate,r.locatie].filter(Boolean).join(', '), campuri:[
+    {c:'client',l:'Client'},{c:'status',l:'Status',opt:['ACTIV','INACTIV']},{c:'ziua',l:'Ziua',opt:['LUN','MAR','MIE','JOI','VIN']},
+    {c:'masina',l:'Traseu / Mașina'},{c:'jud',l:'Județ'},{c:'localitate',l:'Localitate / Comună'},{c:'locatie',l:'Locație / Sat'},
+    {c:'toalete',l:'Toalete',t:'number'},{c:'containere',l:'Containere',t:'number'},{c:'garduri',l:'Garduri',t:'number'},
+    {c:'frecventa',l:'Frecvență servisare'},{c:'telefon',l:'Telefon'},
+    {c:'lat',l:'Latitudine',t:'number',pas:'0.000001'},{c:'lon',l:'Longitudine',t:'number',pas:'0.000001'}]},
+  masini: { titlu:'Mașini', cap:r=>r.marca+' — '+r.nr, campuri:[
+    {c:'marca',l:'Marcă'},{c:'nr',l:'Număr'},{c:'pozitie',l:'Poziție'}]},
+  soferi: { titlu:'Șoferi', cap:r=>r.nume, campuri:[{c:'nume',l:'Nume'}]},
+  depozite:{ titlu:'Depozite', cap:r=>r.cod+' — '+r.nume, campuri:[{c:'cod',l:'Cod'},{c:'nume',l:'Nume'}]}
+};
+let V_TABEL=null, V_RANDURI=[], V_IDX=0, V_RAMAS=0, V_FACUTE=0;
+
+try{ const n=localStorage.getItem('gee_cine'); if(n) $("v-cine").value=n; }catch(e){}
+$("v-cine").addEventListener("change",()=>{ try{ localStorage.setItem('gee_cine',$("v-cine").value); }catch(e){} });
+
+async function loadVerif(){
+  const {data,error}=await db.from("v_verificare").select("*");
+  if(error){toast(error.message,true);return;}
+  const ord=Object.keys(V_DEF);
+  data.sort((a,b)=>ord.indexOf(a.tabel)-ord.indexOf(b.tabel));
+  const totalRamas=data.reduce((s,r)=>s+r.de_verificat,0);
+  const b=$("v-badge"); b.textContent=totalRamas; b.style.display=totalRamas?"":"none";
+  $("v-sectiuni").innerHTML=data.map(r=>{
+    const proc=r.total? Math.round(r.verificate*100/r.total):100;
+    const gata=r.de_verificat===0;
+    return `<div class="stoc"><h4>${esc(r.sectiune)}</h4>
+      <div class="n"><span class="muted">de verificat</span><b class="${gata?'pos':'neg'}">${r.de_verificat}</b></div>
+      <div class="n"><span class="muted">verificate</span><b>${r.verificate} / ${r.total}</b></div>
+      <div style="height:6px;background:var(--gl);border-radius:3px;margin:8px 0;overflow:hidden"><div style="height:100%;width:${proc}%;background:var(--g)"></div></div>
+      <button class="btn sm ${gata?'sec':''}" style="width:100%" onclick="startVerif('${r.tabel}')" ${gata?'disabled':''}>${gata?'✓ gata':'Începe verificarea'}</button>
+    </div>`;
+  }).join("");
+}
+
+async function startVerif(tabel){
+  V_TABEL=tabel; V_IDX=0; V_FACUTE=0;
+  const d=V_DEF[tabel];
+  const q=await db.from(tabel).select(d.sel||"*").eq("verificat",false).limit(50);
+  if(q.error){toast(q.error.message,true);return;}
+  V_RANDURI=q.data||[];
+  const c=await db.from(tabel).select("*",{count:"exact",head:true}).eq("verificat",false);
+  V_RAMAS=c.count||V_RANDURI.length;
+  if(!V_RANDURI.length){ toast("Nu mai e nimic de verificat aici"); loadVerif(); return; }
+  $("v-sectiuni").style.display="none"; $("v-lucru").style.display="";
+  randVerif();
+}
+function inchideVerif(){ $("v-lucru").style.display="none"; $("v-sectiuni").style.display=""; V_TABEL=null; loadVerif(); }
+
+function randVerif(){
+  const d=V_DEF[V_TABEL];
+  if(V_IDX>=V_RANDURI.length){ toast("Gata lotul acesta"); inchideVerif(); return; }
+  const r=V_RANDURI[V_IDX];
+  $("v-titlu").textContent=d.cap(r);
+  const ramas=V_RAMAS-V_FACUTE;
+  $("v-progres").textContent=`· ${V_FACUTE} verificate acum, ${ramas} rămase din ${d.titlu.toLowerCase()}`;
+  $("v-bara").style.width=(V_RAMAS? (V_FACUTE*100/V_RAMAS):0)+"%";
+  $("v-context").textContent=d.ctx? d.ctx(r):"";
+  $("v-nota").value=r.note_verificare||"";
+  $("v-campuri").innerHTML=d.campuri.map(f=>{
+    const val=r[f.c]==null?"":r[f.c];
+    if(f.nom||f.opt){
+      const lista=f.opt||nomv(f.nom);
+      const optiuni=(f.gol||f.opt?['']:[]).concat(lista);
+      const set=new Set(optiuni); if(val!==""&&!set.has(val)) optiuni.unshift(val);
+      return `<div><label>${esc(f.l)}</label><select data-c="${f.c}">${optiuni.map(o=>`<option value="${esc(o)}" ${String(o)===String(val)?"selected":""}>${esc(o)||"—"}</option>`).join("")}</select></div>`;
+    }
+    return `<div><label>${esc(f.l)}</label><input data-c="${f.c}" type="${f.t||'text'}" ${f.pas?`step="${f.pas}"`:""} value="${esc(val)}"></div>`;
+  }).join("");
+}
+function citesteCampuri(){
+  const rec={};
+  document.querySelectorAll("#v-campuri [data-c]").forEach(el=>{
+    let v=el.value;
+    if(el.type==="number") v = v===""? null : Number(v);
+    else if(v==="") v=null;
+    rec[el.dataset.c]=v;
+  });
+  return rec;
+}
+async function verifConfirma(){
+  const r=V_RANDURI[V_IDX];
+  const rec=citesteCampuri();
+  rec.verificat=true;
+  rec.verificat_de=$("v-cine").value.trim()||null;
+  rec.note_verificare=$("v-nota").value.trim()||null;
+  const {error}=await db.from(V_TABEL).update(rec).eq("id",r.id);
+  if(error){toast(error.message,true);return;}
+  V_FACUTE++; V_IDX++; toast("Confirmat");
+  const b=$("v-badge"); const n=Math.max(0,(+b.textContent||1)-1); b.textContent=n; b.style.display=n?"":"none";
+  randVerif();
+}
+function verifSari(){ V_IDX++; randVerif(); }
+async function verifSterge(){
+  const r=V_RANDURI[V_IDX];
+  let av="";
+  if(V_TABEL==="clienti") av=" Atenție: se șterg și contractele și anexele acestui client.";
+  if(V_TABEL==="contracte") av=" Atenție: se șterg și anexele acestui contract.";
+  if(!confirm("Ștergi definitiv acest rând?"+av)) return;
+  const {error}=await db.from(V_TABEL).delete().eq("id",r.id);
+  if(error){toast(error.message,true);return;}
+  V_RAMAS--; V_IDX++; toast("Șters");
+  const b=$("v-badge"); const n=Math.max(0,(+b.textContent||1)-1); b.textContent=n; b.style.display=n?"":"none";
+  randVerif();
+}
+
+
+// ================= RAPOARTE =================
+// Replică paginile FACTURARE și RAPORT-LUNA din fișierul Excel lunar.
+// Sursa: anexe + contracte + clienți (poziții) și mișcările lunii (schimbările pe zile).
+let R_RANDURI = [], R_ANTET = [], R_NUME = "Raport", R_NUM = new Set();
+
+const zileInLuna = (an, luna) => new Date(an, luna, 0).getDate();
+const dtz = s => s ? new Date(s + "T00:00:00") : null;
+const zi2 = n => (n < 10 ? "0" : "") + n;
+const dRO = d => d ? zi2(d.getDate()) + "." + zi2(d.getMonth() + 1) + "." + d.getFullYear() : "";
+const bani = n => (+n || 0).toLocaleString("ro-RO", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+function initRapoarte(){
+  const acum = new Date(), y = acum.getFullYear();
+  const ani = []; for(let i = y + 1; i >= 2023; i--) ani.push(i);
+  fill("r-an", ani);
+  if(!$("r-luna").options.length){
+    $("r-luna").innerHTML = LUNI.map((l, i) => `<option value="${i+1}">${l}</option>`).join("");
+    $("r-luna").value = acum.getMonth() + 1;
+    $("r-an").value = y;
+  }
+  fill("r-jud", [...new Set(ANX.map(a => a.jud).filter(Boolean))].sort(), "toate");
+  fill("r-stare", nomv("stare"), "toate");
+}
+
+// pozițiile active în luna aleasă, cu numărul de zile facturabile
+function randuriRaport(){
+  const an = +$("r-an").value, luna = +$("r-luna").value;
+  const p1 = new Date(an, luna - 1, 1), pN = new Date(an, luna, 0);
+  const fc = ($("r-client").value || "").trim().toLowerCase();
+  const fj = $("r-jud").value, fs = $("r-stare").value;
+  const out = [];
+  for(const a of ANX){
+    const c = CTR.find(x => x.id === a.contract_id); if(!c) continue;
+    const k = CLI.find(x => x.id === c.client_id);   if(!k) continue;
+    if(fc && !(k.nume || "").toLowerCase().includes(fc)) continue;
+    if(fj && a.jud !== fj) continue;
+    if(fs && (c.stare || "") !== fs) continue;
+    const em = dtz(a.data_emitere), ex = dtz(a.data_expirare);
+    if(em && em > pN) continue;   // nu începuse încă
+    if(ex && ex < p1) continue;   // se terminase
+    const de = (em && em > p1) ? em : p1;
+    const la = (ex && ex < pN) ? ex : pN;
+    let zile = Math.round((la - de) / 86400000) + 1;
+    if(zile < 0) zile = 0;
+    if(String(a.status || "").toUpperCase().includes("RIDICARE")) zile = 0;
+    out.push({ a, c, k, de, la, zile, an, luna, p1, pN });
+  }
+  out.sort((x, y) => (x.k.nume || "").localeCompare(y.k.nume || "") || (x.a.anexa || "").localeCompare(y.a.anexa || ""));
+  return out;
+}
+
+async function genereazaRaport(){
+  if(!ANX.length){ return; }
+  if($("r-tip").value === "facturare") raportFacturare(); else await raportLuna();
+}
+
+function raportFacturare(){
+  const tva = (+$("r-tva").value || 0) / 100;
+  const r = randuriRaport();
+  R_ANTET = ["STARE","NR. CTR","EMITERE CTR","EXPIRARE CTR","NUME CLIENT","ID","ATR.","NUMAR","ANEXA NR",
+             "EMITERE ANEXA","EXPIRARE ANEXA","JUD","LOCALITATE","SAT / LOCATIE / STRADA","FORMA","PRODUS",
+             "MODEL","UM","CANT.","PRET","MONEDA","STATUS","INCEPUT LUNA","SFARSIT LUNA","NR Z.",
+             "VALOARE FARA TVA","VALOARE CU TVA","SCADENT"];
+  R_NUM = new Set([18, 19, 24, 25, 26]);
+  R_RANDURI = r.map(x => {
+    const cant = +x.a.cant || 0, pret = +x.a.pret || 0;
+    const fara = Math.round(x.zile * pret * cant * 100) / 100;
+    return [ x.c.stare || "", x.c.nr_ctr || "", dRO(dtz(x.c.data_emitere)),
+             x.c.data_expirare ? dRO(dtz(x.c.data_expirare)) : (x.c.expirare_text || ""),
+             x.k.nume || "", x.k.id_tip || "", x.k.atr || "", x.k.cui || "", x.a.anexa || "",
+             dRO(dtz(x.a.data_emitere)),
+             x.a.data_expirare ? dRO(dtz(x.a.data_expirare)) : (x.a.expirare_text || ""),
+             x.a.jud || "", x.a.loc || "", x.a.sat || "", x.a.forma || "", x.a.produs || "",
+             x.a.model || "", x.a.um || "", cant, pret, x.a.moneda || "", x.a.status || "",
+             dRO(x.de), dRO(x.la), x.zile, fara, Math.round(fara * (1 + tva) * 100) / 100,
+             x.a.scadent === null || x.a.scadent === undefined ? "" : x.a.scadent ];
+  });
+  R_NUME = "Facturare";
+  const pe = {};
+  R_RANDURI.forEach(f => { const m = f[20] || "RON"; pe[m] = pe[m] || [0, 0]; pe[m][0] += f[25]; pe[m][1] += f[26]; });
+  $("r-kpi").innerHTML = `<div>Poziții<b>${R_RANDURI.length}</b></div>` +
+    Object.keys(pe).sort().map(m => `<div>Fără TVA (${esc(m)})<b>${bani(pe[m][0])}</b></div><div>Cu TVA (${esc(m)})<b>${bani(pe[m][1])}</b></div>`).join("");
+  $("r-nota").textContent = "Numărul de zile se calculează din perioada în care anexa e valabilă în luna aleasă. Anexele cu statusul RIDICARE se trec cu 0 zile, ca în Excel.";
+  deseneazaRaport();
+}
+
+async function miscariLuna(an, luna){
+  const de = `${an}-${zi2(luna)}-01`, la = `${an}-${zi2(luna)}-${zi2(zileInLuna(an, luna))}`;
+  const { data, error } = await db.from("miscari").select("*").gte("data", de).lte("data", la);
+  if(error){ toast(error.message, true); return []; }
+  return data || [];
+}
+
+async function raportLuna(){
+  const r = randuriRaport();
+  const an = +$("r-an").value, luna = +$("r-luna").value, nz = zileInLuna(an, luna);
+  const p1 = new Date(an, luna - 1, 1);
+  const mis = await miscariLuna(an, luna);
+  R_ANTET = ["NR. CTR","NUMELE FIRMEI","LOCATIA DE LIVRARE","NR. ANEXA","DATA LIVRARE","PRODUS","MODEL",
+             "LIVRAT DIN DEPOZIT","RETUR IN DEPOZIT","0"];
+  for(let d = 1; d <= nz; d++) R_ANTET.push(String(d));
+  R_NUM = new Set(); for(let i = 9; i < R_ANTET.length; i++) R_NUM.add(i);
+  const folosite = new Set();
+  R_RANDURI = r.map(x => {
+    const cant = +x.a.cant || 0, em = dtz(x.a.data_emitere);
+    const zile = new Array(nz).fill("");
+    let col0 = "", dep = "", ret = "";
+    if(em && em < p1) col0 = cant;
+    else if(em && em.getFullYear() === an && em.getMonth() + 1 === luna) zile[em.getDate() - 1] = cant;
+    for(const m of mis){
+      if((m.client || "") !== (x.k.nume || "")) continue;
+      if((m.loc || "") !== (x.a.loc || "")) continue;
+      if((m.produs || "") !== (x.a.produs || "")) continue;
+      const md = dtz(m.data); if(!md) continue;
+      folosite.add(m.id);
+      const b = +m.buc || 0;              // bucățile sunt salvate deja cu semn (minus la ridicări)
+      const i = md.getDate() - 1;
+      zile[i] = (+zile[i] || 0) + b;
+      if(b >= 0) dep = m.depozit || dep; else ret = m.depozit || ret;
+    }
+    return [ x.c.nr_ctr || "", x.k.nume || "", [x.a.loc, x.a.sat].filter(Boolean).join(", "),
+             x.a.anexa || "", dRO(em), x.a.produs || "", x.a.model || "", dep, ret, col0, ...zile ];
+  });
+  // mișcările care nu se potrivesc cu nicio anexă nu trebuie să dispară din raport
+  const ramase = mis.filter(m => !folosite.has(m.id));
+  if(ramase.length){
+    const gr = {};
+    for(const m of ramase){
+      const cheie = [m.contract || "", m.client || "", m.loc || "", m.sat || "", m.produs || "", m.model || ""].join("\u0001");
+      (gr[cheie] = gr[cheie] || []).push(m);
+    }
+    for(const cheie of Object.keys(gr).sort()){
+      const [ctr, cl, lo, sa, pr, mo] = cheie.split("\u0001");
+      const zile = new Array(nz).fill(""); let dep = "", ret = "";
+      for(const m of gr[cheie]){
+        const md = dtz(m.data); if(!md) continue;
+        const b = +m.buc || 0, i = md.getDate() - 1;
+        zile[i] = (+zile[i] || 0) + b;
+        if(b >= 0) dep = m.depozit || dep; else ret = m.depozit || ret;
+      }
+      R_RANDURI.push([ ctr, cl, [lo, sa].filter(Boolean).join(", "), "— fără anexă —", "", pr, mo, dep, ret, "", ...zile ]);
+    }
+  }
+  R_NUME = "Raport_luna";
+  const buc = R_RANDURI.reduce((s, f) => s + (+f[9] || 0) + f.slice(10).reduce((t, v) => t + (+v || 0), 0), 0);
+  $("r-kpi").innerHTML = `<div>Poziții<b>${R_RANDURI.length}</b></div><div>Bucăți<b>${buc}</b></div><div>Mișcări în lună<b>${mis.length}</b></div>` +
+    (ramase.length ? `<div>Fără anexă<b>${ramase.length}</b></div>` : "");
+  $("r-nota").textContent = "Coloana „0” = ce era deja amplasat la începutul lunii. Zilele 1–" + nz +
+    " arată amplasările și ridicările înregistrate în luna aceea. Depozitul apare doar acolo unde există o mișcare înregistrată.";
+  deseneazaRaport();
+}
+
+function deseneazaRaport(){
+  $("r-tbl").innerHTML =
+    "<thead><tr>" + R_ANTET.map(h => `<th>${esc(h)}</th>`).join("") + "</tr></thead><tbody>" +
+    R_RANDURI.map(f => "<tr>" + f.map((v, i) =>
+      `<td${R_NUM.has(i) ? ' style="text-align:right"' : ''}>${esc(v === null || v === undefined ? "" : v)}</td>`
+    ).join("") + "</tr>").join("") + "</tbody>";
+}
+
+function exportRaport(){
+  if(!R_RANDURI.length){ toast("Nu e nimic de exportat", true); return; }
+  const ws = XLSX.utils.aoa_to_sheet([R_ANTET, ...R_RANDURI]);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, R_NUME.slice(0, 28));
+  XLSX.writeFile(wb, `${R_NUME}_${$("r-an").value}-${zi2(+$("r-luna").value)}.xlsx`);
+}
+
+// ================= DE URMĂRIT =================
+// Strânge într-un singur loc lucrurile care cer atenție: termene, documente în aer,
+// date incomplete. Totul se calculează din ce e deja în bază, nu ține nimic separat.
+let AT = [], AT_SEL = null;
+
+const ziDiff = (a, b) => Math.round((new Date(a + "T00:00:00") - new Date(b + "T00:00:00")) / 86400000);
+
+async function loadAtentie(){
+  if(!CTR.length) return;
+  const azi = today();
+  const orizont = new Date(Date.now() + (+$("t-zile").value || 90) * 86400000).toISOString().slice(0, 10);
+  const prag = new Date(Date.now() - (+$("t-prag").value || 30) * 86400000).toISOString().slice(0, 10);
+
+  const [pct, mis, doc] = await Promise.all([
+    db.from("clients").select("client_key,client,jud,localitate,locatie,ziua,masina,frecventa,lat,lon"),
+    db.from("miscari").select("*").is("client_id", null),
+    db.from("documente").select("*").or("status_prim.is.null,status_prim.neq.PRIMIT").lt("data_trimitere", prag).order("data_trimitere")
+  ]);
+  const P = pct.data || [], M = mis.data || [], D = doc.data || [];
+  const numeClient = c => { const k = CLI.find(x => x.id === c.client_id); return k ? k.nume : ""; };
+
+  AT = [];
+  const add = (cheie, titlu, nota, cap, randuri) => { if(randuri.length) AT.push({ cheie, titlu, nota, cap, randuri }); };
+
+  add("ctr_expirate", "Contracte expirate, încă marcate ACTIV",
+      "Au trecut de data de expirare, dar în aplicație figurează active. Ori se prelungesc, ori se trec pe INACTIV.",
+      ["Nr. contract", "Client", "A expirat la", "De câte zile"],
+      CTR.filter(c => c.data_expirare && c.data_expirare < azi && (c.stare || "") === "ACTIV")
+         .sort((a, b) => a.data_expirare.localeCompare(b.data_expirare))
+         .map(c => [c.nr_ctr || "", numeClient(c), fmtD(c.data_expirare), ziDiff(azi, c.data_expirare)]));
+
+  add("ctr_curand", "Contracte care expiră în curând",
+      "Intră în fereastra aleasă mai sus. Bun moment pentru act adițional.",
+      ["Nr. contract", "Client", "Expiră la", "Peste câte zile"],
+      CTR.filter(c => c.data_expirare && c.data_expirare >= azi && c.data_expirare <= orizont)
+         .sort((a, b) => a.data_expirare.localeCompare(b.data_expirare))
+         .map(c => [c.nr_ctr || "", numeClient(c), fmtD(c.data_expirare), ziDiff(c.data_expirare, azi)]));
+
+  add("ctr_fara_data", "Contracte fără dată de expirare",
+      "Nu au nici dată, nici mențiune de tipul „nedeterminat”. Nu pot fi urmărite automat.",
+      ["Nr. contract", "Client", "Emis la", "Stare"],
+      CTR.filter(c => !c.data_expirare && !(c.expirare_text || "").trim())
+         .map(c => [c.nr_ctr || "", numeClient(c), fmtD(c.data_emitere), c.stare || ""]));
+
+  add("anx_curand", "Anexe care expiră în curând",
+      "Locații contractate al căror termen se apropie.",
+      ["Anexă", "Client", "Locație", "Expiră la", "Peste câte zile"],
+      ANX.filter(a => a.data_expirare && a.data_expirare >= azi && a.data_expirare <= orizont)
+         .sort((a, b) => a.data_expirare.localeCompare(b.data_expirare))
+         .map(a => { const c = CTR.find(x => x.id === a.contract_id) || {};
+                     return [a.anexa || "", numeClient(c), [a.loc, a.sat].filter(Boolean).join(", "),
+                             fmtD(a.data_expirare), ziDiff(a.data_expirare, azi)]; }));
+
+  add("anx_fara_pret", "Anexe active fără preț",
+      "Nu intră în facturare, pentru că valoarea se calculează din preț × cantitate × zile.",
+      ["Anexă", "Client", "Locație", "Produs", "Cant."],
+      ANX.filter(a => (a.activ === undefined || a.activ) && !(+a.pret))
+         .map(a => { const c = CTR.find(x => x.id === a.contract_id) || {};
+                     return [a.anexa || "", numeClient(c), [a.loc, a.sat].filter(Boolean).join(", "), a.produs || "", a.cant || 0]; }));
+
+  add("doc_neprimite", "Documente trimise și neprimite",
+      "Au plecat la client și nu s-au întors. Se pot marca primite sau retrimise din fila Registru documente.",
+      ["Trimis la", "De câte zile", "Tip document", "Nr. contract", "Client", "Retrimiteri"],
+      D.map(d => [fmtD(d.data_trimitere), ziDiff(azi, d.data_trimitere), d.tip_document || "",
+                  d.referinta || "", d.denumire || "", d.retrimiteri || 0]));
+
+  add("pct_gps", "Puncte de rută fără coordonate",
+      "Șoferii nu pot naviga automat la ele. Se completează din Administrare → Puncte de rută.",
+      ["Cod", "Client", "Județ", "Localitate", "Locație"],
+      P.filter(p => !p.lat || !p.lon)
+       .map(p => [p.client_key || "", p.client || "", p.jud || "", p.localitate || "", p.locatie || ""]));
+
+  add("pct_frecv", "Puncte de rută fără frecvență de servisare",
+      "Nu se știe cât de des trebuie mers la ele.",
+      ["Cod", "Client", "Localitate", "Ziua", "Mașina"],
+      P.filter(p => !(p.frecventa || "").trim())
+       .map(p => [p.client_key || "", p.client || "", p.localitate || "", p.ziua || "", p.masina || ""]));
+
+  add("pct_masina", "Puncte de rută fără mașină alocată",
+      "Nu apar pe ruta niciunei mașini.",
+      ["Cod", "Client", "Localitate", "Ziua", "Frecvență"],
+      P.filter(p => !(p.masina || "").trim())
+       .map(p => [p.client_key || "", p.client || "", p.localitate || "", p.ziua || "", p.frecventa || ""]));
+
+  add("mis_fara_client", "Mișcări nelegate de un client din gestiune",
+      "Clientul e scris ca text, dar nu se potrivește cu niciunul din listă. Nu apar corect în rapoarte.",
+      ["Data", "Tip", "Buc.", "Produs", "Client scris", "Localitate"],
+      M.map(m => [fmtD(m.data), m.tip_miscare || "", m.buc, m.produs || "", m.client || "", m.loc || ""]));
+
+  renderPlaci();
+}
+
+function renderPlaci(){
+  const total = AT.reduce((s, x) => s + x.randuri.length, 0);
+  const bd = $("t-badge");
+  if(total){ bd.textContent = total; bd.style.display = ""; } else { bd.style.display = "none"; }
+  $("t-gol").style.display = AT.length ? "none" : "";
+  $("t-placi").innerHTML = AT.map(x =>
+    `<div style="cursor:pointer${AT_SEL === x.cheie ? ";outline:2px solid var(--g2)" : ""}" onclick="alegeAtentie('${x.cheie}')">` +
+    `${esc(x.titlu)}<b>${x.randuri.length}</b></div>`).join("");
+  if(AT_SEL && !AT.find(x => x.cheie === AT_SEL)) AT_SEL = null;
+  if(!AT_SEL && AT.length) AT_SEL = AT[0].cheie;
+  renderAtentie();
+}
+
+function alegeAtentie(cheie){ AT_SEL = cheie; renderPlaci(); }
+
+function renderAtentie(){
+  const x = AT.find(y => y.cheie === AT_SEL);
+  $("t-detaliu").style.display = x ? "" : "none";
+  if(!x) return;
+  $("t-titlu").textContent = x.titlu;
+  $("t-nota").textContent = x.nota;
+  $("t-tbl").innerHTML =
+    "<thead><tr>" + x.cap.map(h => `<th>${esc(h)}</th>`).join("") + "</tr></thead><tbody>" +
+    x.randuri.map(r => "<tr>" + r.map(v => `<td>${esc(v === null || v === undefined ? "" : v)}</td>`).join("") + "</tr>").join("") +
+    "</tbody>";
+}
+
+function exportAtentie(){
+  const x = AT.find(y => y.cheie === AT_SEL);
+  if(!x) return;
+  const ws = XLSX.utils.aoa_to_sheet([x.cap, ...x.randuri]);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, x.cheie.slice(0, 28));
+  XLSX.writeFile(wb, `De_urmarit_${x.cheie}_${today()}.xlsx`);
+}
+
+// ================= REGISTRU DOCUMENTE =================
+// Replică pagina REG DOCUMENTE din Excel: ce s-a trimis clientului și dacă s-a primit înapoi.
+let DOC = [];
+
+async function loadDoc(){
+  const { data, error } = await db.from("documente")
+    .select("*").order("data_trimitere", { ascending: false }).order("id", { ascending: false });
+  if(error){ toast(error.message, true); return; }
+  DOC = data || [];
+  const ani = [...new Set(DOC.map(d => (d.data_trimitere || "").slice(0, 4)).filter(Boolean))].sort().reverse();
+  fill("g-an", ani, "toți");
+  fill("g-prim", nomv("status_prim"), "toate");
+  fill("gd-strim", nomv("status_trim"));
+  fill("gd-sprim", nomv("status_prim"), "—");
+  $("dl-tipdoc").innerHTML = nomv("tip_document").map(v => `<option value="${esc(v)}">`).join("");
+  $("dl-contracte").innerHTML = CTR.map(c => `<option value="${esc(c.nr_ctr)}">`).join("");
+  renderDoc();
+}
+
+function docFiltrate(){
+  const an = $("g-an").value, sp = $("g-prim").value, q = ($("g-cauta").value || "").trim().toLowerCase();
+  return DOC.filter(d => {
+    if(an && (d.data_trimitere || "").slice(0, 4) !== an) return false;
+    if(sp && (d.status_prim || "") !== sp) return false;
+    if(q && ![d.tip_document, d.referinta, d.denumire, d.observatii].join(" ").toLowerCase().includes(q)) return false;
+    return true;
+  });
+}
+
+function renderDoc(){
+  const r = docFiltrate();
+  $("g-tbl").innerHTML =
+    "<thead><tr><th>Data</th><th>Tip document</th><th>Nr. contract</th><th>Client</th><th>Trimis</th>" +
+    "<th>Primire</th><th>Data primirii</th><th>Observații</th><th></th></tr></thead><tbody>" +
+    r.map(d => {
+      const neprimit = (d.status_prim || "") !== "PRIMIT";
+      return `<tr${neprimit ? ' style="background:#fffaf0"' : ''}>` +
+        `<td>${fmtD(d.data_trimitere)}</td><td>${esc(d.tip_document)}</td>` +
+        `<td>${esc(d.referinta || "")}</td><td>${esc(d.denumire || "")}</td>` +
+        `<td>${esc(d.status_trim || "")}${d.retrimiteri ? ` <span class="pill p-T">+${d.retrimiteri}</span>` : ""}</td>` +
+        `<td>${d.status_prim === "PRIMIT" ? '<span class="pill p-A">PRIMIT</span>'
+             : `<span class="pill p-X">${esc(d.status_prim || "—")}</span>`}</td>` +
+        `<td>${fmtD(d.data_primire)}</td><td>${esc(d.observatii || "")}</td>` +
+        `<td class="actions">${neprimit
+            ? `<button class="btn sm" onclick="docPrimit(${d.id})">Primit azi</button> <button class="btn sm sec" onclick="docRetrimis(${d.id})">Retrimis azi</button> `
+            : ""}<button class="btn sm sec" onclick="docEdit(${d.id})">Editează</button></td></tr>`;
+    }).join("") + "</tbody>";
+  const neprimite = r.filter(d => (d.status_prim || "") !== "PRIMIT").length;
+  const retrimise = r.filter(d => d.retrimiteri > 0).length;
+  $("g-kpi").innerHTML = `<div>Documente<b>${r.length}</b></div>` +
+    `<div>Neprimite<b>${neprimite}</b></div><div>Cu retrimiteri<b>${retrimise}</b></div>`;
+}
+
+async function docPrimit(id){
+  const { error } = await db.from("documente").update({ status_prim: "PRIMIT", data_primire: today() }).eq("id", id);
+  if(error){ toast(error.message, true); return; }
+  toast("Marcat ca primit"); await loadDoc();
+}
+
+async function docRetrimis(id){
+  const d = DOC.find(x => x.id === id); if(!d) return;
+  const { error } = await db.from("documente")
+    .update({ retrimiteri: (d.retrimiteri || 0) + 1, data_trimitere: today(), status_trim: "TRIMIS" }).eq("id", id);
+  if(error){ toast(error.message, true); return; }
+  toast("Marcat ca retrimis azi"); await loadDoc();
+}
+
+function docDeschide(d){
+  $("g-titlu").textContent = d ? "Editează documentul" : "Document nou";
+  $("gd-id").value    = d ? d.id : "";
+  $("gd-data").value  = d ? (d.data_trimitere || "") : today();
+  $("gd-tip").value   = d ? (d.tip_document || "") : "";
+  $("gd-ref").value   = d ? (d.referinta || "") : "";
+  $("gd-den").value   = d ? (d.denumire || "") : "";
+  $("gd-strim").value = d ? (d.status_trim || "TRIMIS") : "TRIMIS";
+  $("gd-retr").value  = d ? (d.retrimiteri || 0) : 0;
+  $("gd-sprim").value = d ? (d.status_prim || "") : "";
+  $("gd-dprim").value = d ? (d.data_primire || "") : "";
+  $("gd-obs").value   = d ? (d.observatii || "") : "";
+  $("gd-sterge").style.display = d ? "" : "none";
+  $("mod-doc").classList.add("on");
+}
+function docNou(){ docDeschide(null); }
+function docEdit(id){
+  const d = DOC.find(x => x.id === id);
+  if(!d){ toast("Documentul nu mai există, reîncarcă lista", true); return; }
+  docDeschide(d);
+}
+
+async function docSalveaza(){
+  const tip = $("gd-tip").value.trim();
+  if(!tip){ toast("Completează tipul documentului", true); $("gd-tip").focus(); return; }
+  const ref = $("gd-ref").value.trim().toUpperCase();
+  const den = $("gd-den").value.trim();
+  const c = CTR.find(x => (x.nr_ctr || "").toUpperCase() === ref);
+  const k = CLI.find(x => (x.nume || "").toLowerCase() === den.toLowerCase());
+  const rec = {
+    data_trimitere: $("gd-data").value || null,
+    tip_document: tip.toUpperCase(),
+    referinta: ref || null,
+    contract_id: c ? c.id : null,
+    denumire: den || null,
+    client_id: k ? k.id : (c ? c.client_id : null),
+    status_trim: $("gd-strim").value || null,
+    retrimiteri: +$("gd-retr").value || 0,
+    status_prim: $("gd-sprim").value || null,
+    data_primire: $("gd-dprim").value || null,
+    observatii: $("gd-obs").value.trim() || null
+  };
+  const id = $("gd-id").value;
+  const { error } = id ? await db.from("documente").update(rec).eq("id", id)
+                       : await db.from("documente").insert(rec);
+  if(error){ toast(error.message, true); return; }
+  closeModal("mod-doc"); toast(id ? "Document actualizat" : "Document adăugat"); await loadDoc();
+}
+
+async function docSterge(){
+  const id = $("gd-id").value; if(!id) return;
+  if(!confirm("Ștergi definitiv acest document din registru?")) return;
+  const { error } = await db.from("documente").delete().eq("id", id);
+  if(error){ toast(error.message, true); return; }
+  closeModal("mod-doc"); toast("Șters"); await loadDoc();
+}
+
+function exportDoc(){
+  const r = docFiltrate();
+  if(!r.length){ toast("Nu e nimic de exportat", true); return; }
+  const ws = XLSX.utils.json_to_sheet(r.map(d => ({
+    DATA_TRIMITERE: d.data_trimitere, "TIP DOCUMENT": d.tip_document, REFERINTA: d.referinta,
+    DENUMIRE: d.denumire, STATUS_TRIM: d.status_trim, RETRIMITERI: d.retrimiteri,
+    STATUS_PRIM: d.status_prim, DATA_PRIM: d.data_primire, OBSERVATII: d.observatii
+  })));
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "REG DOCUMENTE");
+  XLSX.writeFile(wb, `Registru_documente_${today()}.xlsx`);
+}
+
+// ================= CONTURI DE ACCES =================
+// Contul e o anexa a angajatului: un singur om in lista Angajati, cu login optional.
+let CONTURI = [];
+
+async function apelAdmin(corp){
+  const { data } = await db.auth.getSession();
+  const token = data && data.session ? data.session.access_token : "";
+  const r = await fetch(SUPABASE_URL + "/functions/v1/admin-manage-users", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "Authorization": "Bearer " + token, "apikey": SUPABASE_KEY },
+    body: JSON.stringify(corp)
+  });
+  let j = {}; try{ j = await r.json(); }catch(e){}
+  if(!r.ok || j.error) throw new Error(j.error || ("Eroare " + r.status));
+  return j;
+}
+
+async function incarcaConturi(){
+  const { data, error } = await db.rpc("list_conturi");
+  if(error){ console.warn("conturi:", error.message); CONTURI = []; return; }
+  CONTURI = data || [];
+}
+
+const contulAngajatului = id => CONTURI.find(c => String(c.sofer_id) === String(id));
+
+function panouCont(rec){
+  const c = contulAngajatului(rec.id);
+  const cap = '<div style="grid-column:1/-1;border-top:1px solid var(--bd);margin-top:6px;padding-top:12px">' +
+    '<b style="color:var(--g)">Cont de acces</b>';
+  if(c){
+    return cap +
+      `<p class="muted" style="margin:6px 0 10px">Utilizator <b>${esc(c.username)}</b> · ` +
+      `${c.role === "admin" ? "administrator" : "șofer"} · ${c.active ? "activ" : "dezactivat"}` +
+      `${c.signature_set ? " · semnătură salvată" : " · fără semnătură"}</p>` +
+      '<div class="row" style="align-items:flex-end">' +
+      '<div><label>Parolă nouă</label><input id="ct-parola" type="password" autocomplete="new-password" placeholder="lasă gol dacă nu o schimbi"></div>' +
+      `<div style="flex:0"><label>&nbsp;</label><button class="btn sec" onclick="contReseteaza('${c.id}')">Schimbă parola</button></div>` +
+      `<div style="flex:0"><label>&nbsp;</label><button class="btn sec" onclick="contActiv('${c.id}', ${c.active ? "false" : "true"})">${c.active ? "Dezactivează accesul" : "Activează accesul"}</button></div>` +
+      `<div style="flex:0"><label>&nbsp;</label><button class="btn danger" onclick="contSterge('${c.id}')">Șterge contul</button></div>` +
+      '</div></div>';
+  }
+  return cap +
+    '<p class="muted" style="margin:6px 0 10px">Omul acesta nu are cont. Fără cont nu poate intra în nicio aplicație.</p>' +
+    '<div class="row" style="align-items:flex-end">' +
+    '<div><label>Nume utilizator</label><input id="ct-user" autocapitalize="none" spellcheck="false" placeholder="ex: stefan"></div>' +
+    '<div><label>Parolă</label><input id="ct-parola" type="password" autocomplete="new-password"></div>' +
+    '<div style="flex:0;min-width:150px"><label>Tip cont</label><select id="ct-rol"><option value="driver">Șofer</option><option value="admin">Administrator</option></select></div>' +
+    `<div style="flex:0"><label>&nbsp;</label><button class="btn" onclick="contCreeaza(${rec.id})">Creează contul</button></div>` +
+    '</div></div>';
+}
+
+async function contCreeaza(soferId){
+  const s = A_ROWS.find(x => String(x.id) === String(soferId));
+  const user = ($("ct-user").value || "").trim().toLowerCase();
+  const parola = $("ct-parola").value;
+  const rol = $("ct-rol").value;
+  if(!user || !parola){ toast("Completează numele de utilizator și parola", true); return; }
+  if(parola.length < 8){ toast("Parola trebuie să aibă cel puțin 8 caractere", true); return; }
+  try{
+    const r = await apelAdmin({ action: "create_driver", username: user, password: parola,
+                                full_name: s.nume, car_number: null,
+                                depot_id: s.depozit_id ? String(s.depozit_id) : null });
+    const { error } = await db.rpc("leaga_cont", { p_user_id: r.user_id, p_sofer_id: s.id, p_role: rol });
+    if(error) throw new Error(error.message);
+    toast("Cont creat pentru " + s.nume);
+    await incarcaConturi(); adminDeschide(s); renderAdmin();
+  }catch(e){ toast(e.message, true); }
+}
+
+async function contReseteaza(userId){
+  const parola = $("ct-parola").value;
+  if(!parola){ toast("Scrie noua parolă în câmpul de mai sus", true); return; }
+  if(parola.length < 8){ toast("Parola trebuie să aibă cel puțin 8 caractere", true); return; }
+  try{
+    await apelAdmin({ action: "reset_password", user_id: userId, password: parola });
+    $("ct-parola").value = "";
+    toast("Parola a fost schimbată");
+  }catch(e){ toast(e.message, true); }
+}
+
+async function contActiv(userId, activ){
+  const c = CONTURI.find(x => x.id === userId);
+  if(!confirm(activ ? "Îi redai accesul?" : "Îi tai accesul? Nu va mai putea intra în aplicații, dar contul rămâne.")) return;
+  try{
+    await apelAdmin({ action: "set_active", user_id: userId, active: activ });
+    toast(activ ? "Acces redat" : "Acces oprit");
+    await incarcaConturi();
+    const s = A_ROWS.find(x => String(x.id) === String(c && c.sofer_id));
+    if(s) adminDeschide(s);
+    renderAdmin();
+  }catch(e){ toast(e.message, true); }
+}
+
+async function contSterge(userId){
+  const c = CONTURI.find(x => x.id === userId);
+  if(!confirm("Ștergi definitiv contul? Angajatul rămâne în listă, dar pierde accesul și nu se mai poate loga.")) return;
+  try{
+    await apelAdmin({ action: "delete_driver", user_id: userId });
+    toast("Cont șters");
+    await incarcaConturi();
+    const s = A_ROWS.find(x => String(x.id) === String(c && c.sofer_id));
+    if(s) adminDeschide(s);
+    renderAdmin();
+  }catch(e){ toast(e.message, true); }
+}
+
+// ================= MONITORIZARE RUTE =================
+// Ecranul de monitorizare rulează din folderul dashboard/, ca să existe un singur cod:
+// aceeași pagină se deschide și singură, la /dashboard/. Se încarcă abia la prima deschidere.
+function deschideRute(){ const f = $("rute-frame"); if(!f.getAttribute("src")) f.src = "dashboard/"; }
+function reincarcaRute(){ $("rute-frame").src = "dashboard/?t=" + Date.now(); }
+
+// ================= ADMINISTRARE =================
+const A_DEF = {
+  soferi:{
+    titlu:"Angajați", ord:"nume",
+    nota:"Toți angajații, nu doar șoferii. Cei activi apar în ecranul „Șoferi” din aplicația de rute. Un om dezactivat dispare de acolo, dar rămâne în istoricul rutelor. Funcțiile se completează din secțiunea Liste.",
+    lista:[["nume","Nume complet"],["nume_scurt","Scurt"],["rol","Rol"],["functie","Funcție"],["telefon","Telefon"],["_cont","Cont"],["_acces","Acces"],["activ","Activ"]],
+    campuri:[
+      {c:"nume",e:"Nume complet",t:"text",req:1,up:1},
+      {c:"nume_scurt",e:"Nume scurt (ca în Excel)",t:"text",up:1},
+      {c:"rol",e:"Rol în aplicație",t:"sel",op:["sofer","admin","manager"]},
+      {c:"functie",e:"Funcție",t:"nom",nom:"functie"},
+      {c:"telefon",e:"Telefon",t:"text"},
+      {c:"email",e:"E-mail",t:"text"},
+      {c:"depozit_id",e:"Depozit",t:"ref",ref:"depozite"},
+      {c:"masina_id",e:"Mașina",t:"ref",ref:"masini"},
+      {c:"data_angajare",e:"Data angajării",t:"date"},
+      {c:"data_nasterii",e:"Data nașterii",t:"date"},
+      {c:"ci_serie",e:"CI serie",t:"text",up:1},
+      {c:"ci_numar",e:"CI număr",t:"text"},
+      {c:"nr_contract",e:"Nr. contract",t:"text"},
+      {c:"ordine",e:"Ordine",t:"num"},
+      {c:"activ",e:"Activ",t:"bool"}
+    ]
+  },
+  masini:{
+    titlu:"Mașini", ord:"nr",
+    nota:"Numerele de aici apar în aplicația de rute, la „Numere”. Marca se alege din lista „marca” de la Nomenclatoare.",
+    lista:[["marca","Marcă"],["nr","Număr"],["pozitie","Poziție"],["activ","Activ"]],
+    campuri:[
+      {c:"marca",e:"Marcă",t:"nom",nom:"marca",req:1,up:1},
+      {c:"nr",e:"Număr",t:"text",req:1,up:1},
+      {c:"pozitie",e:"Poziție / observații",t:"text"},
+      {c:"depozit_id",e:"Depozit",t:"ref",ref:"depozite"},
+      {c:"ordine",e:"Ordine",t:"num"},
+      {c:"activ",e:"Activ",t:"bool"}
+    ]
+  },
+  depozite:{
+    titlu:"Depozite", ord:"ordine",
+    nota:"Aceleași depozite sunt folosite de gestiune și de aplicația de PV-uri.",
+    lista:[["cod","Cod"],["nume","Nume"],["tip","Tip"],["adresa","Adresă"],["reprezentant_nume","Reprezentant"],["activ","Activ"]],
+    campuri:[
+      {c:"cod",e:"Cod",t:"text",req:1,up:1},
+      {c:"nume",e:"Nume",t:"text",req:1,up:1},
+      {c:"tip",e:"Tip",t:"sel",op:["principal","secundar"]},
+      {c:"adresa",e:"Adresă",t:"text"},
+      {c:"cuvant_contract",e:"Cuvânt contract",t:"text"},
+      {c:"reprezentant_nume",e:"Reprezentant",t:"text"},
+      {c:"reprezentant_functie",e:"Funcția lui",t:"text"},
+      {c:"reprezentant_telefon",e:"Telefon",t:"text"},
+      {c:"reprezentant_email",e:"E-mail",t:"text"},
+      {c:"reprezentant_cod_acces",e:"Cod acces",t:"text"},
+      {c:"ordine",e:"Ordine",t:"num"},
+      {c:"activ",e:"Activ",t:"bool"}
+    ]
+  },
+  products:{
+    titlu:"Produse (PV-uri)", ord:"model",
+    nota:"Produsele folosite la întocmirea proceselor verbale. Lista este separată de „produs” din gestiune pentru că are alt nivel de detaliu (produs + model).",
+    lista:[["model","Produs"],["type","Model"],["active","Activ"]],
+    campuri:[
+      {c:"model",e:"Produs",t:"text",req:1,up:1},
+      {c:"type",e:"Model / tip",t:"text",up:1},
+      {c:"active",e:"Activ",t:"bool"}
+    ]
+  },
+  clients:{
+    titlu:"Puncte de rută", ord:"client",
+    nota:"Punctele de servisare din aplicația de rute. Coordonatele se folosesc la navigare.",
+    lista:[["client_key","Cod"],["client","Client"],["jud","Jud."],["localitate","Localitate"],["ziua","Ziua"],["masina","Mașina"],["frecventa","Frecvență"],["status","Status"]],
+    campuri:[
+      {c:"client_key",e:"Cod punct",t:"text",req:1},
+      {c:"client",e:"Client",t:"text",up:1},
+      {c:"jud",e:"Județ",t:"text",up:1},
+      {c:"localitate",e:"Localitate",t:"text",up:1},
+      {c:"locatie",e:"Locație",t:"text"},
+      {c:"ziua",e:"Ziua",t:"text",up:1},
+      {c:"masina",e:"Mașina",t:"text",up:1},
+      {c:"frecventa",e:"Frecvență",t:"nom",nom:"frecv_servisare"},
+      {c:"telefon",e:"Telefon",t:"text"},
+      {c:"toalete",e:"Toalete",t:"num"},
+      {c:"containere",e:"Containere",t:"num"},
+      {c:"garduri",e:"Garduri",t:"num"},
+      {c:"lat",e:"Latitudine",t:"num"},
+      {c:"lon",e:"Longitudine",t:"num"},
+      {c:"cartela",e:"Cartelă",t:"bool"},
+      {c:"status",e:"Status",t:"text",up:1}
+    ]
+  }
+};
+let A_TBL="soferi", A_ROWS=[], A_ID=null;
+
+function adminSchimba(){
+  const v = $("a-tabel").value, eTabel = !v.startsWith("_");
+  $("a-card-crud").style.display  = eTabel ? "" : "none";
+  $("a-card-liste").style.display = (v === "_liste") ? "" : "none";
+  $("a-card-stoc").style.display  = (v === "_stoc")  ? "" : "none";
+  ["a-w-cauta","a-w-nou","a-w-reload","a-w-export"].forEach(id => $(id).style.display = eTabel ? "" : "none");
+  if(!eTabel){
+    $("a-nota").textContent = (v === "_liste")
+      ? "Listele care apar în formularele aplicației: produse, modele, tipuri de mișcare, frecvențe, funcții, mărci. „Efect stoc” se completează doar la tipurile de mișcare."
+      : "Valorile de pornire pe depozit și produs (celulele START din Excel). Mișcările înregistrate după data de referință se adună sau se scad din acestea.";
+    if(v === "_liste") renderNom(); else renderStocInitial();
+    return;
+  }
+  A_TBL = v; $("a-cauta").value = ""; adminIncarca();
+}
+async function adminIncarca(){
+  const d=A_DEF[A_TBL];
+  $("a-nota").textContent=d.nota;
+  const {data,error}=await db.from(A_TBL).select("*").order(d.ord,{nullsFirst:false});
+  if(error){ toast(error.message,true); return; }
+  A_ROWS=data||[];
+  if(A_TBL==="soferi"){
+    await incarcaConturi();
+    A_ROWS.forEach(r=>{ const c=contulAngajatului(r.id);
+      r._cont  = c ? c.username : "—";
+      r._acces = c ? (c.active ? (c.role==="admin"?"administrator":"șofer") : "oprit") : "fără cont"; });
+  }
+  renderAdmin();
+}
+function adminCelula(r,c){
+  const v=r[c];
+  if(v===true) return "Da"; if(v===false) return "Nu";
+  if(v==null||v==="") return "";
+  return String(v);
+}
+function renderAdmin(){
+  const d=A_DEF[A_TBL], q=($("a-cauta").value||"").trim().toLowerCase();
+  const rows=q ? A_ROWS.filter(r=>Object.values(r).some(v=>v!=null&&String(v).toLowerCase().includes(q))) : A_ROWS;
+  $("a-tbl").innerHTML =
+    "<thead><tr>"+d.lista.map(([,e])=>`<th>${esc(e)}</th>`).join("")+"<th></th></tr></thead><tbody>"+
+    rows.map(r=>{
+      const inactiv = (r.activ===false || r.active===false);
+      return `<tr${inactiv?' style="opacity:.45"':''}>`+
+        d.lista.map(([c])=>`<td>${esc(adminCelula(r,c))}</td>`).join("")+
+        `<td class="actions"><button class="btn sm sec" onclick="adminEdit('${String(r.id).replace(/'/g,"")}')">Editează</button></td></tr>`;
+    }).join("")+"</tbody>";
+  const n=rows.length, tot=A_ROWS.length;
+  $("a-nota").textContent = d.nota + "  —  " + (q ? `${n} din ${tot} rânduri` : `${tot} rânduri`);
+}
+function adminOptiuniRef(ref){
+  if(ref==="depozite") return DEP.map(x=>({v:x.id,t:x.nume}));
+  return MAS.map(x=>({v:x.id,t:(x.marca||"")+" "+(x.nr||"")}));
+}
+function adminCampHtml(f){
+  const id="af-"+f.c;
+  if(f.t==="bool") return `<div><label>${esc(f.e)}</label><select id="${id}"><option value="true">Da</option><option value="false">Nu</option></select></div>`;
+  if(f.t==="sel")  return `<div><label>${esc(f.e)}</label><select id="${id}">${f.op.map(o=>`<option value="${esc(o)}">${esc(o)}</option>`).join("")}</select></div>`;
+  if(f.t==="ref")  return `<div><label>${esc(f.e)}</label><select id="${id}"><option value="">—</option>${adminOptiuniRef(f.ref).map(o=>`<option value="${o.v}">${esc(o.t)}</option>`).join("")}</select></div>`;
+  if(f.t==="nom")  return `<div><label>${esc(f.e)}</label><input id="${id}" list="dl-${f.c}"><datalist id="dl-${f.c}">${nomv(f.nom).map(o=>`<option value="${esc(o)}">`).join("")}</datalist></div>`;
+  const tip = f.t==="num" ? "number" : f.t==="date" ? "date" : "text";
+  const pas = f.t==="num" ? ' step="any"' : "";
+  return `<div><label>${esc(f.e)}</label><input id="${id}" type="${tip}"${pas}></div>`;
+}
+function adminDeschide(rec){
+  const d=A_DEF[A_TBL];
+  $("a-titlu").textContent = (rec ? "Editează" : "Adaugă") + " — " + d.titlu;
+  $("a-form").innerHTML = d.campuri.map(adminCampHtml).join("");
+  d.campuri.forEach(f=>{
+    const el=$("af-"+f.c); if(!el) return;
+    let v = rec ? rec[f.c] : null;
+    if(f.t==="bool") el.value = (v===false) ? "false" : "true";
+    else if(f.t==="sel") el.value = (v==null||v==="") ? f.op[0] : String(v);
+    else if(v==null) el.value = "";
+    else el.value = String(v);
+  });
+  if(A_TBL==="soferi" && rec) $("a-form").insertAdjacentHTML("beforeend", panouCont(rec));
+  $("a-btn-sterge").style.display = rec ? "" : "none";
+  $("mod-admin").classList.add("on");
+}
+function adminNou(){ A_ID=null; adminDeschide(null); }
+function adminEdit(id){
+  const r=A_ROWS.find(x=>String(x.id)===String(id));
+  if(!r){ toast("Rândul nu mai există, reîncarcă lista",true); return; }
+  A_ID=r.id; adminDeschide(r);
+}
+async function adminSalveaza(){
+  const d=A_DEF[A_TBL], rec={};
+  for(const f of d.campuri){
+    const el=$("af-"+f.c); if(!el) continue;
+    let v=(el.value||"").trim();
+    if(f.t==="bool"){ rec[f.c] = (v==="true"); continue; }
+    if(v===""){ rec[f.c]=null; }
+    else if(f.t==="num"){ const n=Number(v); rec[f.c]=isNaN(n)?null:n; }
+    else if(f.t==="ref"){ rec[f.c]=Number(v)||null; }
+    else { rec[f.c] = f.up ? v.toUpperCase() : v; }
+    if(f.req && (rec[f.c]===null||rec[f.c]==="")){ toast("Completează „"+f.e+"”",true); el.focus(); return; }
+  }
+  if(A_TBL==="clients" && !A_ID && !rec.client_key)
+    rec.client_key = "P"+Date.now().toString(36).toUpperCase();
+  const q = A_ID ? db.from(A_TBL).update(rec).eq("id",A_ID) : db.from(A_TBL).insert(rec);
+  const {error}=await q;
+  if(error){ toast(error.message,true); return; }
+  closeModal("mod-admin"); toast(A_ID ? "Modificare salvată" : "Adăugat");
+  await adminReimprospateaza();
+}
+async function adminSterge(){
+  if(!A_ID) return;
+  const d=A_DEF[A_TBL];
+  if(!confirm("Ștergi definitiv acest rând din „"+d.titlu+"”?\n\nDacă vrei doar să nu mai apară în aplicații, pune „Activ = Nu” și salvează.")) return;
+  const {error}=await db.from(A_TBL).delete().eq("id",A_ID);
+  if(error){ toast(error.message,true); return; }
+  closeModal("mod-admin"); toast("Șters");
+  await adminReimprospateaza();
+}
+async function adminReimprospateaza(){
+  const [d,s,m]=await Promise.all([
+    db.from("depozite").select("*").eq("activ",true).order("ordine"),
+    db.from("soferi").select("*").eq("activ",true).order("nume"),
+    db.from("masini").select("*").eq("activ",true).order("marca")
+  ]);
+  DEP=d.data||DEP; SOF=s.data||SOF; MAS=m.data||MAS;
+  fillAll();
+  await adminIncarca(); loadVerif();
+}
+function adminExport(){
+  const d=A_DEF[A_TBL];
+  const ws=XLSX.utils.json_to_sheet(A_ROWS);
+  const wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,ws,A_TBL.toUpperCase().slice(0,28));
+  XLSX.writeFile(wb,`${d.titlu.replace(/[^\wăâîșțĂÂÎȘȚ]+/g,"_")}_${today()}.xlsx`);
+}
+
+// ================= AUTENTIFICARE =================
+// Acelasi cont ca la adminul de PV-uri: numele de utilizator devine o adresa interna.
+// In gestiune intra doar rolurile admin si manager; soferii au aplicatiile lor.
+let UTILIZATOR = null;
+const emailDinUtilizator = u =>
+  `pv-sofer-${String(u || "").trim().toLowerCase().replace(/[^a-z0-9._-]/g, "")}@eurowc.ro`;
+
+async function porneste(){
+  try{
+    const { data } = await db.auth.getSession();
+    if(data && data.session && await incarcaProfil(data.session.user.id)) return;
+  }catch(e){ console.warn("sesiune:", e); }
+  aratiLogin();
+}
+
+async function incarcaProfil(id){
+  const { data, error } = await db.from("profiles")
+    .select("id, username, full_name, role, active").eq("id", id).maybeSingle();
+  if(error || !data){ await db.auth.signOut(); aratiLogin("Nu am găsit profilul acestui cont."); return false; }
+  if(!data.active){ await db.auth.signOut(); aratiLogin("Contul acesta este dezactivat."); return false; }
+  if(data.role !== "admin" && data.role !== "manager"){
+    await db.auth.signOut();
+    aratiLogin("Contul acesta nu are acces la gestiune. Șoferii folosesc aplicațiile de rute și de procese verbale.");
+    return false;
+  }
+  UTILIZATOR = data;
+  $("ecran-login").style.display = "none";
+  $("cine").textContent = data.full_name || data.username;
+  $("cine").style.display = "";
+  $("btn-iesi").style.display = "";
+  const vc = $("v-cine");
+  if(vc && !vc.value) vc.value = data.full_name || data.username;
+  init();
+  return true;
+}
+
+function aratiLogin(mesaj){
+  $("ecran-login").style.display = "flex";
+  $("lg-eroare").textContent = mesaj || "";
+  setTimeout(() => { try{ $("lg-user").focus(); }catch(e){} }, 100);
+}
+
+async function intra(){
+  const u = $("lg-user").value.trim(), p = $("lg-parola").value;
+  if(!u || !p){ $("lg-eroare").textContent = "Completează utilizatorul și parola."; return; }
+  $("lg-buton").disabled = true; $("lg-buton").textContent = "Se verifică…";
+  $("lg-eroare").textContent = "";
+  const { data, error } = await db.auth.signInWithPassword({ email: emailDinUtilizator(u), password: p });
+  $("lg-buton").disabled = false; $("lg-buton").textContent = "Intră în cont";
+  if(error || !data || !data.user){ $("lg-eroare").textContent = "Utilizator sau parolă greșită."; return; }
+  $("lg-parola").value = "";
+  await incarcaProfil(data.user.id);
+}
+
+async function iesi(){
+  if(!confirm("Ieși din cont?")) return;
+  await db.auth.signOut();
+  location.reload();
+}
+
+document.addEventListener("keydown", e => {
+  if(e.key === "Enter" && $("ecran-login").style.display !== "none" &&
+     (e.target.id === "lg-user" || e.target.id === "lg-parola")) intra();
+});
+
+// ================= INSTALARE (PWA) =================
+let promptInstalare = null;
+window.addEventListener("beforeinstallprompt", (e) => {
+  e.preventDefault(); promptInstalare = e;
+  $("btn-instaleaza").style.display = "";
+});
+async function instaleaza(){
+  if(!promptInstalare){ toast("Deschide meniul browserului și alege „Instalează aplicația”"); return; }
+  promptInstalare.prompt();
+  const { outcome } = await promptInstalare.userChoice;
+  promptInstalare = null; $("btn-instaleaza").style.display = "none";
+  if(outcome === "accepted") toast("Se instalează…");
+}
+window.addEventListener("appinstalled", () => {
+  $("btn-instaleaza").style.display = "none"; toast("Aplicația a fost instalată");
+});
+if("serviceWorker" in navigator){
+  window.addEventListener("load", () => navigator.serviceWorker.register("sw.js").catch(e => console.warn("sw:", e)));
+}
+// scurtăturile din manifest (#stoc, #miscari, #clienti, #nomenclatoare, #verificare)
+function deschideSectiune(nume){
+  if(nume === "nomenclatoare") nume = "admin";
+  const b = nume && document.querySelector('nav button[data-p="' + nume + '"]');
+  if(b && !b.classList.contains("on")) b.click();
+}
+window.addEventListener("load", () => deschideSectiune((location.hash || "").replace("#", "")));
+window.addEventListener("hashchange", () => deschideSectiune((location.hash || "").replace("#", "")));
+
+porneste();
+</script>
+</body>
+</html>
