@@ -86,7 +86,7 @@
 <header>
   <h1>GestiuneEE <span class="muted" style="color:#cfe6d7;font-weight:400">Euro Ecologic</span></h1>
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
-  <span class="ver">v1.8</span>
+  <span class="ver">v1.9</span>
   <span id="cine" class="ver" style="display:none;opacity:1;font-weight:600"></span>
   <button id="btn-iesi" class="btn sec" style="display:none;padding:5px 11px;font-size:12px" onclick="iesi()">Ieși</button>
   <span id="conn" class="ver">●</span>
@@ -1269,6 +1269,112 @@ function exportDoc(){
   XLSX.writeFile(wb, `Registru_documente_${today()}.xlsx`);
 }
 
+// ================= CONTURI DE ACCES =================
+// Contul e o anexa a angajatului: un singur om in lista Angajati, cu login optional.
+let CONTURI = [];
+
+async function apelAdmin(corp){
+  const { data } = await db.auth.getSession();
+  const token = data && data.session ? data.session.access_token : "";
+  const r = await fetch(SUPABASE_URL + "/functions/v1/admin-manage-users", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "Authorization": "Bearer " + token, "apikey": SUPABASE_KEY },
+    body: JSON.stringify(corp)
+  });
+  let j = {}; try{ j = await r.json(); }catch(e){}
+  if(!r.ok || j.error) throw new Error(j.error || ("Eroare " + r.status));
+  return j;
+}
+
+async function incarcaConturi(){
+  const { data, error } = await db.rpc("list_conturi");
+  if(error){ console.warn("conturi:", error.message); CONTURI = []; return; }
+  CONTURI = data || [];
+}
+
+const contulAngajatului = id => CONTURI.find(c => String(c.sofer_id) === String(id));
+
+function panouCont(rec){
+  const c = contulAngajatului(rec.id);
+  const cap = '<div style="grid-column:1/-1;border-top:1px solid var(--bd);margin-top:6px;padding-top:12px">' +
+    '<b style="color:var(--g)">Cont de acces</b>';
+  if(c){
+    return cap +
+      `<p class="muted" style="margin:6px 0 10px">Utilizator <b>${esc(c.username)}</b> · ` +
+      `${c.role === "admin" ? "administrator" : "șofer"} · ${c.active ? "activ" : "dezactivat"}` +
+      `${c.signature_set ? " · semnătură salvată" : " · fără semnătură"}</p>` +
+      '<div class="row" style="align-items:flex-end">' +
+      '<div><label>Parolă nouă</label><input id="ct-parola" type="password" autocomplete="new-password" placeholder="lasă gol dacă nu o schimbi"></div>' +
+      `<div style="flex:0"><label>&nbsp;</label><button class="btn sec" onclick="contReseteaza('${c.id}')">Schimbă parola</button></div>` +
+      `<div style="flex:0"><label>&nbsp;</label><button class="btn sec" onclick="contActiv('${c.id}', ${c.active ? "false" : "true"})">${c.active ? "Dezactivează accesul" : "Activează accesul"}</button></div>` +
+      `<div style="flex:0"><label>&nbsp;</label><button class="btn danger" onclick="contSterge('${c.id}')">Șterge contul</button></div>` +
+      '</div></div>';
+  }
+  return cap +
+    '<p class="muted" style="margin:6px 0 10px">Omul acesta nu are cont. Fără cont nu poate intra în nicio aplicație.</p>' +
+    '<div class="row" style="align-items:flex-end">' +
+    '<div><label>Nume utilizator</label><input id="ct-user" autocapitalize="none" spellcheck="false" placeholder="ex: stefan"></div>' +
+    '<div><label>Parolă</label><input id="ct-parola" type="password" autocomplete="new-password"></div>' +
+    '<div style="flex:0;min-width:150px"><label>Tip cont</label><select id="ct-rol"><option value="driver">Șofer</option><option value="admin">Administrator</option></select></div>' +
+    `<div style="flex:0"><label>&nbsp;</label><button class="btn" onclick="contCreeaza(${rec.id})">Creează contul</button></div>` +
+    '</div></div>';
+}
+
+async function contCreeaza(soferId){
+  const s = A_ROWS.find(x => String(x.id) === String(soferId));
+  const user = ($("ct-user").value || "").trim().toLowerCase();
+  const parola = $("ct-parola").value;
+  const rol = $("ct-rol").value;
+  if(!user || !parola){ toast("Completează numele de utilizator și parola", true); return; }
+  if(parola.length < 8){ toast("Parola trebuie să aibă cel puțin 8 caractere", true); return; }
+  try{
+    const r = await apelAdmin({ action: "create_driver", username: user, password: parola,
+                                full_name: s.nume, car_number: null,
+                                depot_id: s.depozit_id ? String(s.depozit_id) : null });
+    const { error } = await db.rpc("leaga_cont", { p_user_id: r.user_id, p_sofer_id: s.id, p_role: rol });
+    if(error) throw new Error(error.message);
+    toast("Cont creat pentru " + s.nume);
+    await incarcaConturi(); adminDeschide(s); renderAdmin();
+  }catch(e){ toast(e.message, true); }
+}
+
+async function contReseteaza(userId){
+  const parola = $("ct-parola").value;
+  if(!parola){ toast("Scrie noua parolă în câmpul de mai sus", true); return; }
+  if(parola.length < 8){ toast("Parola trebuie să aibă cel puțin 8 caractere", true); return; }
+  try{
+    await apelAdmin({ action: "reset_password", user_id: userId, password: parola });
+    $("ct-parola").value = "";
+    toast("Parola a fost schimbată");
+  }catch(e){ toast(e.message, true); }
+}
+
+async function contActiv(userId, activ){
+  const c = CONTURI.find(x => x.id === userId);
+  if(!confirm(activ ? "Îi redai accesul?" : "Îi tai accesul? Nu va mai putea intra în aplicații, dar contul rămâne.")) return;
+  try{
+    await apelAdmin({ action: "set_active", user_id: userId, active: activ });
+    toast(activ ? "Acces redat" : "Acces oprit");
+    await incarcaConturi();
+    const s = A_ROWS.find(x => String(x.id) === String(c && c.sofer_id));
+    if(s) adminDeschide(s);
+    renderAdmin();
+  }catch(e){ toast(e.message, true); }
+}
+
+async function contSterge(userId){
+  const c = CONTURI.find(x => x.id === userId);
+  if(!confirm("Ștergi definitiv contul? Angajatul rămâne în listă, dar pierde accesul și nu se mai poate loga.")) return;
+  try{
+    await apelAdmin({ action: "delete_driver", user_id: userId });
+    toast("Cont șters");
+    await incarcaConturi();
+    const s = A_ROWS.find(x => String(x.id) === String(c && c.sofer_id));
+    if(s) adminDeschide(s);
+    renderAdmin();
+  }catch(e){ toast(e.message, true); }
+}
+
 // ================= MONITORIZARE RUTE =================
 // Ecranul de monitorizare rulează din folderul dashboard/, ca să existe un singur cod:
 // aceeași pagină se deschide și singură, la /dashboard/. Se încarcă abia la prima deschidere.
@@ -1280,7 +1386,7 @@ const A_DEF = {
   soferi:{
     titlu:"Angajați", ord:"nume",
     nota:"Toți angajații, nu doar șoferii. Cei activi apar în ecranul „Șoferi” din aplicația de rute. Un om dezactivat dispare de acolo, dar rămâne în istoricul rutelor. Funcțiile se completează din secțiunea Liste.",
-    lista:[["nume","Nume complet"],["nume_scurt","Scurt"],["rol","Rol"],["functie","Funcție"],["telefon","Telefon"],["activ","Activ"]],
+    lista:[["nume","Nume complet"],["nume_scurt","Scurt"],["rol","Rol"],["functie","Funcție"],["telefon","Telefon"],["_cont","Cont"],["_acces","Acces"],["activ","Activ"]],
     campuri:[
       {c:"nume",e:"Nume complet",t:"text",req:1,up:1},
       {c:"nume_scurt",e:"Nume scurt (ca în Excel)",t:"text",up:1},
@@ -1387,7 +1493,14 @@ async function adminIncarca(){
   $("a-nota").textContent=d.nota;
   const {data,error}=await db.from(A_TBL).select("*").order(d.ord,{nullsFirst:false});
   if(error){ toast(error.message,true); return; }
-  A_ROWS=data||[]; renderAdmin();
+  A_ROWS=data||[];
+  if(A_TBL==="soferi"){
+    await incarcaConturi();
+    A_ROWS.forEach(r=>{ const c=contulAngajatului(r.id);
+      r._cont  = c ? c.username : "—";
+      r._acces = c ? (c.active ? (c.role==="admin"?"administrator":"șofer") : "oprit") : "fără cont"; });
+  }
+  renderAdmin();
 }
 function adminCelula(r,c){
   const v=r[c];
@@ -1435,6 +1548,7 @@ function adminDeschide(rec){
     else if(v==null) el.value = "";
     else el.value = String(v);
   });
+  if(A_TBL==="soferi" && rec) $("a-form").insertAdjacentHTML("beforeend", panouCont(rec));
   $("a-btn-sterge").style.display = rec ? "" : "none";
   $("mod-admin").classList.add("on");
 }
