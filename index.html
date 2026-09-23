@@ -86,7 +86,7 @@
 <header>
   <h1>GestiuneEE <span class="muted" style="color:#cfe6d7;font-weight:400">Euro Ecologic</span></h1>
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
-  <span class="ver">v2.1</span>
+  <span class="ver">v2.2</span>
   <span id="cine" class="ver" style="display:none;opacity:1;font-weight:600"></span>
   <button id="btn-iesi" class="btn sec" style="display:none;padding:5px 11px;font-size:12px" onclick="iesi()">Ieși</button>
   <span id="conn" class="ver">●</span>
@@ -250,6 +250,9 @@
           <optgroup label="Din teren">
             <option value="_pv">Procese verbale</option>
           </optgroup>
+          <optgroup label="Întreținere">
+            <option value="_curat">Date de probă</option>
+          </optgroup>
         </select>
       </div>
       <div id="a-w-cauta"><label>Caută</label><input id="a-cauta" placeholder="scrie pentru a filtra…" oninput="renderAdmin()"></div>
@@ -295,6 +298,19 @@
       <div><label>Data referință</label><input id="si-data" type="date"></div>
       <div style="flex:0"><label>&nbsp;</label><button class="btn" onclick="saveStocInitial()">Salvează</button></div>
     </div>
+  </div>
+
+  <div class="card" id="a-card-curat" style="display:none">
+    <h3 style="margin:0 0 6px;color:var(--g)">Golirea datelor de probă</h3>
+    <p class="muted" style="margin:0 0 12px">Șterge datele aduse pentru teste, ca să pornești pe date reale. Se șterg doar rândurile <b>neconfirmate</b> în ecranul de Verificare — ce ai confirmat tu rămâne. Mișcările, stocul inițial și datele aplicației de rute nu au bifă de verificare, deci grupurile lor se șterg în întregime. <b>Ștergerea nu se poate anula.</b></p>
+    <div id="cr-numar" class="muted">Se numără…</div>
+    <div id="cr-grupuri" style="margin-top:12px"></div>
+    <div class="row" style="margin-top:14px;align-items:flex-end">
+      <div><label>Scrie <b>STERGE DATELE DE PROBA</b> ca să confirmi</label><input id="cr-conf" placeholder="STERGE DATELE DE PROBA" autocomplete="off" oninput="curatVerifica()"></div>
+      <div style="flex:0"><label>&nbsp;</label><button class="btn sec" onclick="curatNumara()">Renumără</button></div>
+      <div style="flex:0"><label>&nbsp;</label><button class="btn danger" id="cr-btn" disabled onclick="curatExecuta()">Șterge definitiv</button></div>
+    </div>
+    <p id="cr-rezultat" style="margin:12px 0 0"></p>
   </div>
 </section>
 
@@ -391,6 +407,7 @@
     <div class="row" style="margin-top:14px;justify-content:flex-end">
       <div style="flex:1"></div>
       <div style="flex:0"><button class="btn sec" onclick="closeModal('mod-c')">Anulează</button></div>
+      <div style="flex:0"><button class="btn sec" onclick="saveClient('contract')">Salvează + contract</button></div>
       <div style="flex:0"><button class="btn" onclick="saveClient()">Salvează</button></div>
     </div>
   </div>
@@ -411,6 +428,7 @@
     <div class="row" style="margin-top:14px;justify-content:flex-end">
       <div style="flex:1"></div>
       <div style="flex:0"><button class="btn sec" onclick="closeModal('mod-k')">Anulează</button></div>
+      <div style="flex:0"><button class="btn sec" onclick="saveContract('anexa')">Salvează + anexă</button></div>
       <div style="flex:0"><button class="btn" onclick="saveContract()">Salvează</button></div>
     </div>
   </div>
@@ -442,6 +460,7 @@
       <div style="flex:0"><button class="btn danger" id="ma-del" style="display:none" onclick="deleteAnexa()">Șterge</button></div>
       <div style="flex:1"></div>
       <div style="flex:0"><button class="btn sec" onclick="closeModal('mod-a')">Anulează</button></div>
+      <div style="flex:0"><button class="btn sec" onclick="saveAnexa('inca')">Salvează + încă o anexă</button></div>
       <div style="flex:0"><button class="btn" onclick="saveAnexa()">Salvează</button></div>
     </div>
   </div>
@@ -673,11 +692,14 @@ function openClient(id){
   $("mc-pers").value=c?(c.pers_resp||""):""; $("mc-tel").value=c?(c.telefon||""):""; $("mc-email").value=c?(c.email||""):""; $("mc-obs").value=c?(c.observatii||""):"";
   $("mod-c").classList.add("on");
 }
-async function saveClient(){
+async function saveClient(dupa){
   const rec={nume:$("mc-nume").value.trim().toUpperCase(),id_tip:$("mc-idtip").value,atr:$("mc-atr").value||null,cui:$("mc-cui").value||null,pers_resp:$("mc-pers").value||null,telefon:$("mc-tel").value||null,email:$("mc-email").value||null,observatii:$("mc-obs").value||null};
   if(!rec.nume){toast("Numele este obligatoriu",true);return;}
-  const id=$("mc-id").value; const {error}= id? await db.from("clienti").update(rec).eq("id",id) : await db.from("clienti").insert(rec);
-  if(error){toast(error.message,true);return;} closeModal("mod-c"); toast("Client salvat"); await reloadClienti();
+  const id=$("mc-id").value; let noulId = id ? +id : null;
+  if(id){ const {error}=await db.from("clienti").update(rec).eq("id",id); if(error){toast(error.message,true);return;} }
+  else { const {data,error}=await db.from("clienti").insert(rec).select("id").single(); if(error){toast(error.message,true);return;} noulId=data.id; }
+  closeModal("mod-c"); toast("Client salvat"); await reloadClienti();
+  if(dupa==="contract" && noulId) openContract(null, noulId);   // lanțul client → contract → anexe
 }
 async function reloadClienti(){ const [c,k,a]=await Promise.all([db.from("clienti").select("*").order("nume"),db.from("contracte").select("*").order("nr_ctr"),db.from("anexe").select("*").order("id")]); CLI=c.data||[];CTR=k.data||[];ANX=a.data||[]; $("dl-clienti").innerHTML=CLI.map(x=>`<option value="${esc(x.nume)}">`).join(""); renderClienti(); }
 function openContract(id,clientId){
@@ -685,11 +707,14 @@ function openContract(id,clientId){
   $("mk-nr").value=k?k.nr_ctr:""; $("mk-de").value=k?(k.data_emitere||""):today(); $("mk-dx").value=k?(k.data_expirare||""):""; $("mk-xt").value=k?(k.expirare_text||""):""; $("mk-stare").value=k?k.stare:"ACTIV";
   $("mod-k").classList.add("on");
 }
-async function saveContract(){
+async function saveContract(dupa){
   const rec={client_id:+$("mk-client").value,nr_ctr:$("mk-nr").value.trim(),data_emitere:$("mk-de").value||null,data_expirare:$("mk-dx").value||null,expirare_text:$("mk-xt").value||null,stare:$("mk-stare").value};
   if(!rec.nr_ctr){toast("Nr. contract obligatoriu",true);return;}
-  const id=$("mk-id").value; const {error}= id? await db.from("contracte").update(rec).eq("id",id) : await db.from("contracte").insert(rec);
-  if(error){toast(error.message,true);return;} closeModal("mod-k"); toast("Contract salvat"); await reloadClienti();
+  const id=$("mk-id").value; let noulId = id ? +id : null;
+  if(id){ const {error}=await db.from("contracte").update(rec).eq("id",id); if(error){toast(error.message,true);return;} }
+  else { const {data,error}=await db.from("contracte").insert(rec).select("id").single(); if(error){toast(error.message,true);return;} noulId=data.id; }
+  closeModal("mod-k"); toast("Contract salvat"); await reloadClienti();
+  if(dupa==="anexa" && noulId) openAnexa(null, noulId);
 }
 function openAnexa(id,contractId){
   const a=id?ANX.find(x=>x.id===id):null; $("ma-title").textContent=a?"Editare anexă":"Anexă nouă"; $("ma-id").value=a?a.id:""; $("ma-contract").value=a?a.contract_id:contractId; $("ma-del").style.display=a?"":"none";
@@ -698,10 +723,22 @@ function openAnexa(id,contractId){
   $("ma-prod").value=a?(a.produs||"TOALETE"):"TOALETE"; $("ma-model").value=a?(a.model||""):"CLASIC"; $("ma-um").value=a?(a.um||"BUC"):"BUC"; $("ma-cant").value=a?a.cant:1; $("ma-pret").value=a?a.pret:0; $("ma-moneda").value=a?(a.moneda||"RON"):"RON"; $("ma-scad").value=a?a.scadent:30; $("ma-status").value=a?(a.status||""):""; $("ma-dep").value=a?(a.depozit||""):"";
   $("mod-a").classList.add("on");
 }
-async function saveAnexa(){
+async function saveAnexa(dupa){
   const rec={contract_id:+$("ma-contract").value,anexa:$("ma-an").value||null,data_emitere:$("ma-de").value||null,data_expirare:$("ma-dx").value||null,expirare_text:$("ma-xt").value||null,jud:$("ma-jud").value||null,loc:$("ma-loc").value||null,sat:$("ma-sat").value||null,forma:$("ma-forma").value,produs:$("ma-prod").value,model:$("ma-model").value||null,um:$("ma-um").value,cant:+$("ma-cant").value||0,pret:+$("ma-pret").value||0,moneda:$("ma-moneda").value,scadent:+$("ma-scad").value||30,status:$("ma-status").value||null,depozit:$("ma-dep").value||null};
   const id=$("ma-id").value; const {error}= id? await db.from("anexe").update(rec).eq("id",id) : await db.from("anexe").insert(rec);
-  if(error){toast(error.message,true);return;} closeModal("mod-a"); toast("Anexă salvată"); await reloadClienti();
+  if(error){toast(error.message,true);return;}
+  toast("Anexă salvată");
+  if(dupa==="inca"){ anexaUrmatoare(); await reloadClienti(); return; }
+  closeModal("mod-a"); await reloadClienti();
+}
+// Pregătește formularul pentru încă o anexă pe același contract: păstrează locația,
+// produsul, prețul și restul, ca să nu le retastezi, și ridică cu unu numărul anexei
+// dacă acesta se termină în cifre (ANEXA NR 7 → ANEXA NR 8).
+function anexaUrmatoare(){
+  $("ma-id").value=""; $("ma-title").textContent="Anexă nouă"; $("ma-del").style.display="none";
+  $("ma-an").value = ($("ma-an").value||"").replace(/(\d+)(\D*)$/, (m,n,rest)=>String(+n+1)+rest);
+  $("ma-status").value="";
+  $("ma-an").focus(); $("ma-an").select();
 }
 async function deleteAnexa(){ if(!confirm("Ștergi anexa?")) return; const {error}=await db.from("anexe").delete().eq("id",$("ma-id").value); if(error){toast(error.message,true);return;} closeModal("mod-a"); await reloadClienti(); }
 function exportClienti(){
@@ -1556,13 +1593,16 @@ function adminSchimba(){
   $("a-card-liste").style.display = (v === "_liste") ? "" : "none";
   $("a-card-stoc").style.display  = (v === "_stoc")  ? "" : "none";
   $("a-card-pv").style.display    = (v === "_pv")    ? "" : "none";
+  $("a-card-curat").style.display = (v === "_curat") ? "" : "none";
   ["a-w-cauta","a-w-nou","a-w-reload","a-w-export"].forEach(id => $(id).style.display = eTabel ? "" : "none");
   if(!eTabel){
     $("a-nota").textContent = (v === "_liste")
       ? "Listele care apar în formularele aplicației: produse, modele, tipuri de mișcare, frecvențe, funcții, mărci. „Efect stoc” se completează doar la tipurile de mișcare."
       : (v === "_pv") ? "Se încarcă…"
+      : (v === "_curat") ? "Golirea datelor aduse pentru teste, înainte de introducerea datelor reale. Se face o singură dată."
       : "Valorile de pornire pe depozit și produs (celulele START din Excel). Mișcările înregistrate după data de referință se adună sau se scad din acestea.";
     if(v === "_pv"){ loadPV(); return; }
+    if(v === "_curat"){ curatNumara(); return; }
     if(v === "_liste") renderNom(); else renderStocInitial();
     return;
   }
@@ -1682,6 +1722,66 @@ function adminExport(){
   const ws=XLSX.utils.json_to_sheet(A_ROWS);
   const wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,ws,A_TBL.toUpperCase().slice(0,28));
   XLSX.writeFile(wb,`${d.titlu.replace(/[^\wăâîșțĂÂÎȘȚ]+/g,"_")}_${today()}.xlsx`);
+}
+
+// ================= GOLIREA DATELOR DE PROBĂ =================
+// Se folosește o singură dată, înainte de introducerea datelor reale. Ștergerea
+// propriu-zisă o face funcția `curata_date_de_proba` din bază, care verifică ea
+// însăși că cel logat e administrator și că s-a tastat cuvântul de confirmare —
+// ecranul de aici nu e singura oprire.
+const CR_GRUPURI = [
+  { k:"gestiune",  t:"Clienți, contracte și anexe", d:"doar rândurile neconfirmate în Verificare" },
+  { k:"documente", t:"Registrul de documente",      d:"doar rândurile neconfirmate în Verificare" },
+  { k:"miscari",   t:"Mișcări și stoc inițial",     d:"toate — nu au bifă de verificare" },
+  { k:"rute",      t:"Datele aplicației de rute",   d:"toate: puncte, săptămâni, sesiuni, vizite" }
+];
+const CR_NUME = { clienti:"clienți", contracte:"contracte", anexe:"anexe", documente:"documente",
+                  miscari:"mișcări", stoc_initial:"rânduri de stoc inițial",
+                  puncte:"puncte de rută", saptamani:"săptămâni", sesiuni:"sesiuni", vizite:"vizite", meta:"săptămâni-antet" };
+const crN = n => (+n || 0).toLocaleString("ro-RO");
+
+async function curatNumara(){
+  $("cr-rezultat").textContent = "";
+  $("cr-numar").textContent = "Se numără…";
+  const { data, error } = await db.rpc("numara_date_de_proba");
+  if(error){ $("cr-numar").textContent = "Nu am putut număra: " + error.message; return; }
+  const d = data, p = d.pastrate;
+  $("cr-numar").innerHTML =
+    `<b>Ce s-ar șterge acum:</b> ${crN(d.gestiune.clienti)} clienți · ${crN(d.gestiune.contracte)} contracte · ` +
+    `${crN(d.gestiune.anexe)} anexe · ${crN(d.documente.documente)} documente · ${crN(d.miscari.miscari)} mișcări · ` +
+    `${crN(d.miscari.stoc_initial)} rânduri de stoc inițial · ${crN(d.rute.puncte)} puncte de rută, ` +
+    `${crN(d.rute.saptamani)} săptămâni, ${crN(d.rute.sesiuni)} sesiuni, ${crN(d.rute.vizite)} vizite.` +
+    `<br><span class="muted">Rămân neatinse: ${crN(p.clienti_verificati)} clienți, ${crN(p.contracte_verificate)} contracte, ` +
+    `${crN(p.anexe_verificate)} anexe și ${crN(p.documente_verificate)} documente confirmate — plus angajații, mașinile, ` +
+    `depozitele, listele, produsele și conturile de acces, care nu se ating niciodată.</span>`;
+  $("cr-grupuri").innerHTML = CR_GRUPURI.map(g =>
+    `<label style="display:flex;gap:8px;align-items:flex-start;margin:7px 0;font-weight:400;cursor:pointer">` +
+    `<input type="checkbox" class="cr-g" value="${g.k}" onchange="curatVerifica()" style="margin-top:3px">` +
+    `<span><b>${esc(g.t)}</b> <span class="muted">— ${esc(g.d)}</span></span></label>`).join("");
+  $("cr-conf").value = "";
+  curatVerifica();
+}
+const curatAlese = () => [...document.querySelectorAll(".cr-g:checked")].map(x => x.value);
+function curatVerifica(){
+  $("cr-btn").disabled = !(curatAlese().length && $("cr-conf").value.trim() === "STERGE DATELE DE PROBA");
+}
+async function curatExecuta(){
+  const gr = curatAlese(); if(!gr.length) return;
+  const nume = CR_GRUPURI.filter(g => gr.includes(g.k)).map(g => g.t).join(", ");
+  if(!confirm("Se șterg definitiv:\n\n" + nume + "\n\nNu se poate anula. Continui?")) return;
+  $("cr-btn").disabled = true;
+  const { data, error } = await db.rpc("curata_date_de_proba",
+    { p_confirmare: $("cr-conf").value.trim(), p_grupuri: gr });
+  if(error){
+    $("cr-rezultat").innerHTML = `<b style="color:var(--red)">Nu s-a șters nimic: ${esc(error.message)}</b>`;
+    curatVerifica(); return;
+  }
+  const lista = Object.keys(data).map(k => crN(data[k]) + " " + (CR_NUME[k] || k)).join(" · ");
+  $("cr-rezultat").innerHTML = `<b>Șters:</b> ${esc(lista)}.<br>` +
+    `<span class="muted">Reîncarcă aplicația ca să dispară peste tot.</span> ` +
+    `<button class="btn sm" onclick="location.reload()">Reîncarcă</button>`;
+  $("cr-conf").value = "";
+  curatNumara();
 }
 
 // ================= AUTENTIFICARE =================
