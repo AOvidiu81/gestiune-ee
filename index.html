@@ -86,7 +86,7 @@
 <header>
   <h1>GestiuneEE <span class="muted" style="color:#cfe6d7;font-weight:400">Euro Ecologic</span></h1>
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
-  <span class="ver">v2.0</span>
+  <span class="ver">v2.1</span>
   <span id="cine" class="ver" style="display:none;opacity:1;font-weight:600"></span>
   <button id="btn-iesi" class="btn sec" style="display:none;padding:5px 11px;font-size:12px" onclick="iesi()">Ieși</button>
   <span id="conn" class="ver">●</span>
@@ -436,6 +436,7 @@
       <div><label>Monedă</label><select id="ma-moneda"></select></div>
       <div><label>Scadent (zile)</label><input type="number" id="ma-scad" value="30"></div>
       <div><label>Status</label><input id="ma-status" placeholder="AMPLASARE / RIDICARE / ..."></div>
+      <div><label>Livrat din depozit</label><select id="ma-dep"></select></div>
     </div>
     <div class="row" style="margin-top:14px;justify-content:flex-end">
       <div style="flex:0"><button class="btn danger" id="ma-del" style="display:none" onclick="deleteAnexa()">Șterge</button></div>
@@ -534,7 +535,7 @@ async function init(){
 const nomv = tip => (NOM[tip]||[]).map(r=>r.valoare);
 function fillAll(){
   const deps = DEP.map(d=>d.nume);
-  fill("st-dep",deps,"Toate"); fill("f-dep",deps,"Toate"); fill("mm-dep",deps); fill("mm-contract",deps); fill("si-dep",deps);
+  fill("st-dep",deps,"Toate"); fill("f-dep",deps,"Toate"); fill("mm-dep",deps); fill("mm-contract",deps); fill("si-dep",deps); fill("ma-dep",deps,"—");
   fill("f-tip",nomv("tip_miscare"),"Toate"); fill("mm-tip",nomv("tip_miscare"));
   fill("f-prod",nomv("produs"),"Toate"); fill("mm-prod",nomv("produs")); fill("si-prod",nomv("produs")); fill("ma-prod",nomv("produs"));
   fill("mm-model",nomv("model"),""); fill("ma-model",nomv("model"),"");
@@ -662,8 +663,8 @@ function renderClienti(){
     return `<div class="card"><details ${q?"open":""}><summary>${esc(c.nume)} <span class="muted">${esc(c.id_tip||"")} ${esc(c.atr||"")} ${esc(c.cui||"")}</span><span class="badge">${ks.length} ctr</span> <button class="btn sm sec noprint" onclick="event.preventDefault();openClient(${c.id})">Edit</button> <button class="btn sm noprint" onclick="event.preventDefault();openContract(null,${c.id})">+ Contract</button></summary>`+
       ks.map(k=>{ const an=ANX.filter(a=>a.contract_id===k.id);
         return `<div style="margin:8px 0 4px;padding-left:8px;border-left:3px solid var(--gl)"><b>CTR ${esc(k.nr_ctr)}</b> <span class="muted">${fmtD(k.data_emitere)} → ${k.data_expirare?fmtD(k.data_expirare):esc(k.expirare_text||"")} · ${esc(k.stare)}</span> <button class="btn sm sec noprint" onclick="openContract(${k.id})">Edit</button> <button class="btn sm noprint" onclick="openAnexa(null,${k.id})">+ Anexă</button>
-        <div class="tw" style="max-height:none;margin-top:4px"><table><tr><th>Anexa</th><th>Emitere</th><th>Expirare</th><th>Jud</th><th>Loc.</th><th>Locație</th><th>Forma</th><th>Produs</th><th>Model</th><th>Cant</th><th>Preț</th><th>Status</th><th class="noprint"></th></tr>`+
-        an.map(a=>`<tr><td>${esc(a.anexa)}</td><td>${fmtD(a.data_emitere)}</td><td>${a.data_expirare?fmtD(a.data_expirare):esc(a.expirare_text)}</td><td>${esc(a.jud)}</td><td>${esc(a.loc)}</td><td>${esc(a.sat)}</td><td>${esc(a.forma)}</td><td>${esc(a.produs)}</td><td>${esc(a.model)}</td><td>${a.cant}</td><td>${a.pret} ${esc(a.moneda)}</td><td>${esc(a.status)}</td><td class="noprint"><button class="btn sm sec" onclick="openAnexa(${a.id})">Edit</button></td></tr>`).join("")+`</table></div></div>`; }).join("")+`</details></div>`;
+        <div class="tw" style="max-height:none;margin-top:4px"><table><tr><th>Anexa</th><th>Emitere</th><th>Expirare</th><th>Jud</th><th>Loc.</th><th>Locație</th><th>Forma</th><th>Produs</th><th>Model</th><th>Cant</th><th>Preț</th><th>Status</th><th>Depozit</th><th class="noprint"></th></tr>`+
+        an.map(a=>`<tr><td>${esc(a.anexa)}</td><td>${fmtD(a.data_emitere)}</td><td>${a.data_expirare?fmtD(a.data_expirare):esc(a.expirare_text)}</td><td>${esc(a.jud)}</td><td>${esc(a.loc)}</td><td>${esc(a.sat)}</td><td>${esc(a.forma)}</td><td>${esc(a.produs)}</td><td>${esc(a.model)}</td><td>${a.cant}</td><td>${a.pret} ${esc(a.moneda)}</td><td>${esc(a.status)}</td><td>${esc(a.depozit)}</td><td class="noprint"><button class="btn sm sec" onclick="openAnexa(${a.id})">Edit</button></td></tr>`).join("")+`</table></div></div>`; }).join("")+`</details></div>`;
   }).join("")||'<p class="muted">Niciun client.</p>';
 }
 function openClient(id){
@@ -694,11 +695,11 @@ function openAnexa(id,contractId){
   const a=id?ANX.find(x=>x.id===id):null; $("ma-title").textContent=a?"Editare anexă":"Anexă nouă"; $("ma-id").value=a?a.id:""; $("ma-contract").value=a?a.contract_id:contractId; $("ma-del").style.display=a?"":"none";
   $("ma-an").value=a?(a.anexa||""):""; $("ma-de").value=a?(a.data_emitere||""):today(); $("ma-dx").value=a?(a.data_expirare||""):""; $("ma-xt").value=a?(a.expirare_text||""):"";
   $("ma-jud").value=a?(a.jud||""):"HD"; $("ma-loc").value=a?(a.loc||""):""; $("ma-sat").value=a?(a.sat||""):""; $("ma-forma").value=a?(a.forma||"CHIRIE"):"CHIRIE";
-  $("ma-prod").value=a?(a.produs||"TOALETE"):"TOALETE"; $("ma-model").value=a?(a.model||""):"CLASIC"; $("ma-um").value=a?(a.um||"BUC"):"BUC"; $("ma-cant").value=a?a.cant:1; $("ma-pret").value=a?a.pret:0; $("ma-moneda").value=a?(a.moneda||"RON"):"RON"; $("ma-scad").value=a?a.scadent:30; $("ma-status").value=a?(a.status||""):"";
+  $("ma-prod").value=a?(a.produs||"TOALETE"):"TOALETE"; $("ma-model").value=a?(a.model||""):"CLASIC"; $("ma-um").value=a?(a.um||"BUC"):"BUC"; $("ma-cant").value=a?a.cant:1; $("ma-pret").value=a?a.pret:0; $("ma-moneda").value=a?(a.moneda||"RON"):"RON"; $("ma-scad").value=a?a.scadent:30; $("ma-status").value=a?(a.status||""):""; $("ma-dep").value=a?(a.depozit||""):"";
   $("mod-a").classList.add("on");
 }
 async function saveAnexa(){
-  const rec={contract_id:+$("ma-contract").value,anexa:$("ma-an").value||null,data_emitere:$("ma-de").value||null,data_expirare:$("ma-dx").value||null,expirare_text:$("ma-xt").value||null,jud:$("ma-jud").value||null,loc:$("ma-loc").value||null,sat:$("ma-sat").value||null,forma:$("ma-forma").value,produs:$("ma-prod").value,model:$("ma-model").value||null,um:$("ma-um").value,cant:+$("ma-cant").value||0,pret:+$("ma-pret").value||0,moneda:$("ma-moneda").value,scadent:+$("ma-scad").value||30,status:$("ma-status").value||null};
+  const rec={contract_id:+$("ma-contract").value,anexa:$("ma-an").value||null,data_emitere:$("ma-de").value||null,data_expirare:$("ma-dx").value||null,expirare_text:$("ma-xt").value||null,jud:$("ma-jud").value||null,loc:$("ma-loc").value||null,sat:$("ma-sat").value||null,forma:$("ma-forma").value,produs:$("ma-prod").value,model:$("ma-model").value||null,um:$("ma-um").value,cant:+$("ma-cant").value||0,pret:+$("ma-pret").value||0,moneda:$("ma-moneda").value,scadent:+$("ma-scad").value||30,status:$("ma-status").value||null,depozit:$("ma-dep").value||null};
   const id=$("ma-id").value; const {error}= id? await db.from("anexe").update(rec).eq("id",id) : await db.from("anexe").insert(rec);
   if(error){toast(error.message,true);return;} closeModal("mod-a"); toast("Anexă salvată"); await reloadClienti();
 }
@@ -958,7 +959,7 @@ async function raportLuna(){
   R_RANDURI = r.map(x => {
     const cant = +x.a.cant || 0, em = dtz(x.a.data_emitere);
     const zile = new Array(nz).fill("");
-    let col0 = "", dep = "", ret = "";
+    let col0 = "", dep = x.a.depozit || "", ret = "";
     if(em && em < p1) col0 = cant;
     else if(em && em.getFullYear() === an && em.getMonth() + 1 === luna) zile[em.getDate() - 1] = cant;
     for(const m of mis){
@@ -1000,7 +1001,7 @@ async function raportLuna(){
   $("r-kpi").innerHTML = `<div>Poziții<b>${R_RANDURI.length}</b></div><div>Bucăți<b>${buc}</b></div><div>Mișcări în lună<b>${mis.length}</b></div>` +
     (ramase.length ? `<div>Fără anexă<b>${ramase.length}</b></div>` : "");
   $("r-nota").textContent = "Coloana „0” = ce era deja amplasat la începutul lunii. Zilele 1–" + nz +
-    " arată amplasările și ridicările înregistrate în luna aceea. Depozitul apare doar acolo unde există o mișcare înregistrată.";
+    " arată amplasările și ridicările înregistrate în luna aceea. „Livrat din depozit” e depozitul trecut pe anexă; dacă există o mișcare în luna aceea, se folosește depozitul mișcării.";
   deseneazaRaport();
 }
 
