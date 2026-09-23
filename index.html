@@ -86,7 +86,7 @@
 <header>
   <h1>GestiuneEE <span class="muted" style="color:#cfe6d7;font-weight:400">Euro Ecologic</span></h1>
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
-  <span class="ver">v2.2</span>
+  <span class="ver">v2.3</span>
   <span id="cine" class="ver" style="display:none;opacity:1;font-weight:600"></span>
   <button id="btn-iesi" class="btn sec" style="display:none;padding:5px 11px;font-size:12px" onclick="iesi()">Ieși</button>
   <span id="conn" class="ver">●</span>
@@ -111,6 +111,7 @@
       <div style="flex:0"><label>Expirări în următoarele</label><select id="t-zile" onchange="loadAtentie()"><option value="30">30 de zile</option><option value="60">60 de zile</option><option value="90" selected>90 de zile</option><option value="180">180 de zile</option></select></div>
       <div style="flex:0"><label>Documente neprimite de peste</label><select id="t-prag" onchange="loadAtentie()"><option value="7">7 zile</option><option value="14">14 zile</option><option value="30" selected>30 de zile</option><option value="60">60 de zile</option></select></div>
       <div style="flex:0"><label>&nbsp;</label><button class="btn sec" onclick="loadAtentie()">Reverifică</button></div>
+      <div style="flex:0"><label>&nbsp;</label><label style="display:flex;align-items:center;gap:6px;font-weight:400;cursor:pointer;padding:9px 0"><input type="checkbox" id="t-tot" onchange="atArataTot(this.checked)"> arată și ce am rezolvat sau amânat</label></div>
     </div>
     <div id="t-placi" class="kpi" style="margin-top:12px"></div>
     <p class="muted" id="t-gol" style="display:none;margin:10px 0 0">Nimic de urmărit acum. Tot ce e în aplicație pare în regulă.</p>
@@ -119,7 +120,10 @@
     <h3 id="t-titlu" style="margin:0 0 4px;color:var(--g)"></h3>
     <p class="muted" id="t-nota" style="margin:0 0 10px"></p>
     <div class="tw"><table id="t-tbl"></table></div>
-    <div style="margin-top:10px"><button class="btn sec" onclick="exportAtentie()">Export Excel</button></div>
+    <div class="row" style="margin-top:10px;align-items:center">
+      <div style="flex:0"><button class="btn sec" onclick="exportAtentie()">Export Excel</button></div>
+      <div class="muted" id="t-sumar"></div>
+    </div>
   </div>
 </section>
 
@@ -1060,10 +1064,55 @@ function exportRaport(){
 
 // ================= DE URMĂRIT =================
 // Strânge într-un singur loc lucrurile care cer atenție: termene, documente în aer,
-// date incomplete. Totul se calculează din ce e deja în bază, nu ține nimic separat.
-let AT = [], AT_SEL = null;
+// date incomplete. Totul se recalculează din ce e deja în bază; singurul lucru ținut
+// separat sunt marcajele tale de pe fiecare rând — rezolvat, amânat până la o dată,
+// și o notă scurtă — în tabelul `atentie_note`.
+let AT = [], AT_SEL = null, AT_NOTE = {}, AT_TOATE = false;
 
 const ziDiff = (a, b) => Math.round((new Date(a + "T00:00:00") - new Date(b + "T00:00:00")) / 86400000);
+const atK = (c, e) => c + "|" + e;
+
+// Un marcaj ține doar cât timp situația rămâne aceeași. „context” e o amprentă scurtă
+// a rândului (data care expiră, numărul de retrimiteri, prețul…): dacă se schimbă,
+// marcajul nu mai e valabil și problema reapare în listă, ca să n-o pierzi din vedere.
+function atAscuns(cheie, id, ctx){
+  const n = AT_NOTE[atK(cheie, id)];
+  if(!n || (n.context || "") !== (ctx || "")) return false;
+  if(n.stare === "rezolvat") return true;
+  return n.stare === "aminat" && !!n.pana_la && n.pana_la >= today();
+}
+const atVizibile = x => AT_TOATE ? x.randuri : x.randuri.filter(r => !atAscuns(x.cheie, r.id, r.ctx));
+const atPotrivit = (n, r) => n && (n.context || "") === (r.ctx || "");
+
+async function incarcaNote(){
+  const { data, error } = await db.from("atentie_note").select("*");
+  if(error){ console.warn("marcaje de urmărit:", error.message); return; }
+  AT_NOTE = {}; (data || []).forEach(n => { AT_NOTE[atK(n.cheie, n.element)] = n; });
+}
+
+async function atSalveaza(i, camp, val){
+  const x = AT.find(y => y.cheie === AT_SEL); if(!x) return;
+  const r = x.randuri[i]; if(!r) return;
+  const k = atK(x.cheie, r.id), v = AT_NOTE[k], pot = atPotrivit(v, r);
+  const n = { cheie: x.cheie, element: String(r.id),
+              stare:   pot ? (v.stare || "deschis") : "deschis",
+              pana_la: pot ? (v.pana_la || null) : null,
+              nota:    pot ? (v.nota    || null) : null,
+              context: r.ctx || null,
+              actualizat_la: new Date().toISOString(),
+              actualizat_de: UTILIZATOR ? (UTILIZATOR.full_name || UTILIZATOR.username) : null };
+  if(camp === "rezolvat"){ n.stare = val ? "rezolvat" : "deschis"; if(val) n.pana_la = null; }
+  if(camp === "pana_la"){  n.pana_la = val || null; n.stare = val ? "aminat" : "deschis"; }
+  if(camp === "nota")      n.nota = (val || "").trim() || null;
+  const { error } = await db.from("atentie_note").upsert(n, { onConflict: "cheie,element" });
+  if(error){ toast(error.message, true); return; }
+  AT_NOTE[k] = n;
+  toast(camp === "rezolvat" ? (val ? "Marcat rezolvat" : "Redeschis")
+      : camp === "pana_la"  ? (val ? "Amânat până la " + fmtD(val) : "Amânarea a fost scoasă")
+      :                       "Notă salvată");
+  if(camp === "nota") renderAtentie(); else renderPlaci();
+}
+function atArataTot(v){ AT_TOATE = !!v; renderPlaci(); }
 
 async function loadAtentie(){
   if(!CTR.length) return;
@@ -1076,31 +1125,39 @@ async function loadAtentie(){
     db.from("miscari").select("*").is("client_id", null),
     db.from("documente").select("*").or("status_prim.is.null,status_prim.neq.PRIMIT").lt("data_trimitere", prag).order("data_trimitere")
   ]);
+  await incarcaNote();
   const P = pct.data || [], M = mis.data || [], D = doc.data || [];
   const numeClient = c => { const k = CLI.find(x => x.id === c.client_id); return k ? k.nume : ""; };
 
   AT = [];
-  const add = (cheie, titlu, nota, cap, randuri) => { if(randuri.length) AT.push({ cheie, titlu, nota, cap, randuri }); };
+  const add = (cheie, titlu, nota, cap, randuri) => {
+    if(!randuri.length) return;
+    randuri.forEach((r, i) => { r.i = i; });
+    AT.push({ cheie, titlu, nota, cap, randuri });
+  };
 
   add("ctr_expirate", "Contracte expirate, încă marcate ACTIV",
       "Au trecut de data de expirare, dar în aplicație figurează active. Ori se prelungesc, ori se trec pe INACTIV.",
       ["Nr. contract", "Client", "A expirat la", "De câte zile"],
       CTR.filter(c => c.data_expirare && c.data_expirare < azi && (c.stare || "") === "ACTIV")
          .sort((a, b) => a.data_expirare.localeCompare(b.data_expirare))
-         .map(c => [c.nr_ctr || "", numeClient(c), fmtD(c.data_expirare), ziDiff(azi, c.data_expirare)]));
+         .map(c => ({ id: "c" + c.id, ctx: c.data_expirare + "/" + (c.stare || ""),
+                      v: [c.nr_ctr || "", numeClient(c), fmtD(c.data_expirare), ziDiff(azi, c.data_expirare)] })));
 
   add("ctr_curand", "Contracte care expiră în curând",
       "Intră în fereastra aleasă mai sus. Bun moment pentru act adițional.",
       ["Nr. contract", "Client", "Expiră la", "Peste câte zile"],
       CTR.filter(c => c.data_expirare && c.data_expirare >= azi && c.data_expirare <= orizont)
          .sort((a, b) => a.data_expirare.localeCompare(b.data_expirare))
-         .map(c => [c.nr_ctr || "", numeClient(c), fmtD(c.data_expirare), ziDiff(c.data_expirare, azi)]));
+         .map(c => ({ id: "c" + c.id, ctx: c.data_expirare,
+                      v: [c.nr_ctr || "", numeClient(c), fmtD(c.data_expirare), ziDiff(c.data_expirare, azi)] })));
 
   add("ctr_fara_data", "Contracte fără dată de expirare",
       "Nu au nici dată, nici mențiune de tipul „nedeterminat”. Nu pot fi urmărite automat.",
       ["Nr. contract", "Client", "Emis la", "Stare"],
       CTR.filter(c => !c.data_expirare && !(c.expirare_text || "").trim())
-         .map(c => [c.nr_ctr || "", numeClient(c), fmtD(c.data_emitere), c.stare || ""]));
+         .map(c => ({ id: "c" + c.id, ctx: (c.data_emitere || "") + "/" + (c.stare || ""),
+                      v: [c.nr_ctr || "", numeClient(c), fmtD(c.data_emitere), c.stare || ""] })));
 
   add("anx_curand", "Anexe care expiră în curând",
       "Locații contractate al căror termen se apropie.",
@@ -1108,58 +1165,66 @@ async function loadAtentie(){
       ANX.filter(a => a.data_expirare && a.data_expirare >= azi && a.data_expirare <= orizont)
          .sort((a, b) => a.data_expirare.localeCompare(b.data_expirare))
          .map(a => { const c = CTR.find(x => x.id === a.contract_id) || {};
-                     return [a.anexa || "", numeClient(c), [a.loc, a.sat].filter(Boolean).join(", "),
-                             fmtD(a.data_expirare), ziDiff(a.data_expirare, azi)]; }));
+                     return { id: "a" + a.id, ctx: a.data_expirare,
+                              v: [a.anexa || "", numeClient(c), [a.loc, a.sat].filter(Boolean).join(", "),
+                                  fmtD(a.data_expirare), ziDiff(a.data_expirare, azi)] }; }));
 
   add("anx_fara_pret", "Anexe active fără preț",
       "Nu intră în facturare, pentru că valoarea se calculează din preț × cantitate × zile.",
       ["Anexă", "Client", "Locație", "Produs", "Cant."],
       ANX.filter(a => (a.activ === undefined || a.activ) && !(+a.pret))
          .map(a => { const c = CTR.find(x => x.id === a.contract_id) || {};
-                     return [a.anexa || "", numeClient(c), [a.loc, a.sat].filter(Boolean).join(", "), a.produs || "", a.cant || 0]; }));
+                     return { id: "a" + a.id, ctx: String(a.pret) + "/" + String(a.cant),
+                              v: [a.anexa || "", numeClient(c), [a.loc, a.sat].filter(Boolean).join(", "), a.produs || "", a.cant || 0] }; }));
 
   add("doc_neprimite", "Documente trimise și neprimite",
       "Au plecat la client și nu s-au întors. Se pot marca primite sau retrimise din fila Registru documente.",
       ["Trimis la", "De câte zile", "Tip document", "Nr. contract", "Client", "Retrimiteri"],
-      D.map(d => [fmtD(d.data_trimitere), ziDiff(azi, d.data_trimitere), d.tip_document || "",
-                  d.referinta || "", d.denumire || "", d.retrimiteri || 0]));
+      D.map(d => ({ id: "d" + d.id, ctx: (d.status_prim || "") + "/" + (d.retrimiteri || 0) + "/" + (d.data_trimitere || ""),
+                    v: [fmtD(d.data_trimitere), ziDiff(azi, d.data_trimitere), d.tip_document || "",
+                        d.referinta || "", d.denumire || "", d.retrimiteri || 0] })));
 
   add("pct_gps", "Puncte de rută fără coordonate",
       "Șoferii nu pot naviga automat la ele. Se completează din Administrare → Puncte de rută.",
       ["Cod", "Client", "Județ", "Localitate", "Locație"],
       P.filter(p => !p.lat || !p.lon)
-       .map(p => [p.client_key || "", p.client || "", p.jud || "", p.localitate || "", p.locatie || ""]));
+       .map(p => ({ id: "p" + p.client_key, ctx: "fara_gps",
+                    v: [p.client_key || "", p.client || "", p.jud || "", p.localitate || "", p.locatie || ""] })));
 
   add("pct_frecv", "Puncte de rută fără frecvență de servisare",
       "Nu se știe cât de des trebuie mers la ele.",
       ["Cod", "Client", "Localitate", "Ziua", "Mașina"],
       P.filter(p => !(p.frecventa || "").trim())
-       .map(p => [p.client_key || "", p.client || "", p.localitate || "", p.ziua || "", p.masina || ""]));
+       .map(p => ({ id: "p" + p.client_key, ctx: "fara_frecventa",
+                    v: [p.client_key || "", p.client || "", p.localitate || "", p.ziua || "", p.masina || ""] })));
 
   add("pct_masina", "Puncte de rută fără mașină alocată",
       "Nu apar pe ruta niciunei mașini.",
       ["Cod", "Client", "Localitate", "Ziua", "Frecvență"],
       P.filter(p => !(p.masina || "").trim())
-       .map(p => [p.client_key || "", p.client || "", p.localitate || "", p.ziua || "", p.frecventa || ""]));
+       .map(p => ({ id: "p" + p.client_key, ctx: "fara_masina",
+                    v: [p.client_key || "", p.client || "", p.localitate || "", p.ziua || "", p.frecventa || ""] })));
 
   add("mis_fara_client", "Mișcări nelegate de un client din gestiune",
       "Clientul e scris ca text, dar nu se potrivește cu niciunul din listă. Nu apar corect în rapoarte.",
       ["Data", "Tip", "Buc.", "Produs", "Client scris", "Localitate"],
-      M.map(m => [fmtD(m.data), m.tip_miscare || "", m.buc, m.produs || "", m.client || "", m.loc || ""]));
+      M.map(m => ({ id: "m" + m.id, ctx: (m.client || "") + "/" + (m.loc || ""),
+                    v: [fmtD(m.data), m.tip_miscare || "", m.buc, m.produs || "", m.client || "", m.loc || ""] })));
 
   renderPlaci();
 }
 
 function renderPlaci(){
-  const total = AT.reduce((s, x) => s + x.randuri.length, 0);
+  const grupuri = AT.filter(x => AT_TOATE || atVizibile(x).length);
+  const total = grupuri.reduce((s, x) => s + atVizibile(x).length, 0);
   const bd = $("t-badge");
   if(total){ bd.textContent = total; bd.style.display = ""; } else { bd.style.display = "none"; }
-  $("t-gol").style.display = AT.length ? "none" : "";
-  $("t-placi").innerHTML = AT.map(x =>
+  $("t-gol").style.display = grupuri.length ? "none" : "";
+  $("t-placi").innerHTML = grupuri.map(x =>
     `<div style="cursor:pointer${AT_SEL === x.cheie ? ";outline:2px solid var(--g2)" : ""}" onclick="alegeAtentie('${x.cheie}')">` +
-    `${esc(x.titlu)}<b>${x.randuri.length}</b></div>`).join("");
-  if(AT_SEL && !AT.find(x => x.cheie === AT_SEL)) AT_SEL = null;
-  if(!AT_SEL && AT.length) AT_SEL = AT[0].cheie;
+    `${esc(x.titlu)}<b>${atVizibile(x).length}</b></div>`).join("");
+  if(AT_SEL && !grupuri.find(x => x.cheie === AT_SEL)) AT_SEL = null;
+  if(!AT_SEL && grupuri.length) AT_SEL = grupuri[0].cheie;
   renderAtentie();
 }
 
@@ -1171,16 +1236,35 @@ function renderAtentie(){
   if(!x) return;
   $("t-titlu").textContent = x.titlu;
   $("t-nota").textContent = x.nota;
+  const rnd = atVizibile(x);
   $("t-tbl").innerHTML =
-    "<thead><tr>" + x.cap.map(h => `<th>${esc(h)}</th>`).join("") + "</tr></thead><tbody>" +
-    x.randuri.map(r => "<tr>" + r.map(v => `<td>${esc(v === null || v === undefined ? "" : v)}</td>`).join("") + "</tr>").join("") +
-    "</tbody>";
+    "<thead><tr>" + x.cap.map(h => `<th>${esc(h)}</th>`).join("") +
+    `<th class="noprint">Rezolvat</th><th class="noprint">Amână până la</th><th class="noprint">Notă</th></tr></thead><tbody>` +
+    rnd.map(r => {
+      const n = AT_NOTE[atK(x.cheie, r.id)], pot = atPotrivit(n, r);
+      const bif  = pot && n.stare === "rezolvat" ? " checked" : "";
+      const pana = pot && n.stare === "aminat" ? (n.pana_la || "") : "";
+      const nt   = pot ? (n.nota || "") : "";
+      return "<tr>" + r.v.map(v => `<td>${esc(v === null || v === undefined ? "" : v)}</td>`).join("") +
+        `<td class="noprint" style="text-align:center"><input type="checkbox"${bif} onchange="atSalveaza(${r.i},'rezolvat',this.checked)"></td>` +
+        `<td class="noprint"><input type="date" value="${esc(pana)}" onchange="atSalveaza(${r.i},'pana_la',this.value)"></td>` +
+        `<td class="noprint"><input value="${esc(nt)}" placeholder="scrie ceva…" onchange="atSalveaza(${r.i},'nota',this.value)" style="min-width:170px"></td></tr>`;
+    }).join("") + "</tbody>";
+  const ascunse = x.randuri.length - rnd.length;
+  $("t-sumar").textContent = ascunse
+    ? `${rnd.length} de rezolvat · ${ascunse} ascunse (rezolvate sau amânate)`
+    : `${rnd.length} de rezolvat`;
 }
 
 function exportAtentie(){
   const x = AT.find(y => y.cheie === AT_SEL);
   if(!x) return;
-  const ws = XLSX.utils.aoa_to_sheet([x.cap, ...x.randuri]);
+  const rnd = atVizibile(x);
+  const cap = [...x.cap, "Stare", "Amânat până la", "Notă", "Marcat de"];
+  const linii = rnd.map(r => { const n = AT_NOTE[atK(x.cheie, r.id)], pot = atPotrivit(n, r);
+    return [...r.v, pot ? (n.stare || "") : "", pot && n.pana_la ? fmtD(n.pana_la) : "",
+            pot ? (n.nota || "") : "", pot ? (n.actualizat_de || "") : ""]; });
+  const ws = XLSX.utils.aoa_to_sheet([cap, ...linii]);
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, x.cheie.slice(0, 28));
   XLSX.writeFile(wb, `De_urmarit_${x.cheie}_${today()}.xlsx`);
