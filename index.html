@@ -86,7 +86,7 @@
 <header>
   <h1>GestiuneEE <span class="muted" style="color:#cfe6d7;font-weight:400">Euro Ecologic</span></h1>
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
-  <span class="ver">v2.3</span>
+  <span class="ver">v2.4</span>
   <span id="cine" class="ver" style="display:none;opacity:1;font-weight:600"></span>
   <button id="btn-iesi" class="btn sec" style="display:none;padding:5px 11px;font-size:12px" onclick="iesi()">Ieși</button>
   <span id="conn" class="ver">●</span>
@@ -306,7 +306,7 @@
 
   <div class="card" id="a-card-curat" style="display:none">
     <h3 style="margin:0 0 6px;color:var(--g)">Golirea datelor de probă</h3>
-    <p class="muted" style="margin:0 0 12px">Șterge datele aduse pentru teste, ca să pornești pe date reale. Se șterg doar rândurile <b>neconfirmate</b> în ecranul de Verificare — ce ai confirmat tu rămâne. Mișcările, stocul inițial și datele aplicației de rute nu au bifă de verificare, deci grupurile lor se șterg în întregime. <b>Ștergerea nu se poate anula.</b></p>
+    <p class="muted" style="margin:0 0 12px">Șterge datele aduse pentru teste, ca să pornești pe date reale. Se șterg doar rândurile <b>neconfirmate</b> în ecranul de Verificare — ce ai confirmat tu rămâne. Mișcările, stocul inițial, datele aplicației de rute și procesele verbale nu au bifă de verificare, deci grupurile lor se șterg în întregime. <b>Ștergerea nu se poate anula.</b></p>
     <div id="cr-numar" class="muted">Se numără…</div>
     <div id="cr-grupuri" style="margin-top:12px"></div>
     <div class="row" style="margin-top:14px;align-items:flex-end">
@@ -1817,11 +1817,13 @@ const CR_GRUPURI = [
   { k:"gestiune",  t:"Clienți, contracte și anexe", d:"doar rândurile neconfirmate în Verificare" },
   { k:"documente", t:"Registrul de documente",      d:"doar rândurile neconfirmate în Verificare" },
   { k:"miscari",   t:"Mișcări și stoc inițial",     d:"toate — nu au bifă de verificare" },
-  { k:"rute",      t:"Datele aplicației de rute",   d:"toate: puncte, săptămâni, sesiuni, vizite" }
+  { k:"rute",      t:"Datele aplicației de rute",   d:"toate: puncte, săptămâni, sesiuni, vizite" },
+  { k:"pv",        t:"Procese verbale de probă",    d:"toate, împreună cu fișierele PDF din depozit" }
 ];
 const CR_NUME = { clienti:"clienți", contracte:"contracte", anexe:"anexe", documente:"documente",
                   miscari:"mișcări", stoc_initial:"rânduri de stoc inițial",
-                  puncte:"puncte de rută", saptamani:"săptămâni", sesiuni:"sesiuni", vizite:"vizite", meta:"săptămâni-antet" };
+                  puncte:"puncte de rută", saptamani:"săptămâni", sesiuni:"sesiuni", vizite:"vizite", meta:"săptămâni-antet",
+                  procese_verbale:"procese verbale", fisiere:"fișiere PDF" };
 const crN = n => (+n || 0).toLocaleString("ro-RO");
 
 async function curatNumara(){
@@ -1834,7 +1836,8 @@ async function curatNumara(){
     `<b>Ce s-ar șterge acum:</b> ${crN(d.gestiune.clienti)} clienți · ${crN(d.gestiune.contracte)} contracte · ` +
     `${crN(d.gestiune.anexe)} anexe · ${crN(d.documente.documente)} documente · ${crN(d.miscari.miscari)} mișcări · ` +
     `${crN(d.miscari.stoc_initial)} rânduri de stoc inițial · ${crN(d.rute.puncte)} puncte de rută, ` +
-    `${crN(d.rute.saptamani)} săptămâni, ${crN(d.rute.sesiuni)} sesiuni, ${crN(d.rute.vizite)} vizite.` +
+    `${crN(d.rute.saptamani)} săptămâni, ${crN(d.rute.sesiuni)} sesiuni, ${crN(d.rute.vizite)} vizite · ` +
+    `${crN(d.pv.procese_verbale)} procese verbale cu ${crN(d.pv.fisiere)} fișiere PDF.` +
     `<br><span class="muted">Rămân neatinse: ${crN(p.clienti_verificati)} clienți, ${crN(p.contracte_verificate)} contracte, ` +
     `${crN(p.anexe_verificate)} anexe și ${crN(p.documente_verificate)} documente confirmate — plus angajații, mașinile, ` +
     `depozitele, listele, produsele și conturile de acces, care nu se ating niciodată.</span>`;
@@ -1854,13 +1857,34 @@ async function curatExecuta(){
   const nume = CR_GRUPURI.filter(g => gr.includes(g.k)).map(g => g.t).join(", ");
   if(!confirm("Se șterg definitiv:\n\n" + nume + "\n\nNu se poate anula. Continui?")) return;
   $("cr-btn").disabled = true;
+  // Fișierele PDF ale proceselor verbale se șterg din depozitul de fișiere, nu din SQL —
+  // altfel ar dispărea doar evidența lor, iar fișierele ar rămâne pe disc, invizibile.
+  // Se face ÎNAINTE de ștergerea rândurilor: dacă pică, nu mai ștergem nimic, ca să nu
+  // rămână fișiere orfane fără rândul care le arată calea.
+  let fisiereSterse = 0;
+  if(gr.includes("pv")){
+    const { data: cai, error: eCai } = await db.from("pv_records").select("storage_path");
+    if(eCai){ $("cr-rezultat").innerHTML = `<b style="color:var(--red)">Nu s-a șters nimic: ${esc(eCai.message)}</b>`; curatVerifica(); return; }
+    const lista = (cai || []).map(r => r.storage_path).filter(Boolean);
+    for(let i = 0; i < lista.length; i += 90){
+      const bucata = lista.slice(i, i + 90);
+      const { error: eFis } = await db.storage.from("pv-documents").remove(bucata);
+      if(eFis){
+        $("cr-rezultat").innerHTML = `<b style="color:var(--red)">Nu s-a șters nimic: fișierele proceselor verbale nu au putut fi șterse (${esc(eFis.message)})</b>`;
+        curatVerifica(); return;
+      }
+      fisiereSterse += bucata.length;
+    }
+  }
   const { data, error } = await db.rpc("curata_date_de_proba",
     { p_confirmare: $("cr-conf").value.trim(), p_grupuri: gr });
   if(error){
     $("cr-rezultat").innerHTML = `<b style="color:var(--red)">Nu s-a șters nimic: ${esc(error.message)}</b>`;
     curatVerifica(); return;
   }
-  const lista = Object.keys(data).map(k => crN(data[k]) + " " + (CR_NUME[k] || k)).join(" · ");
+  const parti = Object.keys(data).map(k => crN(data[k]) + " " + (CR_NUME[k] || k));
+  if(fisiereSterse) parti.push(crN(fisiereSterse) + " fișiere PDF");
+  const lista = parti.join(" · ");
   $("cr-rezultat").innerHTML = `<b>Șters:</b> ${esc(lista)}.<br>` +
     `<span class="muted">Reîncarcă aplicația ca să dispară peste tot.</span> ` +
     `<button class="btn sm" onclick="location.reload()">Reîncarcă</button>`;
