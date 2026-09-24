@@ -104,7 +104,7 @@
 <header>
   <h1>GestiuneEE <span class="muted" style="color:#cfe6d7;font-weight:400">Euro Ecologic</span></h1>
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
-  <span class="ver">v2.7</span>
+  <span class="ver">v2.8</span>
   <span id="cine" class="ver" style="display:none;opacity:1;font-weight:600"></span>
   <button id="btn-iesi" class="btn sec" style="display:none;padding:5px 11px;font-size:12px" onclick="iesi()">Ieși</button>
   <span id="conn" class="ver">●</span>
@@ -293,6 +293,7 @@
     <div class="row">
       <div><label>Listă</label><select id="n-tip" onchange="renderNom()"></select></div>
       <div><label>Valoare nouă</label><input id="n-val"></div>
+      <div id="n-parinte-wrap" style="display:none"><label>Al cărui produs</label><select id="n-parinte"></select></div>
       <div id="n-efect-wrap" style="display:none"><label>Efect stoc</label><select id="n-efect"><option value="inchiriere">inchiriere (+/- închiriate)</option><option value="depozit_in">depozit_in (+ depozit)</option><option value="depozit_out">depozit_out (- depozit)</option><option value="niciun">niciun efect</option></select></div>
       <div style="flex:0"><label>&nbsp;</label><button class="btn" onclick="addNom()">Adaugă</button></div>
     </div>
@@ -597,12 +598,28 @@ async function init(){
   }catch(e){ console.error(e); $("conn").textContent="● eroare conexiune"; $("conn").style.color="#ffb4ae"; toast("Nu m-am putut conecta la baza de date: "+e.message,true); }
 }
 const nomv = tip => (NOM[tip]||[]).map(r=>r.valoare);
+// Modelele pot fi legate de un produs (coloana `parinte`). Unul fără produs rămâne
+// valabil oriunde, ca listele să nu se golească până nu sunt repartizate toate.
+const modeleDe = produs => (NOM.model || [])
+  .filter(r => !r.parinte || r.parinte === produs)
+  .map(r => r.valoare);
+// Reumple lista de modele după produsul ales. `pastreaza` e modelul deja salvat pe rândul
+// care se editează: îl ținem în listă chiar dacă nu se potrivește, ca să nu se piardă la
+// o simplă deschidere a formularului.
+function umpleModele(selProdus, selModel, pastreaza){
+  const lista = modeleDe($(selProdus).value);
+  if(pastreaza && !lista.includes(pastreaza)) lista.unshift(pastreaza);
+  const vechi = $(selModel).value;
+  fill(selModel, lista, "");
+  $(selModel).value = lista.includes(pastreaza) ? pastreaza
+                    : lista.includes(vechi)     ? vechi : "";
+}
 function fillAll(){
   const deps = DEP.map(d=>d.nume);
   fill("st-dep",deps,"Toate"); fill("f-dep",deps,"Toate"); fill("mm-dep",deps); fill("mm-contract",deps); fill("si-dep",deps); fill("ma-dep",deps,"—"); fill("ma-ctrdep",deps,"—");
   fill("f-tip",nomv("tip_miscare"),"Toate"); fill("mm-tip",nomv("tip_miscare"));
   fill("f-prod",nomv("produs"),"Toate"); fill("mm-prod",nomv("produs")); fill("si-prod",nomv("produs")); fill("ma-prod",nomv("produs"));
-  fill("mm-model",nomv("model"),""); fill("ma-model",nomv("model"),"");
+  umpleModele("mm-prod","mm-model"); umpleModele("ma-prod","ma-model");
   fill("mm-frecv",nomv("frecv_servisare"),""); fill("ma-frecv",nomv("frecv_servisare"),"");
   fill("mc-idtip",nomv("id_tip")); fill("mc-atr",nomv("atr"),"");
   fill("mk-stare",nomv("stare")); fill("ma-forma",nomv("forma")); fill("ma-um",nomv("um")); fill("ma-moneda",nomv("moneda"));
@@ -713,7 +730,7 @@ $("mm-anexa").onchange = () => {
   const a = ANX.find(x => x.id == $("mm-anexa").value); if(!a) return;
   $("mm-jud").value = a.jud || ""; $("mm-loc").value = a.loc || ""; $("mm-sat").value = a.sat || "";
   if(a.produs) $("mm-prod").value = a.produs;
-  if(a.model)  $("mm-model").value = a.model;
+  umpleModele("mm-prod","mm-model", a.model || "");
   if(a.cant)   $("mm-buc").value = a.cant;
   if(a.contract_depozit) $("mm-contract").value = a.contract_depozit;
   if(a.depozit)          $("mm-dep").value = a.depozit;
@@ -748,7 +765,7 @@ function openMiscare(id){
   const r=id?MISC.find(x=>x.id===id):null;
   $("mm-title").textContent=r?"Editare mișcare":"Mișcare nouă"; $("mm-id").value=r?r.id:""; $("mm-del").style.display=r?"":"none";
   $("mm-data").value=r?r.data:today(); $("mm-tip").value=r?r.tip_miscare:"AMPLASARE"; $("mm-buc").value=r?Math.abs(r.buc):1;
-  $("mm-prod").value=r?r.produs:"TOALETE"; $("mm-model").value=r?(r.model||""):"CLASIC"; $("mm-client").value=r?(r.client||""):"";
+  $("mm-prod").value=r?r.produs:"TOALETE"; umpleModele("mm-prod","mm-model", r?(r.model||""):"CLASIC"); $("mm-client").value=r?(r.client||""):"";
   $("mm-jud").value=r?(r.jud||""):""; $("mm-loc").value=r?(r.loc||""):""; $("mm-sat").value=r?(r.sat||""):"";
   $("mm-contract").value=r?(r.contract||"HUNEDOARA"):"HUNEDOARA"; $("mm-dep").value=r?(r.depozit||"HUNEDOARA"):"HUNEDOARA";
   $("mm-pers").value=r?(r.pers_resp||""):""; $("mm-tel").value=r?(r.telefon||""):""; $("mm-frecv").value=r?(r.frecv_serv||""):""; $("mm-obs").value=r?(r.observatii||""):"";
@@ -824,7 +841,7 @@ function openAnexa(id,contractId){
   const a=id?ANX.find(x=>x.id===id):null; $("ma-title").textContent=a?"Editare anexă":"Anexă nouă"; $("ma-id").value=a?a.id:""; $("ma-contract").value=a?a.contract_id:contractId; $("ma-del").style.display=a?"":"none";
   $("ma-an").value=a?(a.anexa||""):""; $("ma-de").value=a?(a.data_emitere||""):today(); $("ma-dx").value=a?(a.data_expirare||""):""; $("ma-xt").value=a?(a.expirare_text||""):"";
   $("ma-jud").value=a?(a.jud||""):"HD"; $("ma-loc").value=a?(a.loc||""):""; $("ma-sat").value=a?(a.sat||""):""; $("ma-forma").value=a?(a.forma||"CHIRIE"):"CHIRIE";
-  $("ma-prod").value=a?(a.produs||"TOALETE"):"TOALETE"; $("ma-model").value=a?(a.model||""):"CLASIC"; $("ma-um").value=a?(a.um||"BUC"):"BUC"; $("ma-cant").value=a?a.cant:1; $("ma-pret").value=a?a.pret:0; $("ma-moneda").value=a?(a.moneda||"RON"):"RON"; $("ma-scad").value=a?a.scadent:30; $("ma-status").value=a?(a.status||""):""; $("ma-dep").value=a?(a.depozit||""):"";
+  $("ma-prod").value=a?(a.produs||"TOALETE"):"TOALETE"; umpleModele("ma-prod","ma-model", a?(a.model||""):"CLASIC"); $("ma-um").value=a?(a.um||"BUC"):"BUC"; $("ma-cant").value=a?a.cant:1; $("ma-pret").value=a?a.pret:0; $("ma-moneda").value=a?(a.moneda||"RON"):"RON"; $("ma-scad").value=a?a.scadent:30; $("ma-status").value=a?(a.status||""):""; $("ma-dep").value=a?(a.depozit||""):"";
   $("ma-ctrdep").value=a?(a.contract_depozit||""):"HUNEDOARA";
   $("ma-dliv").value=a?(a.data_livrarii||""):""; $("ma-drid").value=a?(a.data_ridicarii||""):"";
   $("ma-transp").value=a?(a.transport||0):0; $("ma-frecv").value=a?(a.frecv_servisare||""):"";
@@ -863,12 +880,24 @@ function exportClienti(){
 
 // ================= NOMENCLATOARE =================
 function renderNom(){
-  const tip=$("n-tip").value; $("n-efect-wrap").style.display=tip==="tip_miscare"?"":"none";
+  const tip=$("n-tip").value;
+  $("n-efect-wrap").style.display   = tip==="tip_miscare" ? "" : "none";
+  $("n-parinte-wrap").style.display = tip==="model" ? "" : "none";
   const rows=NOM[tip]||[];
-  $("n-tbl").innerHTML=`<tr><th>Valoare</th>${tip==="tip_miscare"?"<th>Efect stoc</th>":""}<th></th></tr>`+rows.map(r=>`<tr><td>${esc(r.valoare)}</td>${tip==="tip_miscare"?`<td><select onchange="setEfect(${r.id},this.value)"><option ${r.efect_stoc==="inchiriere"?"selected":""}>inchiriere</option><option ${r.efect_stoc==="depozit_in"?"selected":""}>depozit_in</option><option ${r.efect_stoc==="depozit_out"?"selected":""}>depozit_out</option><option ${!r.efect_stoc||r.efect_stoc==="niciun"?"selected":""}>niciun</option></select></td>`:""}<td><button class="btn sm danger" onclick="delNom(${r.id})">✕</button></td></tr>`).join("");
+  const optProduse = ales => '<option value="">— la orice produs —</option>' +
+    nomv("produs").map(x => `<option${x===ales?" selected":""}>${esc(x)}</option>`).join("");
+  if(tip==="model") $("n-parinte").innerHTML = optProduse("");
+  $("n-tbl").innerHTML=`<tr><th>Valoare</th>${tip==="tip_miscare"?"<th>Efect stoc</th>":""}${tip==="model"?"<th>Al cărui produs</th>":""}<th></th></tr>`+rows.map(r=>`<tr><td>${esc(r.valoare)}</td>${tip==="tip_miscare"?`<td><select onchange="setEfect(${r.id},this.value)"><option ${r.efect_stoc==="inchiriere"?"selected":""}>inchiriere</option><option ${r.efect_stoc==="depozit_in"?"selected":""}>depozit_in</option><option ${r.efect_stoc==="depozit_out"?"selected":""}>depozit_out</option><option ${!r.efect_stoc||r.efect_stoc==="niciun"?"selected":""}>niciun</option></select></td>`:""}${tip==="model"?`<td><select onchange="setParinte(${r.id},this.value)">${optProduse(r.parinte)}</select></td>`:""}<td><button class="btn sm danger" onclick="delNom(${r.id})">✕</button></td></tr>`).join("");
 }
-async function addNom(){ const tip=$("n-tip").value, v=$("n-val").value.trim(); if(!v) return; const rec={tip,valoare:v,ordine:(NOM[tip]||[]).length}; if(tip==="tip_miscare") rec.efect_stoc=$("n-efect").value; const {error}=await db.from("nomenclatoare").insert(rec); if(error){toast(error.message,true);return;} $("n-val").value=""; await reloadNom(); }
+async function addNom(){ const tip=$("n-tip").value, v=$("n-val").value.trim(); if(!v) return; const rec={tip,valoare:v,ordine:(NOM[tip]||[]).length}; if(tip==="tip_miscare") rec.efect_stoc=$("n-efect").value;
+  if(tip==="model") rec.parinte=$("n-parinte").value||null; const {error}=await db.from("nomenclatoare").insert(rec); if(error){toast(error.message,true);return;} $("n-val").value=""; await reloadNom(); }
 async function setEfect(id,v){ const {error}=await db.from("nomenclatoare").update({efect_stoc:v}).eq("id",id); if(error) toast(error.message,true); else {toast("Efect actualizat"); loadStoc();} }
+async function setParinte(id,v){
+  const {error}=await db.from("nomenclatoare").update({parinte: v||null}).eq("id",id);
+  if(error){ toast(error.message,true); return; }
+  toast(v ? "Modelul apare doar la " + v : "Modelul apare la orice produs");
+  await reloadNom();
+}
 async function delNom(id){ if(!confirm("Dezactivezi această valoare?")) return; await db.from("nomenclatoare").update({activ:false}).eq("id",id); await reloadNom(); }
 async function reloadNom(){ const n=await db.from("nomenclatoare").select("*").eq("activ",true).order("ordine"); NOM={}; (n.data||[]).forEach(r=>{(NOM[r.tip]=NOM[r.tip]||[]).push(r);}); renderNom(); fillAll(); }
 function renderStocInitial(){
@@ -2284,6 +2313,8 @@ window.addEventListener("load", () => deschideSectiune((location.hash || "").rep
 window.addEventListener("hashchange", () => deschideSectiune((location.hash || "").replace("#", "")));
 
 calendarActiveaza(document);
+$("mm-prod").addEventListener("change", () => umpleModele("mm-prod","mm-model"));
+$("ma-prod").addEventListener("change", () => umpleModele("ma-prod","ma-model"));
 porneste();
 </script>
 </body>
