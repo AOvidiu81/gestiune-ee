@@ -136,7 +136,7 @@
 <header>
   <h1>GestiuneEE <span class="muted" style="color:#cfe6d7;font-weight:400">Euro Ecologic</span></h1>
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
-  <span class="ver">v3.1</span>
+  <span class="ver">v3.2</span>
   <span id="cine" class="ver" style="display:none;opacity:1;font-weight:600"></span>
   <button id="btn-iesi" class="btn sec" style="display:none;padding:5px 11px;font-size:12px" onclick="iesi()">Ieși</button>
   <span id="conn" class="ver">●</span>
@@ -189,6 +189,7 @@
       <div style="flex:0"><button class="btn sec" onclick="window.print()">PDF / Print</button></div>
     </div>
   </div>
+  <div class="muted" id="st-nota" style="margin:-4px 0 12px"></div>
   <div id="stoc-grid" class="stoc-grid"></div>
   <div class="card" style="margin-top:14px">
     <details><summary>Tabel stoc (format Excel: ÎNCHIRIATE / DEPOZIT / TOTAL)</summary>
@@ -723,6 +724,10 @@ async function loadStoc(){
 $("st-dep").onchange=renderStoc;
 function renderStoc(){
   const f=$("st-dep").value; const rows=STOC.filter(r=>!f||r.depozit===f);
+  $("st-nota").innerHTML = 'Stocul pornește de la cifrele din <b>Administrare → Stoc inițial</b> și adună '
+    + 'doar comenzile de la <b>data de referință a fiecărui depozit și produs</b> încoace. O comandă mai '
+    + 'veche decât referința ei e deja cuprinsă în cifra de pornire, deci nu se mai adună — o vezi marcată '
+    + '„sub referință” în fila Comenzi.';
   const byDep={}; rows.forEach(r=>{(byDep[r.depozit]=byDep[r.depozit]||[]).push(r);});
   const order=nomv("produs");
   $("stoc-grid").innerHTML=Object.keys(byDep).sort().map(dep=>{
@@ -746,6 +751,25 @@ function exportStoc(){
 }
 const today=()=>new Date().toISOString().slice(0,10);
 
+// ---- Data de referinta a stocului ------------------------------------------
+// Cifra de pornire din Stoc initial e valabila de la data ei incolo, pe fiecare
+// depozit si produs in parte. O comanda mai veche decat referinta ei e deja
+// cuprinsa in acea cifra, deci nu se mai aduna — altfel s-ar numara de doua ori.
+const refStoc = (dep, prod) => {
+  if(!dep || !prod) return null;
+  const r = SI.find(x => x.depozit === dep && x.produs === prod);
+  return r ? r.data_referinta : null;
+};
+// Intoarce data de referinta care lasa comanda pe dinafara, sau null daca intra.
+function subReferinta(m){
+  if(!m || !m.data) return null;
+  const a = refStoc(m.depozit, m.produs);
+  if(a && m.data < a) return a;
+  const b = refStoc(m.contract, m.produs);
+  if(b && m.data < b) return b;
+  return null;
+}
+
 // ================= MISCARI =================
 async function loadMiscari(){
   let q=db.from("miscari").select("*").order("data",{ascending:false}).order("id",{ascending:false}).limit(3000);
@@ -763,13 +787,17 @@ function pill(t){ const c=/AMPLASARE|EVENIMENT-A|SUPLIMENTARE/.test(t)?"A":/RIDI
 function renderMiscari(){
   const sumA=MISC.filter(r=>r.buc>0).reduce((s,r)=>s+r.buc,0), sumR=MISC.filter(r=>r.buc<0).reduce((s,r)=>s+r.buc,0);
   $("m-kpi").innerHTML=`<div>Comenzi<b>${MISC.length}</b></div><div>Amplasate (+)<b>${sumA}</b></div><div>Ridicate (−)<b>${sumR}</b></div><div>Net<b>${sumA+sumR}</b></div>`;
+  const nrSub=MISC.filter(r=>subReferinta(r)).length;
+  if(nrSub) $("m-kpi").innerHTML += `<div style="background:#fff1d6;color:#7a4a00">Sub referință<b>${nrSub}</b></div>`;
   const fl=(v)=>`<span class="flag ${esc(v)}" style="cursor:default">${esc(v||"-")}</span>`;
-  let h=`<tr><th>Data</th><th>Comandă</th><th>Buc</th><th>Produs</th><th>Model</th><th>Client</th><th>Jud</th><th>Loc./Com.</th><th>Sat/Str./Locație</th><th>Contract (dep.)</th><th>Depozit</th><th>Resp. șantier</th><th>Telefon</th><th>Rpt</th><th>RT</th><th>FAC</th><th>PV</th><th>ACT</th><th>WaAp</th><th>Frecv.</th><th class="noprint"></th></tr>`;
-  h+=MISC.map(r=>`<tr><td>${fmtD(r.data)}</td><td>${pill(r.tip_miscare)}</td><td class="${r.buc<0?"neg":"pos"}">${r.buc}</td><td>${esc(r.produs)}</td><td>${esc(r.model)}</td><td><b>${esc(r.client)}</b></td><td>${esc(r.jud)}</td><td>${esc(r.loc)}</td><td>${esc(r.sat)}</td><td>${esc(r.contract)}</td><td>${esc(r.depozit)}</td><td>${esc(r.pers_resp)}</td><td>${esc(r.telefon)}</td><td>${fl(r.rpt)}</td><td>${fl(r.rt)}</td><td>${fl(r.fac)}</td><td>${fl(r.pv)}</td><td>${fl(r.act)}</td><td>${fl(r.waap)}</td><td>${esc(r.frecv_serv)}</td><td class="noprint actions"><button class="btn sm sec" onclick="openMiscare(${r.id})">Edit</button></td></tr>`).join("");
+  const nrCtr=id=>{ const k=CTR.find(x=>x.id===id); return k?k.nr_ctr||"":""; };
+  const nrAnx=id=>{ const a=ANX.find(x=>x.id===id); return a?(a.anexa||"—"):""; };
+  let h=`<tr><th>Data</th><th>Comandă</th><th>Buc</th><th>Produs</th><th>Model</th><th>Client</th><th>Contract</th><th>Anexă</th><th>Jud</th><th>Loc./Com.</th><th>Sat/Str./Locație</th><th>Contract (dep.)</th><th>Depozit</th><th>Resp. șantier</th><th>Telefon</th><th>Rpt</th><th>RT</th><th>FAC</th><th>PV</th><th>ACT</th><th>WaAp</th><th>Frecv.</th><th class="noprint"></th></tr>`;
+  h+=MISC.map(r=>{const sr=subReferinta(r); return `<tr><td>${fmtD(r.data)}${sr?` <span class="pill p-T" title="Mai veche decât data de referință a stocului (${fmtD(sr)}) — nu intră în stoc">sub referință</span>`:""}</td><td>${pill(r.tip_miscare)}</td><td class="${r.buc<0?"neg":"pos"}">${r.buc}</td><td>${esc(r.produs)}</td><td>${esc(r.model)}</td><td><b>${esc(r.client)}</b></td><td>${esc(nrCtr(r.contract_id))}</td><td>${esc(nrAnx(r.anexa_id))}</td><td>${esc(r.jud)}</td><td>${esc(r.loc)}</td><td>${esc(r.sat)}</td><td>${esc(r.contract)}</td><td>${esc(r.depozit)}</td><td>${esc(r.pers_resp)}</td><td>${esc(r.telefon)}</td><td>${fl(r.rpt)}</td><td>${fl(r.rt)}</td><td>${fl(r.fac)}</td><td>${fl(r.pv)}</td><td>${fl(r.act)}</td><td>${fl(r.waap)}</td><td>${esc(r.frecv_serv)}</td><td class="noprint actions"><button class="btn sm sec" onclick="openMiscare(${r.id})">Edit</button></td></tr>`;}).join("");
   $("m-tbl").innerHTML=h||"<tr><td>Nicio comandă.</td></tr>";
 }
 function exportMiscari(){
-  const rows=MISC.map(r=>({AN:r.data.slice(0,4),LUNA:LUNI[+r.data.slice(5,7)-1],DATA:fmtD(r.data),MISCARE:r.tip_miscare,BUC:r.buc,PRODUSE:r.produs,MODEL:r.model,CLIENT:r.client,JUD:r.jud,"LOC. / COM.":r.loc,"SAT / STR. / LOCATIE":r.sat,CONTRACT:r.contract,DEPOZIT:r.depozit,"RESP SANTIER":r.pers_resp,TELEFON:r.telefon,Rpt:r.rpt,RT:r.rt,FAC:r.fac,PV:r.pv,ACT:r.act,WaAp:r.waap,"Frecv. Serv":r.frecv_serv,OBS:r.observatii}));
+  const rows=MISC.map(r=>({AN:r.data.slice(0,4),LUNA:LUNI[+r.data.slice(5,7)-1],DATA:fmtD(r.data),MISCARE:r.tip_miscare,BUC:r.buc,PRODUSE:r.produs,MODEL:r.model,CLIENT:r.client,"NR CONTRACT":(CTR.find(x=>x.id===r.contract_id)||{}).nr_ctr||"","ANEXA":(ANX.find(x=>x.id===r.anexa_id)||{}).anexa||"",JUD:r.jud,"LOC. / COM.":r.loc,"SAT / STR. / LOCATIE":r.sat,CONTRACT:r.contract,DEPOZIT:r.depozit,"RESP SANTIER":r.pers_resp,TELEFON:r.telefon,Rpt:r.rpt,RT:r.rt,FAC:r.fac,PV:r.pv,ACT:r.act,WaAp:r.waap,"Frecv. Serv":r.frecv_serv,OBS:r.observatii}));
   const ws=XLSX.utils.json_to_sheet(rows); const wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,ws,"COMENZI"); XLSX.writeFile(wb,`Comenzi_${today()}.xlsx`);
 }
 // ---- flags
@@ -791,10 +819,9 @@ function fillAnexeForClient(){
           .forEach(k => { sc.innerHTML += `<option value="${k.id}">CTR ${esc(k.nr_ctr)} · ${fmtD(k.data_emitere)} · ${esc(k.stare||"")}</option>`; });
   fillAnexeForContract();
   cautaSincronizeaza("mm-ctr");
-  if(c){
-    if(c.pers_resp && !$("mm-pers").value) $("mm-pers").value = c.pers_resp;
-    if(c.telefon  && !$("mm-tel").value)  $("mm-tel").value  = c.telefon;
-  }
+  // Din fisa clientului NU se mai ia nimic in „Responsabil santier”: acolo e
+  // administratorul societatii, altcineva decat omul de pe santier. Responsabilul
+  // vine din anexa, unde e trecut pe locatie.
 }
 function fillAnexeForContract(){
   const c = clientulDinMiscare();
@@ -859,7 +886,10 @@ function openMiscare(id){
   $("mm-contract").value=r?(r.contract||""):""; $("mm-dep").value=r?(r.depozit||""):"";
   $("mm-pers").value=r?(r.pers_resp||""):""; $("mm-tel").value=r?(r.telefon||""):""; $("mm-frecv").value=r?(r.frecv_serv||""):""; $("mm-obs").value=r?(r.observatii||""):"";
   document.querySelectorAll("#mm-flags .flag").forEach(f=>setFlag(f,r?(r[f.dataset.f]||"-"):(f.dataset.f==="waap"?"V":"-")));
-  fillAnexeForClient(); mmAntet(); $("mod-m").classList.add("on");
+  fillAnexeForClient();
+  if(r && r.contract_id){ $("mm-ctr").value = r.contract_id; fillAnexeForContract(); cautaSincronizeaza("mm-ctr"); }
+  if(r && r.anexa_id){ $("mm-anexa").value = r.anexa_id; cautaSincronizeaza("mm-anexa"); }
+  mmAntet(); $("mod-m").classList.add("on");
 }
 // Randul de sub titlu: clientul si contractul, cat se vad in acest moment in formular.
 function mmAntet(){
@@ -883,7 +913,8 @@ async function saveMiscare(){
   const client=$("mm-client").value.trim(); const c=CLI.find(x=>x.nume.toLowerCase()===client.toLowerCase());
   const rec={data:$("mm-data").value,tip_miscare:tip,buc,produs:$("mm-prod").value,model:$("mm-model").value||null,client_id:c?c.id:null,client:client||null,
     jud:$("mm-jud").value||null,loc:$("mm-loc").value||null,sat:$("mm-sat").value||null,contract:$("mm-contract").value||null,depozit:$("mm-dep").value||null,
-    pers_resp:$("mm-pers").value||null,telefon:$("mm-tel").value||null,frecv_serv:$("mm-frecv").value||null,observatii:$("mm-obs").value||null};
+    pers_resp:$("mm-pers").value||null,telefon:$("mm-tel").value||null,frecv_serv:$("mm-frecv").value||null,observatii:$("mm-obs").value||null,
+    contract_id:+$("mm-ctr").value||null, anexa_id:+$("mm-anexa").value||null};
   document.querySelectorAll("#mm-flags .flag").forEach(f=>rec[f.dataset.f]=f.textContent);
   // Fara depozit, miscarea nu se vede in stoc. Se intreaba o data, nu se blocheaza.
   const ef=(NOM.tip_miscare||[]).find(t=>t.valoare===tip);
@@ -893,6 +924,9 @@ async function saveMiscare(){
     if(!rec.depozit) lipsa.push("Depozit");
     if(efect==="inchiriere" && !rec.contract) lipsa.push("Contract (depozit)");
     if(lipsa.length && !confirm("Lipsește "+lipsa.join(" și ")+".\n\nComanda se salvează, dar nu va intra în stoc.\n\nContinui?")) return;
+    const sr=subReferinta(rec);
+    if(sr && !confirm("Comanda e din "+fmtD(rec.data)+", mai veche decât data de referință a stocului ("
+        +fmtD(sr)+").\n\nCifra de pornire de la acea dată o cuprinde deja, așa că nu se mai adaugă în stoc.\n\nSalvez oricum?")) return;
   }
   const id=$("mm-id").value;
   const {error}= id? await db.from("miscari").update(rec).eq("id",id) : await db.from("miscari").insert(rec);
@@ -1278,9 +1312,14 @@ async function raportLuna(){
     if(em && em < p1) col0 = cant;
     else if(em && em.getFullYear() === an && em.getMonth() + 1 === luna) zile[em.getDate() - 1] = cant;
     for(const m of mis){
-      if((m.client || "") !== (x.k.nume || "")) continue;
-      if((m.loc || "") !== (x.a.loc || "")) continue;
-      if((m.produs || "") !== (x.a.produs || "")) continue;
+      // Comenzile noi poarta anexa cu ele, deci se potrivesc exact. Cele vechi, fara
+      // anexa, se potrivesc ca pana acum: client + localitate + produs.
+      if(m.anexa_id){ if(m.anexa_id !== x.a.id) continue; }
+      else {
+        if((m.client || "") !== (x.k.nume || "")) continue;
+        if((m.loc || "") !== (x.a.loc || "")) continue;
+        if((m.produs || "") !== (x.a.produs || "")) continue;
+      }
       const md = dtz(m.data); if(!md) continue;
       folosite.add(m.id);
       const b = +m.buc || 0;              // bucățile sunt salvate deja cu semn (minus la ridicări)
