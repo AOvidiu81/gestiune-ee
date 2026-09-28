@@ -109,7 +109,7 @@
 <header>
   <h1>GestiuneEE <span class="muted" style="color:#cfe6d7;font-weight:400">Euro Ecologic</span></h1>
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
-  <span class="ver">v2.9</span>
+  <span class="ver">v3.0</span>
   <span id="cine" class="ver" style="display:none;opacity:1;font-weight:600"></span>
   <button id="btn-iesi" class="btn sec" style="display:none;padding:5px 11px;font-size:12px" onclick="iesi()">Ieși</button>
   <span id="conn" class="ver">●</span>
@@ -195,6 +195,7 @@
   <div class="card noprint">
     <div class="row">
       <div class="search"><label>Caută client / CUI / contract</label><input id="c-q" oninput="renderClienti()"></div>
+      <div><label>Depozit contract</label><select id="cl-dep" onchange="renderClienti()"><option value="">Toate</option></select></div>
       <div style="flex:0"><button class="btn" onclick="openClient()">+ Client nou</button></div>
       <div style="flex:0"><button class="btn sec" onclick="exportClienti()">Export Excel</button></div>
     </div>
@@ -565,7 +566,15 @@ const esc = s => (s==null?"":String(s)).replace(/[&<>"']/g,c=>({"&":"&amp;","<":
 const fmtD = d => d ? d.split("-").reverse().join("-") : "";   // zz-ll-aaaa peste tot
 function toast(m, err){ const t=$("toast"); t.textContent=m; t.style.background=err?"#b3261e":"#222"; t.classList.add("on"); setTimeout(()=>t.classList.remove("on"),2600); }
 function closeModal(id){ $(id).classList.remove("on"); }
-function fill(sel, arr, blank){ const s=$(sel); const cur=s.value; s.innerHTML=(blank!==undefined?`<option value="">${blank}</option>`:"")+arr.map(v=>`<option value="${esc(v)}">${esc(v)}</option>`).join(""); if(cur) s.value=cur; }
+function fill(sel, arr, blank){ const s=$(sel); if(!s) return; const cur=s.value; s.innerHTML=(blank!==undefined?`<option value="">${blank}</option>`:"")+arr.map(v=>`<option value="${esc(v)}">${esc(v)}</option>`).join(""); if(cur) s.value=cur; }
+
+// ---- Depozitul principal ----------------------------------------------------
+// Se stabileste in Administrare -> Depozite, coloana „Tip”. Unul singur poate fi
+// principal; el e cel care dicteaza preselectiile din restul aplicatiei.
+const depPrincipal   = () => { const p=DEP.find(d=>d.tip==="principal"); return p?p.nume:(DEP[0]?DEP[0].nume:""); };
+const depPrincipalId = () => { const p=DEP.find(d=>d.tip==="principal"); return p?p.id  :(DEP[0]?DEP[0].id  :null); };
+let DEP_PRESELECTAT = false;
+function pune(sel,val){ const s=$(sel); if(!s||!val) return; if([...s.options].some(o=>o.value===val)) s.value=val; }
 
 // ================= NAV =================
 document.querySelectorAll("nav button").forEach(b=>b.onclick=()=>{
@@ -621,7 +630,11 @@ function umpleModele(selProdus, selModel, pastreaza){
 }
 function fillAll(){
   const deps = DEP.map(d=>d.nume);
-  fill("st-dep",deps,"Toate"); fill("f-dep",deps,"Toate"); fill("mm-dep",deps); fill("mm-contract",deps); fill("si-dep",deps); fill("ma-dep",deps,"—"); fill("ma-ctrdep",deps,"—");
+  fill("st-dep",deps,"Toate"); fill("f-dep",deps,"Toate"); fill("cl-dep",deps,"Toate");
+  fill("mm-dep",deps,"—"); fill("mm-contract",deps,"—"); fill("si-dep",deps); fill("ma-dep",deps,"—"); fill("ma-ctrdep",deps,"—");
+  // Filtrele pornesc pe depozitul principal. O singura data: daca Ovidiu trece pe
+  // „Toate”, alegerea lui ramane, nu i-o schimba nicio reincarcare de liste.
+  if(!DEP_PRESELECTAT && DEP.length){ const P=depPrincipal(); pune("st-dep",P); pune("f-dep",P); pune("cl-dep",P); DEP_PRESELECTAT=true; }
   fill("f-tip",nomv("tip_miscare"),"Toate"); fill("mm-tip",nomv("tip_miscare"));
   fill("f-prod",nomv("produs"),"Toate"); fill("mm-prod",nomv("produs")); fill("si-prod",nomv("produs")); fill("ma-prod",nomv("produs"));
   umpleModele("mm-prod","mm-model"); umpleModele("ma-prod","ma-model");
@@ -774,7 +787,10 @@ function openMiscare(id){
   $("mm-data").value=r?r.data:today(); $("mm-tip").value=r?r.tip_miscare:"AMPLASARE"; $("mm-buc").value=r?Math.abs(r.buc):1;
   $("mm-prod").value=r?r.produs:"TOALETE"; umpleModele("mm-prod","mm-model", r?(r.model||""):"CLASIC"); $("mm-client").value=r?(r.client||""):"";
   $("mm-jud").value=r?(r.jud||""):""; $("mm-loc").value=r?(r.loc||""):""; $("mm-sat").value=r?(r.sat||""):"";
-  $("mm-contract").value=r?(r.contract||"HUNEDOARA"):"HUNEDOARA"; $("mm-dep").value=r?(r.depozit||"HUNEDOARA"):"HUNEDOARA";
+  // Aici NU se preselecteaza nimic: la o comanda noua nu se stie inca din ce depozit
+  // pleaca marfa si pe ce depozit sta contractul. Se completeaza de mana sau vin
+  // singure din anexa aleasa mai jos.
+  $("mm-contract").value=r?(r.contract||""):""; $("mm-dep").value=r?(r.depozit||""):"";
   $("mm-pers").value=r?(r.pers_resp||""):""; $("mm-tel").value=r?(r.telefon||""):""; $("mm-frecv").value=r?(r.frecv_serv||""):""; $("mm-obs").value=r?(r.observatii||""):"";
   document.querySelectorAll("#mm-flags .flag").forEach(f=>setFlag(f,r?(r[f.dataset.f]||"-"):(f.dataset.f==="waap"?"V":"-")));
   fillAnexeForClient(); $("mod-m").classList.add("on");
@@ -788,6 +804,15 @@ async function saveMiscare(){
     jud:$("mm-jud").value||null,loc:$("mm-loc").value||null,sat:$("mm-sat").value||null,contract:$("mm-contract").value||null,depozit:$("mm-dep").value||null,
     pers_resp:$("mm-pers").value||null,telefon:$("mm-tel").value||null,frecv_serv:$("mm-frecv").value||null,observatii:$("mm-obs").value||null};
   document.querySelectorAll("#mm-flags .flag").forEach(f=>rec[f.dataset.f]=f.textContent);
+  // Fara depozit, miscarea nu se vede in stoc. Se intreaba o data, nu se blocheaza.
+  const ef=(NOM.tip_miscare||[]).find(t=>t.valoare===tip);
+  const efect=ef?(ef.efect_stoc||"niciun"):"niciun";
+  if(efect!=="niciun"){
+    const lipsa=[];
+    if(!rec.depozit) lipsa.push("Depozit");
+    if(efect==="inchiriere" && !rec.contract) lipsa.push("Contract (depozit)");
+    if(lipsa.length && !confirm("Lipsește "+lipsa.join(" și ")+".\n\nMișcarea se salvează, dar nu va intra în stoc.\n\nContinui?")) return;
+  }
   const id=$("mm-id").value;
   const {error}= id? await db.from("miscari").update(rec).eq("id",id) : await db.from("miscari").insert(rec);
   if(error){toast(error.message,true);return;}
@@ -800,11 +825,32 @@ async function deleteMiscare(){
 }
 
 // ================= CLIENTI =================
+// Depozitul unui contract e „Contract (depozit)” de pe anexele lui: acolo se trece
+// cine tine contractul, indiferent din ce depozit se livreaza efectiv marfa.
+function contractInDepozit(k, dep){
+  if(!dep) return true;
+  const an=ANX.filter(a=>a.contract_id===k.id);
+  if(!an.length) return true;                 // contract fara anexe inca — se vede oriunde
+  const P=depPrincipal();
+  return an.some(a=>{
+    const d=(a.contract_depozit||"").trim();
+    // Anexa pe care nu s-a trecut nimic la „Contract (depozit)” se socoteste a casei,
+    // adica a depozitului principal. Asa nu dispar contractele vechi aduse din Excel.
+    return d ? d===dep : dep===P;
+  });
+}
 function renderClienti(){
-  const q=($("c-q").value||"").toLowerCase();
-  const list=CLI.filter(c=>{ if(!q) return true; const ks=CTR.filter(k=>k.client_id===c.id).map(k=>k.nr_ctr).join(" "); return (c.nume+" "+(c.cui||"")+" "+ks).toLowerCase().includes(q); });
+  const q=($("c-q").value||"").trim();
+  const fd=$("cl-dep")?$("cl-dep").value:"";
+  const ctrPt=c=>CTR.filter(k=>k.client_id===c.id && contractInDepozit(k,fd));
+  const list=CLI.filter(c=>{
+    const ks=ctrPt(c);
+    if(fd && CTR.some(k=>k.client_id===c.id) && !ks.length) return false;
+    if(!q) return true;
+    return potrivesteCautarea(c.nume+" "+(c.cui||"")+" "+ks.map(k=>k.nr_ctr).join(" "), q);
+  });
   $("c-list").innerHTML=list.map(c=>{
-    const ks=CTR.filter(k=>k.client_id===c.id);
+    const ks=ctrPt(c);
     return `<div class="card"><details ${q?"open":""}><summary>${esc(c.nume)} <span class="muted">${esc(c.id_tip||"")} ${esc(c.atr||"")} ${esc(c.cui||"")}</span><span class="badge">${ks.length} ctr</span> <button class="btn sm sec noprint" onclick="event.preventDefault();openClient(${c.id})">Edit</button> <button class="btn sm noprint" onclick="event.preventDefault();openContract(null,${c.id})">+ Contract</button></summary>`+
       ks.map(k=>{ const an=ANX.filter(a=>a.contract_id===k.id);
         return `<div style="margin:8px 0 4px;padding-left:8px;border-left:3px solid var(--gl)"><b>CTR ${esc(k.nr_ctr)}</b> <span class="muted">${fmtD(k.data_emitere)} → ${k.data_expirare?fmtD(k.data_expirare):esc(k.expirare_text||"")} · ${esc(k.stare)}</span> <button class="btn sm sec noprint" onclick="openContract(${k.id})">Edit</button> <button class="btn sm noprint" onclick="openAnexa(null,${k.id})">+ Anexă</button>
@@ -849,7 +895,7 @@ function openAnexa(id,contractId){
   $("ma-an").value=a?(a.anexa||""):""; $("ma-de").value=a?(a.data_emitere||""):today(); $("ma-dx").value=a?(a.data_expirare||""):""; $("ma-xt").value=a?(a.expirare_text||""):"";
   $("ma-jud").value=a?(a.jud||""):"HD"; $("ma-loc").value=a?(a.loc||""):""; $("ma-sat").value=a?(a.sat||""):""; $("ma-forma").value=a?(a.forma||"CHIRIE"):"CHIRIE";
   $("ma-prod").value=a?(a.produs||"TOALETE"):"TOALETE"; umpleModele("ma-prod","ma-model", a?(a.model||""):"CLASIC"); $("ma-um").value=a?(a.um||"BUC"):"BUC"; $("ma-cant").value=a?a.cant:1; $("ma-pret").value=a?a.pret:0; $("ma-moneda").value=a?(a.moneda||"RON"):"RON"; $("ma-scad").value=a?a.scadent:30; $("ma-status").value=a?(a.status||""):""; $("ma-dep").value=a?(a.depozit||""):"";
-  $("ma-ctrdep").value=a?(a.contract_depozit||""):"HUNEDOARA";
+  $("ma-ctrdep").value=a?(a.contract_depozit||""):depPrincipal();
   $("ma-dliv").value=a?(a.data_livrarii||""):""; $("ma-drid").value=a?(a.data_ridicarii||""):"";
   $("ma-transp").value=a?(a.transport||0):0; $("ma-frecv").value=a?(a.frecv_servisare||""):"";
   $("ma-zi").value=a?(a.zi_servisare||""):""; $("ma-pers").value=a?(a.pers_contact||""):"";
@@ -1766,12 +1812,12 @@ const A_DEF = {
   },
   depozite:{
     titlu:"Depozite", ord:"ordine",
-    nota:"Aceleași depozite sunt folosite de gestiune și de aplicația de PV-uri.",
+    nota:"Aceleași depozite sunt folosite de gestiune și de aplicația de PV-uri. Depozitul cu Tip = principal este cel preselectat peste tot în aplicație; poate fi unul singur.",
     lista:[["cod","Cod"],["nume","Nume"],["tip","Tip"],["adresa","Adresă"],["reprezentant_nume","Reprezentant"],["activ","Activ"]],
     campuri:[
       {c:"cod",e:"Cod",t:"text",req:1,up:1},
       {c:"nume",e:"Nume",t:"text",req:1,up:1},
-      {c:"tip",e:"Tip",t:"sel",op:["principal","secundar"]},
+      {c:"tip",e:"Tip",t:"sel",op:["secundar","principal"]},
       {c:"adresa",e:"Adresă",t:"text"},
       {c:"cuvant_contract",e:"Cuvânt contract",t:"text"},
       {c:"reprezentant_nume",e:"Reprezentant",t:"text"},
@@ -1897,7 +1943,8 @@ function adminDeschide(rec){
     let v = rec ? rec[f.c] : null;
     if(f.t==="bool") el.value = (v===false) ? "false" : "true";
     else if(f.t==="sel") el.value = (v==null||v==="") ? f.op[0] : String(v);
-    else if(v==null) el.value = "";
+    // Sofer nou / masina noua: depozitul vine deja pus pe cel principal.
+    else if(v==null) el.value = (!rec && f.t==="ref" && f.ref==="depozite" && depPrincipalId()) ? String(depPrincipalId()) : "";
     else el.value = String(v);
   });
   if(A_TBL==="soferi" && rec) $("a-form").insertAdjacentHTML("beforeend", panouCont(rec));
@@ -1928,6 +1975,12 @@ async function adminSalveaza(){
   const q = A_ID ? db.from(A_TBL).update(rec).eq("id",A_ID) : db.from(A_TBL).insert(rec);
   const {error}=await q;
   if(error){ toast(error.message,true); return; }
+  // Principal poate fi unul singur: cine tocmai a fost pus principal ii scoate pe ceilalti.
+  // Se merge pe „cod”, care e obligatoriu si unic, ca sa nu depindem de id-ul intors.
+  if(A_TBL==="depozite" && rec.tip==="principal" && rec.cod){
+    await db.from("depozite").update({tip:"secundar"}).eq("tip","principal").neq("cod",rec.cod);
+    DEP_PRESELECTAT=false;
+  }
   closeModal("mod-admin"); toast(A_ID ? "Modificare salvată" : "Adăugat");
   await adminReimprospateaza();
 }
