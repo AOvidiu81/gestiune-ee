@@ -114,6 +114,10 @@
   .kpi div b{display:block;font-size:18px}
   .neg{color:var(--red);font-weight:700}.pos{color:#145c34;font-weight:700}
   .actions{white-space:nowrap}
+  th.sortabil{cursor:pointer;user-select:none}
+  th.sortabil:hover{background:#d5e9dd}
+  th.sortabil .sg{margin-left:4px;font-size:9px;opacity:.35}
+  th.sortabil .sg.pe{opacity:1}
   .search{max-width:320px}
   details summary{cursor:pointer;font-weight:600;color:var(--g);padding:6px 0}
   .badge{background:var(--g);color:#fff;border-radius:10px;padding:1px 7px;font-size:11px;margin-left:6px}
@@ -136,7 +140,7 @@
 <header>
   <h1>GestiuneEE <span class="muted" style="color:#cfe6d7;font-weight:400">Euro Ecologic</span></h1>
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
-  <span class="ver">v3.2</span>
+  <span class="ver">v3.3</span>
   <span id="cine" class="ver" style="display:none;opacity:1;font-weight:600"></span>
   <button id="btn-iesi" class="btn sec" style="display:none;padding:5px 11px;font-size:12px" onclick="iesi()">Ieși</button>
   <span id="conn" class="ver">●</span>
@@ -628,6 +632,8 @@ const FLAGS = ["-","V","L","X"];
 
 // cache
 let NOM = {}, DEP = [], SOF = [], MAS = [], CLI = [], CTR = [], ANX = [], MISC = [], STOC = [], SI = [];
+// Sortarea listei de comenzi. Pornim de la cea mai nouă în sus, ca până acum.
+let M_SORT = { camp: "data", dir: -1 };
 const $ = id => document.getElementById(id);
 const esc = s => (s==null?"":String(s)).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const fmtD = d => d ? d.split("-").reverse().join("-") : "";   // zz-ll-aaaa peste tot
@@ -784,7 +790,24 @@ async function loadMiscari(){
 }
 $("f-q").addEventListener("keydown",e=>{if(e.key==="Enter")loadMiscari();});
 function pill(t){ const c=/AMPLASARE|EVENIMENT-A|SUPLIMENTARE/.test(t)?"A":/RIDICARE|EVENIMENT-R|REDUCERE/.test(t)?"R":/SERVISARE/.test(t)?"S":/Transfer|VANZARE/.test(t)?"T":"X"; return `<span class="pill p-${c}">${esc(t)}</span>`; }
+// Apăsarea pe capul coloanei întoarce ordinea. Se sortează lista încărcată, deci
+// exportul Excel iese în aceeași ordine ca ce se vede pe ecran.
+function sorteazaComenzi(camp){
+  M_SORT = { camp, dir: (M_SORT.camp === camp ? -M_SORT.dir : -1) };
+  renderMiscari();
+}
+function aplicaSortarea(){
+  const c = M_SORT.camp, d = M_SORT.dir;
+  MISC.sort((a, b) => {
+    const x = a[c], y = b[c];
+    let r;
+    if(typeof x === "number" || typeof y === "number") r = (+x || 0) - (+y || 0);
+    else r = String(x == null ? "" : x).localeCompare(String(y == null ? "" : y), "ro");
+    return r !== 0 ? r * d : (b.id - a.id);   // la egalitate, cea introdusă mai târziu prima
+  });
+}
 function renderMiscari(){
+  aplicaSortarea();
   const sumA=MISC.filter(r=>r.buc>0).reduce((s,r)=>s+r.buc,0), sumR=MISC.filter(r=>r.buc<0).reduce((s,r)=>s+r.buc,0);
   $("m-kpi").innerHTML=`<div>Comenzi<b>${MISC.length}</b></div><div>Amplasate (+)<b>${sumA}</b></div><div>Ridicate (−)<b>${sumR}</b></div><div>Net<b>${sumA+sumR}</b></div>`;
   const nrSub=MISC.filter(r=>subReferinta(r)).length;
@@ -792,7 +815,8 @@ function renderMiscari(){
   const fl=(v)=>`<span class="flag ${esc(v)}" style="cursor:default">${esc(v||"-")}</span>`;
   const nrCtr=id=>{ const k=CTR.find(x=>x.id===id); return k?k.nr_ctr||"":""; };
   const nrAnx=id=>{ const a=ANX.find(x=>x.id===id); return a?(a.anexa||"—"):""; };
-  let h=`<tr><th>Data</th><th>Comandă</th><th>Buc</th><th>Produs</th><th>Model</th><th>Client</th><th>Contract</th><th>Anexă</th><th>Jud</th><th>Loc./Com.</th><th>Sat/Str./Locație</th><th>Contract (dep.)</th><th>Depozit</th><th>Resp. șantier</th><th>Telefon</th><th>Rpt</th><th>RT</th><th>FAC</th><th>PV</th><th>ACT</th><th>WaAp</th><th>Frecv.</th><th class="noprint"></th></tr>`;
+  const sg = c => M_SORT.camp === c ? `<span class="sg pe">${M_SORT.dir > 0 ? "▲" : "▼"}</span>` : '<span class="sg">▼</span>';
+  let h=`<tr><th class="sortabil" onclick="sorteazaComenzi('data')" title="Apasă ca să întorci ordinea">Data${sg("data")}</th><th>Comandă</th><th>Buc</th><th>Produs</th><th>Model</th><th>Client</th><th>Contract</th><th>Anexă</th><th>Jud</th><th>Loc./Com.</th><th>Sat/Str./Locație</th><th>Contract (dep.)</th><th>Depozit</th><th>Resp. șantier</th><th>Telefon</th><th>Rpt</th><th>RT</th><th>FAC</th><th>PV</th><th>ACT</th><th>WaAp</th><th>Frecv.</th><th class="noprint"></th></tr>`;
   h+=MISC.map(r=>{const sr=subReferinta(r); return `<tr><td>${fmtD(r.data)}${sr?` <span class="pill p-T" title="Mai veche decât data de referință a stocului (${fmtD(sr)}) — nu intră în stoc">sub referință</span>`:""}</td><td>${pill(r.tip_miscare)}</td><td class="${r.buc<0?"neg":"pos"}">${r.buc}</td><td>${esc(r.produs)}</td><td>${esc(r.model)}</td><td><b>${esc(r.client)}</b></td><td>${esc(nrCtr(r.contract_id))}</td><td>${esc(nrAnx(r.anexa_id))}</td><td>${esc(r.jud)}</td><td>${esc(r.loc)}</td><td>${esc(r.sat)}</td><td>${esc(r.contract)}</td><td>${esc(r.depozit)}</td><td>${esc(r.pers_resp)}</td><td>${esc(r.telefon)}</td><td>${fl(r.rpt)}</td><td>${fl(r.rt)}</td><td>${fl(r.fac)}</td><td>${fl(r.pv)}</td><td>${fl(r.act)}</td><td>${fl(r.waap)}</td><td>${esc(r.frecv_serv)}</td><td class="noprint actions"><button class="btn sm sec" onclick="openMiscare(${r.id})">Edit</button></td></tr>`;}).join("");
   $("m-tbl").innerHTML=h||"<tr><td>Nicio comandă.</td></tr>";
 }
