@@ -121,8 +121,33 @@
   .search{max-width:320px}
   details summary{cursor:pointer;font-weight:600;color:var(--g);padding:6px 0}
   .badge{background:var(--g);color:#fff;border-radius:10px;padding:1px 7px;font-size:11px;margin-left:6px}
-  @media print{header,nav,.noprint{display:none!important}main{padding:0}.tw{max-height:none;overflow:visible;border:0}body{background:#fff}th{position:static}}
+  @media print{header,nav,.noprint{display:none!important}body{display:block}main{padding:0}.tw{max-height:none;overflow:visible;border:0}body{background:#fff}th{position:static}}
   @media (max-width:640px){th,td{padding:6px 5px;font-size:12px}}
+
+  /* ---- Ecran lat: filele trec pe stanga, una sub alta, iar continutul ia tot restul ----
+     Pe ecran ingust (telefon, tableta) ramane cum era: filele pe orizontala, sus. */
+  @media (min-width:900px){
+    body{display:grid;grid-template-columns:214px minmax(0,1fr);align-items:start}
+    header{grid-column:1 / -1;grid-row:1}
+    nav{grid-column:1;grid-row:2;flex-direction:column;flex-wrap:nowrap;
+        overflow-x:visible;overflow-y:auto;
+        position:sticky;top:44px;align-self:start;height:calc(100vh - 44px);
+        border-bottom:0;border-right:1px solid var(--bd);padding:8px 0}
+    nav button{flex:0 0 auto;width:100%;min-width:0;text-align:left;
+               padding:11px 14px;white-space:normal;line-height:1.25;
+               border-bottom:0;border-left:3px solid transparent}
+    nav button:hover{background:#f4f8f5}
+    nav button.on{border-bottom-color:transparent;border-left-color:var(--g);background:var(--gl)}
+    main{grid-column:2;grid-row:2;max-width:none;margin:0;padding:14px 18px;min-width:0}
+    /* Pagina umple inaltimea ecranului, iar tabelul ei creste cat mai are loc,
+       ca sa nu ramana o zona goala sub el. */
+    .page.on{display:flex;flex-direction:column;min-height:calc(100vh - 72px)}
+    .page.on > .tw{flex:1 1 auto;max-height:none;min-height:200px}
+    /* Randul de filtre nu se mai intinde pe tot ecranul: campurile cresc pana la o
+       latime citibila si se opresc. */
+    main .card > .row > *{max-width:300px}
+    main .card > .row > .search{max-width:340px}
+  }
 </style>
 </head>
 <body>
@@ -140,7 +165,7 @@
 <header>
   <h1>GestiuneEE <span class="muted" style="color:#cfe6d7;font-weight:400">Euro Ecologic</span></h1>
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
-  <span class="ver">v3.3</span>
+  <span class="ver">v3.4</span>
   <span id="cine" class="ver" style="display:none;opacity:1;font-weight:600"></span>
   <button id="btn-iesi" class="btn sec" style="display:none;padding:5px 11px;font-size:12px" onclick="iesi()">Ieși</button>
   <span id="conn" class="ver">●</span>
