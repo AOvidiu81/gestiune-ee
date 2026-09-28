@@ -223,6 +223,8 @@
   .kpi div{background:var(--card);border:1px solid var(--bd);border-radius:var(--r);box-shadow:var(--umbra);
            padding:12px 16px;min-width:132px;color:var(--mut);font-size:12px}
   .kpi div b{display:block;font-size:24px;font-weight:700;color:var(--tx);margin-top:3px;letter-spacing:-.02em}
+  .kpi div.kpi-amb{border-color:var(--amb);color:var(--amb)}
+  .kpi div.kpi-amb b{color:var(--amb)}
 
   .tw{border:1px solid var(--bd);border-radius:var(--r);background:var(--card)}
   table{background:var(--card)}
@@ -301,7 +303,7 @@
 <header>
   <h1>GestiuneEE <span class="sub-marca">Euro Ecologic</span></h1>
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
-  <span class="ver">v4.0</span>
+  <span class="ver">v4.1</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -992,7 +994,7 @@ function renderMiscari(){
   const sumA=MISC.filter(r=>r.buc>0).reduce((s,r)=>s+r.buc,0), sumR=MISC.filter(r=>r.buc<0).reduce((s,r)=>s+r.buc,0);
   $("m-kpi").innerHTML=`<div>Comenzi<b>${MISC.length}</b></div><div>Amplasate (+)<b>${sumA}</b></div><div>Ridicate (−)<b>${sumR}</b></div><div>Net<b>${sumA+sumR}</b></div>`;
   const nrSub=MISC.filter(r=>subReferinta(r)).length;
-  if(nrSub) $("m-kpi").innerHTML += `<div style="background:#fff1d6;color:#7a4a00">Sub referință<b>${nrSub}</b></div>`;
+  if(nrSub) $("m-kpi").innerHTML += `<div class="kpi-amb">Sub referință<b>${nrSub}</b></div>`;
   const fl=(v)=>`<span class="flag ${esc(v)}" style="cursor:default">${esc(v||"-")}</span>`;
   const nrCtr=id=>{ const k=CTR.find(x=>x.id===id); return k?k.nr_ctr||"":""; };
   const nrAnx=id=>{ const a=ANX.find(x=>x.id===id); return a?(a.anexa||"—"):""; };
