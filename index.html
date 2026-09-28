@@ -303,7 +303,7 @@
 <header>
   <h1>GestiuneEE <span class="sub-marca">Euro Ecologic</span></h1>
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
-  <span class="ver">v4.1</span>
+  <span class="ver">v4.2</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -654,7 +654,7 @@
       <button class="btn danger" id="mm-del" onclick="deleteMiscare()" style="display:none">Șterge</button>
       <div style="flex:1"></div>
       <button class="btn sec" onclick="closeModal('mod-m')">Anulează</button>
-      <button class="btn sec" onclick="deschideComanda()">Generează comanda</button>
+      <button class="btn sec" onclick="saveMiscare(true)">Salvează și generează</button>
       <button class="btn" onclick="saveMiscare()">Salvează</button>
     </div>
   </div>
@@ -804,7 +804,9 @@ let M_SORT = { camp: "data", dir: -1 };
 const $ = id => document.getElementById(id);
 const esc = s => (s==null?"":String(s)).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const fmtD = d => d ? d.split("-").reverse().join("-") : "";   // zz-ll-aaaa peste tot
-function toast(m, err){ const t=$("toast"); t.textContent=m; t.style.background=err?"#b3261e":"#222"; t.classList.add("on"); setTimeout(()=>t.classList.remove("on"),2600); }
+let TOAST_CEAS = null;
+function toast(m, err){ const t=$("toast"); t.textContent=m; t.style.background=err?"#b3261e":"#222"; t.classList.add("on");
+  clearTimeout(TOAST_CEAS); TOAST_CEAS = setTimeout(()=>t.classList.remove("on"), Math.min(9000, 2600 + String(m).length*40)); }
 function closeModal(id){ $(id).classList.remove("on"); }
 function fill(sel, arr, blank){ const s=$(sel); if(!s) return; const cur=s.value; s.innerHTML=(blank!==undefined?`<option value="">${blank}</option>`:"")+arr.map(v=>`<option value="${esc(v)}">${esc(v)}</option>`).join(""); if(cur) s.value=cur; }
 
@@ -1113,11 +1115,43 @@ function mmAntet(){
 ["mm-client","mm-ctr","mm-anexa"].forEach(id=>{
   const e=$(id); if(e){ e.addEventListener("change",mmAntet); e.addEventListener("input",mmAntet); }
 });
+// O comanda proaspat salvata trebuie sa se vada, chiar daca nu intra in filtrele de acum.
+// (Filtrul de depozit porneste pe depozitul principal, iar la Comanda noua depozitul se
+// alege de mana — deci o comanda din alt depozit ar disparea exact cand o salvezi.)
+// Largim doar filtrele care o lasa pe dinafara si spunem care au fost.
+function largesteFiltrele(rec){
+  const schimbate = [];
+  const an = (rec.data||"").slice(0,4), luna = +(rec.data||"").slice(5,7);
+  if($("f-an").value && $("f-an").value !== an && [...$("f-an").options].some(o=>o.value===an)){
+    $("f-an").value = an; schimbate.push("anul pe " + an);
+  }
+  if($("f-luna").value && +$("f-luna").value !== luna){
+    $("f-luna").value = ""; schimbate.push("luna pe „Toate”");
+  }
+  if($("f-tip").value && $("f-tip").value !== rec.tip_miscare){
+    $("f-tip").value = ""; schimbate.push("tipul pe „Toate”");
+  }
+  if($("f-prod").value && $("f-prod").value !== rec.produs){
+    $("f-prod").value = ""; schimbate.push("produsul pe „Toate”");
+  }
+  if($("f-dep").value && $("f-dep").value !== (rec.depozit || "")){
+    $("f-dep").value = ""; schimbate.push("depozitul pe „Toate”");
+  }
+  const q = $("f-q").value.trim();
+  if(q && !potrivesteCautarea([rec.client,rec.loc,rec.sat,rec.contract,rec.jud].filter(Boolean).join(" "), q)){
+    $("f-q").value = ""; schimbate.push("căutarea goală");
+  }
+  return schimbate;
+}
 const NEG=/RIDICARE|EVENIMENT-R|REDUCERE|TransferOUT|VANZARE/;
-async function saveMiscare(){
-  const tip=$("mm-tip").value; let buc=Math.abs(+$("mm-buc").value||0); if(!buc){toast("Introdu numărul de bucăți",true);return;}
+// `genereaza` = true vine de la butonul „Salvează și generează”: salveaza la fel,
+// apoi deschide si textul de copiat pe WhatsApp.
+async function saveMiscare(genereaza){
+  const tip=$("mm-tip").value; let buc=Math.abs(+$("mm-buc").value||0); if(!buc){toast("Introdu numărul de bucăți",true);return false;}
   if(NEG.test(tip)) buc=-buc;
-  const client=$("mm-client").value.trim(); const c=CLI.find(x=>x.nume.toLowerCase()===client.toLowerCase());
+  const client=$("mm-client").value.trim();
+  if(genereaza && !client){ toast("Alege întâi clientul", true); return false; }
+  const c=CLI.find(x=>x.nume.toLowerCase()===client.toLowerCase());
   const rec={data:$("mm-data").value,tip_miscare:tip,buc,produs:$("mm-prod").value,model:$("mm-model").value||null,client_id:c?c.id:null,client:client||null,
     jud:$("mm-jud").value||null,loc:$("mm-loc").value||null,sat:$("mm-sat").value||null,contract:$("mm-contract").value||null,depozit:$("mm-dep").value||null,
     pers_resp:$("mm-pers").value||null,telefon:$("mm-tel").value||null,frecv_serv:$("mm-frecv").value||null,observatii:$("mm-obs").value||null,
@@ -1130,15 +1164,24 @@ async function saveMiscare(){
     const lipsa=[];
     if(!rec.depozit) lipsa.push("Depozit");
     if(efect==="inchiriere" && !rec.contract) lipsa.push("Contract (depozit)");
-    if(lipsa.length && !confirm("Lipsește "+lipsa.join(" și ")+".\n\nComanda se salvează, dar nu va intra în stoc.\n\nContinui?")) return;
+    if(lipsa.length && !confirm("Lipsește "+lipsa.join(" și ")+".\n\nComanda se salvează, dar nu va intra în stoc.\n\nContinui?")) return false;
     const sr=subReferinta(rec);
     if(sr && !confirm("Comanda e din "+fmtD(rec.data)+", mai veche decât data de referință a stocului ("
-        +fmtD(sr)+").\n\nCifra de pornire de la acea dată o cuprinde deja, așa că nu se mai adaugă în stoc.\n\nSalvez oricum?")) return;
+        +fmtD(sr)+").\n\nCifra de pornire de la acea dată o cuprinde deja, așa că nu se mai adaugă în stoc.\n\nSalvez oricum?")) return false;
   }
   const id=$("mm-id").value;
+  // Textul se scrie din formular cât e încă plin, înainte să închidem fereastra.
+  const textDeCopiat = genereaza ? textComanda() : null;
   const {error}= id? await db.from("miscari").update(rec).eq("id",id) : await db.from("miscari").insert(rec);
-  if(error){toast(error.message,true);return;}
-  closeModal("mod-m"); toast("Comandă salvată"); await loadMiscari(); loadStoc();
+  if(error){toast(error.message,true);return false;}
+  const largite = largesteFiltrele(rec);
+  closeModal("mod-m");
+  toast(largite.length
+    ? "Comandă salvată. Nu intra în filtrele de acum, așa că am pus " + largite.join(", ") + "."
+    : "Comandă salvată");
+  if(textDeCopiat !== null){ $("cmd-text").value = textDeCopiat; $("mod-cmd").classList.add("on"); }
+  await loadMiscari(); loadStoc();
+  return true;
 }
 async function deleteMiscare(){
   if(!confirm("Ștergi această comandă?")) return;
