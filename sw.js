@@ -1,75 +1,68 @@
-// sw.js — service worker minimal: cache "app shell" pentru functionare
-// offline completa dupa prima incarcare. La fiecare modificare a
-// aplicatiei, creste CACHE_VERSION ca telefoanele sa preia noua versiune.
-
-const CACHE_VERSION = 'pv-euro-ecologic-v60';
-const APP_SHELL = [
+// sw.js — GestiuneEE. Ține aplicația instalabilă și o pornește repede,
+// dar NU păstrează niciodată în memorie datele din Supabase: acelea trebuie
+// să fie mereu proaspete.
+const VERSIUNE = 'gestiune-ee-v4.4';
+const SCHELET = [
   './',
-  'index.html',
-  'manifest.json',
-  'css/styles.css',
-  'css/print.css',
-  'js/app.js',
-  'js/db.js',
-  'js/utils.js',
-  'js/router.js',
-  'js/components.js',
-  'js/catalog-defaults.js',
-  'js/pv-numbering.js',
-  'js/photo-annotate.js',
-  'js/pdf-print.js',
-  'js/pdf-generate.js',
-  'js/pdf-cereri.js',
-  'js/whatsapp-import.js',
-  'js/auth.js',
-  'js/vcard.js',
-  'js/screens-login.js',
-  'js/screens-setup.js',
-  'js/screens-home.js',
-  'js/screens-pv-form.js',
-  'js/screens-history.js',
-  'js/screens-cereri.js',
-  'assets/logo/euro_ecologic_logo.png',
-  'assets/logo/euro_ecologic_mark.png',
-  'assets/docs/header.png',
-  'assets/docs/footer.png',
-  'assets/docs/stampila_euro_ecologic.png',
-  'icons/icon-192.png',
-  'icons/icon-512.png',
-  'icons/maskable-192.png',
-  'icons/maskable-512.png',
+  './index.html',
+  './manifest.json',
+  './icons/icon-192.png',
+  './icons/icon-512.png',
+  './icons/maskable-192.png',
+  './icons/maskable-512.png',
+  './icons/apple-touch-icon.png'
 ];
 
-self.addEventListener('install', (event) => {
-  event.waitUntil(
-    caches.open(CACHE_VERSION).then((cache) => cache.addAll(APP_SHELL)).then(() => self.skipWaiting())
+self.addEventListener('install', (e) => {
+  e.waitUntil(
+    caches.open(VERSIUNE)
+      .then((c) => Promise.allSettled(SCHELET.map((u) => c.add(u))))
+      .then(() => self.skipWaiting())
   );
 });
 
-self.addEventListener('activate', (event) => {
-  event.waitUntil(
-    caches.keys().then((keys) => Promise.all(keys.filter((k) => k !== CACHE_VERSION).map((k) => caches.delete(k)))).then(() => self.clients.claim())
+self.addEventListener('activate', (e) => {
+  e.waitUntil(
+    caches.keys()
+      .then((chei) => Promise.all(chei.filter((k) => k !== VERSIUNE).map((k) => caches.delete(k))))
+      .then(() => self.clients.claim())
   );
 });
 
-self.addEventListener('fetch', (event) => {
-  if (event.request.method !== 'GET') return;
-  event.respondWith(
-    caches.match(event.request).then((cached) => {
-      if (cached) return cached;
-      return fetch(event.request)
-        .then((response) => {
-          // 'basic' = fisierele proprii; 'cors' = libraria supabase-js
-          // incarcata de pe esm.sh (js/auth.js) — o cachuim si pe aceasta
-          // dupa prima incarcare reusita, ca autentificarea/sincronizarea
-          // sa nu depinda strict de cache-ul HTTP nativ al telefonului.
-          if (response.ok && (response.type === 'basic' || response.type === 'cors')) {
-            const clone = response.clone();
-            caches.open(CACHE_VERSION).then((cache) => cache.put(event.request, clone));
-          }
-          return response;
+self.addEventListener('fetch', (e) => {
+  const req = e.request;
+  if (req.method !== 'GET') return;
+
+  const url = new URL(req.url);
+
+  // Datele din Supabase trec mereu direct la server, niciodată din memorie.
+  if (url.hostname.endsWith('.supabase.co')) return;
+
+  // Pagina: întâi de la server (ca să prindă versiunea nouă), altfel din memorie.
+  if (req.mode === 'navigate' || (req.headers.get('accept') || '').includes('text/html')) {
+    e.respondWith(
+      fetch(req)
+        .then((r) => {
+          const copie = r.clone();
+          caches.open(VERSIUNE).then((c) => c.put(req, copie)).catch(() => {});
+          return r;
         })
-        .catch(() => cached);
+        .catch(() => caches.match(req).then((r) => r || caches.match('./index.html')))
+    );
+    return;
+  }
+
+  // Restul (iconițe, biblioteci de pe CDN): întâi din memorie, apoi de la server.
+  e.respondWith(
+    caches.match(req).then((din_memorie) => {
+      if (din_memorie) return din_memorie;
+      return fetch(req).then((r) => {
+        if (r && r.status === 200 && (r.type === 'basic' || r.type === 'cors')) {
+          const copie = r.clone();
+          caches.open(VERSIUNE).then((c) => c.put(req, copie)).catch(() => {});
+        }
+        return r;
+      });
     })
   );
 });
