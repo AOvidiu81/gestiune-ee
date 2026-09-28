@@ -13,6 +13,12 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script>
+  /* Tema se pune inainte ca pagina sa se deseneze, altfel palpaie alb la fiecare
+     deschidere. Alegerea sta in memoria browserului, pe calculatorul fiecaruia. */
+  try{ document.documentElement.dataset.tema = localStorage.getItem("gee_tema") || "inchis"; }
+  catch(e){ document.documentElement.dataset.tema = "inchis"; }
+</script>
 <style>
   :root{--g:#1b5e3a;--g2:#2e7d4f;--gl:#e6f3ea;--bg:#f3f5f4;--card:#fff;--tx:#1e2a24;--mut:#6b7a72;--bd:#d9e0dc;--red:#b3261e;--amb:#b26a00;--blue:#1d4ed8}
   *{box-sizing:border-box}
@@ -114,6 +120,11 @@
   .kpi div b{display:block;font-size:18px}
   .neg{color:var(--red);font-weight:700}.pos{color:#145c34;font-weight:700}
   .actions{white-space:nowrap}
+  /* Butoanele nu se mai rup pe doua randuri: eticheta ramane intreaga, iar casuta
+     lor se ia dupa lungimea textului, nu dupa cei 120px de minim ai randului.
+     Casutele cu latime proprie (cele cu min-width scris in pagina) raman cum sunt. */
+  button.btn{white-space:nowrap}
+  .row > [style*="flex:0"]{flex:0 0 auto !important;min-width:0}
   th.sortabil{cursor:pointer;user-select:none}
   th.sortabil:hover{background:#d5e9dd}
   th.sortabil .sg{margin-left:4px;font-size:9px;opacity:.35}
@@ -127,7 +138,7 @@
   /* ---- Ecran lat: filele trec pe stanga, una sub alta, iar continutul ia tot restul ----
      Pe ecran ingust (telefon, tableta) ramane cum era: filele pe orizontala, sus. */
   @media (min-width:900px){
-    body{display:grid;grid-template-columns:214px minmax(0,1fr);align-items:start}
+    body{display:grid;grid-template-columns:232px minmax(0,1fr);align-items:start}
     header{grid-column:1 / -1;grid-row:1}
     nav{grid-column:1;grid-row:2;flex-direction:column;flex-wrap:nowrap;
         overflow-x:visible;overflow-y:auto;
@@ -148,11 +159,136 @@
     main .card > .row > *{max-width:300px}
     main .card > .row > .search{max-width:340px}
   }
+
+  /* ================= TEMA ȘI FORMĂ (v4.0) =================
+     Două teme pe aceleași reguli: se schimbă doar valorile de mai jos, restul foii
+     le folosește. Numele vechi (--g, --g2, --gl) sunt păstrate ca să nu fie nevoie
+     să umblăm în fiecare regulă scrisă până acum. */
+  :root{
+    --acc:#2563eb;
+    --g:#2563eb; --g2:#3b82f6; --gl:#e8f0fe;
+    --bg:#f4f6f9; --card:#ffffff; --card2:#f8fafc;
+    --tx:#101828; --mut:#667085; --bd:#e4e7ec;
+    --nav:#ffffff; --nav-tx:#475467; --nav-on-bg:#2563eb; --nav-on-tx:#ffffff; --nav-hov:#f2f4f7;
+    --hd:#ffffff; --hd-tx:#101828;
+    --ok:#12805c; --red:#b42318; --amb:#b54708;
+    --rand-hov:#f9fafb;
+    --umbra:0 1px 2px rgba(16,24,40,.05);
+    --r:14px;
+  }
+  :root[data-tema="inchis"]{
+    --acc:#3b82f6;
+    --g:#3b82f6; --g2:#60a5fa; --gl:#182338;
+    --bg:#0e1116; --card:#191d24; --card2:#1f242c;
+    --tx:#e6edf3; --mut:#8b949e; --bd:#272e38;
+    --nav:#12161c; --nav-tx:#9aa4b2; --nav-on-bg:#232b36; --nav-on-tx:#ffffff; --nav-hov:#1a1f27;
+    --hd:#12161c; --hd-tx:#e6edf3;
+    --ok:#3fb950; --red:#f85149; --amb:#d29922;
+    --rand-hov:#1e232b;
+    --umbra:0 1px 2px rgba(0,0,0,.45);
+  }
+  body{background:var(--bg);color:var(--tx)}
+
+  header{background:var(--hd);color:var(--hd-tx);border-bottom:1px solid var(--bd);gap:10px}
+  header h1{font-size:16px;font-weight:700;letter-spacing:-.01em}
+  header .sub-marca{color:var(--mut);font-weight:400;font-size:12px;margin-left:5px}
+  header .ver{color:var(--mut);opacity:1}
+  .pictograma{background:transparent;border:1px solid var(--bd);color:var(--tx);width:30px;height:30px;
+              border-radius:9px;cursor:pointer;font-size:14px;line-height:1;flex:0 0 auto;padding:0}
+  .pictograma:hover{background:var(--nav-hov)}
+
+  nav{background:var(--nav);border-color:var(--bd)}
+  nav button{color:var(--nav-tx);font-weight:600}
+  nav button:hover{background:var(--nav-hov)}
+  nav button.on{background:var(--nav-on-bg);color:var(--nav-on-tx)}
+  #nav-jos{display:flex;align-items:center;gap:9px;padding:10px 12px}
+  #nav-jos .ini{width:32px;height:32px;border-radius:50%;background:var(--acc);color:#fff;flex:0 0 auto;
+                display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px}
+  #nav-jos .cine-blk{flex:1;min-width:0;line-height:1.3}
+  #nav-jos #cine{font-weight:600;font-size:13px;color:var(--tx);
+                 overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  #nav-jos #cine-rol{font-size:11px;color:var(--mut)}
+
+  .card,.stoc{background:var(--card);border:1px solid var(--bd);border-radius:var(--r);box-shadow:var(--umbra)}
+  .card{padding:16px}
+  label{color:var(--mut)}
+  input,select,textarea{background:var(--card2);border-color:var(--bd);color:var(--tx);border-radius:9px}
+  input:focus,select:focus,textarea:focus{outline:2px solid var(--acc);border-color:var(--acc)}
+  button.btn{background:var(--acc);border-radius:9px}
+  button.btn.sec{background:transparent;color:var(--tx);border:1px solid var(--bd)}
+  button.btn.sec:hover{background:var(--nav-hov)}
+  button.btn.danger{background:var(--red);color:#fff}
+
+  .kpi{gap:12px}
+  .kpi div{background:var(--card);border:1px solid var(--bd);border-radius:var(--r);box-shadow:var(--umbra);
+           padding:12px 16px;min-width:132px;color:var(--mut);font-size:12px}
+  .kpi div b{display:block;font-size:24px;font-weight:700;color:var(--tx);margin-top:3px;letter-spacing:-.02em}
+
+  .tw{border:1px solid var(--bd);border-radius:var(--r);background:var(--card)}
+  table{background:var(--card)}
+  th{background:var(--card2);color:var(--mut);border-bottom:1px solid var(--bd)}
+  td{border-bottom:1px solid var(--bd);color:var(--tx)}
+  tr:hover td{background:var(--rand-hov)}
+  th.sortabil:hover{background:var(--nav-hov)}
+
+  .muted{color:var(--mut)}
+  details summary{color:var(--tx)}
+  .badge{background:var(--acc);color:#fff}
+  .stoc h4{color:var(--tx);font-size:13px;letter-spacing:.02em}
+  .stoc .n{color:var(--tx)}
+  .stoc .n b{color:var(--tx)}
+  .neg{color:var(--red)}.pos{color:var(--ok)}
+  .toast{background:var(--card);color:var(--tx);border:1px solid var(--bd);box-shadow:0 10px 30px rgba(0,0,0,.35)}
+  .modal .box{background:var(--card);border:1px solid var(--bd);border-radius:var(--r)}
+  .lux-cap{background:linear-gradient(135deg,var(--acc),var(--g2))}
+  .lux-corp{background:var(--card)}
+  .lux-jos{background:var(--card);border-color:var(--bd);box-shadow:none}
+  .sect>h4{color:var(--mut)}
+  .cal,.caut{background:var(--card);border-color:var(--bd);color:var(--tx)}
+  .cal-d{color:var(--tx)} .cal-d:hover{background:var(--nav-hov)}
+  .cal-d.sel{background:var(--acc);color:#fff}
+  .cal-d.azi{box-shadow:inset 0 0 0 1px var(--acc)}
+  .cal-nav{background:var(--card2);border-color:var(--bd);color:var(--tx)}
+  .cal-nav:hover{background:var(--nav-hov)}
+  .cal-titlu,.cal-txt{color:var(--acc)}
+  .cal-jos{border-color:var(--bd)}
+  .caut-o{color:var(--tx)} .caut-o:hover,.caut-o.pe{background:var(--nav-hov)}
+  .caut-gol{color:var(--mut)}
+
+  /* Pastilele și bifele, pe fundal închis */
+  :root[data-tema="inchis"] .p-A{background:#12331e;color:#7ee2a8}
+  :root[data-tema="inchis"] .p-R{background:#3a1a18;color:#ff9c96}
+  :root[data-tema="inchis"] .p-S{background:#16233f;color:#9dbcff}
+  :root[data-tema="inchis"] .p-T{background:#382910;color:#f4c77a}
+  :root[data-tema="inchis"] .p-X{background:#232a33;color:#aab3bf}
+  :root[data-tema="inchis"] .flag{border-color:var(--bd);color:var(--mut)}
+  :root[data-tema="inchis"] .flag.V{background:#12331e;color:#7ee2a8;border-color:#1f5233}
+  :root[data-tema="inchis"] .flag.L{background:#382910;color:#f4c77a;border-color:#59400f}
+  :root[data-tema="inchis"] .flag.X{background:#3a1a18;color:#ff9c96;border-color:#5a231f}
+
+  @media (min-width:900px){
+    /* Fila activă e o pastilă, ca în model, nu o linie pe margine. */
+    nav{padding:10px 0;display:flex}
+    nav button{border-left:0;border-radius:10px;margin:2px 10px;width:calc(100% - 20px);padding:10px 12px}
+    nav button.on{border-left:0}
+    #nav-jos{margin-top:auto;border-top:1px solid var(--bd)}
+  }
+  @media (max-width:899px){
+    #nav-jos{border-left:1px solid var(--bd);padding:6px 10px}
+    #nav-jos .cine-blk{display:none}
+  }
+
+  /* La tipărire, mereu pe alb, indiferent de temă. */
+  @media print{
+    :root,:root[data-tema="inchis"]{--bg:#fff;--card:#fff;--card2:#fff;--tx:#000;--mut:#444;
+                                    --bd:#bbb;--rand-hov:#fff;--umbra:none}
+    .card,.stoc,.tw,.kpi div{box-shadow:none}
+  }
 </style>
 </head>
 <body>
-<div id="ecran-login" style="position:fixed;inset:0;z-index:200;background:var(--g);display:flex;align-items:center;justify-content:center;padding:20px">
-  <div style="background:#fff;border-radius:14px;padding:26px;width:100%;max-width:380px;box-shadow:0 10px 40px rgba(0,0,0,.25)">
+<div id="ecran-login" style="position:fixed;inset:0;z-index:200;background:var(--bg);display:flex;align-items:center;justify-content:center;padding:20px">
+  <div style="background:var(--card);border:1px solid var(--bd);border-radius:14px;padding:26px;width:100%;max-width:380px;box-shadow:0 10px 40px rgba(0,0,0,.25)">
     <h2 style="margin:0 0 4px;color:var(--g);font-size:20px">GestiuneEE</h2>
     <p class="muted" style="margin:0 0 18px">Euro Ecologic — intră în cont ca să continui.</p>
     <div style="margin-bottom:10px"><label>Utilizator</label><input id="lg-user" autocomplete="username" autocapitalize="none" spellcheck="false"></div>
@@ -163,11 +299,10 @@
 </div>
 
 <header>
-  <h1>GestiuneEE <span class="muted" style="color:#cfe6d7;font-weight:400">Euro Ecologic</span></h1>
+  <h1>GestiuneEE <span class="sub-marca">Euro Ecologic</span></h1>
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
-  <span class="ver">v3.4</span>
-  <span id="cine" class="ver" style="display:none;opacity:1;font-weight:600"></span>
-  <button id="btn-iesi" class="btn sec" style="display:none;padding:5px 11px;font-size:12px" onclick="iesi()">Ieși</button>
+  <span class="ver">v4.0</span>
+  <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
 <nav>
@@ -182,6 +317,11 @@
   <button data-p="rute">Monitorizare rute</button>
   <button data-p="admin">Administrare</button>
   <button data-p="verificare">Verificare <span id="v-badge" class="badge" style="display:none">0</span></button>
+  <div id="nav-jos" style="display:none">
+    <div class="ini" id="nav-ini">—</div>
+    <div class="cine-blk"><div id="cine"></div><div id="cine-rol"></div></div>
+    <button id="btn-iesi" class="pictograma" title="Ieși din cont" onclick="iesi()">⏻</button>
+  </div>
 </nav>
 <main>
 
@@ -781,6 +921,22 @@ function exportStoc(){
   const wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,ws,"STOC"); XLSX.writeFile(wb,`Stoc_${today()}.xlsx`);
 }
 const today=()=>new Date().toISOString().slice(0,10);
+
+// ---- Tema inchisa / deschisa ----------------------------------------------
+// Alegerea sta in memoria browserului, deci fiecare om o are pe calculatorul lui.
+function potrivesteTema(){
+  const t = document.documentElement.dataset.tema === "inchis";
+  const b = $("btn-tema"); if(b) b.textContent = t ? "☀" : "☾";
+  const m = document.querySelector('meta[name="theme-color"]');
+  if(m) m.setAttribute("content", t ? "#12161c" : "#ffffff");
+}
+function schimbaTema(){
+  const d = document.documentElement;
+  d.dataset.tema = d.dataset.tema === "inchis" ? "deschis" : "inchis";
+  try{ localStorage.setItem("gee_tema", d.dataset.tema); }catch(e){}
+  potrivesteTema();
+}
+potrivesteTema();
 
 // ---- Data de referinta a stocului ------------------------------------------
 // Cifra de pornire din Stoc initial e valabila de la data ei incolo, pe fiecare
@@ -2591,9 +2747,12 @@ async function incarcaProfil(id){
   }
   UTILIZATOR = data;
   $("ecran-login").style.display = "none";
-  $("cine").textContent = data.full_name || data.username;
-  $("cine").style.display = "";
-  $("btn-iesi").style.display = "";
+  const numeleLui = data.full_name || data.username;
+  $("cine").textContent = numeleLui;
+  $("cine-rol").textContent = data.role === "admin" ? "Administrator" : "Manager";
+  $("nav-ini").textContent = numeleLui.trim().split(/\s+/).slice(0,2)
+                               .map(x => x.charAt(0)).join("").toUpperCase() || "?";
+  $("nav-jos").style.display = "";
   const vc = $("v-cine");
   if(vc && !vc.value) vc.value = data.full_name || data.username;
   init();
