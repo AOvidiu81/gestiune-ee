@@ -1,0 +1,223 @@
+<!doctype html>
+<html lang="ro">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="robots" content="noindex, nofollow" />
+<title>Admin — Euro Ecologic PV</title>
+<meta name="theme-color" content="#0b3b66" />
+<link rel="manifest" href="manifest.json" />
+<link rel="icon" href="../icons/admin-icon-192.png" />
+<link rel="apple-touch-icon" href="../icons/admin-icon-192.png" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="EE Admin" />
+<link rel="stylesheet" href="admin.css" />
+</head>
+<body>
+
+<div id="login-screen">
+  <div class="login-card">
+    <img class="login-logo" src="../assets/logo/euro_ecologic_logo.png" alt="Euro Ecologic" />
+    <h1 class="login-title">Panou de administrare</h1>
+    <p class="login-subtitle">Procese Verbale — Euro Ecologic</p>
+    <form id="login-form">
+      <div class="field">
+        <label>Utilizator</label>
+        <input id="login-username" type="text" autocomplete="username" required />
+      </div>
+      <div class="field">
+        <label>Parola</label>
+        <input id="login-password" type="password" autocomplete="current-password" required />
+      </div>
+      <button type="submit" id="login-btn" class="btn btn-primary btn-block">Intra in cont</button>
+      <div class="error-text" id="login-error"></div>
+    </form>
+  </div>
+</div>
+
+<div id="dashboard" class="hidden">
+  <div class="topbar">
+    <img src="../assets/logo/euro_ecologic_mark.png" alt="" />
+    <div class="topbar-title">Admin Procese Verbale</div>
+    <div class="topbar-user" id="topbar-user"></div>
+    <button class="btn btn-sm btn-outline" id="change-password-btn" style="color:#fff;border-color:rgba(255,255,255,0.5)">Schimba parola</button>
+    <button class="btn btn-sm btn-outline" id="logout-btn" style="color:#fff;border-color:rgba(255,255,255,0.5)">Iesire</button>
+  </div>
+
+  <div class="tabs">
+    <button class="tab-btn active" data-tab="drivers">Soferi</button>
+    <button class="tab-btn" data-tab="vehicles">Masini</button>
+    <button class="tab-btn" data-tab="products">Produse</button>
+    <button class="tab-btn" data-tab="depots">Depozite</button>
+    <button class="tab-btn" data-tab="pv">Procese Verbale</button>
+  </div>
+
+  <div class="content">
+    <div class="panel active" id="panel-drivers">
+      <div class="panel-head">
+        <h2>Soferi</h2>
+        <button class="btn btn-primary" id="add-driver-btn">+ Adauga sofer</button>
+      </div>
+      <div class="card">
+        <table>
+          <thead>
+            <tr><th>Utilizator</th><th>Nume</th><th>Masina</th><th>Depozit</th><th>Acces</th><th>Semnatura</th><th>Actiuni</th></tr>
+          </thead>
+          <tbody id="drivers-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="panel" id="panel-vehicles">
+      <div class="panel-head">
+        <h2>Masini</h2>
+        <button class="btn btn-primary" id="add-vehicle-btn">+ Adauga masina</button>
+      </div>
+      <div class="card">
+        <table>
+          <thead>
+            <tr><th>Marca</th><th>Numar</th><th>Depozit</th><th>Stare</th><th>Actiuni</th></tr>
+          </thead>
+          <tbody id="vehicles-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="panel" id="panel-products">
+      <div class="panel-head">
+        <h2>Produse</h2>
+        <button class="btn btn-primary" id="add-product-btn">+ Adauga produs</button>
+      </div>
+      <div class="card">
+        <table>
+          <thead>
+            <tr><th>Model</th><th>Tip</th><th>Stare</th><th>Actiuni</th></tr>
+          </thead>
+          <tbody id="products-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="panel" id="panel-depots">
+      <div class="panel-head">
+        <h2>Depozite</h2>
+      </div>
+      <div class="subtabs">
+        <button class="subtab-btn active" data-subtab="principal">Depozit Principal</button>
+        <button class="subtab-btn" data-subtab="secundar">Depozit Secundar</button>
+        <button class="subtab-btn" data-subtab="sediu">Sediu</button>
+      </div>
+
+      <div class="subpanel active" id="subpanel-principal">
+        <div class="panel-head">
+          <p class="hint-text" style="margin:0">Depozitul de baza al firmei — apare implicit soferilor la alegerea depozitului si e folosit ca adresa de retrimitere cand niciun depozit secundar nu se potriveste cu judetul din comanda.</p>
+          <button class="btn btn-primary" id="add-depot-principal-btn">+ Adauga depozit principal</button>
+        </div>
+        <div class="card">
+          <table>
+            <thead>
+              <tr><th>Denumire</th><th>Adresa</th><th>Reprezentant</th><th>Email</th><th>Stare</th><th>Actiuni</th></tr>
+            </thead>
+            <tbody id="depots-principal-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="subpanel" id="subpanel-secundar">
+        <div class="panel-head">
+          <p class="hint-text" style="margin:0">Depozite colaboratoare din alte judete — cand comanda ("La Contract") indica unul dintre aceste judete, avizul semnat se retrimite automat la email-ul de mai jos, nu la depozitul principal. Daca un depozit are si un "Cuvant cheie" completat, acela are prioritate (verificat inaintea judetului) — util pentru un contract/client anume, nu pentru o zona intreaga.</p>
+          <button class="btn btn-primary" id="add-depot-secundar-btn">+ Adauga depozit secundar</button>
+        </div>
+        <div class="card">
+          <table>
+            <thead>
+              <tr><th>Judet</th><th>Denumire</th><th>Cuvant cheie</th><th>Reprezentant</th><th>Email</th><th>Stare</th><th>Actiuni</th></tr>
+            </thead>
+            <tbody id="depots-secundar-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="subpanel" id="subpanel-sediu">
+        <div class="panel-head">
+          <p class="hint-text" style="margin:0">Datele firmei — apar pe antetul fiecarui Proces Verbal / Aviz generat si sunt folosite ca adresa de retrimitere pentru avizele din judetul Harghita (sediul firmei, nu un depozit de teren).</p>
+        </div>
+        <div class="card" style="padding:20px;max-width:520px">
+          <div class="field"><label>Denumire firma</label><input id="sediu-name" /></div>
+          <div class="field"><label>Adresa sediu</label><input id="sediu-address" /></div>
+          <div class="field"><label>Nr. Reg. Com.</label><input id="sediu-regcom" /></div>
+          <div class="field"><label>CUI</label><input id="sediu-cui" /></div>
+          <div class="field"><label>Telefon</label><input id="sediu-phone" /></div>
+          <div class="field"><label>Email</label><input id="sediu-email" placeholder="ex: info@eurowc.ro" /></div>
+          <div class="field"><label>Website</label><input id="sediu-website" /></div>
+          <div class="error-text" id="sediu-error"></div>
+          <button class="btn btn-primary" id="save-sediu-btn">Salveaza</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel" id="panel-pv">
+      <div class="panel-head">
+        <h2>Procese Verbale</h2>
+      </div>
+      <div class="card filters-card">
+        <div class="filter-row">
+          <div class="field">
+            <label>Sofer</label>
+            <select id="pv-filter-driver"><option value="">Toti soferii</option></select>
+          </div>
+          <div class="field">
+            <label>Tip proces</label>
+            <select id="pv-filter-type">
+              <option value="">Toate tipurile</option>
+              <option value="AMPLASARE">Amplasare</option>
+              <option value="RIDICARE">Ridicare</option>
+              <option value="SERVISARE">Servisare</option>
+              <option value="LIPSA ACCES">Lipsa acces</option>
+              <option value="VANZARE">Vanzare</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>De la data</label>
+            <input id="pv-filter-from" type="text" inputmode="numeric" maxlength="10" placeholder="ZZ-LL-AAAA" />
+          </div>
+          <div class="field">
+            <label>Pana la data</label>
+            <input id="pv-filter-to" type="text" inputmode="numeric" maxlength="10" placeholder="ZZ-LL-AAAA" />
+          </div>
+          <div class="field filter-actions">
+            <label>&nbsp;</label>
+            <button class="btn btn-outline" id="pv-filter-apply">Filtreaza</button>
+          </div>
+        </div>
+      </div>
+      <div class="pv-summary" id="pv-summary"></div>
+      <div class="card">
+        <table>
+          <thead>
+            <tr><th>Data</th><th>Nr PV</th><th>Tip</th><th>Client</th><th>Locatie</th><th>Sofer</th><th>Depozit</th><th>Marime</th><th>Actiuni</th></tr>
+          </thead>
+          <tbody id="pv-tbody"></tbody>
+        </table>
+      </div>
+      <div class="pv-load-more-row" id="pv-load-more-row" style="display:none">
+        <button class="btn btn-outline" id="pv-load-more-btn">Incarca mai multe</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="modal-host"></div>
+<div id="toast-host" class="toast-host"></div>
+
+<script type="module" src="admin.js"></script>
+<script>
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('sw.js').catch(() => {});
+    });
+  }
+</script>
+</body>
+</html>

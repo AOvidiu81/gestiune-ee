@@ -1,0 +1,322 @@
+/* print.css — stilul documentelor generate (Proces Verbal / Aviz / Anexe
+   foto), gandit pentru pagina A4. Aceleasi clase sunt folosite atat pentru
+   previzualizarea in-app (scalata via JS transform), cat si pentru tiparirea
+   reala a browserului (window.print -> "Salveaza ca PDF"). */
+
+:root {
+  --doc-ink: #16233c;
+  --doc-blue: #0b3b66;
+  --doc-blue-light: #e7f0fb;
+  --doc-red: #b3273f;
+  --doc-border: #b7c0cf;
+  --doc-border-strong: #16233c;
+  --doc-muted: #5b6b84;
+  --doc-green: #1f6b46;
+  --doc-green-border: #a9dcc0;
+  --doc-green-light: #eaf8f0;
+}
+
+.doc-page {
+  width: 210mm;
+  min-height: 297mm;
+  box-sizing: border-box;
+  padding: 10mm 14mm 8mm;
+  background: #ffffff;
+  color: var(--doc-ink);
+  font-family: Georgia, 'Times New Roman', 'Noto Serif', serif;
+  font-size: 9.6pt;
+  line-height: 1.32;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+}
+
+#print-root .doc-page + .doc-page {
+  margin-top: 0;
+}
+
+.doc-header { margin-bottom: 5mm; }
+.doc-header-img { width: 100%; max-height: 20mm; object-fit: contain; display: block; }
+.doc-header-rule { height: 1.4pt; background: var(--doc-blue); margin-top: 2mm; }
+
+.doc-preview-badge {
+  position: absolute;
+  top: 10mm;
+  right: 14mm;
+  border: 1pt solid var(--doc-red);
+  color: var(--doc-red);
+  font-family: Arial, sans-serif;
+  font-weight: 700;
+  font-size: 8pt;
+  padding: 1mm 2.5mm;
+  border-radius: 1mm;
+  letter-spacing: 0.5pt;
+}
+
+.doc-title {
+  font-family: Arial, sans-serif;
+  text-align: center;
+  font-size: 15pt;
+  font-weight: 700;
+  color: var(--doc-blue);
+  letter-spacing: 0.3pt;
+  margin: 0 0 1.5mm;
+}
+.doc-subtitle { text-align: left; font-size: 8.6pt; color: var(--doc-muted); margin-bottom: 1mm; }
+.doc-subtitle.center { text-align: center; }
+.doc-bold { font-weight: 700; }
+
+.doc-meta-line { text-align: left; font-size: 9pt; margin-bottom: 3.5mm; color: var(--doc-muted); }
+
+.doc-label {
+  font-family: Arial, sans-serif;
+  font-weight: 700;
+  font-size: 8.6pt;
+  color: var(--doc-blue);
+  letter-spacing: 0.4pt;
+  margin-top: 2.5mm;
+}
+.doc-text { font-size: 9.4pt; margin-top: 1mm; }
+.doc-beneficiar-line {
+  font-size: 10pt;
+  padding-bottom: 1.2mm;
+  margin-top: 1mm;
+  border-bottom: 0.6pt solid var(--doc-border-strong);
+}
+
+.doc-row-2 { display: flex; gap: 3.5mm; margin-top: 3mm; }
+.doc-row-2 > * { flex: 1 1 0; }
+
+.doc-box {
+  border: 0.7pt solid var(--doc-border);
+  border-radius: 1mm;
+  padding: 2.4mm 3.2mm;
+  font-size: 9pt;
+}
+.doc-box-title { font-family: Arial, sans-serif; font-weight: 700; font-size: 9.4pt; margin-bottom: 1.5mm; }
+.doc-box-title.center { text-align: center; }
+.doc-box-signer, .doc-box-obs { min-height: 22mm; }
+.doc-signer-grid { display: flex; gap: 2.5mm; align-items: stretch; }
+.doc-signer-info { flex: 3; display: flex; flex-direction: column; gap: 0.8mm; }
+.doc-signature-box {
+  flex: 2;
+  border: 0.6pt solid #97a4b8;
+  border-radius: 1mm;
+  min-height: 14mm;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #fbfcfe;
+}
+.doc-signature-box img { max-width: 100%; max-height: 14mm; object-fit: contain; }
+.doc-signature-placeholder { font-family: Arial, sans-serif; font-size: 7.6pt; color: var(--doc-red); font-weight: 700; }
+
+.doc-value-missing { color: var(--doc-red); font-weight: 700; }
+
+.doc-location-bar { margin-top: 3mm; font-size: 9.6pt; background: var(--doc-blue-light); border-color: #b9d0ec; }
+
+.doc-table-frame {
+  margin-top: 3mm;
+  border: 0.7pt solid var(--doc-border-strong);
+  border-radius: 1mm;
+  overflow: hidden;
+}
+.doc-table-frame .doc-table { margin-top: 0; }
+.doc-table { width: 100%; border-collapse: collapse; margin-top: 3mm; font-size: 8.6pt; }
+.doc-table th, .doc-table td { border: 0.7pt solid var(--doc-border-strong); padding: 1.4mm 2mm; }
+.doc-table thead th { font-family: Arial, sans-serif; font-weight: 700; background: #eef2f8; text-align: left; }
+
+/* Varianta verde "premium" pentru chenarul tabelului de produse — acelasi
+   principiu ca .doc-location-bar / .doc-confirmation-banner (bordura +
+   fundal deschis, pastelate), aplicat aici liniilor tabelului. */
+.doc-table-frame-green { border-color: var(--doc-green-border); }
+.doc-table-frame-green .doc-table th,
+.doc-table-frame-green .doc-table td { border-color: var(--doc-green-border); }
+.doc-table-frame-green .doc-table thead th { background: var(--doc-green-light); color: var(--doc-green); }
+.doc-table td.center, .doc-table th.center { text-align: center; }
+/* Latimi implicite (fallback daca JS nu a apucat sa ruleze) — in mod normal
+   sunt suprascrise dinamic de balanceProductsTableColumns() din utils.js,
+   dupa continutul real al PV-ului curent (Model/Tip iau doar cat au nevoie,
+   Serii primeste tot ce ramane). */
+.doc-products-table .col-buc { width: 10%; }
+.doc-products-table .col-model { width: 22%; }
+.doc-products-table .col-tip { width: 45%; }
+.doc-products-table .col-serii { width: 23%; }
+/* Un cod de serie (ex: "EE-333333") nu se rupe niciodata in mijloc cand
+   celula Serii se imparte pe mai multe randuri vizuale — vezi
+   formatSeriesCell() din pdf-print.js. Ruptura poate cadea doar intre
+   coduri, dupa "; ". */
+.doc-series-token { white-space: nowrap; }
+
+.doc-confirmation-banner {
+  margin-top: 3mm;
+  text-align: center;
+  font-family: Arial, sans-serif;
+  font-weight: 700;
+  font-size: 8.6pt;
+  background: #fff7e6;
+  border-color: #e8c77a;
+  letter-spacing: 0.2pt;
+}
+
+.doc-conditions { margin-top: 3mm; background: #fafbfd; }
+.doc-conditions-title { font-family: Arial, sans-serif; font-weight: 700; font-size: 8.4pt; margin-bottom: 1mm; }
+.doc-conditions-list { margin: 0; padding-left: 3.6mm; font-size: 8.1pt; color: #33415c; }
+.doc-conditions-list li { margin-bottom: 0.4mm; }
+
+.doc-observatii-sofer { margin-top: 3mm; font-size: 8.6pt; }
+
+.doc-parties-table { margin-top: auto; padding-top: 3mm; font-family: Arial, sans-serif; font-size: 8.4pt; }
+.doc-parties-table td { border: 0.7pt solid var(--doc-border-strong); }
+.doc-parties-table td.right { text-align: right; }
+
+.doc-footer { margin-top: 3mm; }
+.doc-footer-rule { height: 1.4pt; background: var(--doc-red); margin-bottom: 1.6mm; }
+.doc-footer-row { display: flex; align-items: center; gap: 2.5mm; }
+.doc-footer-logo { width: 20mm; height: 9mm; object-fit: contain; }
+.doc-footer-sep { width: 0.5pt; height: 9mm; background: #99a3b3; }
+.doc-footer-text { font-family: Arial, sans-serif; font-size: 6.4pt; color: #33415c; line-height: 1.35; flex: 1; }
+.doc-footer-page { font-family: Arial, sans-serif; font-size: 7.2pt; color: var(--doc-muted); white-space: nowrap; align-self: flex-end; }
+
+/* ---- Aviz ---- */
+.doc-aviz-parties { align-items: stretch; }
+.doc-furnizor, .doc-beneficiar-box { font-size: 8.4pt; }
+.doc-divider { height: 0.5pt; background: #c3ccd9; margin: 1mm 0 1.6mm; }
+.doc-beneficiar-grid { display: flex; flex-direction: column; gap: 1.5mm; }
+.doc-beneficiar-stamp-slot {
+  width: 30mm;
+  height: 13mm;
+  border: 0.6pt solid #97a4b8;
+  border-radius: 1mm;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #fbfcfe;
+  flex-shrink: 0;
+}
+.doc-beneficiar-stamp-slot img { max-width: 100%; max-height: 100%; object-fit: contain; }
+
+.doc-aviz-meta-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 8.2pt;
+  margin-top: 2.5mm;
+  color: #33415c;
+}
+.doc-aviz-table thead th { text-align: left; }
+.doc-aviz-table .col-nr { width: 7%; }
+.doc-aviz-table .col-um { width: 10%; }
+.doc-aviz-table .col-cant { width: 13%; }
+
+.doc-no-transport {
+  margin-top: 2.5mm;
+  text-align: center;
+  font-family: Arial, sans-serif;
+  font-weight: 700;
+  font-size: 8.4pt;
+}
+
+.doc-aviz-spacer { flex: 1 1 auto; min-height: 4mm; }
+.doc-return-message {
+  font-family: Arial, sans-serif;
+  font-weight: 700;
+  color: var(--doc-red);
+  font-size: 9.6pt;
+  margin: 2mm 0 1.5mm;
+  /* Mereu pe UN singur rand, indiferent de lungimea textului (tip proces +
+     adresa de email pot varia) — vezi fitReturnMessages() din pdf-print.js,
+     care micsoreaza font-size-ul din JS pana incape, inainte de tiparire/
+     export. white-space:nowrap + overflow:hidden raman aici doar ca plasa
+     de siguranta daca JS nu a apucat sa ruleze. */
+  white-space: nowrap;
+  overflow: hidden;
+}
+.doc-return-message-p1 { margin-top: 3mm; }
+
+.doc-signature-table td { vertical-align: top; }
+.doc-signature-table thead th { font-size: 8.4pt; }
+.doc-signature-row td { height: 30mm; }
+.doc-stamp-slot { position: relative; width: 26mm; height: 26mm; margin: 0 auto; display: flex; align-items: center; justify-content: center; }
+.doc-stamp-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; }
+.doc-stamp-signature { position: absolute; width: 70%; max-height: 55%; object-fit: contain; z-index: 1; }
+.doc-stamp-missing {
+  width: 100%; height: 100%;
+  border: 1.4pt solid var(--doc-red);
+  background: #fff6c9;
+  color: var(--doc-red);
+  font-family: Arial, sans-serif;
+  font-weight: 700;
+  font-size: 7.4pt;
+  display: flex; align-items: center; justify-content: center; text-align: center;
+}
+.doc-expeditie-grid { display: grid; grid-template-columns: auto 1fr; gap: 0.5mm 2mm; font-size: 8.2pt; padding: 1mm 1.4mm 0; }
+.doc-driver-sign-row { display: flex; align-items: center; gap: 2mm; padding: 1mm 1.4mm; font-size: 8pt; }
+.doc-driver-sign-row img { height: 8mm; object-fit: contain; }
+.doc-sign-line { flex: 1; border-bottom: 0.5pt solid #97a4b8; height: 6mm; }
+
+/* ---- Anexa foto ---- */
+.doc-annex-title { font-family: Arial, sans-serif; font-weight: 700; font-size: 10.5pt; color: var(--doc-blue); margin-bottom: 3mm; }
+.doc-annex-photo-frame {
+  flex: 1;
+  border: 0.7pt solid var(--doc-border);
+  border-radius: 1mm;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  background: #f6f7fa;
+}
+.doc-annex-photo-frame img { max-width: 100%; max-height: 100%; object-fit: contain; }
+.doc-annex-placeholder { text-align: center; font-family: Arial, sans-serif; font-size: 9.5pt; padding: 8mm; }
+.doc-annex-placeholder div + div { margin-top: 2mm; font-weight: 400; color: var(--doc-muted); }
+
+/* ---- Cereri / Documente (Concediu, Invoire, Demisie) ---- */
+.doc-cerere-body { margin-top: 6mm; font-size: 10.2pt; line-height: 1.62; text-align: justify; }
+.doc-cerere-body + .doc-cerere-body { margin-top: 3.5mm; }
+.doc-cerere-legal-note { margin-top: 4mm; font-size: 8.4pt; color: var(--doc-muted); }
+.doc-cerere-mentiuni { margin-top: 4mm; }
+.doc-cerere-spacer { flex: 1 1 auto; min-height: 16mm; }
+
+.doc-cerere-sign-row { align-items: flex-end; }
+.doc-cerere-date-col div + div { margin-top: 1mm; }
+.doc-cerere-solicitant-col { text-align: right; }
+.doc-cerere-solicitant-slot { height: 15mm; display: flex; align-items: flex-end; justify-content: flex-end; }
+.doc-cerere-solicitant-slot img { max-height: 15mm; max-width: 60mm; object-fit: contain; }
+.doc-cerere-solicitant-caption {
+  font-size: 8pt;
+  color: var(--doc-muted);
+  border-top: 0.6pt solid var(--doc-border-strong);
+  padding-top: 1mm;
+  margin-top: 1mm;
+}
+
+.doc-cerere-approval { min-height: 20mm; }
+.doc-cerere-approval-spacer { height: 9mm; }
+.doc-cerere-line { border-bottom: 0.6pt solid #97a4b8; height: 9mm; margin-top: 1.5mm; }
+.doc-cerere-caption { font-size: 8pt; color: var(--doc-muted); margin-top: 1mm; }
+
+@media print {
+  @page { size: A4; margin: 0; }
+  html, body { margin: 0 !important; }
+  #screen-stack, #toast-host { display: none !important; }
+  #print-root { display: block !important; }
+  .doc-page {
+    /* O inaltime FIXA (nu doar min-height) e necesara aici: unele motoare
+       de tiparire (Chrome desktop / Skia) nu calculeaza corect "flex: 1"
+       (folosit de .doc-annex-photo-frame) fata de un min-height in
+       contextul de paginare, ceea ce taia poza de confirmare si lasa
+       pagini goale dupa ea. Cu o inaltime ferma, calculul e determinist
+       pe orice motor de tiparire. */
+    height: 297mm;
+    page-break-after: always;
+    page-break-inside: avoid;
+    box-shadow: none !important;
+    transform: none !important;
+    margin: 0 !important;
+  }
+  .doc-page:last-child { page-break-after: auto; }
+}
+
+@media screen {
+  #print-root { display: none; }
+}
