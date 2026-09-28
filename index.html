@@ -303,7 +303,7 @@
 <header>
   <h1>GestiuneEE <span class="sub-marca">Euro Ecologic</span></h1>
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
-  <span class="ver">v4.2</span>
+  <span class="ver">v4.3</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -874,9 +874,13 @@ function fillAll(){
   const deps = DEP.map(d=>d.nume);
   fill("st-dep",deps,"Toate"); fill("f-dep",deps,"Toate"); fill("cl-dep",deps,"Toate");
   fill("mm-dep",deps,"—"); fill("mm-contract",deps,"—"); fill("si-dep",deps); fill("ma-dep",deps,"—"); fill("ma-ctrdep",deps,"—");
-  // Filtrele pornesc pe depozitul principal. O singura data: daca Ovidiu trece pe
-  // „Toate”, alegerea lui ramane, nu i-o schimba nicio reincarcare de liste.
-  if(!DEP_PRESELECTAT && DEP.length){ const P=depPrincipal(); pune("st-dep",P); pune("f-dep",P); pune("cl-dep",P); DEP_PRESELECTAT=true; }
+  // Depozitul principal se preselecteaza doar acolo unde intrebarea e „ce am eu”:
+  // la Stoc (stocul carui depozit) si la Clienti & Contracte (contractele mele).
+  // La COMENZI nu: acolo e lista tuturor comenzilor, si trebuie sa se vada toate,
+  // din orice depozit si de pe orice contract. (Pana in v4.2 filtrul pornea pe
+  // HUNEDOARA si ascundea comenzile celorlalte depozite chiar la deschiderea filei.)
+  // O singura data: daca Ovidiu schimba filtrul, alegerea lui ramane.
+  if(!DEP_PRESELECTAT && DEP.length){ const P=depPrincipal(); pune("st-dep",P); pune("cl-dep",P); DEP_PRESELECTAT=true; }
   fill("f-tip",nomv("tip_miscare"),"Toate"); fill("mm-tip",nomv("tip_miscare"));
   fill("f-prod",nomv("produs"),"Toate"); fill("mm-prod",nomv("produs")); fill("si-prod",nomv("produs")); fill("ma-prod",nomv("produs"));
   umpleModele("mm-prod","mm-model"); umpleModele("ma-prod","ma-model");
