@@ -94,7 +94,7 @@ function productSeriesEncoded(entries, noSeriesMode) {
     .join(';');
 }
 
-export async function openProcessVerbalForm({ driver, car, depot, processType }) {
+export async function openProcessVerbalForm({ driver, car, depot, processType, prefill, miscareId }) {
   await ensureCatalogSeeded();
   const catalogEntries = await CatalogRepo.getAll();
   const catalogByModel = {};
@@ -814,6 +814,7 @@ export async function openProcessVerbalForm({ driver, car, depot, processType })
                 county: countyCode,
                 processType,
                 carNumber: car.numar,
+                miscareId: miscareId || null,
                 createdAt,
               },
               blob
@@ -841,6 +842,9 @@ export async function openProcessVerbalForm({ driver, car, depot, processType })
         render();
       }
     }
+
+    // Deschis din "Comenzi active": formularul vine completat din comanda
+    if (prefill) applyWhatsAppImport(prefill);
 
     return screen;
   });

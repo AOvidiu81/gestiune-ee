@@ -12,6 +12,7 @@ import { PROCESS_TYPES, COMPANY_INFO } from './catalog-defaults.js';
 import { openProcessVerbalForm } from './screens-pv-form.js';
 import { openHistoryScreen } from './screens-history.js';
 import { openCereriMenu } from './screens-cereri.js';
+import { openComenziActive } from './screens-comenzi.js';
 
 export async function openMainSelector() {
   return pushScreen(({ pop }) => {
@@ -162,7 +163,9 @@ export async function openMainSelector() {
 
     continueBtn.onclick = () => {
       if (!selectedDriver || !selectedCar || !selectedDepot) return;
-      openHomeSelection({ driver: selectedDriver, car: selectedCar, depot: selectedDepot });
+      const ctx = { driver: selectedDriver, car: selectedCar, depot: selectedDepot };
+      // Intai lista de comenzi active; "PV fara comanda" duce la meniul de pana acum
+      openComenziActive({ ...ctx, onFaraComanda: () => openHomeSelection(ctx) });
     };
 
     const scroll = el('div', { class: 'screen-scroll' }, [logo, versionTag, updateBtn, form, infoCard]);

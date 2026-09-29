@@ -34,7 +34,7 @@ const FUNCTIONS_URL = SUPABASE_URL + '/functions/v1/admin-manage-users';
 const LOCAL_DRIVER_KEY = 'synced-driver';
 
 let clientPromise = null;
-function getSupabase() {
+export function getSupabase() {
   if (!clientPromise) {
     clientPromise = import('https://esm.sh/@supabase/supabase-js@2')
       .then(({ createClient }) =>
@@ -291,6 +291,7 @@ export async function uploadPvRecordToCloud(meta, blob) {
       created_at: meta.createdAt,
       file_size: blob.size,
       storage_path: storagePath,
+      miscare_id: meta.miscareId || null,
     });
     if (insertErr) {
       console.warn('[pv-sync] salvare rand pv_records esuata:', insertErr.message || insertErr);
