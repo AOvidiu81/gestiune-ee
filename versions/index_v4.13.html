@@ -50,7 +50,7 @@
   .pill{display:inline-block;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:700}
   .p-A{background:#dcefe3;color:#145c34}.p-R{background:#fde3e1;color:#8a1d17}.p-S{background:#e1e8fb;color:#1e3a8a}.p-T{background:#fff1d6;color:#7a4a00}.p-X{background:#eee;color:#444}
   .flag{display:inline-block;width:26px;height:26px;line-height:26px;text-align:center;border-radius:6px;border:1px solid var(--bd);font-weight:700;cursor:pointer;user-select:none;font-size:12px}
-  .flag.V{background:#1f9d55;color:#fff;border-color:#1f9d55}.flag.L{background:#f08c00;color:#fff;border-color:#f08c00}.flag.X{background:#d93025;color:#fff;border-color:#d93025}
+  .flag.V{background:#dcefe3;color:#145c34;border-color:#9ccfb0}.flag.L{background:#fff1d6;color:#7a4a00}.flag.X{background:#fde3e1;color:#8a1d17}
   .stoc-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:12px}
   .stoc{background:#fff;border:1px solid var(--bd);border-radius:10px;padding:12px}
   .stoc h4{margin:0 0 8px;font-size:13px;color:var(--g)}
@@ -96,8 +96,7 @@
   .pr-chip button{background:none;border:0;color:var(--mut);cursor:pointer;font-size:12px;padding:0 3px}
   .pr-acc input{width:150px;padding:3px 6px;font-size:12px}
   .acc-box{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:6px 14px;min-height:34px;align-items:center;font-size:13px}
-  .acc-box label{display:flex;align-items:center;gap:6px;cursor:pointer;white-space:nowrap;margin:0;text-transform:none;letter-spacing:0;font-size:13px;font-weight:500;color:var(--tx,inherit)}
-  .acc-box input[type=checkbox]{width:16px;height:16px;margin:0;flex:0 0 auto}
+  .acc-box label{display:flex;align-items:center;gap:5px;cursor:pointer;white-space:nowrap;margin:0}
   .st-t{width:100%;border-collapse:collapse;font-size:14px}
   .st-t th{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.04em;color:var(--mut);text-align:right;padding:0 0 6px 10px;border-bottom:1px solid var(--bd);background:none}
   .st-t th:first-child{text-align:left;padding-left:0}
@@ -163,14 +162,13 @@
   .cu-plus{display:flex;gap:6px}
   .gf{display:grid;gap:12px;margin-bottom:12px}.gf:last-child{margin-bottom:0}
   .gf>div{min-width:0}
-  .g-cmd{grid-template-columns:150px minmax(130px,1.3fr) 62px minmax(120px,1.2fr) minmax(120px,1.2fr)}
-  .g-cc{grid-template-columns:1.3fr 1fr}
+  .g-cmd{grid-template-columns:150px minmax(130px,1.3fr) 76px minmax(120px,1.2fr) minmax(120px,1.2fr)}
+  .g-cc{grid-template-columns:2fr 1fr}
   .g-full{grid-template-columns:1fr}
-  .g-loc{grid-template-columns:58px 1fr 1.3fr}
+  .g-loc{grid-template-columns:64px 1fr 1.3fr}
   .g-resp{grid-template-columns:2fr 1fr}
-  #mm-buc,#mm-jud{text-align:center;padding-left:4px;padding-right:4px}
-  #mm-buc.minus{color:var(--red);font-weight:700}
-  @media (max-width:700px){ .g-cmd{grid-template-columns:1fr 1fr 62px} .g-cc,.g-resp{grid-template-columns:1fr} .g-loc{grid-template-columns:58px 1fr} .g-loc>div:last-child{grid-column:1/-1} }
+  #mm-buc,#mm-jud{text-align:center}
+  @media (max-width:700px){ .g-cmd{grid-template-columns:1fr 1fr 76px} .g-cc,.g-resp{grid-template-columns:1fr} .g-loc{grid-template-columns:64px 1fr} .g-loc>div:last-child{grid-column:1/-1} }
   .cu-plus>input,.cu-plus>select{flex:1;min-width:0}
   .cu-plus>.plus{flex:0 0 auto;padding:9px 12px}
   .hint{font-weight:500;text-transform:none;letter-spacing:0;color:var(--mut);opacity:.85}
@@ -325,9 +323,9 @@
   :root[data-tema="inchis"] .p-T{background:#382910;color:#f4c77a}
   :root[data-tema="inchis"] .p-X{background:#232a33;color:#aab3bf}
   :root[data-tema="inchis"] .flag{border-color:var(--bd);color:var(--mut)}
-  :root[data-tema="inchis"] .flag.V{background:#1f9d55;color:#fff;border-color:#1f9d55}
-  :root[data-tema="inchis"] .flag.L{background:#f08c00;color:#fff;border-color:#f08c00}
-  :root[data-tema="inchis"] .flag.X{background:#d93025;color:#fff;border-color:#d93025}
+  :root[data-tema="inchis"] .flag.V{background:#12331e;color:#7ee2a8;border-color:#1f5233}
+  :root[data-tema="inchis"] .flag.L{background:#382910;color:#f4c77a;border-color:#59400f}
+  :root[data-tema="inchis"] .flag.X{background:#3a1a18;color:#ff9c96;border-color:#5a231f}
 
   @media (min-width:900px){
     /* Fila activă e o pastilă, ca în model, nu o linie pe margine. */
@@ -364,7 +362,7 @@
 <header>
   <h1>GestiuneEE <span class="sub-marca">Euro Ecologic</span></h1>
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
-  <span class="ver">v4.14</span>
+  <span class="ver">v4.13</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -1143,11 +1141,6 @@ function exportMiscari(){
 // ---- flags
 document.querySelectorAll("#mm-flags .flag").forEach(f=>f.onclick=()=>{ const i=(FLAGS.indexOf(f.textContent)+1)%FLAGS.length; setFlag(f,FLAGS[i]); });
 function setFlag(el,v){ el.textContent=v; el.className="flag "+(v==="-"?"":v); }
-// La RIDICARE / REDUCERE / TransferOUT / VANZARE bucatile se arata cu minus inca din formular.
-// Ovidiu poate scrie si el minusul; la salvare semnul il decide oricum tipul comenzii.
-function semnBuc(){ const b=$("mm-buc"); const n=Math.abs(+b.value||0); const neg=NEG.test($("mm-tip").value);
-  if(n) b.value = neg ? -n : n; b.classList.toggle("minus", neg); }
-$("mm-tip").addEventListener("change", semnBuc); $("mm-buc").addEventListener("change", semnBuc);
 // ---- client -> anexe autocompletare
 $("mm-client").addEventListener("change",fillAnexeForClient);
 $("mm-client").addEventListener("input",fillAnexeForClient);
@@ -1222,7 +1215,7 @@ function intoarceInMiscare(ce, id){
 function openMiscare(id){
   const r=id?MISC.find(x=>x.id===id):null;
   $("mm-title").textContent=r?"Editare comandă":"Comandă nouă"; $("mm-id").value=r?r.id:""; $("mm-del").style.display=r?"":"none";
-  $("mm-data").value=r?r.data:today(); $("mm-tip").value=r?r.tip_miscare:"AMPLASARE"; $("mm-buc").value=r?r.buc:1; semnBuc();
+  $("mm-data").value=r?r.data:today(); $("mm-tip").value=r?r.tip_miscare:"AMPLASARE"; $("mm-buc").value=r?Math.abs(r.buc):1;
   $("mm-prod").value=r?r.produs:(nomv("produs")[0]||""); umpleModele("mm-prod","mm-model", r?(r.model||""):"", r?(r.accesorii||""):""); $("mm-client").value=r?(r.client||""):"";
   $("mm-jud").value=r?(r.jud||""):""; $("mm-loc").value=r?(r.loc||""):""; $("mm-sat").value=r?(r.sat||""):"";
   // Aici NU se preselecteaza nimic: la o comanda noua nu se stie inca din ce depozit

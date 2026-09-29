@@ -90,6 +90,78 @@ function extractAddressBlock(lines) {
     .join(', ');
 }
 
+// ---------------------------------------------------------------------
+// Formatul comenzii generate din GestiuneEE (butonul "Salvează și generează"):
+//   COMANDĂ AMPLASARE — 30-09-2026
+//   Client: ACOMIN-TEST
+//   Contract: 00001 HD-TEST din 30-09-2026  ·  ANEXA NR 1
+//   Produs: 1 buc TOALETA CLASIC
+//   Accesorii: LAVOAR INTERIOR
+//   Locație: HD, test 1 HUNEDOARA, STR TEST 1
+//   Se livrează din depozitul: HUNEDOARA
+//   Responsabil șantier: pers 1  ·  0711
+//   Servisare: 1 / Sap, ziua LUNI
+// Etichetele se compara fara diacritice, ca sa mearga si daca WhatsApp le strica.
+const faraDiacritice = (t) => String(t || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+
+function isGestiuneFormat(lines) {
+  return (
+    /^COMANDA\s/i.test(faraDiacritice(lines[0] || '')) ||
+    lines.some((l) => /^\s*Client\s*:/i.test(faraDiacritice(l)))
+  );
+}
+
+function valoareDupa(lines, eticheta) {
+  const re = new RegExp(`^\\s*(?:${eticheta})\\s*:\\s*(.*)$`, 'i');
+  for (const line of lines) {
+    const m = re.exec(faraDiacritice(line));
+    // luam valoarea din linia originala (cu diacritice), de la aceeasi pozitie
+    if (m) return line.slice(line.length - m[1].length).trim();
+  }
+  return '';
+}
+
+function parseGestiuneOrder(lines) {
+  const clientName = valoareDupa(lines, 'Client');
+  const ctr = valoareDupa(lines, 'Contract');
+  const servisare = valoareDupa(lines, 'Servisare');
+  const dep = valoareDupa(lines, 'Se livreaza din depozitul|Depozit');
+
+  // Locatia: "HD, Loc, Strada" -> "Jud. HD, Loc, Strada" (ca in formatul vechi)
+  const loc = valoareDupa(lines, 'Locatie|Locatia');
+  const parti = loc.split(',').map((x) => x.trim()).filter(Boolean);
+  if (parti.length && /^[A-Za-z]{1,3}$/.test(parti[0])) parti[0] = `Jud. ${parti[0].toUpperCase()}`;
+  const address = parti.join(', ');
+
+  // Responsabil: "pers 1  ·  0711" (numele si telefonul pe aceeasi linie)
+  const resp = valoareDupa(lines, 'Responsabil santier|Responsabil|Pers\\.?\\s*res(?:ponsabila)?');
+  let persRes = resp;
+  let tel = valoareDupa(lines, 'Tel(?:efon)?');
+  const bucati = resp.split(/\s*[·•|]\s*/).filter(Boolean);
+  if (bucati.length > 1) {
+    const iTel = bucati.findIndex((x) => /^[+\d][\d\s.\-/]{2,}$/.test(x));
+    if (iTel >= 0) {
+      if (!tel) tel = bucati[iTel];
+      bucati.splice(iTel, 1);
+    }
+    persRes = bucati.join(' ');
+  }
+
+  // Produs: "1 buc TOALETA CLASIC"
+  let productQty = 0;
+  let productText = '';
+  const prod = valoareDupa(lines, 'Produs');
+  const mp = /^(-?\d{1,4})\s*(?:buc\.?|bucati|bucăți)?\s+(.+)$/i.exec(prod);
+  if (mp) {
+    productQty = Math.abs(parseInt(mp[1], 10));
+    productText = mp[2].trim();
+  } else if (prod) {
+    productText = prod;
+  }
+
+  return { clientName, address, persRes, tel, ctr, servisare, dep, productQty, productText };
+}
+
 /** Extrage campurile cunoscute dintr-un text liber de tip comanda WhatsApp.
  * Intoarce un obiect cu proprietati goale ("") pentru ce nu s-a gasit —
  * apelantul decide ce campuri suprascrie in formular. */
@@ -98,6 +170,10 @@ export function parseWhatsAppOrderText(rawText) {
     .split(/\r?\n/)
     .map((l) => stripWaFormatting(l))
     .filter(Boolean);
+
+  // Comanda scrisa de GestiuneEE ("COMANDĂ AMPLASARE — ...", "Client: ...") are alt
+  // format decat cea veche din Excel ("NUME CL: ..."), asa ca o citim separat.
+  if (isGestiuneFormat(lines)) return parseGestiuneOrder(lines);
 
   const clientName = matchLabel(lines, 'NUME\\s*CL(?:IENT)?');
   const address = extractAddressBlock(lines);
