@@ -562,6 +562,7 @@
       <div style="flex:0"><label>Câte</label><select id="pv-limita" onchange="loadPV()"><option>200</option><option>500</option><option>1000</option></select></div>
       <div style="flex:0"><label>&nbsp;</label><button class="btn sec" onclick="loadPV()">Reîncarcă</button></div>
       <div style="flex:0"><label>&nbsp;</label><button class="btn sec" onclick="exportPV()">Export Excel</button></div>
+      <div style="flex:0"><label>&nbsp;</label><button class="btn sec" style="color:#e57373" onclick="pvStergeDescarcate()" title="Șterge din bază toate PV-urile din listă care au fost deja descărcate">Șterge descărcatele</button></div>
     </div>
     <div class="tw" style="margin-top:10px"><table id="pv-tbl"></table></div>
   </div>
@@ -2553,7 +2554,7 @@ async function loadPV(){
     PV.length + " documente · " + pvMarime(octeti) + " în total.";
   $("pv-tbl").innerHTML =
     "<thead><tr><th>Data</th><th>Nr. PV</th><th>Tip</th><th>Client</th><th>Locație</th>" +
-    "<th>Șofer</th><th>Mașina</th><th>Mărime</th><th></th></tr></thead><tbody>" +
+    "<th>Șofer</th><th>Mașina</th><th>Mărime</th><th>Descărcat</th><th></th></tr></thead><tbody>" +
     PV.map(r => {
       const d = new Date(r.created_at);
       return `<tr><td>${dRO(d)} ${zi2(d.getHours())}:${zi2(d.getMinutes())}</td>` +
@@ -2563,7 +2564,8 @@ async function loadPV(){
         `<td>${r.county ? "<b>[" + esc(r.county) + "]</b> " : ""}${esc(r.location || "—")}</td>` +
         `<td>${esc(r.driver_name || "—")}</td><td>${esc(r.car_number || "—")}</td>` +
         `<td style="text-align:right">${pvMarime(r.file_size)}</td>` +
-        `<td class="actions">${r.storage_path ? `<button class="btn sm sec" onclick="pvDeschide('${esc(r.storage_path)}')">Deschide</button> <button class="btn sm" onclick="pvDescarca('${esc(r.id)}')">Descarcă</button>` : ""}</td></tr>`;
+        `<td>${r.downloaded_at ? '<span style="color:#6fbf73">✔ ' + dRO(new Date(r.downloaded_at)) + '</span>' : '<span class="muted">nu</span>'}</td>` +
+        `<td class="actions">${r.storage_path ? `<button class="btn sm sec" onclick="pvDeschide('${esc(r.storage_path)}')">Deschide</button> <button class="btn sm" onclick="pvDescarca('${esc(r.id)}')">Descarcă</button> <button class="btn sm sec" style="color:#e57373" onclick="pvSterge('${esc(r.id)}')">Șterge</button>` : ""}</td></tr>`;
     }).join("") + "</tbody>";
 }
 
@@ -2588,6 +2590,41 @@ async function pvDescarca(id){
   const a = document.createElement("a"); a.href = url; a.download = nume;
   document.body.appendChild(a); a.click(); a.remove();
   setTimeout(() => URL.revokeObjectURL(url), 4000);
+  // se notează că a fost descărcat — abia apoi îl poți șterge liniștit
+  const acum = new Date().toISOString();
+  const { error: eUp } = await db.from("pv_records").update({ downloaded_at: acum }).eq("id", r.id);
+  if(!eUp){ r.downloaded_at = acum; loadPV(); }
+}
+// Șterge PV-ul din bază și PDF-ul din Supabase (după ce l-ai salvat în calculator)
+async function pvStergeUnul(r){
+  if(r.storage_path){
+    const { error: eF } = await db.storage.from("pv-documents").remove([r.storage_path]);
+    if(eF) throw eF;
+  }
+  const { error } = await db.from("pv_records").delete().eq("id", r.id);
+  if(error) throw error;
+}
+async function pvSterge(id){
+  const r = PV.find(x => String(x.id) === String(id));
+  if(!r) return;
+  const cine = pvNumar(r.pv_number) + " · " + (r.client_name || "");
+  const msg = r.downloaded_at
+    ? "Ștergi definitiv din bază " + cine + "?\n\nL-ai descărcat pe " + dRO(new Date(r.downloaded_at)) + ". Nu se mai poate recupera din aplicație."
+    : "ATENȚIE: " + cine + " NU a fost descărcat încă!\n\nDacă îl ștergi acum, se pierde definitiv. Ștergi oricum?";
+  if(!confirm(msg)) return;
+  try{ await pvStergeUnul(r); toast("PV șters din bază"); }
+  catch(e){ toast(e.message || "Nu am putut șterge", true); }
+  loadPV();
+}
+// Șterge dintr-o dată toate PV-urile din listă care au fost deja descărcate
+async function pvStergeDescarcate(){
+  const lista = PV.filter(r => r.downloaded_at);
+  if(!lista.length){ toast("Niciun PV descărcat în lista afișată", true); return; }
+  if(!confirm("Ștergi definitiv din bază " + lista.length + " PV-uri deja descărcate (doar cele din lista afișată)?\n\nNu se mai pot recupera din aplicație.")) return;
+  let ok = 0;
+  for(const r of lista){ try{ await pvStergeUnul(r); ok++; }catch(e){ toast(e.message || "Eroare la ștergere", true); break; } }
+  toast(ok + " PV-uri șterse din bază");
+  loadPV();
 }
 // Clic pe 📄 din Comenzi: deschide ultimul PV legat de comanda respectivă
 async function pvDinComanda(miscareId){
