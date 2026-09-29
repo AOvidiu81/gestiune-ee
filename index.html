@@ -2565,7 +2565,7 @@ async function loadPV(){
         `<td>${esc(r.driver_name || "—")}</td><td>${esc(r.car_number || "—")}</td>` +
         `<td style="text-align:right">${pvMarime(r.file_size)}</td>` +
         `<td>${r.downloaded_at ? '<span style="color:#6fbf73">✔ ' + dRO(new Date(r.downloaded_at)) + '</span>' : '<span class="muted">nu</span>'}</td>` +
-        `<td class="actions">${r.storage_path ? `<button class="btn sm sec" onclick="pvDeschide('${esc(r.storage_path)}')">Deschide</button> <button class="btn sm" onclick="pvDescarca('${esc(r.id)}')">Descarcă</button> <button class="btn sm sec" style="color:#e57373" onclick="pvSterge('${esc(r.id)}')">Șterge</button>` : ""}</td></tr>`;
+        `<td class="actions">${r.storage_path ? `<button class="btn sm sec" onclick="pvDeschide('${esc(r.storage_path)}')">Deschide</button> <button class="btn sm" onclick="pvDescarca('${esc(r.id)}')">Descarcă</button>${r.downloaded_at ? ` <button class="btn sm sec" style="color:#e57373" onclick="pvSterge('${esc(r.id)}')">Șterge</button>` : ""}` : ""}</td></tr>`;
     }).join("") + "</tbody>";
 }
 
@@ -2608,10 +2608,9 @@ async function pvSterge(id){
   const r = PV.find(x => String(x.id) === String(id));
   if(!r) return;
   const cine = pvNumar(r.pv_number) + " · " + (r.client_name || "");
-  const msg = r.downloaded_at
-    ? "Ștergi definitiv din bază " + cine + "?\n\nL-ai descărcat pe " + dRO(new Date(r.downloaded_at)) + ". Nu se mai poate recupera din aplicație."
-    : "ATENȚIE: " + cine + " NU a fost descărcat încă!\n\nDacă îl ștergi acum, se pierde definitiv. Ștergi oricum?";
-  if(!confirm(msg)) return;
+  // Se poate șterge doar ce a fost descărcat în calculator
+  if(!r.downloaded_at){ toast("Descarcă întâi PV-ul, apoi îl poți șterge", true); return; }
+  if(!confirm("Ștergi definitiv din bază " + cine + "?\n\nL-ai descărcat pe " + dRO(new Date(r.downloaded_at)) + ". Nu se mai poate recupera din aplicație.")) return;
   try{ await pvStergeUnul(r); toast("PV șters din bază"); }
   catch(e){ toast(e.message || "Nu am putut șterge", true); }
   loadPV();
