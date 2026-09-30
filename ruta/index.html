@@ -934,7 +934,7 @@ let lastRouteRows = [];
 // --- Supabase ---
 const SUPABASE_URL = 'https://xrveoxmsdvryzyemmkqx.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_P1TSfVqqbyr3L-elKVgopg_1FpIpkv4';
-const sb = (typeof supabase !== 'undefined') ? supabase.createClient(SUPABASE_URL, SUPABASE_KEY) : null;
+const sb = (typeof supabase !== 'undefined') ? supabase.createClient(SUPABASE_URL, SUPABASE_KEY, { auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false, storageKey: 'ee-ruta-auth' } }) : null;
 let currentSessionId = null;
 let syncOk = true;
 

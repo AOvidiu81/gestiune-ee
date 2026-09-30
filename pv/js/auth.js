@@ -38,7 +38,7 @@ export function getSupabase() {
   if (!clientPromise) {
     clientPromise = import('https://esm.sh/@supabase/supabase-js@2')
       .then(({ createClient }) =>
-        createClient(SUPABASE_URL, SUPABASE_ANON_KEY, { auth: { persistSession: true, autoRefreshToken: true } })
+        createClient(SUPABASE_URL, SUPABASE_ANON_KEY, { auth: { persistSession: true, autoRefreshToken: true, storageKey: 'ee-pv-auth' } })
       )
       .catch((e) => {
         clientPromise = null; // permite o noua incercare data viitoare (poate revine semnalul)
@@ -81,11 +81,11 @@ export async function signIn(username, password) {
   }
   const profile = await fetchOwnProfile(supabase, data.user.id);
   if (!profile) {
-    await supabase.auth.signOut();
+    await supabase.auth.signOut({ scope: 'local' });
     return { error: 'Nu am gasit profilul acestui cont' };
   }
   if (!profile.active) {
-    await supabase.auth.signOut();
+    await supabase.auth.signOut({ scope: 'local' });
     return { error: 'Acest cont a fost dezactivat. Contacteaza administratorul.' };
   }
   await MetaRepo.set('lastProfile', profile);
@@ -142,11 +142,11 @@ export async function signInAsDriver(driverId) {
   if (error) return { error: 'Nu am putut incepe sesiunea.' };
   const profile = await fetchOwnProfile(supabase, data.user.id);
   if (!profile) {
-    await supabase.auth.signOut();
+    await supabase.auth.signOut({ scope: 'local' });
     return { error: 'Nu am gasit profilul acestui cont' };
   }
   if (!profile.active) {
-    await supabase.auth.signOut();
+    await supabase.auth.signOut({ scope: 'local' });
     return { error: 'Acest cont a fost dezactivat. Contacteaza administratorul.' };
   }
   await MetaRepo.set('lastProfile', profile);
@@ -156,7 +156,7 @@ export async function signInAsDriver(driverId) {
 export async function signOut() {
   try {
     const supabase = await getSupabase();
-    await supabase.auth.signOut();
+    await supabase.auth.signOut({ scope: 'local' });
   } catch (e) {
     // fara retea: nu putem invalida sesiunea pe server acum, dar stergem
     // oricum copia locala ca ecranul de login sa reapara la reincarcare
