@@ -1037,9 +1037,27 @@ function showOnlineBanner(){
   onlineBannerTimeout = setTimeout(()=>{ connBanner.style.display = 'none'; }, 5000);
 }
 
-window.addEventListener('offline', showOfflineBanner);
-window.addEventListener('online', ()=>{ if(bannerIsOffline) showOnlineBanner(); });
-if(!navigator.onLine) showOfflineBanner();
+// Semnalul „offline” al browserului poate fi greșit (ex. browserul Samsung la trecerea
+// Wi-Fi ↔ date mobile). Nu-l credem pe cuvânt: verificăm printr-o cerere reală la bază.
+let verificareInCurs = false;
+async function verificaConexiunea(){
+  if(!sb || verificareInCurs) return;
+  verificareInCurs = true;
+  try{
+    const timp = new Promise((_,rej)=>setTimeout(()=>rej(new Error('timeout')), 8000));
+    const { error } = await Promise.race([sb.from('drivers').select('name').limit(1), timp]);
+    if(error) throw error;
+    if(bannerIsOffline && syncQueue.length === 0) showOnlineBanner();
+  }catch(err){
+    showOfflineBanner();
+  }finally{
+    verificareInCurs = false;
+  }
+}
+window.addEventListener('offline', ()=> setTimeout(verificaConexiunea, 1500));
+window.addEventListener('online', ()=> verificaConexiunea());
+if(!navigator.onLine) verificaConexiunea();
+setInterval(()=>{ if(bannerIsOffline && syncQueue.length === 0) verificaConexiunea(); }, 15000);
 
 function setSyncStatus(state){
   // state: 'ok' | 'syncing' | 'error' | 'queued' | 'off'
@@ -1692,6 +1710,7 @@ async function loadDriversAndVehicles(){
     DRIVERS = (driversRes.data||[]).map(r=>r.name);
     VEHICLE_BRANDS = (brandsRes.data||[]).map(r=>r.name);
     VEHICLE_PLATES = (platesRes.data||[]).map(r=>r.name);
+    if(bannerIsOffline && syncQueue.length === 0) showOnlineBanner();
   }catch(err){
     console.error('Eroare la încărcarea șoferilor/mașinilor din Supabase:', err);
   }
