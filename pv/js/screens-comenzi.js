@@ -78,17 +78,26 @@ async function citesteDinCloud() {
   return rows;
 }
 
-export async function openComenziActive({ driver, car, depot, onFaraComanda }) {
-  return pushScreen(({ pop }) => {
+export async function openComenziActive(ctx) {
+  return pushScreen(({ pop }) => buildComenziActive({ ...ctx, pop }));
+}
+
+/** Construieste ecranul de comenzi active. Folosit si de aplicatia unica
+ * pentru soferi (/sofer/) ca fila "Comenzi": embedded = fara bara de sus cu
+ * sageata si fara butonul de jos; screen.reload() cere din nou lista. */
+export function buildComenziActive({ driver, car, depot, onFaraComanda, pop, embedded = false }) {
+  return (() => {
     const screen = el('div', { class: 'screen' });
     const refreshBtn = el('button', { class: 'icon-btn', title: 'Reincarca', onclick: () => load(true) }, ['⟳']);
-    screen.appendChild(
-      el('div', { class: 'topbar' }, [
-        el('button', { class: 'icon-btn', onclick: () => pop(undefined) }, ['←']),
-        el('div', { class: 'topbar-title' }, ['Comenzi active']),
-        refreshBtn,
-      ])
-    );
+    if (!embedded) {
+      screen.appendChild(
+        el('div', { class: 'topbar' }, [
+          el('button', { class: 'icon-btn', onclick: () => pop(undefined) }, ['←']),
+          el('div', { class: 'topbar-title' }, ['Comenzi active']),
+          refreshBtn,
+        ])
+      );
+    }
 
     let rows = [];
     let perioada = 'toate'; // azi | sapt | toate
@@ -259,10 +268,12 @@ export async function openComenziActive({ driver, car, depot, onFaraComanda }) {
     }
 
     const faraComanda = el('button', { class: 'btn btn-outline btn-block', onclick: () => onFaraComanda && onFaraComanda() }, ['📄 PV fara comanda / Cereri']);
-    screen.appendChild(el('div', { class: 'screen-scroll' }, [filtre, status, lista]));
-    screen.appendChild(el('div', { class: 'bottom-actions' }, [faraComanda]));
+    const statusRow = embedded ? el('div', { class: 'ca-embed-status' }, [status, refreshBtn]) : status;
+    screen.appendChild(el('div', { class: 'screen-scroll' }, [filtre, statusRow, lista]));
+    if (!embedded) screen.appendChild(el('div', { class: 'bottom-actions' }, [faraComanda]));
+    screen.reload = () => load(true);
 
     load(false).then(() => load(true));
     return screen;
-  });
+  })();
 }

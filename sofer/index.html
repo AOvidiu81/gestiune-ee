@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="ro">
+<head>
+<meta charset="utf-8" />
+<!-- Toate caile relative (imagini, css, sabloane PDF) merg ca in /pv/,
+     ale carei module sunt refolosite direct. Fisierele proprii: ../sofer/ -->
+<base href="../pv/" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1" />
+<title>Șofer EE — Euro Ecologic</title>
+<meta name="description" content="Aplicatia soferilor Euro Ecologic: ruta zilei, procese verbale si comenzi." />
+<meta name="theme-color" content="#0b3b66" />
+<link rel="manifest" href="../sofer/manifest.json" />
+<link rel="icon" href="../sofer/icons/icon-192.png" />
+<link rel="apple-touch-icon" href="../sofer/icons/icon-192.png" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="Șofer EE" />
+<link rel="stylesheet" href="css/styles.css" />
+<link rel="stylesheet" href="css/print.css" />
+<link rel="stylesheet" href="../sofer/sofer.css" />
+</head>
+<body>
+<div id="app">
+  <div id="screen-stack"></div>
+</div>
+<div id="print-root"></div>
+<script type="module" src="../sofer/sofer.js"></script>
+</body>
+</html>

@@ -1,0 +1,41 @@
+/* sofer.css — doar ce e nou in „Șofer EE”; restul vine din ../pv/css/styles.css */
+
+.sofer-root { transform: none; }
+.sofer-top { gap: 10px; padding-left: 14px; }
+.sofer-cine { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: flex-start; gap: 3px; }
+.sofer-nume { font-weight: 800; font-size: 15.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+.sofer-masina {
+  font: inherit; font-size: 13px; font-weight: 700; color: var(--brand-primary);
+  background: #e7f1ff; border: 1px solid #c7d3e4; border-radius: 999px; padding: 3px 10px; cursor: pointer;
+}
+.sofer-masina:active { background: #d5e6fb; }
+
+.sofer-panouri { flex: 1; position: relative; min-height: 0; }
+.sofer-panou { position: absolute; inset: 0; display: none; flex-direction: column; }
+.sofer-panou.on { display: flex; }
+.sofer-panou > .screen-scroll { flex: 1; }
+.sofer-embedded { transform: none !important; transition: none; z-index: auto; }
+.sofer-iframe { flex: 1; width: 100%; border: 0; display: block; background: #10161c; }
+
+.sofer-tiles { display: flex; flex-direction: column; gap: 12px; }
+
+.sofer-bara {
+  display: flex; flex-shrink: 0; background: var(--surface-card);
+  border-top: 1px solid var(--border); padding: 4px 6px calc(4px + var(--safe-bottom));
+}
+.sofer-fila {
+  flex: 1; font: inherit; font-size: 12.5px; font-weight: 700; color: var(--ink-soft);
+  background: none; border: 0; border-radius: 12px; padding: 6px 4px;
+  display: flex; flex-direction: column; align-items: center; gap: 2px; cursor: pointer;
+}
+.sofer-fila-icon { font-size: 21px; line-height: 1.1; filter: grayscale(1); opacity: .65; }
+.sofer-fila.on { color: var(--brand-primary); background: #e7f1ff; }
+.sofer-fila.on .sofer-fila-icon { filter: none; opacity: 1; }
+
+.ca-embed-status { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.ca-embed-status .ca-status { margin: 0; }
+
+.sofer-intrebare { color: var(--ink-soft); font-size: 14px; margin-bottom: 14px; }
+.sofer-lista-masini { display: flex; flex-direction: column; gap: 10px; }
+.sofer-setari { display: flex; flex-direction: column; gap: 10px; }
+.sofer-info { color: var(--ink-soft); font-size: 13.5px; }

@@ -1,6 +1,6 @@
 // sw.js — Ruta EuroEcologic. Face aplicația instalabilă și o pornește
 // repede. Datele din Supabase nu se păstrează niciodată în memorie.
-const VERSIUNE = 'ruta-ee-v3';
+const VERSIUNE = 'ruta-ee-v4';
 const SCHELET = ['./', './index.html', './manifest.json', './icon-192.png', './icon-512.png'];
 
 self.addEventListener('install', (e) => {
@@ -14,7 +14,7 @@ self.addEventListener('install', (e) => {
 self.addEventListener('activate', (e) => {
   e.waitUntil(
     caches.keys()
-      .then((chei) => Promise.all(chei.filter((k) => k !== VERSIUNE).map((k) => caches.delete(k))))
+      .then((chei) => Promise.all(chei.filter((k) => k.startsWith('ruta-ee-') && k !== VERSIUNE).map((k) => caches.delete(k))))
       .then(() => self.clients.claim())
   );
 });

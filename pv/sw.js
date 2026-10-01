@@ -2,7 +2,7 @@
 // offline completa dupa prima incarcare. La fiecare modificare a
 // aplicatiei, creste CACHE_VERSION ca telefoanele sa preia noua versiune.
 
-const CACHE_VERSION = 'pv-euro-ecologic-v63';
+const CACHE_VERSION = 'pv-euro-ecologic-v64';
 const APP_SHELL = [
   './',
   'index.html',
@@ -49,7 +49,7 @@ self.addEventListener('install', (event) => {
 
 self.addEventListener('activate', (event) => {
   event.waitUntil(
-    caches.keys().then((keys) => Promise.all(keys.filter((k) => k !== CACHE_VERSION).map((k) => caches.delete(k)))).then(() => self.clients.claim())
+    caches.keys().then((keys) => Promise.all(keys.filter((k) => k.startsWith('pv-euro-ecologic-') && k !== CACHE_VERSION).map((k) => caches.delete(k)))).then(() => self.clients.claim())
   );
 });
 
