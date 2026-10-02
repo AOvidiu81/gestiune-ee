@@ -10,7 +10,6 @@ import { el, formatDateRo, weekdayLabelRo, pad2 } from './utils.js';
 import { pushScreen } from './router.js';
 import { MetaRepo } from './db.js';
 import { getSupabase } from './auth.js';
-import { showToast } from './components.js';
 import { PROCESS_TYPES } from './catalog-defaults.js';
 import { openProcessVerbalForm } from './screens-pv-form.js';
 
@@ -159,24 +158,6 @@ export function buildComenziActive({ driver, car, depot, onFaraComanda, pop, emb
       });
     }
 
-    async function preiau(c, da) {
-      try {
-        const supabase = await getSupabase();
-        const { data, error } = await supabase.rpc('preia_comanda', { p_id: c.id, p_preiau: da });
-        if (error) throw error;
-        const r = (data || [])[0] || {};
-        if (da && r.preluat_de && r.preluat_de !== driver.name) {
-          showToast(`A preluat-o deja ${r.preluat_de}.`, { danger: true });
-        } else {
-          showToast(da ? 'Ai preluat comanda.' : 'Ai renuntat la comanda.');
-        }
-      } catch (e) {
-        showToast('Fara semnal — incearca din nou cand ai internet.', { danger: true });
-        return;
-      }
-      load(true);
-    }
-
     async function deschidePv(c) {
       const processType = TIP_PV[c.tip_miscare];
       if (!processType) return;
@@ -208,17 +189,9 @@ export function buildComenziActive({ driver, car, depot, onFaraComanda, pop, emb
       if (c.pv_facut_de) stare.push(el('div', { class: 'ca-stare ca-pv' }, [`✔ PV facut de ${c.pv_facut_de}, ${oraDin(c.pv_facut_la)}`]));
       if (c.preluat_de) stare.push(el('div', { class: 'ca-stare' }, [`👤 Preluat de ${eu ? 'tine' : c.preluat_de}, ${oraDin(c.preluat_la)}`]));
 
-      const btnPreiau = el(
-        'button',
-        {
-          class: `btn ca-btn${eu ? ' btn-outline' : ' btn-primary'}`,
-          onclick: (e) => { e.stopPropagation(); preiau(c, !eu); },
-        },
-        [eu ? 'Renunt' : 'Preiau eu']
-      );
-      const btnPv = el('button', { class: 'btn btn-outline ca-btn', onclick: (e) => { e.stopPropagation(); deschidePv(c); } }, ['📄 Fa PV']);
-      // Cand a preluat-o altcineva, nu mai arat "Preiau eu" (se vede cine a luat-o)
-      const actiuni = el('div', { class: 'ca-actiuni' }, [c.preluat_de && !eu ? null : btnPreiau, btnPv]);
+      const btnPv = el('button', { class: 'btn btn-primary ca-btn', onclick: (e) => { e.stopPropagation(); deschidePv(c); } }, ['📄 Creează PV']);
+      // „Preiau eu” a fost scos (02.10): PV-ul spune cine a facut comanda
+      const actiuni = el('div', { class: 'ca-actiuni' }, [btnPv]);
 
       return el('div', { class: 'ca-card', style: `border-left-color:${accent}`, onclick: () => deschidePv(c) }, [
         alteZile
