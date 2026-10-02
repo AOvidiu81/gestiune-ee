@@ -63,3 +63,9 @@
 .sofer-bifa.on::before { content: '✓ '; }
 .sofer-nota { color: var(--ink-soft); font-size: 12px; margin-top: 5px; }
 .sofer-eroare { font-size: 13.5px; font-weight: 700; min-height: 18px; margin-bottom: 8px; }
+
+/* s8 — documente care asteapta semnal */
+.sofer-coada {
+  width: 100%; font: inherit; font-size: 13.5px; font-weight: 700; text-align: left; color: #92400e;
+  background: #fef3c7; border: 1px solid #f0d58a; border-radius: 12px; padding: 10px 12px; margin-bottom: 12px; cursor: pointer;
+}

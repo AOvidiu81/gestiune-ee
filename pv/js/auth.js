@@ -250,56 +250,99 @@ export async function getTodayBirthdays() {
  * din PvRepo local (vezi uuid() din onSave()), ca cele doua copii sa poata
  * fi asociate daca e nevoie vreodata. */
 export async function uploadPvRecordToCloud(meta, blob) {
+  // v69: documentul intra intai in coada locala (IndexedDB), apoi se incearca
+  // trimiterea. Daca nu e semnal, ramane in coada si pleaca singur mai tarziu
+  // (vezi flushPvQueue). Din coada iese doar dupa ce a ajuns sigur in cloud.
   try {
-    const supabase = await getSupabase();
-    const { data: sessionData } = await supabase.auth.getSession();
-    const session = sessionData?.session;
-    // Fara sesiune (foarte rar, ex. token expirat exact in acest moment) nu
-    // putem respecta politica RLS de INSERT ("driver_id = auth.uid()") —
-    // renuntam silentios, PV-ul ramane oricum salvat local.
-    if (!session) return;
-    const storagePath = `${session.user.id}/${meta.id}.pdf`;
-    // FARA upsert: fiecare PV are un id (uuid) nou la fiecare salvare, deci
-    // nu exista niciodata un conflict real de nume — iar upsert:true ar
-    // genera un INSERT ... ON CONFLICT DO UPDATE, care cere Postgres sa
-    // verifice si o politica RLS de UPDATE (nu doar INSERT) chiar daca
-    // conflictul nu se produce niciodata efectiv. Cum am definit doar
-    // politica de INSERT pentru folderul propriu al soferului, upsert:true
-    // pica mereu cu "new row violates row-level security policy" — un simplu
-    // INSERT (fara upsert) foloseste doar politica de INSERT si functioneaza.
-    const { error: uploadErr } = await supabase.storage.from('pv-documents').upload(storagePath, blob, {
-      contentType: 'application/pdf',
-    });
-    if (uploadErr) {
-      // console.warn, nu o eroare aratata soferului -- PV-ul local ramane
-      // neschimbat. Util insa de vazut in consola telefonului/desktopului
-      // daca cineva investigheaza de ce un PV nu a ajuns in admin.
+    await MetaRepo.set(PV_QUEUE_PREFIX + meta.id, { meta, blob, addedAt: new Date().toISOString() });
+  } catch (e) {
+    console.warn('[pv-sync] nu am putut pune documentul in coada:', e?.message || e);
+    return trimiteDocument(meta, blob).catch(() => false);
+  }
+  return flushPvQueue();
+}
+
+const PV_QUEUE_PREFIX = 'pvUpload:';
+let pvFlushRunning = false;
+
+async function pvQueueItems() {
+  const all = await MetaRepo.all();
+  return (all || []).filter((r) => String(r.key).startsWith(PV_QUEUE_PREFIX) && r.value && r.value.meta && r.value.blob);
+}
+
+/** Cate documente asteapta inca sa fie trimise in GestiuneEE. */
+export async function pvQueueCount() {
+  try { return (await pvQueueItems()).length; } catch (e) { return 0; }
+}
+
+/** Trimite un document (PDF + rand in pv_records). true = a ajuns (sau era deja acolo). */
+async function trimiteDocument(meta, blob) {
+  const supabase = await getSupabase();
+  const { data: sessionData } = await supabase.auth.getSession();
+  const session = sessionData?.session;
+  if (!session) return false; // fara sesiune: ramane in coada pana la urmatoarea logare
+  const storagePath = `${session.user.id}/${meta.id}.pdf`;
+  // FARA upsert (vezi istoricul: upsert cere si politica de UPDATE). Daca
+  // fisierul exista deja (o incercare anterioara a urcat PDF-ul dar a picat
+  // inainte de rand), mergem mai departe la rand.
+  const { error: uploadErr } = await supabase.storage.from('pv-documents').upload(storagePath, blob, { contentType: 'application/pdf' });
+  if (uploadErr) {
+    const txt = `${uploadErr.statusCode || ''} ${uploadErr.error || ''} ${uploadErr.message || ''}`;
+    if (!/409|exist|duplicate/i.test(txt)) {
       console.warn('[pv-sync] incarcare PDF esuata:', uploadErr.message || uploadErr);
-      return;
+      return false;
     }
-    const { error: insertErr } = await supabase.from('pv_records').insert({
-      id: meta.id,
-      driver_id: session.user.id,
-      driver_name: meta.driverName,
-      depot_name: meta.depotName,
-      client_name: meta.clientName,
-      location: meta.location,
-      county: meta.county,
-      process_type: meta.processType,
-      pv_number: meta.pvNumber,
-      car_number: meta.carNumber,
-      created_at: meta.createdAt,
-      file_size: blob.size,
-      storage_path: storagePath,
-      miscare_id: meta.miscareId || null,
-    });
-    if (insertErr) {
-      console.warn('[pv-sync] salvare rand pv_records esuata:', insertErr.message || insertErr);
+  }
+  const { error: insertErr } = await supabase.from('pv_records').insert({
+    id: meta.id,
+    driver_id: session.user.id,
+    driver_name: meta.driverName,
+    depot_name: meta.depotName,
+    client_name: meta.clientName,
+    location: meta.location,
+    county: meta.county,
+    process_type: meta.processType,
+    pv_number: meta.pvNumber,
+    car_number: meta.carNumber,
+    created_at: meta.createdAt,
+    file_size: blob.size,
+    storage_path: storagePath,
+    miscare_id: meta.miscareId || null,
+  });
+  if (insertErr && String(insertErr.code) !== '23505') {
+    console.warn('[pv-sync] salvare rand pv_records esuata:', insertErr.message || insertErr);
+    return false;
+  }
+  return true;
+}
+
+/** Incearca sa trimita tot ce a ramas in coada. Se cheama dupa fiecare
+ * salvare, la revenirea internetului, la revenirea in aplicatie si periodic. */
+export async function flushPvQueue() {
+  if (pvFlushRunning) return;
+  pvFlushRunning = true;
+  try {
+    const items = await pvQueueItems();
+    for (const it of items) {
+      try {
+        if (await trimiteDocument(it.value.meta, it.value.blob)) await MetaRepo.remove(it.key);
+      } catch (e) {
+        console.warn('[pv-sync] trimitere amanata:', e?.message || e);
+        break; // fara semnal: nu mai incercam restul acum
+      }
     }
   } catch (e) {
-    // best-effort — vezi comentariul de mai sus
-    console.warn('[pv-sync] sincronizare PV esuata:', e?.message || e);
+    // IndexedDB indisponibil — ignoram
+  } finally {
+    pvFlushRunning = false;
   }
+}
+
+if (typeof window !== 'undefined') {
+  window.addEventListener('online', () => flushPvQueue());
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') flushPvQueue(); });
+  setInterval(() => flushPvQueue(), 120000);
+  setTimeout(() => flushPvQueue(), 8000);
 }
 
 /** Sincronizeaza profilul propriu (ca "sofer" local) si flota de masini /

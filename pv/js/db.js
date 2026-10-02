@@ -150,6 +150,8 @@ export const CounterRepo = {
 export const MetaRepo = {
   get: (key) => get(STORES.meta, key),
   set: (key, value) => put(STORES.meta, { key, value }),
+  remove: (key) => del(STORES.meta, key),
+  all: () => getAll(STORES.meta),
 };
 
 export { STORES };

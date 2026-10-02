@@ -17,7 +17,7 @@ import { el, APP_VERSION as PV_VERSION, forceUpdateApp } from '../pv/js/utils.js
 import { replaceRoot, pushScreen } from '../pv/js/router.js';
 import { DriverRepo, CarRepo, DepotRepo } from '../pv/js/db.js';
 import { runLoginGate } from '../pv/js/screens-login.js';
-import { getCurrentProfile, syncMasterData, getTodayBirthdays, getSupabase, listDriversForLogin, signOut } from '../pv/js/auth.js';
+import { getCurrentProfile, syncMasterData, getTodayBirthdays, getSupabase, listDriversForLogin, signOut, flushPvQueue, pvQueueCount } from '../pv/js/auth.js';
 import { tile, openModal, primaryButton, outlineButton, sectionCard } from '../pv/js/components.js';
 import { PROCESS_TYPES } from '../pv/js/catalog-defaults.js';
 import { openProcessVerbalForm } from '../pv/js/screens-pv-form.js';
@@ -26,7 +26,7 @@ import { openHistoryScreen } from '../pv/js/screens-history.js';
 import { buildComenziActive } from '../pv/js/screens-comenzi.js';
 import { openSettingsScreen } from '../pv/js/screens-setup.js';
 
-export const SOFER_VERSION = 's7';
+export const SOFER_VERSION = 's8';
 
 const KEY_ZI = 'ee-sofer-zi'; // ziua deschisa: { zi, coleg, carId, km, trasee, zile, zona, ordine, ruta }
 const KEY_ULTIMA = 'ee-sofer-ultima'; // ultimele alegeri (masina, traseu, zona) — precompletare
@@ -482,7 +482,15 @@ function ecranFile() {
         onClick: () => openCereriMenu(ctx()),
       }));
       const istoric = el('button', { class: 'btn btn-outline btn-block', onclick: () => openHistoryScreen() }, ['📂 Istoric documente']);
-      p.appendChild(el('div', { class: 'screen-scroll' }, [tiles, el('div', { style: 'height:16px' }), istoric]));
+      p.appendChild(el('div', { class: 'screen-scroll' }, [notaCoada, tiles, el('div', { style: 'height:16px' }), istoric]));
+      arataCoada();
+    }
+    // Documentele facute fara semnal: cate mai asteapta sa plece spre GestiuneEE
+    const notaCoada = el('button', { class: 'sofer-coada', style: 'display:none', onclick: async () => { await flushPvQueue(); arataCoada(); } }, ['']);
+    async function arataCoada() {
+      const n = await pvQueueCount();
+      notaCoada.style.display = n ? 'block' : 'none';
+      notaCoada.textContent = n === 1 ? '⏳ 1 document așteaptă semnal — se trimite singur. Apasă pentru a încerca acum.' : `⏳ ${n} documente așteaptă semnal — se trimit singure. Apasă pentru a încerca acum.`;
     }
 
     // Comenzi: se reconstruieste la schimbarea masinii (masina intra in PV)
@@ -539,6 +547,7 @@ function ecranFile() {
         f.btn.classList.toggle('on', f.k === k);
       });
       if (k === 'comenzi' && curenta && curenta !== 'comenzi') comenzi?.reload?.();
+      if (k === 'pv') arataCoada();
       curenta = k;
       scrie(KEY_FILA, k);
     }
@@ -584,6 +593,8 @@ async function boot() {
 
   // Zi noua: aplicatia porneste din nou cu „Cine ești?” (cerut 02.10) — login-ul se tine minte doar in aceeasi zi
   if (citeste(KEY_LOGAT) !== aziIso()) {
+    // intai pleaca documentele ramase netrimise de ieri (cat mai e logat soferul lor)
+    try { await Promise.race([flushPvQueue(), new Promise((r) => setTimeout(r, 8000))]); } catch (e) {}
     try { await signOut(); } catch (e) {}
     try { localStorage.removeItem(KEY_ZI); } catch (e) {}
   }

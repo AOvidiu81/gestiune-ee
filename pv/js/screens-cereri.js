@@ -12,7 +12,8 @@
 // (openPrintPreview, din pdf-print.js) folosit si de PV, fara nicio
 // duplicare de UI/logica.
 
-import { el, formatDateRo, countBusinessDaysInclusive, addBusinessDays, parseIsoDate, toIsoDate, fileToken } from './utils.js';
+import { el, formatDateRo, countBusinessDaysInclusive, addBusinessDays, parseIsoDate, toIsoDate, fileToken, uuid } from './utils.js';
+import { uploadPvRecordToCloud } from './auth.js';
 import { pushScreen } from './router.js';
 import { textField, textAreaField, dateField, sectionCard, primaryButton, outlineButton, showToast, tile } from './components.js';
 import { openPrintPreview } from './pdf-print.js';
@@ -49,6 +50,16 @@ function radioRow({ name, checked, title, sub, onChange }) {
 // ------------------------------------------------------------------
 // Meniu principal Cereri / Documente
 // ------------------------------------------------------------------
+// v69: cererile generate (nu si Preview) ajung in GestiuneEE, in fila Procese verbale,
+// la fel ca PV-urile (aceeasi coada: fara semnal pleaca singure mai tarziu).
+function urcaCerere(tip, { driver, depot }, detalii, blob) {
+  uploadPvRecordToCloud({
+    id: uuid(), pvNumber: tip.replace('CERERE ', ''), driverName: driver?.name || '', depotName: depot?.name || '',
+    clientName: driver?.name || '', location: detalii || '', county: null, processType: tip,
+    carNumber: null, miscareId: null, createdAt: new Date().toISOString(),
+  }, blob);
+}
+
 export async function openCereriMenu({ driver, car, depot }) {
   return pushScreen(({ pop }) => {
     const screen = el('div', { class: 'screen' });
@@ -189,6 +200,7 @@ async function openCerereConcediuForm({ driver, depot }) {
         title: 'Cerere de Concediu',
         suggestedFileName: `CONCEDIU - ${fileToken(driver?.name)} - ${fileToken(formatDateRo(state.dataInceput))}`,
         showBadge: isPreview,
+        onPdfReady: isPreview ? undefined : (blob) => urcaCerere('CERERE CONCEDIU', { driver, depot }, `${formatDateRo(state.dataInceput)} – ${formatDateRo(state.dataSfarsit)}`, blob),
       });
     }
 
@@ -254,6 +266,7 @@ async function openCerereInvoireForm({ driver, depot }) {
         title: 'Cerere de Invoire',
         suggestedFileName: `INVOIRE - ${fileToken(driver?.name)} - ${fileToken(formatDateRo(d))}`,
         showBadge: isPreview,
+        onPdfReady: isPreview ? undefined : (blob) => urcaCerere('CERERE INVOIRE', { driver, depot }, formatDateRo(d), blob),
       });
     }
 
@@ -441,6 +454,7 @@ async function openCerereDemisieForm({ driver, depot, caz, subcaz }) {
         title: 'Cerere de Demisie',
         suggestedFileName: `DEMISIE - ${fileToken(driver?.name)} - ${fileToken(formatDateRo(state.dataIncetare))}`,
         showBadge: isPreview,
+        onPdfReady: isPreview ? undefined : (blob) => urcaCerere('CERERE DEMISIE', { driver, depot }, formatDateRo(state.dataIncetare), blob),
       });
     }
 
