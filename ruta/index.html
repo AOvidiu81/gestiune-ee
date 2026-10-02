@@ -558,7 +558,7 @@
     </div>
 
     <div class="manage-toggle" id="btnOpenHistory" style="margin-top:10px;">📜 Istoric rute (ultimele 30 zile)</div>
-    <div style="text-align:center; margin-top:14px; font-size:0.68rem; color:var(--text-dim); opacity:0.6;">Build: 27 Iulie 2026 (v20)</div>
+    <div style="text-align:center; margin-top:14px; font-size:0.68rem; color:var(--text-dim); opacity:0.6;">Build: 2 Octombrie 2026 (v5)</div>
   </div>
 </div>
 
@@ -931,6 +931,29 @@ const visitLog = {}; // key -> {arrive: Date|null, obs: 'LA'|'O'|null}
 let dayStart = {}; // {brand, plate, kmStart, driver1, driver2, startTime}
 let lastRouteRows = [];
 
+// --- Șofer EE: aplicatia ruleaza in fila „Rută” (../sofer/), care trimite datele zilei ---
+const SOFER_MODE = new URLSearchParams(location.search).get('sofer') === '1';
+let multiZile = null;   // mai multe zile bifate (ruta complementara), altfel null
+let multiTrasee = null; // mai multe trasee bifate, altfel null
+let eeSoferZ = null, eeSoferOcupat = false;
+function eeAsiguraOptiune(sel, val, text){
+  if(![...sel.options].some(o=>o.value === val)){
+    const o = document.createElement('option'); o.value = val; o.textContent = text || val; sel.appendChild(o);
+  }
+}
+function setZiTraseu(z, m){
+  const lz = String(z || 'TOATE').split('+').filter(Boolean);
+  const lm = String(m || 'TOATE').split('+').filter(Boolean);
+  multiZile = lz.length > 1 ? lz : null;
+  multiTrasee = lm.length > 1 ? lm : null;
+  const vz = multiZile ? 'TOATE' : (lz[0] || 'TOATE');
+  const vm = multiTrasee ? 'TOATE' : (lm[0] || 'TOATE');
+  eeAsiguraOptiune(ziuaSel, vz); eeAsiguraOptiune(masinaSel, vm);
+  ziuaSel.value = vz; masinaSel.value = vm;
+}
+const zileSalvate = ()=> multiZile ? multiZile.join('+') : ziuaSel.value;
+const traseeSalvate = ()=> multiTrasee ? multiTrasee.join('+') : masinaSel.value;
+
 // --- Supabase ---
 const SUPABASE_URL = 'https://xrveoxmsdvryzyemmkqx.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_P1TSfVqqbyr3L-elKVgopg_1FpIpkv4';
@@ -1272,8 +1295,7 @@ async function resumeSession(session){
   pageStart.style.display = 'none';
 
   if(session.last_ziua){
-    ziuaSel.value = session.last_ziua;
-    masinaSel.value = session.last_masina || 'TOATE';
+    setZiTraseu(session.last_ziua, session.last_masina);
     const sortVal = session.last_sort_mode || '';
     sortModeSel.value = sortVal;
     if(sortVal === 'depot'){ routeMode = 'depot'; historyWeekNum = null; }
@@ -1651,6 +1673,7 @@ function lockStartDay(){
 }
 
 btnGoHome.addEventListener('click', ()=>{
+  if(SOFER_MODE){ parent.postMessage({type:'ee-ruta-incheiata'}, location.origin); return; }
   pageFinish.style.display = 'none';
   pageApp.style.display = 'none';
   pageConfig.style.display = 'none';
@@ -1955,6 +1978,7 @@ function renderDayStartSummary(){
   const parts = [vehicle, drivers].filter(Boolean);
   headerSummary.innerHTML = `<div>${parts.map(p=>`<b>${escapeHtml(p)}</b>`).join(' · ') || 'Zi începută'}</div><div class="edit-icon" id="editDayStart">✏️</div>`;
   document.getElementById('editDayStart').addEventListener('click', ()=>{
+    if(SOFER_MODE){ parent.postMessage({type:'ee-ruta-editeaza'}, location.origin); return; }
     selDriver1.value = dayStart.driver1 || '';
     selDriver2.value = dayStart.driver2 || '';
     selBrand.value = dayStart.brand || '';
@@ -1968,12 +1992,14 @@ function renderDayStartSummary(){
 }
 
 function renderRouteConfigSummary(){
-  const traseu = (masinaSel.value && masinaSel.value !== 'TOATE') ? masinaSel.value : 'Toate traseele';
+  const traseu = multiTrasee ? multiTrasee.join(' + ') : ((masinaSel.value && masinaSel.value !== 'TOATE') ? masinaSel.value : 'Toate traseele');
+  const zileTxt = multiZile ? multiZile.join(' + ') : (ziuaSel.value !== 'TOATE' ? ziuaSel.value : null);
   const zona = dayStart.zona ? dayStart.zona : null;
-  const label = [traseu, zona ? `Zona ${zona}` : null].filter(Boolean).join(' · ');
+  const label = [traseu, SOFER_MODE ? zileTxt : null, zona ? `Zona ${zona}` : null].filter(Boolean).join(' · ');
   routeConfigSummary.innerHTML = `<div>${escapeHtml(label)}</div><div class="edit-icon" id="editRouteConfig">✏️</div>`;
   routeConfigSummary.style.display = 'flex';
   document.getElementById('editRouteConfig').addEventListener('click', ()=>{
+    if(SOFER_MODE){ parent.postMessage({type:'ee-ruta-editeaza'}, location.origin); return; }
     dsZonaConfig.value = dayStart.zona || '';
     pageApp.style.display = 'none';
     pageConfig.style.display = 'block';
@@ -2007,8 +2033,7 @@ btnStartDay.addEventListener('click', async ()=>{
   pageStart.style.display = 'none';
 
   if(session && session.last_ziua){
-    ziuaSel.value = session.last_ziua;
-    masinaSel.value = session.last_masina || 'TOATE';
+    setZiTraseu(session.last_ziua, session.last_masina);
     const sortVal = session.last_sort_mode || '';
     sortModeSel.value = sortVal;
     if(sortVal === 'depot'){ routeMode = 'depot'; historyWeekNum = null; }
@@ -2321,16 +2346,16 @@ statusRow.addEventListener('click', (e)=>{
   [...statusRow.children].forEach(b=>b.classList.toggle('active', b===btn));
   render();
 });
-ziuaSel.addEventListener('change', render);
-masinaSel.addEventListener('change', render);
+ziuaSel.addEventListener('change', ()=>{ multiZile = null; render(); });
+masinaSel.addEventListener('change', ()=>{ multiTrasee = null; render(); });
 searchInput.addEventListener('input', render);
 
 async function saveRouteConfig(){
   if(!sb || !currentSessionId) return;
   try{
     await sb.from('route_sessions').update({
-      last_ziua: ziuaSel.value,
-      last_masina: masinaSel.value,
+      last_ziua: zileSalvate(),
+      last_masina: traseeSalvate(),
       last_sort_mode: sortModeSel.value,
       zona: dayStart.zona || null,
       updated_at: new Date().toISOString(),
@@ -2748,8 +2773,8 @@ function render(){
 
   let rows = DATA.filter(r=>{
     if(currentStatus !== 'TOATE' && r.status !== currentStatus) return false;
-    if(ziua !== 'TOATE' && r.ziua !== ziua) return false;
-    if(masina !== 'TOATE' && r.masina !== masina) return false;
+    if(multiZile ? !multiZile.includes(r.ziua) : (ziua !== 'TOATE' && r.ziua !== ziua)) return false;
+    if(multiTrasee ? !multiTrasee.includes(r.masina) : (masina !== 'TOATE' && r.masina !== masina)) return false;
     if(q){
       const hay = (r.client+' '+r.localitate+' '+r.locatie+' '+r.jud).toLowerCase();
       if(!hay.includes(q)) return false;
@@ -2766,7 +2791,7 @@ function render(){
   countBadge.textContent = rows.length + ' ' + (rows.length===1 ? 'punct' : 'puncte');
   lastRouteRows = rows;
 
-  const routeApplicable = (ziua !== 'TOATE' && rows.length > 1);
+  const routeApplicable = ((ziua !== 'TOATE' || !!multiZile) && rows.length > 1);
   depotNavCard.style.display = routeApplicable ? 'flex' : 'none';
 
   if(rows.length === 0){
@@ -2897,7 +2922,7 @@ function render(){
 
   routeSummary.style.display = 'none';
 
-  if(ziua === 'TOATE'){
+  if(ziua === 'TOATE' && !multiZile){
     let html = '';
     const dayGroups = {};
     const dayKeysInOrder = [];
@@ -2930,6 +2955,116 @@ if(dayStart && (dayStart.driver1 || dayStart.plate)){
   render();
   startGeoWatch();
   findOrCreateSession().then(()=> render());
+}
+
+// ===== Șofer EE: datele zilei vin din „Ziua de azi”, ecranul de start al rutei e sarit =====
+function eeArataRuta(){
+  pageStart.style.display = 'none';
+  pageConfig.style.display = 'none';
+  pageFinish.style.display = 'none';
+  pageHistory.style.display = 'none';
+  pageApp.style.display = 'block';
+  headerSummary.style.display = 'flex';
+  renderDayStartSummary();
+  renderRouteConfigSummary();
+  render();
+}
+
+// Punctele vizitate azi raman bifate si dupa schimbarea masinii (sesiune noua, aceeasi ruta)
+async function eeVizitePeToataZiua(){
+  if(!sb || !currentSessionId) return;
+  const todayStr = new Date().toISOString().slice(0,10);
+  const { data: ses, error } = await sb.from('route_sessions').select('id')
+    .eq('session_date', todayStr).eq('driver1', dayStart.driver1).neq('id', currentSessionId);
+  if(error) throw error;
+  const ids = (ses||[]).map(x=>x.id);
+  if(!ids.length) return;
+  const { data: visits, error: e2 } = await sb.from('visit_logs').select('*').in('session_id', ids);
+  if(e2) throw e2;
+  (visits||[]).forEach(v=>{
+    const k = String(v.client_id);
+    if(visitLog[k]) return;
+    visitLog[k] = {
+      arrive: v.arrive_time ? new Date(v.arrive_time) : null,
+      leave: v.leave_time ? new Date(v.leave_time) : null,
+      obs: v.obs || null,
+    };
+  });
+}
+
+// z = {driver1, driver2, brand, plate, km, zile[], trasee[], zona, ordine}
+async function eeSoferAplica(z){
+  if(eeSoferOcupat) return false;
+  eeSoferOcupat = true;
+  try{
+    eeSoferZ = z;
+    const dorit = { brand: z.brand, plate: z.plate, kmStart: z.km, driver1: z.driver1, driver2: z.driver2 || '', zona: (z.zona || '').toUpperCase() };
+    const schimbSofer = dayStart.driver1 && dayStart.driver1 !== z.driver1;
+    if(schimbSofer){ currentSessionId = null; Object.keys(visitLog).forEach(k=>delete visitLog[k]); }
+    dayStart = { ...dorit, startTime: dayStart.startTime || new Date() };
+    setZiTraseu((z.zile && z.zile.length) ? z.zile.join('+') : 'TOATE', (z.trasee && z.trasee.length) ? z.trasee.join('+') : 'TOATE');
+    const sortVal = z.ordine || '';
+    eeAsiguraOptiune(sortModeSel, sortVal, `🕐 Istoric W${sortVal}`);
+    sortModeSel.value = sortVal;
+    if(sortVal === 'depot'){ routeMode = 'depot'; historyWeekNum = null; }
+    else if(sortVal === ''){ routeMode = null; historyWeekNum = null; }
+    else { routeMode = 'history'; historyWeekNum = parseInt(sortVal,10); }
+    eeArataRuta();
+    startGeoWatch();
+
+    const s = await findOrCreateSession();
+    Object.assign(dayStart, dorit); // „Ziua de azi” are ultimul cuvant (corectie masina/coleg/km)
+    if(s && currentSessionId){
+      try{
+        await sb.from('route_sessions').update({
+          driver2: dorit.driver2 || null, vehicle_brand: dorit.brand, vehicle_plate: dorit.plate,
+          km_start: dorit.kmStart, zona: dorit.zona || null,
+          last_ziua: zileSalvate(), last_masina: traseeSalvate(), last_sort_mode: sortModeSel.value,
+          updated_at: new Date().toISOString(),
+        }).eq('id', currentSessionId);
+        await eeVizitePeToataZiua();
+      }catch(err){ console.error('Șofer EE: actualizarea rutei a eșuat:', err); }
+    }
+    eeArataRuta();
+    return !!currentSessionId;
+  } finally { eeSoferOcupat = false; }
+}
+
+// Masina s-a stricat pe drum: se inchide sesiunea ei (km final) si incepe una noua, cu aceeasi ruta
+async function eeSoferSchimbaMasina(m){
+  if(!sb || !currentSessionId) return { ok:false, mesaj:'Ruta nu e pornită în cloud. Verifică internetul și încearcă din nou.' };
+  const vechi = currentSessionId;
+  const todayStr = new Date().toISOString().slice(0,10);
+  try{
+    const pos = await getCurrentPositionAsync();
+    const { data: created, error } = await sb.from('route_sessions').insert({
+      session_date: todayStr,
+      driver1: dayStart.driver1, driver2: dayStart.driver2 || null,
+      vehicle_brand: m.brand, vehicle_plate: m.plate, km_start: m.kmStart,
+      zona: dayStart.zona || null, status: 'activa',
+      start_lat: pos ? pos.lat : null, start_lon: pos ? pos.lon : null,
+      last_ziua: zileSalvate(), last_masina: traseeSalvate(), last_sort_mode: sortModeSel.value,
+    }).select().single();
+    if(error) throw error;
+    const fin = { type:'finalize', sessionId: vechi, kmEnd: m.kmFinal, endLat: pos ? pos.lat : null, endLon: pos ? pos.lon : null };
+    try{ await runQueueItem(fin); }
+    catch(err){ enqueueSync('finalize:'+vechi, 'închidere mașină veche', fin); }
+    currentSessionId = created.id;
+    dayStart.brand = m.brand; dayStart.plate = m.plate; dayStart.kmStart = m.kmStart;
+    if(eeSoferZ) eeSoferZ = { ...eeSoferZ, brand: m.brand, plate: m.plate, km: m.kmStart };
+    renderDayStartSummary();
+    render();
+    return { ok:true };
+  }catch(err){
+    console.error('Șofer EE: schimbarea mașinii a eșuat:', err);
+    return { ok:false, mesaj:'Nu am putut schimba mașina (fără internet?). Încearcă din nou.' };
+  }
+}
+
+if(SOFER_MODE){
+  pageStart.style.display = 'none';
+  // fara semnal la pornire: ruta se leaga de cloud cand revine internetul
+  setInterval(()=>{ if(eeSoferZ && !currentSessionId && !eeSoferOcupat) eeSoferAplica(eeSoferZ); }, 20000);
 }
 </script>
 <script>

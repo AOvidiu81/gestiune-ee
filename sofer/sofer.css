@@ -3,7 +3,10 @@
 .sofer-root { transform: none; }
 .sofer-top { gap: 10px; padding-left: 14px; }
 .sofer-cine { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: flex-start; gap: 3px; }
-.sofer-nume { font-weight: 800; font-size: 15.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+.sofer-nume {
+  font: inherit; font-weight: 800; font-size: 15.5px; color: inherit; background: none; border: 0; padding: 0; cursor: pointer;
+  text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%;
+}
 .sofer-masina {
   font: inherit; font-size: 13px; font-weight: 700; color: var(--brand-primary);
   background: #e7f1ff; border: 1px solid #c7d3e4; border-radius: 999px; padding: 3px 10px; cursor: pointer;
@@ -39,3 +42,24 @@
 .sofer-lista-masini { display: flex; flex-direction: column; gap: 10px; }
 .sofer-setari { display: flex; flex-direction: column; gap: 10px; }
 .sofer-info { color: var(--ink-soft); font-size: 13.5px; }
+
+/* s2 — deschiderea zilei: „Alege un coleg” + „Ziua de azi” */
+.sofer-colegi { display: flex; flex-direction: column; gap: 10px; }
+.sofer-coleg {
+  font: inherit; font-size: 15.5px; font-weight: 700; text-align: left; color: var(--ink, #1b2733);
+  background: #eef3fa; border: 2px solid #c7d3e4; border-radius: 14px; padding: 13px 14px; cursor: pointer;
+}
+.sofer-coleg.on { background: var(--brand-primary); border-color: var(--brand-primary); color: #fff; }
+.sofer-echipa {
+  display: block; width: 100%; font: inherit; font-size: 16px; font-weight: 800; text-align: left; color: var(--brand-primary);
+  background: #e7f1ff; border: 1px solid #c7d3e4; border-radius: 14px; padding: 12px 14px; margin-bottom: 14px; cursor: pointer;
+}
+.sofer-bife { display: flex; flex-wrap: wrap; gap: 8px; }
+.sofer-bifa {
+  font: inherit; font-size: 14px; font-weight: 700; color: var(--ink-soft);
+  background: #eef3fa; border: 1.5px solid #c7d3e4; border-radius: 999px; padding: 8px 13px; cursor: pointer;
+}
+.sofer-bifa.on { background: var(--brand-primary); border-color: var(--brand-primary); color: #fff; }
+.sofer-bifa.on::before { content: '✓ '; }
+.sofer-nota { color: var(--ink-soft); font-size: 12px; margin-top: 5px; }
+.sofer-eroare { font-size: 13.5px; font-weight: 700; min-height: 18px; margin-bottom: 8px; }
