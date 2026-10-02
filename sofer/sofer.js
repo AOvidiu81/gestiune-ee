@@ -17,7 +17,7 @@ import { el, APP_VERSION as PV_VERSION, forceUpdateApp } from '../pv/js/utils.js
 import { replaceRoot, pushScreen } from '../pv/js/router.js';
 import { DriverRepo, CarRepo, DepotRepo } from '../pv/js/db.js';
 import { runLoginGate } from '../pv/js/screens-login.js';
-import { getCurrentProfile, syncMasterData, getTodayBirthdays, getSupabase, listDriversForLogin } from '../pv/js/auth.js';
+import { getCurrentProfile, syncMasterData, getTodayBirthdays, getSupabase, listDriversForLogin, signOut } from '../pv/js/auth.js';
 import { tile, openModal, primaryButton, outlineButton, sectionCard } from '../pv/js/components.js';
 import { PROCESS_TYPES } from '../pv/js/catalog-defaults.js';
 import { openProcessVerbalForm } from '../pv/js/screens-pv-form.js';
@@ -26,17 +26,18 @@ import { openHistoryScreen } from '../pv/js/screens-history.js';
 import { buildComenziActive } from '../pv/js/screens-comenzi.js';
 import { openSettingsScreen } from '../pv/js/screens-setup.js';
 
-export const SOFER_VERSION = 's2';
+export const SOFER_VERSION = 's3';
 
 const KEY_ZI = 'ee-sofer-zi'; // ziua deschisa: { zi, coleg, carId, km, trasee, zile, zona, ordine, ruta }
 const KEY_ULTIMA = 'ee-sofer-ultima'; // ultimele alegeri (masina, traseu, zona) — precompletare
 const KEY_LISTE = 'ee-sofer-liste'; // colegi, trasee, zone, saptamani — pentru pornirea fara semnal
 const KEY_FILA = 'ee-sofer-fila'; // ultima fila deschisa
+const KEY_LOGAT = 'ee-sofer-logat'; // ziua in care s-a ales soferul; zi noua -> din nou „Cine ești?”
 const FILE = ['ruta', 'pv', 'comenzi'];
 const PROCESS_ICONS = { pin: '📍', truck: '🚚', wrench: '🔧', block: '⛔', invoice: '🧾' };
 const ZILE = [
-  { v: 'Luni', t: 'Luni' }, { v: 'Marti', t: 'Marți' }, { v: 'Miercuri', t: 'Miercuri' }, { v: 'Joi', t: 'Joi' },
-  { v: 'Vineri', t: 'Vineri' }, { v: 'Sambata', t: 'Sâmbătă' }, { v: 'Duminica', t: 'Duminică' },
+  { v: 'Luni', t: 'Luni' }, { v: 'Marti', t: 'Mar.' }, { v: 'Miercuri', t: 'Mie.' }, { v: 'Joi', t: 'Joi' },
+  { v: 'Vineri', t: 'Vin.' }, { v: 'Sambata', t: 'Sâm.' }, { v: 'Duminica', t: 'Dum.' },
 ];
 const ZI_DIN_DATA = ['Duminica', 'Luni', 'Marti', 'Miercuri', 'Joi', 'Vineri', 'Sambata'];
 
@@ -143,9 +144,16 @@ async function checkBirthdays() {
   });
 }
 
+// A ales gresit numele: deconectare locala si inapoi la „Cine ești?”
+async function altSofer() {
+  try { await signOut(); } catch (e) {}
+  try { localStorage.removeItem(KEY_LOGAT); localStorage.removeItem(KEY_ZI); } catch (e) {}
+  location.reload();
+}
+
 // ---------- ferestre mici ----------
 // „Alege un coleg”: ceilalti soferi + „Sunt singur”, apoi OK. Intoarce numele colegului sau ''.
-async function alegeColeg(colegi, curent) {
+async function alegeColeg(colegi, curent, cuInapoi) {
   let ales = curent || '';
   const lista = el('div', { class: 'sofer-colegi' });
   const optiuni = [...colegi.filter((n) => n && n !== stare.driver.name).map((n) => ({ v: n, t: `👤 ${n}` })), { v: '', t: '🙋 Sunt singur' }];
@@ -157,7 +165,10 @@ async function alegeColeg(colegi, curent) {
   });
   function marcheaza() { butoane.forEach(({ o, b }) => b.classList.toggle('on', o.v === ales)); }
   marcheaza();
-  const ok = await openModal({ title: 'Alege un coleg', bodyNode: lista, actions: [{ label: 'OK', value: true, primary: true }] });
+  const actions = [{ label: 'OK', value: true, primary: true }];
+  if (cuInapoi) actions.unshift({ label: '← Nu sunt eu', value: 'inapoi' });
+  const ok = await openModal({ title: cuInapoi ? `Bună, ${stare.driver.name}! Alege un coleg` : 'Alege un coleg', bodyNode: lista, actions });
+  if (ok === 'inapoi') { await altSofer(); return curent || ''; }
   return ok ? ales : (curent || '');
 }
 
@@ -280,13 +291,15 @@ function construiesteZiua({ initial, liste, gata, inapoi, cereColeg }) {
     primaryButton('🗺️ Generează ruta', () => aduna(true)),
     el('div', { style: 'height:10px' }),
     z.ruta ? null : outlineButton('Fără rută azi', () => aduna(false)),
+    inapoi ? null : el('div', { style: 'height:10px' }),
+    inapoi ? null : el('button', { class: 'btn btn-text btn-block', onclick: () => altSofer() }, ['← Nu sunt eu (alege alt șofer)']),
   ]);
   const sus = inapoi ? [] : [
     el('img', { class: 'brand-logo', src: 'assets/logo/euro_ecologic_logo.png', alt: 'Euro Ecologic' }),
     el('div', { class: 'app-version-tag' }, [`Șofer EE ${SOFER_VERSION} · PV ${PV_VERSION}`]),
   ];
   screen.appendChild(el('div', { class: 'screen-scroll' }, [...sus, card]));
-  if (cereColeg) setTimeout(async () => { z.coleg = await alegeColeg(liste.colegi, z.coleg); arataEchipa(); }, 250);
+  if (cereColeg) setTimeout(async () => { z.coleg = await alegeColeg(liste.colegi, z.coleg, true); arataEchipa(); }, 250);
   return screen;
 }
 
@@ -569,7 +582,13 @@ function ecranFile() {
 async function boot() {
   if (screen.orientation && screen.orientation.lock) screen.orientation.lock('portrait').catch(() => {});
 
+  // Zi noua: aplicatia porneste din nou cu „Cine ești?” (cerut 02.10) — login-ul se tine minte doar in aceeasi zi
+  if (citeste(KEY_LOGAT) !== aziIso()) {
+    try { await signOut(); } catch (e) {}
+    try { localStorage.removeItem(KEY_ZI); } catch (e) {}
+  }
   await runLoginGate(); // login + semnatura + sincronizarea datelor (din /pv/)
+  scrie(KEY_LOGAT, aziIso());
   checkBirthdays();
 
   await incarcaLocal();

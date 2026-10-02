@@ -558,7 +558,7 @@
     </div>
 
     <div class="manage-toggle" id="btnOpenHistory" style="margin-top:10px;">📜 Istoric rute (ultimele 30 zile)</div>
-    <div style="text-align:center; margin-top:14px; font-size:0.68rem; color:var(--text-dim); opacity:0.6;">Build: 2 Octombrie 2026 (v5)</div>
+    <div style="text-align:center; margin-top:14px; font-size:0.68rem; color:var(--text-dim); opacity:0.6;">Build: 2 Octombrie 2026 (v6)</div>
   </div>
 </div>
 
@@ -1993,7 +1993,8 @@ function renderDayStartSummary(){
 
 function renderRouteConfigSummary(){
   const traseu = multiTrasee ? multiTrasee.join(' + ') : ((masinaSel.value && masinaSel.value !== 'TOATE') ? masinaSel.value : 'Toate traseele');
-  const zileTxt = multiZile ? multiZile.join(' + ') : (ziuaSel.value !== 'TOATE' ? ziuaSel.value : null);
+  const ziScurt = z => ({Marti:'Mar.', Miercuri:'Mie.', Vineri:'Vin.', Sambata:'Sâm.', Duminica:'Dum.'}[z] || z);
+  const zileTxt = multiZile ? multiZile.map(ziScurt).join(' + ') : (ziuaSel.value !== 'TOATE' ? ziScurt(ziuaSel.value) : null);
   const zona = dayStart.zona ? dayStart.zona : null;
   const label = [traseu, SOFER_MODE ? zileTxt : null, zona ? `Zona ${zona}` : null].filter(Boolean).join(' · ');
   routeConfigSummary.innerHTML = `<div>${escapeHtml(label)}</div><div class="edit-icon" id="editRouteConfig">✏️</div>`;
