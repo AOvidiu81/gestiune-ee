@@ -103,7 +103,7 @@ export function buildComenziActive({ driver, car, depot, onFaraComanda, pop, emb
     }
 
     let rows = [];
-    let perioada = 'toate'; // azi | sapt | toate
+    let perioada = 'azi'; // azi | sapt | toate | istoric (comenzile cu PV facut)
     let judet = '';
     let statusText = '';
     let offline = false;
@@ -120,6 +120,7 @@ export function buildComenziActive({ driver, car, depot, onFaraComanda, pop, emb
         ['azi', 'Azi'],
         ['sapt', 'Saptamana asta'],
         ['toate', 'Toate'],
+        ['istoric', `📂 Istoric comenzi (${rows.filter((r) => r.pv_facut_de).length})`],
       ].forEach(([k, label]) => {
         chips.appendChild(
           el('button', { class: `ca-chip${perioada === k ? ' on' : ''}`, onclick: () => { perioada = k; renderFiltre(); renderLista(); } }, [label])
@@ -146,6 +147,9 @@ export function buildComenziActive({ driver, car, depot, onFaraComanda, pop, emb
       duminica.setDate(luni.getDate() + 6);
       return rows.filter((r) => {
         if (judet && (r.jud || '').toUpperCase() !== judet) return false;
+        // Comenzile cu PV facut stau doar in „Istoric comenzi”
+        if (perioada === 'istoric') return !!r.pv_facut_de;
+        if (r.pv_facut_de) return false;
         const d = parseDay(r.data);
         if (!d) return perioada === 'toate';
         // "Azi" cuprinde si comenzile ramase din zilele trecute (inca fara PV = V)
@@ -187,7 +191,7 @@ export function buildComenziActive({ driver, car, depot, onFaraComanda, pop, emb
       const adresa = [c.jud, c.loc, c.sat].filter(Boolean).join(', ');
 
       // Comenzile de AZI se vad intregi; cele din alte zile, restranse (tip + client | localitate - judet)
-      const alteZile = c.data !== isoOf(new Date());
+      const alteZile = c.data !== isoOf(new Date()) || perioada === 'istoric';
       if (alteZile && !deschise.has(c.id)) {
         const unde = [c.loc, c.jud ? String(c.jud).toUpperCase() : ''].filter(Boolean).join(' - ');
         return el('div', { class: 'ca-card ca-restrans', style: `border-left-color:${accent}`, onclick: () => { deschise.add(c.id); renderLista(); } }, [
@@ -244,7 +248,7 @@ export function buildComenziActive({ driver, car, depot, onFaraComanda, pop, emb
       lista.innerHTML = '';
       const vizibile = filtrate();
       if (!vizibile.length) {
-        lista.appendChild(el('div', { class: 'empty-state' }, [rows.length ? 'Nicio comanda pentru filtrul ales.' : 'Nu exista comenzi active.']));
+        lista.appendChild(el('div', { class: 'empty-state' }, [perioada === 'istoric' ? 'Nicio comanda cu PV facut.' : rows.length ? 'Nicio comanda pentru filtrul ales.' : 'Nu exista comenzi active.']));
         return;
       }
       const aziIso = isoOf(new Date());
