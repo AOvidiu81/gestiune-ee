@@ -26,7 +26,7 @@ import { openHistoryScreen } from '../pv/js/screens-history.js';
 import { buildComenziActive } from '../pv/js/screens-comenzi.js';
 import { openSettingsScreen } from '../pv/js/screens-setup.js';
 
-export const SOFER_VERSION = 's8';
+export const SOFER_VERSION = 's9';
 
 const KEY_ZI = 'ee-sofer-zi'; // ziua deschisa: { zi, coleg, carId, km, trasee, zile, zona, ordine, ruta }
 const KEY_ULTIMA = 'ee-sofer-ultima'; // ultimele alegeri (masina, traseu, zona) — precompletare
@@ -313,6 +313,7 @@ function valoriDePornire() {
 }
 
 function salveazaZiua(z) {
+  z = { ...z, sofer: stare.driver?.name || '' }; // ziua e a soferului care a deschis-o
   stare.zi = z;
   stare.car = masinaDupaId(z.carId);
   scrie(KEY_ZI, z);
@@ -614,7 +615,8 @@ async function boot() {
 
   // Ziua deschisa azi se tine minte; zi noua (sau masina disparuta) -> „Alege un coleg” + „Ziua de azi”
   const z = citeste(KEY_ZI);
-  if (z && z.zi === aziIso() && masinaDupaId(z.carId)) {
+  // Alt sofer pe acelasi telefon (deconectare + alt nume) -> ziua se deschide din nou, cu „Alege un coleg”
+  if (z && z.zi === aziIso() && z.sofer === stare.driver.name && masinaDupaId(z.carId)) {
     stare.zi = z;
     stare.car = masinaDupaId(z.carId);
   } else {
