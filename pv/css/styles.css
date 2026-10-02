@@ -436,3 +436,9 @@ select.field-input { appearance: none; background-image: linear-gradient(45deg, 
 .ca-stare.ca-pv { color: #2E8B3C; }
 .ca-actiuni { display: flex; gap: 8px; margin-top: 10px; }
 .ca-btn { flex: 1; min-height: 40px; padding: 6px 10px; font-size: 14px; }
+
+/* v65 — comenzile din alte zile, restranse */
+.ca-restrans { padding: 9px 12px; margin-bottom: 7px; }
+.ca-tip-rand { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.ca-sageata { color: var(--ink-soft); font-weight: 700; font-size: 12px; }
+.ca-rezumat { font-weight: 700; font-size: 14.5px; color: var(--ink); margin-top: 2px; }

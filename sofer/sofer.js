@@ -26,7 +26,7 @@ import { openHistoryScreen } from '../pv/js/screens-history.js';
 import { buildComenziActive } from '../pv/js/screens-comenzi.js';
 import { openSettingsScreen } from '../pv/js/screens-setup.js';
 
-export const SOFER_VERSION = 's3';
+export const SOFER_VERSION = 's4';
 
 const KEY_ZI = 'ee-sofer-zi'; // ziua deschisa: { zi, coleg, carId, km, trasee, zile, zona, ordine, ruta }
 const KEY_ULTIMA = 'ee-sofer-ultima'; // ultimele alegeri (masina, traseu, zona) — precompletare
@@ -36,7 +36,7 @@ const KEY_LOGAT = 'ee-sofer-logat'; // ziua in care s-a ales soferul; zi noua ->
 const FILE = ['ruta', 'pv', 'comenzi'];
 const PROCESS_ICONS = { pin: '📍', truck: '🚚', wrench: '🔧', block: '⛔', invoice: '🧾' };
 const ZILE = [
-  { v: 'Luni', t: 'Luni' }, { v: 'Marti', t: 'Mar.' }, { v: 'Miercuri', t: 'Mie.' }, { v: 'Joi', t: 'Joi' },
+  { v: 'Luni', t: 'Lun.' }, { v: 'Marti', t: 'Mar.' }, { v: 'Miercuri', t: 'Mie.' }, { v: 'Joi', t: 'Joi' },
   { v: 'Vineri', t: 'Vin.' }, { v: 'Sambata', t: 'Sâm.' }, { v: 'Duminica', t: 'Dum.' },
 ];
 const ZI_DIN_DATA = ['Duminica', 'Luni', 'Marti', 'Miercuri', 'Joi', 'Vineri', 'Sambata'];
@@ -443,8 +443,8 @@ function ecranFile() {
     const panouri = el('div', { class: 'sofer-panouri' });
     const file = [
       { k: 'ruta', icon: '🗺️', label: 'Rută' },
-      { k: 'pv', icon: '📄', label: 'PV-uri' },
       { k: 'comenzi', icon: '📋', label: 'Comenzi' },
+      { k: 'pv', icon: '📄', label: 'PV-uri' },
     ];
     const bara = el('div', { class: 'sofer-bara' });
     file.forEach((f) => {

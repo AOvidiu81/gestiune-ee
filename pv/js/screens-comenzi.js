@@ -28,8 +28,11 @@ const TIP_PV = {
   VANZARE: 'VANZARE',
 };
 
+// Culorile cerute pentru comenzi: amplasare verde, ridicare rosu, servisare portocaliu
+const CULOARE_TIP = { AMPLASARE: '#2E8B3C', RIDICARE: '#C0392B', SERVISARE: '#D97706' };
+
 function accentFor(pvType) {
-  return (PROCESS_TYPES.find((p) => p.type === pvType) || {}).accent || '#0b3b66';
+  return CULOARE_TIP[pvType] || (PROCESS_TYPES.find((p) => p.type === pvType) || {}).accent || '#0b3b66';
 }
 
 function parseDay(iso) {
@@ -104,6 +107,7 @@ export function buildComenziActive({ driver, car, depot, onFaraComanda, pop, emb
     let judet = '';
     let statusText = '';
     let offline = false;
+    const deschise = new Set(); // comenzile din alte zile, desfacute de sofer
 
     const filtre = el('div', { class: 'ca-filtre' });
     const status = el('div', { class: 'ca-status' });
@@ -181,6 +185,17 @@ export function buildComenziActive({ driver, car, depot, onFaraComanda, pop, emb
       const accent = accentFor(pvType);
       const tipLabel = c.tip_miscare === pvType ? pvType : `${c.tip_miscare} → PV ${pvType}`;
       const adresa = [c.jud, c.loc, c.sat].filter(Boolean).join(', ');
+
+      // Comenzile de AZI se vad intregi; cele din alte zile, restranse (tip + client | localitate - judet)
+      const alteZile = c.data !== isoOf(new Date());
+      if (alteZile && !deschise.has(c.id)) {
+        const unde = [c.loc, c.jud ? String(c.jud).toUpperCase() : ''].filter(Boolean).join(' - ');
+        return el('div', { class: 'ca-card ca-restrans', style: `border-left-color:${accent}`, onclick: () => { deschise.add(c.id); renderLista(); } }, [
+          el('div', { class: 'ca-tip ca-tip-rand', style: `color:${accent}` }, [el('span', {}, [tipLabel]), el('span', { class: 'ca-sageata' }, ['▾'])]),
+          el('div', { class: 'ca-rezumat' }, [[c.client || '—', unde].filter(Boolean).join('  |  ')]),
+          c.pv_facut_de ? el('div', { class: 'ca-stare ca-pv' }, [`✔ PV facut de ${c.pv_facut_de}`]) : null,
+        ]);
+      }
       const produs = `${Math.abs(Number(c.buc) || 0)} buc ${[c.produs, c.model].filter(Boolean).join(' ')}`.trim();
       const serv = [c.frecv_serv, c.zi_servisare ? String(c.zi_servisare).replace(/,/g, ', ') : ''].filter(Boolean).join(', ');
 
@@ -202,7 +217,9 @@ export function buildComenziActive({ driver, car, depot, onFaraComanda, pop, emb
       const actiuni = el('div', { class: 'ca-actiuni' }, [c.preluat_de && !eu ? null : btnPreiau, btnPv]);
 
       return el('div', { class: 'ca-card', style: `border-left-color:${accent}`, onclick: () => deschidePv(c) }, [
-        el('div', { class: 'ca-tip', style: `color:${accent}` }, [tipLabel]),
+        alteZile
+          ? el('div', { class: 'ca-tip ca-tip-rand', style: `color:${accent}`, onclick: (e) => { e.stopPropagation(); deschise.delete(c.id); renderLista(); } }, [el('span', {}, [tipLabel]), el('span', { class: 'ca-sageata' }, ['▴ restrânge'])])
+          : el('div', { class: 'ca-tip', style: `color:${accent}` }, [tipLabel]),
         el('div', { class: 'ca-client' }, [c.client || '—']),
         adresa ? el('div', { class: 'ca-linie' }, ['📍 ', adresa]) : null,
         el('div', { class: 'ca-linie' }, ['📦 ', produs, c.accesorii ? ` · ${c.accesorii}` : '']),
