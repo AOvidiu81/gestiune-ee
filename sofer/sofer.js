@@ -26,13 +26,14 @@ import { openHistoryScreen } from '../pv/js/screens-history.js';
 import { buildComenziActive } from '../pv/js/screens-comenzi.js';
 import { openSettingsScreen } from '../pv/js/screens-setup.js';
 
-export const SOFER_VERSION = 's11';
+export const SOFER_VERSION = 's12';
 
 const KEY_ZI = 'ee-sofer-zi'; // ziua deschisa: { zi, coleg, carId, km, trasee, zile, zona, ordine, ruta }
 const KEY_ULTIMA = 'ee-sofer-ultima'; // ultimele alegeri (masina, traseu, zona) — precompletare
 const KEY_LISTE = 'ee-sofer-liste'; // colegi, trasee, zone, saptamani — pentru pornirea fara semnal
 const KEY_FILA = 'ee-sofer-fila'; // ultima fila deschisa
 const KEY_INCEPUT = 'ee-sofer-inceput'; // inceputul zilei netrimis inca in GestiuneEE (tabelul inceput_zi)
+const KEY_START = 'ee-sofer-start'; // { zi, sofer, oraStart } — prima deschidere a zilei, ramane si dupa deconectare
 const KEY_LOGAT = 'ee-sofer-logat'; // ziua in care s-a ales soferul; zi noua -> din nou „Cine ești?”
 const FILE = ['ruta', 'pv', 'comenzi'];
 const PROCESS_ICONS = { pin: '📍', truck: '🚚', wrench: '🔧', block: '⛔', invoice: '🧾' };
@@ -325,13 +326,14 @@ function valoriDePornire() {
 // `faraInceput`: masina schimbata pe drum — inceputul zilei ramane cu masina si km de dimineata
 function salveazaZiua(z, { faraInceput } = {}) {
   const nume = stare.driver?.name || '';
-  const vechi = stare.zi || citeste(KEY_ZI);
+  const vechi = stare.zi || citeste(KEY_ZI) || citeste(KEY_START);
   // ora la care s-a deschis ziua prima data; corecturile de peste zi nu o schimba
   const oraStart = (vechi && vechi.zi === z.zi && vechi.sofer === nume && vechi.oraStart) || new Date().toISOString();
   z = { ...z, sofer: nume, oraStart }; // ziua e a soferului care a deschis-o
   stare.zi = z;
   stare.car = masinaDupaId(z.carId);
   scrie(KEY_ZI, z);
+  scrie(KEY_START, { zi: z.zi, sofer: nume, oraStart });
   scrie(KEY_ULTIMA, { carId: z.carId, trasee: z.trasee, zona: z.zona });
   if (!faraInceput) noteazaInceput(z);
 }
@@ -644,7 +646,12 @@ async function boot() {
     try { await signOut(); } catch (e) {}
     try { localStorage.removeItem(KEY_ZI); } catch (e) {}
   }
+  // Deconectare + login din nou (chiar acelasi sofer, aceeasi zi) -> ziua se deschide din nou,
+  // cu „Alege un coleg”; altfel ramanea colegul de dinainte (gasit de Ovidiu 03.10)
+  let eraLogat = false;
+  try { const p = await getCurrentProfile(); eraLogat = !!(p && p.active); } catch (e) {}
   await runLoginGate(); // login + semnatura + sincronizarea datelor (din /pv/)
+  if (!eraLogat) { try { localStorage.removeItem(KEY_ZI); } catch (e) {} }
   scrie(KEY_LOGAT, aziIso());
   checkBirthdays();
 

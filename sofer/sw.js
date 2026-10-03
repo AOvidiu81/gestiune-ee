@@ -4,7 +4,7 @@
 // altfel telefoanele raman pe codul vechi.
 // Aplicatia de rute din fila „Rută” are propriul service worker (../ruta/sw.js).
 
-const VERSIUNE = 'sofer-ee-s11';
+const VERSIUNE = 'sofer-ee-s12';
 const PV = [
   'css/styles.css', 'css/print.css',
   'js/db.js', 'js/utils.js', 'js/router.js', 'js/components.js', 'js/catalog-defaults.js',
