@@ -474,7 +474,68 @@
 
   ::-webkit-scrollbar{width:6px;}
   ::-webkit-scrollbar-thumb{background:var(--border); border-radius:3px;}
+
+  /* v12 — tema deschisa (acelasi design ca filele Comenzi si PV-uri), doar in Șofer EE (?sofer=1) */
+  html.ee-deschis{
+    --bg:#f4f7fb; --panel:#ffffff; --panel-2:#eef3fa; --border:#dfe6f0;
+    --text:#16233c; --text-dim:#4a5872;
+    --accent:#0b3b66; --accent-2:#1d7b3a; --activ:#1d7b3a; --inactiv:#c0392b;
+    --renault:#1e63d6; --mercedes:#b45309; --portocaliu:#b45309;
+  }
+  html.ee-deschis body{font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;}
+  html.ee-deschis header h1, html.ee-deschis header h1 span{color:var(--accent);}
+  html.ee-deschis header .count{background:#e7f1ff; border-color:#c7d3e4; color:var(--accent); font-weight:700;}
+  html.ee-deschis .card, html.ee-deschis .daystart-card, html.ee-deschis .finish-card,
+  html.ee-deschis .history-item, html.ee-deschis .depot-nav-card{
+    border-radius:18px; box-shadow:0 8px 24px rgba(11,45,79,0.08);
+  }
+  html.ee-deschis .client{color:var(--accent);}
+  html.ee-deschis .client.cartela-name{animation-name:cartelaNamePulseDeschis;}
+  @keyframes cartelaNamePulseDeschis{
+    0%, 100% { color:#0b3b66; }
+    33% { color:#d97706; }
+    66% { color:#c0392b; }
+  }
+  html.ee-deschis select, html.ee-deschis input[type=text], html.ee-deschis input[type=number]{background:#fff; border:1.5px solid #c7d3e4; border-radius:14px;}
+  html.ee-deschis .tag-btn{
+    background:#fff; border:1.5px solid #c7d3e4; border-radius:999px; color:var(--accent); font-weight:700; padding:10px 8px;
+  }
+  html.ee-deschis .tag-btn.active,
+  html.ee-deschis .tag-btn[data-val="INACTIV"].active,
+  html.ee-deschis .route-bar .tag-btn.active{color:#fff;}
+  html.ee-deschis .tag-btn[data-val="TOATE"].active{background:var(--accent); border-color:var(--accent);}
+  html.ee-deschis .route-bar .tag-btn, html.ee-deschis .import-bar .tag-btn, html.ee-deschis .excel-import-box .tag-btn{background:#fff;}
+  html.ee-deschis .wizard-btn{color:#fff !important; box-shadow:none !important;}
+  html.ee-deschis #btnGoHome.wizard-btn, html.ee-deschis #btnBackToRoute.wizard-btn, html.ee-deschis #manageToggle.wizard-btn{
+    background:#fff !important; color:var(--accent) !important; border:1.5px solid #c7d3e4 !important;
+  }
+  html.ee-deschis .finish-route-btn{background:var(--accent); color:#fff; box-shadow:0 8px 24px rgba(11,45,79,0.18);}
+  html.ee-deschis .nav-icon-btn, html.ee-deschis .btn.maps, html.ee-deschis .order-badge,
+  html.ee-deschis .resume-item .go-btn, html.ee-deschis .history-item .h-btn{color:#fff;}
+  html.ee-deschis .nav-icon-btn svg{fill:#fff;}
+  html.ee-deschis .card.visit-progress::before{background:#d97706;}
+  html.ee-deschis .card.visit-progress{background:#fffaf2;}
+  html.ee-deschis .visit-btn.arrive{background:#e6f5ea; border-color:rgba(29,123,58,0.4);}
+  html.ee-deschis .visit-btn.leave{background:#fff1e2; color:var(--portocaliu); border-color:rgba(180,83,9,0.4);}
+  html.ee-deschis .visit-btn.obs{background:var(--panel-2);}
+  html.ee-deschis .obs-choice{background:#fde7ec; border-color:rgba(192,57,43,0.4);}
+  html.ee-deschis .obs-choice[data-obs="LA"]{background:#fff1e2; color:var(--portocaliu); border-color:rgba(180,83,9,0.4);}
+  html.ee-deschis .week-box.green{background:#e6f5ea; border-color:rgba(29,123,58,0.45);}
+  html.ee-deschis .week-box.orange{background:#fff1e2; color:var(--portocaliu); border-color:rgba(180,83,9,0.45);}
+  html.ee-deschis .week-box.red{background:#fde7ec; color:#c0392b; border-color:rgba(192,57,43,0.45);}
+  html.ee-deschis .week-box.yellow{background:#fef3c7; color:#8a6400; border-color:rgba(138,100,0,0.4);}
+  html.ee-deschis .week-box.dur-red{color:#c0392b;}
+  html.ee-deschis .week-box.dur-orange{color:var(--portocaliu);}
+  html.ee-deschis .time-badge{background:#e6f5ea; border-color:rgba(29,123,58,0.4);}
+  html.ee-deschis .code-badge{background:#fde7ec; border-color:rgba(192,57,43,0.35);}
+  html.ee-deschis .badge.masina.traseu-i{background:#eaf2ff;}
+  html.ee-deschis .badge.masina.traseu-ii{background:#fff1e2; border-color:rgba(180,83,9,0.4);}
+  html.ee-deschis .badge.masina.traseu-iii{background:#e6f5ea; border-color:rgba(29,123,58,0.4);}
+  html.ee-deschis .resume-box{background:#e6f5ea; border-color:rgba(29,123,58,0.4);}
+  html.ee-deschis .history-item .h-status.activa{background:#e6f5ea; border-color:rgba(29,123,58,0.4);}
+  html.ee-deschis #syncQueueBadge{color:var(--portocaliu) !important;}
 </style>
+<script>if(new URLSearchParams(location.search).get('sofer')==='1')document.documentElement.classList.add('ee-deschis');</script>
 </head>
 <body>
 <div id="connBanner" style="display:none;"></div>
@@ -933,7 +994,7 @@ let dayStart = {}; // {brand, plate, kmStart, driver1, driver2, startTime}
 let lastRouteRows = [];
 
 // --- Șofer EE: aplicatia ruleaza in fila „Rută” (../sofer/), care trimite datele zilei ---
-const EE_RUTA_VERSION = 'v11'; // aceeasi cu VERSIUNE din sw.js; Șofer EE o arata langa rotita
+const EE_RUTA_VERSION = 'v12'; // aceeasi cu VERSIUNE din sw.js; Șofer EE o arata langa rotita
 const SOFER_MODE = new URLSearchParams(location.search).get('sofer') === '1';
 let multiZile = null;   // mai multe zile bifate (ruta complementara), altfel null
 let multiTrasee = null; // mai multe trasee bifate, altfel null

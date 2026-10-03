@@ -26,7 +26,7 @@ import { openHistoryScreen } from '../pv/js/screens-history.js';
 import { buildComenziActive } from '../pv/js/screens-comenzi.js';
 import { openSettingsScreen } from '../pv/js/screens-setup.js';
 
-export const SOFER_VERSION = 's17';
+export const SOFER_VERSION = 's18';
 
 const KEY_ZI = 'ee-sofer-zi'; // ziua deschisa: { zi, coleg, carId, km, trasee, zile, zona, ordine, ruta }
 const KEY_ULTIMA = 'ee-sofer-ultima'; // ultimele alegeri (masina, traseu, zona) — precompletare
@@ -509,21 +509,43 @@ function ecranFile() {
     });
     const panou = (k) => file.find((f) => f.k === k).panou;
 
-    // PV-uri: tipurile de PV direct (fara pasul intermediar din /pv/)
+    // PV-uri (s18): doar 2 butoane — „Procese verbale” (tipurile de PV + istoricul, pe ecranul lor) si „Cereri / documente”
+    function ecranProceseVerbale() {
+      return pushScreen(({ pop }) => {
+        const scr = el('div', { class: 'screen' });
+        scr.appendChild(el('div', { class: 'topbar' }, [
+          el('button', { class: 'icon-btn', onclick: () => pop(undefined) }, ['←']),
+          el('div', { class: 'topbar-title' }, ['Procese verbale']),
+          el('div', { class: 'topbar-spacer' }),
+        ]));
+        const tiles = el('div', { class: 'sofer-tiles' });
+        PROCESS_TYPES.forEach((pt) => {
+          tiles.appendChild(tile({
+            label: pt.title,
+            sub: pt.subtitle,
+            icon: PROCESS_ICONS[pt.icon] || '📄',
+            accent: pt.accent,
+            badge: pt.accent + '1a',
+            onClick: () => openProcessVerbalForm({ ...ctx(), processType: pt.type }),
+          }));
+        });
+        const istoric = el('button', { class: 'btn btn-outline btn-block', onclick: () => openHistoryScreen() }, ['📂 Istoric procese verbale']);
+        scr.appendChild(el('div', { class: 'screen-scroll' }, [tiles, el('div', { style: 'height:16px' }), istoric]));
+        return scr;
+      });
+    }
     function construiestePv() {
       const p = panou('pv');
       p.innerHTML = '';
       const tiles = el('div', { class: 'sofer-tiles' });
-      PROCESS_TYPES.forEach((pt) => {
-        tiles.appendChild(tile({
-          label: pt.title,
-          sub: pt.subtitle,
-          icon: PROCESS_ICONS[pt.icon] || '📄',
-          accent: pt.accent,
-          badge: pt.accent + '1a',
-          onClick: () => openProcessVerbalForm({ ...ctx(), processType: pt.type }),
-        }));
-      });
+      tiles.appendChild(tile({
+        label: 'PROCESE VERBALE',
+        sub: 'Amplasare, ridicare, servisare, lipsa acces, vanzare, istoric',
+        icon: '📄',
+        accent: '#0D5AA7',
+        badge: '#E7F1FF',
+        onClick: () => ecranProceseVerbale(),
+      }));
       tiles.appendChild(tile({
         label: 'CERERI / DOCUMENTE',
         sub: 'Concediu, demisie, invoire',
@@ -532,8 +554,7 @@ function ecranFile() {
         badge: '#EEF3FA',
         onClick: () => openCereriMenu(ctx()),
       }));
-      const istoric = el('button', { class: 'btn btn-outline btn-block', onclick: () => openHistoryScreen() }, ['📂 Istoric documente']);
-      p.appendChild(el('div', { class: 'screen-scroll' }, [notaCoada, tiles, el('div', { style: 'height:16px' }), istoric]));
+      p.appendChild(el('div', { class: 'screen-scroll' }, [notaCoada, tiles]));
       arataCoada();
     }
     // Documentele facute fara semnal: cate mai asteapta sa plece spre GestiuneEE
@@ -549,7 +570,7 @@ function ecranFile() {
     function construiesteComenzi() {
       const p = panou('comenzi');
       p.innerHTML = '';
-      comenzi = buildComenziActive({ ...ctx(), embedded: true, onFaraComanda: () => arata('pv') });
+      comenzi = buildComenziActive({ ...ctx(), embedded: true, onFaraComanda: () => { arata('pv'); ecranProceseVerbale(); } });
       comenzi.classList.add('sofer-embedded');
       p.appendChild(comenzi);
     }
