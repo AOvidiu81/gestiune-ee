@@ -1,7 +1,7 @@
 // sw.js — GestiuneEE. Ține aplicația instalabilă și o pornește repede,
 // dar NU păstrează niciodată în memorie datele din Supabase: acelea trebuie
 // să fie mereu proaspete.
-const VERSIUNE = 'gestiune-ee-v4.31';
+const VERSIUNE = 'gestiune-ee-v4.32';
 const SCHELET = [
   './',
   './index.html',
@@ -16,7 +16,7 @@ const SCHELET = [
 self.addEventListener('install', (e) => {
   e.waitUntil(
     caches.open(VERSIUNE)
-      .then((c) => Promise.allSettled(SCHELET.map((u) => c.add(u))))
+      .then((c) => Promise.allSettled(SCHELET.map((u) => c.add(new Request(u, { cache: 'reload' })))))
       .then(() => self.skipWaiting())
   );
 });
@@ -41,7 +41,7 @@ self.addEventListener('fetch', (e) => {
   // Pagina: întâi de la server (ca să prindă versiunea nouă), altfel din memorie.
   if (req.mode === 'navigate' || (req.headers.get('accept') || '').includes('text/html')) {
     e.respondWith(
-      fetch(req)
+      fetch(req.url, { cache: 'no-store' })
         .then((r) => {
           const copie = r.clone();
           caches.open(VERSIUNE).then((c) => c.put(req, copie)).catch(() => {});

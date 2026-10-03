@@ -4,7 +4,9 @@
 // altfel telefoanele raman pe codul vechi.
 // Aplicatia de rute din fila „Rută” are propriul service worker (../ruta/sw.js).
 
-const VERSIUNE = 'sofer-ee-s12';
+// {cache:'reload'/'no-store'}: GitHub Pages lasa browserul sa tina fisierele 10 minute; fara asta, dupa un Push
+// telefonul putea lua tot varianta veche (gasit 03.10: ordinea butoanelor nu se schimba).
+const VERSIUNE = 'sofer-ee-s13';
 const PV = [
   'css/styles.css', 'css/print.css',
   'js/db.js', 'js/utils.js', 'js/router.js', 'js/components.js', 'js/catalog-defaults.js',
@@ -18,7 +20,7 @@ const PV = [
 const SCHELET = ['./', 'index.html', 'manifest.json', 'sofer.js', 'sofer.css', 'icons/icon-192.png', 'icons/icon-512.png', ...PV];
 
 self.addEventListener('install', (e) => {
-  e.waitUntil(caches.open(VERSIUNE).then((c) => c.addAll(SCHELET)).then(() => self.skipWaiting()));
+  e.waitUntil(caches.open(VERSIUNE).then((c) => c.addAll(SCHELET.map((u) => new Request(u, { cache: 'reload' })))).then(() => self.skipWaiting()));
 });
 
 self.addEventListener('activate', (e) => {

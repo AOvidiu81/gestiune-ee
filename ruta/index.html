@@ -933,6 +933,7 @@ let dayStart = {}; // {brand, plate, kmStart, driver1, driver2, startTime}
 let lastRouteRows = [];
 
 // --- Șofer EE: aplicatia ruleaza in fila „Rută” (../sofer/), care trimite datele zilei ---
+const EE_RUTA_VERSION = 'v11'; // aceeasi cu VERSIUNE din sw.js; Șofer EE o arata langa rotita
 const SOFER_MODE = new URLSearchParams(location.search).get('sofer') === '1';
 let multiZile = null;   // mai multe zile bifate (ruta complementara), altfel null
 let multiTrasee = null; // mai multe trasee bifate, altfel null
@@ -3085,6 +3086,7 @@ if(SOFER_MODE){
 </script>
 <script>
 // service worker: face aplicația instalabilă și o pornește repede
+window.EE_RUTA_VERSION = EE_RUTA_VERSION;
 if("serviceWorker" in navigator){
   window.addEventListener("load", () => navigator.serviceWorker.register("sw.js").catch(e => console.warn("sw:", e)));
 }

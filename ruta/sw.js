@@ -1,12 +1,14 @@
 // sw.js — Ruta EuroEcologic. Face aplicația instalabilă și o pornește
 // repede. Datele din Supabase nu se păstrează niciodată în memorie.
-const VERSIUNE = 'ruta-ee-v10';
+// {cache:'reload'/'no-store'}: GitHub Pages lasa browserul sa tina fisierele 10 minute; fara asta, dupa un Push
+// telefonul putea lua tot varianta veche (gasit 03.10: ordinea butoanelor nu se schimba).
+const VERSIUNE = 'ruta-ee-v11';
 const SCHELET = ['./', './index.html', './manifest.json', './icon-192.png', './icon-512.png'];
 
 self.addEventListener('install', (e) => {
   e.waitUntil(
     caches.open(VERSIUNE)
-      .then((c) => Promise.allSettled(SCHELET.map((u) => c.add(u))))
+      .then((c) => Promise.allSettled(SCHELET.map((u) => c.add(new Request(u, { cache: 'reload' })))))
       .then(() => self.skipWaiting())
   );
 });
@@ -27,7 +29,7 @@ self.addEventListener('fetch', (e) => {
 
   if (req.mode === 'navigate' || (req.headers.get('accept') || '').includes('text/html')) {
     e.respondWith(
-      fetch(req)
+      fetch(req.url, { cache: 'no-store' })
         .then((r) => {
           const copie = r.clone();
           caches.open(VERSIUNE).then((c) => c.put(req, copie)).catch(() => {});
