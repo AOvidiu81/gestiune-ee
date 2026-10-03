@@ -669,7 +669,7 @@
 
     <div class="wizard-btn" id="btnSaveFinish" style="margin-top:10px; background:var(--activ); color:#06140d;">💾 Salvează</div>
     <div id="savedConfirm" class="route-config-note" style="display:none; text-align:center; color:var(--activ);">✅ Salvat cu succes</div>
-    <div class="wizard-btn" id="btnGeneratePdf2" style="margin-top:10px; display:none; background:var(--accent); color:#1a0f04;">🧾 Generează raport PDF</div>
+    <div class="wizard-btn" id="btnGeneratePdf2" style="margin-top:10px; display:none; background:var(--accent); color:#1a0f04;">🧾 Generează raport PDF (opțional)</div>
     <div class="wizard-btn" id="btnGoHome" style="margin-top:10px; display:none; background:var(--panel-2); color:var(--text); border:1px solid var(--border);">🏠 Acasă</div>
     <div class="wizard-btn" id="btnBackToRoute" style="margin-top:10px; background:var(--panel-2); color:var(--text); border:1px solid var(--border);">← Înapoi la rută</div>
   </div>
@@ -1652,18 +1652,26 @@ btnSaveFinish.addEventListener('click', async ()=>{
     kmEndInput2.focus();
     return;
   }
+  const kmSf = parseInt(kmEndInput2.value,10);
+  if(isNaN(kmSf) || kmSf < 0 || (dayStart.kmStart != null && kmSf < dayStart.kmStart)){
+    alert('Km bord sfârșit nu poate fi mai mic decât km de pornire (' + (dayStart.kmStart ?? '-') + ').');
+    kmEndInput2.focus();
+    return;
+  }
   btnSaveFinish.textContent = '⏳ Se salvează...';
   await finalizeSessionSync(parseInt(kmEndInput2.value,10));
   btnSaveFinish.style.display = 'none';
   savedConfirm.style.display = 'block';
   btnGeneratePdf2.style.display = 'block';
+  // raportul se vede oricum in GestiuneEE (Raport foi parcurs): PDF-ul de pe telefon e la alegere,
+  // „Acasă” apare imediat dupa salvare (cerut de Ovidiu 03.10)
+  btnGoHome.style.display = 'block';
 });
 
 btnGeneratePdf2.addEventListener('click', async ()=>{
   btnGeneratePdf2.textContent = '⏳ Se generează...';
   const ok = await generateDailyPdf(kmEndInput2);
-  btnGeneratePdf2.textContent = '🧾 Generează raport PDF';
-  if(ok) btnGoHome.style.display = 'block';
+  btnGeneratePdf2.textContent = '🧾 Generează raport PDF (opțional)';
 });
 
 function lockStartDay(){
