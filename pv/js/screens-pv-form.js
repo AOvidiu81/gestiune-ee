@@ -589,6 +589,14 @@ export async function openProcessVerbalForm({ driver, car, depot, processType, p
         missing.delete('productDetails');
         anyField = true;
       }
+      // Seriile venite din comanda (GestiuneEE): soferul le verifica si le corecteaza
+      if (Array.isArray(parsed.series) && parsed.series.length) {
+        const first = state.productEntries[0];
+        const n = Math.max(first.series.length, parsed.series.length);
+        first.series = Array.from({ length: n }, (_, i) => parsed.series[i] || first.series[i] || '');
+        state.productQuantity = String(n);
+        anyField = true;
+      }
       render();
       showToast(anyField ? 'Date importate — verifica si completeaza ce lipseste.' : 'Nu am recunoscut niciun camp in textul lipit.');
     }

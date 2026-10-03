@@ -68,6 +68,8 @@ function prefillDin(c) {
     dep: c.depozit || '',
     productQty: Math.abs(Number(c.buc) || 0),
     productText: [c.produs, c.model].filter(Boolean).join(' '),
+    // Seriile trecute in GestiuneEE la amplasare (fara prefixul fix "EE-" al campului)
+    series: (Array.isArray(c.serii) ? c.serii : []).map((s) => String((s && s.serie) || '').trim().replace(/^EE-?\s*/i, '')).filter(Boolean),
   };
 }
 
@@ -76,12 +78,33 @@ async function citesteDinCloud() {
   const { data, error } = await supabase.rpc('comenzi_active');
   if (error) throw error;
   const rows = data || [];
+  // Seriile vin dintr-o functie separata (comenzi_active_serii); daca cererea
+  // pica, lista de comenzi ramane buna, doar fara serii.
+  try {
+    const rs = await supabase.rpc('comenzi_active_serii');
+    if (!rs.error) {
+      const dupaId = new Map((rs.data || []).map((x) => [x.id, x]));
+      rows.forEach((r) => {
+        const x = dupaId.get(r.id);
+        if (x) { r.serii = x.serii; r.serii_punct = x.serii_punct; }
+      });
+    }
+  } catch (e) { /* fara serii */ }
   await MetaRepo.set(CACHE_KEY, { rows, at: new Date().toISOString() });
   return rows;
 }
 
 // Accesoriile, prescurtate ca in GestiuneEE (cerut 03.10), ca sa nu lungeasca cardul comenzii
 const ACC_SCURT = { 'LAVOAR INTERIOR': 'L.I.', 'DOZATOR SAPUN': 'D.S.', 'DISPENSER PROSOP': 'D.P.H.', 'DISPENSER PROSOP HARTIE': 'D.P.H.' };
+// Seriile unei comenzi, grupate pe model: "ARMAL EE-1, EE-2; MONDO EE-3"
+function seriiText(lista) {
+  const g = {};
+  (Array.isArray(lista) ? lista : []).forEach((s) => {
+    const m = s.model || s.produs || '';
+    (g[m] = g[m] || []).push(s.serie || 'fara serie');
+  });
+  return Object.keys(g).map((m) => (m ? m + ' ' : '') + g[m].join(', ')).join('; ');
+}
 const accScurt = (t) => String(t || '').split(',').map((x) => x.trim()).filter(Boolean).map((x) => ACC_SCURT[x.toUpperCase()] || x).join(', ');
 
 export async function openComenziActive(ctx) {
@@ -203,6 +226,8 @@ export function buildComenziActive({ driver, car, depot, onFaraComanda, pop, emb
         el('div', { class: 'ca-client' }, [c.client || '—']),
         adresa ? el('div', { class: 'ca-linie' }, ['📍 ', adresa]) : null,
         el('div', { class: 'ca-linie' }, ['📦 ', produs, c.accesorii ? ` · ${accScurt(c.accesorii)}` : '']),
+        seriiText(c.serii) ? el('div', { class: 'ca-linie' }, ['🔢 Serii de ridicat: ', seriiText(c.serii)]) : null,
+        c.tip_miscare === 'REDUCERE' && seriiText(c.serii_punct) ? el('div', { class: 'ca-linie' }, ['📍 Pe punct acum: ', seriiText(c.serii_punct)]) : null,
         serv ? el('div', { class: 'ca-linie' }, ['🔁 Servisare: ', serv]) : null,
         c.pers_resp || c.telefon
           ? el('div', { class: 'ca-linie' }, [
