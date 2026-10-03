@@ -128,6 +128,12 @@
       <input type="date" id="dateFilter">
       <div class="date-filter-label" id="dateFilterLabel"></div>
     </div>
+    <select id="periodFilter" title="Perioada, pornind de la ziua aleasă">
+      <option value="zi">1 zi</option>
+      <option value="sapt">1 săptămână</option>
+      <option value="luna">1 lună</option>
+      <option value="an">1 an</option>
+    </select>
     <select id="statusFilter">
       <option value="TOATE">Toate rutele</option>
       <option value="activa">Doar active</option>
@@ -151,20 +157,29 @@ const dateFilterLabel = document.getElementById('dateFilterLabel');
 
 const DAY_ABBR_RO = ['Dum','Lun','Mar','Mie','Joi','Vin','Sâm'];
 const MONTH_ABBR_RO = ['Ian','Feb','Mar','Apr','Mai','Iun','Iul','Aug','Sep','Oct','Noi','Dec'];
+const periodFilter = document.getElementById('periodFilter');
+const isoLocal = x => x.getFullYear()+'-'+String(x.getMonth()+1).padStart(2,'0')+'-'+String(x.getDate()).padStart(2,'0');
+const dataEticheta = d => `${DAY_ABBR_RO[d.getDay()]}, ${String(d.getDate()).padStart(2,'0')}-${MONTH_ABBR_RO[d.getMonth()]}-${d.getFullYear()}`;
+// Perioada in care cade ziua aleasa: ziua, saptamana (duminica–sambata, ca saptamanile W din rute), luna sau anul ei
+function perioada(){
+  const d = new Date((dateFilter.value || isoLocal(new Date()))+'T00:00:00');
+  let a = new Date(d), b = new Date(d);
+  if(periodFilter.value === 'sapt'){ a.setDate(d.getDate() - d.getDay()); b = new Date(a); b.setDate(a.getDate() + 6); }
+  else if(periodFilter.value === 'luna'){ a = new Date(d.getFullYear(), d.getMonth(), 1); b = new Date(d.getFullYear(), d.getMonth() + 1, 0); }
+  else if(periodFilter.value === 'an'){ a = new Date(d.getFullYear(), 0, 1); b = new Date(d.getFullYear(), 11, 31); }
+  return { a, b, de: isoLocal(a), la: isoLocal(b), oZi: periodFilter.value === 'zi' };
+}
 function updateDateFilterLabel(){
   if(!dateFilter.value){ dateFilterLabel.textContent = ''; return; }
-  const d = new Date(dateFilter.value+'T00:00:00');
-  const day = DAY_ABBR_RO[d.getDay()];
-  const dd = String(d.getDate()).padStart(2,'0');
-  const mmm = MONTH_ABBR_RO[d.getMonth()];
-  dateFilterLabel.textContent = `${day}, ${dd}-${mmm}-${d.getFullYear()}`;
+  const p = perioada();
+  dateFilterLabel.textContent = '📅 ' + (p.oZi ? dataEticheta(p.a) : `${dataEticheta(p.a)} – ${dataEticheta(p.b)}`);
 }
 const statusFilter = document.getElementById('statusFilter');
 const summaryBar = document.getElementById('summaryBar');
 const sessionList = document.getElementById('sessionList');
 const errorBox = document.getElementById('errorBox');
 
-dateFilter.value = new Date().toISOString().slice(0,10);
+dateFilter.value = isoLocal(new Date());
 updateDateFilterLabel();
 
 function pad2(n){ return String(n).padStart(2,'0'); }
@@ -184,7 +199,8 @@ async function loadDashboard(){
   const dateVal = dateFilter.value;
   const statusVal = statusFilter.value;
 
-  let query = sb.from('route_sessions').select('*').eq('session_date', dateVal).order('created_at', {ascending:false});
+  const per = perioada();
+  let query = sb.from('route_sessions').select('*').gte('session_date', per.de).lte('session_date', per.la).order('created_at', {ascending:false});
   if(statusVal !== 'TOATE') query = query.eq('status', statusVal);
 
   const { data: sessions, error } = await query;
@@ -195,7 +211,7 @@ async function loadDashboard(){
 
   if(!sessions || sessions.length === 0){
     summaryBar.innerHTML = '';
-    sessionList.innerHTML = '<div class="empty">Nicio rută pentru data selectată.</div>';
+    sessionList.innerHTML = '<div class="empty">Nicio rută pentru perioada selectată.</div>';
     return;
   }
 
@@ -218,7 +234,7 @@ async function loadDashboard(){
   const finishedCount = sessions.filter(s=>s.status==='finalizata').length;
   const totalVisits = (allVisits||[]).length;
   summaryBar.innerHTML = `
-    <div class="summary-card"><div class="num">${sessions.length}</div><div class="lbl">Rute azi</div></div>
+    <div class="summary-card"><div class="num">${sessions.length}</div><div class="lbl">${per.oZi ? "Rute în ziua aleasă" : "Rute în perioadă"}</div></div>
     <div class="summary-card"><div class="num">${activeCount}</div><div class="lbl">Active acum</div></div>
     <div class="summary-card"><div class="num">${finishedCount}</div><div class="lbl">Finalizate</div></div>
     <div class="summary-card"><div class="num">${totalVisits}</div><div class="lbl">Vizite totale</div></div>
@@ -311,6 +327,7 @@ sessionList.innerHTML = sessions.map(s=>{
     const duration = fmtDuration(s.created_at, s.updated_at);
     const ziuaLabel = s.last_ziua ? (s.last_ziua === 'TOATE' ? 'Toate zilele' : s.last_ziua) : null;
     const routeInfoParts = [];
+    if(!per.oZi && s.session_date) routeInfoParts.push(`📅 ${dataEticheta(new Date(s.session_date+'T00:00:00'))}`);
     if(s.zona) routeInfoParts.push(`📍 ${s.zona}`);
     if(ziuaLabel) routeInfoParts.push(`${ziuaLabel} · ${sortModeLabelDash(s.last_sort_mode)}`);
     const routeInfoLine = routeInfoParts.join(' &nbsp;·&nbsp; ');
@@ -344,6 +361,7 @@ sessionList.innerHTML = sessions.map(s=>{
 
 dateFilter.addEventListener('change', ()=>{ updateDateFilterLabel(); loadDashboard(); });
 statusFilter.addEventListener('change', loadDashboard);
+periodFilter.addEventListener('change', ()=>{ updateDateFilterLabel(); loadDashboard(); });
 
 sessionList.addEventListener('click', async (e)=>{
   const btn = e.target.closest('.finalize-btn');

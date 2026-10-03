@@ -80,6 +80,10 @@ async function citesteDinCloud() {
   return rows;
 }
 
+// Accesoriile, prescurtate ca in GestiuneEE (cerut 03.10), ca sa nu lungeasca cardul comenzii
+const ACC_SCURT = { 'LAVOAR INTERIOR': 'L.I.', 'DOZATOR SAPUN': 'D.S.', 'DISPENSER PROSOP': 'D.P.H.', 'DISPENSER PROSOP HARTIE': 'D.P.H.' };
+const accScurt = (t) => String(t || '').split(',').map((x) => x.trim()).filter(Boolean).map((x) => ACC_SCURT[x.toUpperCase()] || x).join(', ');
+
 export async function openComenziActive(ctx) {
   return pushScreen(({ pop }) => buildComenziActive({ ...ctx, pop }));
 }
@@ -198,7 +202,7 @@ export function buildComenziActive({ driver, car, depot, onFaraComanda, pop, emb
           : el('div', { class: 'ca-tip', style: `color:${accent}` }, [tipLabel]),
         el('div', { class: 'ca-client' }, [c.client || '—']),
         adresa ? el('div', { class: 'ca-linie' }, ['📍 ', adresa]) : null,
-        el('div', { class: 'ca-linie' }, ['📦 ', produs, c.accesorii ? ` · ${c.accesorii}` : '']),
+        el('div', { class: 'ca-linie' }, ['📦 ', produs, c.accesorii ? ` · ${accScurt(c.accesorii)}` : '']),
         serv ? el('div', { class: 'ca-linie' }, ['🔁 Servisare: ', serv]) : null,
         c.pers_resp || c.telefon
           ? el('div', { class: 'ca-linie' }, [

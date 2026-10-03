@@ -1,12 +1,12 @@
 // sw.js — Dashboard EuroEcologic. Face aplicația instalabilă și o pornește
 // repede. Datele din Supabase nu se păstrează niciodată în memorie.
-const VERSIUNE = 'dashboard-ee-v1';
+const VERSIUNE = 'dashboard-ee-v2';
 const SCHELET = ['./', './index.html', './manifest.json', './icon-192.png', './icon-512.png'];
 
 self.addEventListener('install', (e) => {
   e.waitUntil(
     caches.open(VERSIUNE)
-      .then((c) => Promise.allSettled(SCHELET.map((u) => c.add(u))))
+      .then((c) => Promise.allSettled(SCHELET.map((u) => c.add(new Request(u, { cache: 'reload' })))))
       .then(() => self.skipWaiting())
   );
 });
@@ -14,7 +14,7 @@ self.addEventListener('install', (e) => {
 self.addEventListener('activate', (e) => {
   e.waitUntil(
     caches.keys()
-      .then((chei) => Promise.all(chei.filter((k) => k !== VERSIUNE).map((k) => caches.delete(k))))
+      .then((chei) => Promise.all(chei.filter((k) => k.startsWith('dashboard-ee-') && k !== VERSIUNE).map((k) => caches.delete(k))))
       .then(() => self.clients.claim())
   );
 });
@@ -27,7 +27,7 @@ self.addEventListener('fetch', (e) => {
 
   if (req.mode === 'navigate' || (req.headers.get('accept') || '').includes('text/html')) {
     e.respondWith(
-      fetch(req)
+      fetch(req.url, { cache: 'no-store' })
         .then((r) => {
           const copie = r.clone();
           caches.open(VERSIUNE).then((c) => c.put(req, copie)).catch(() => {});
