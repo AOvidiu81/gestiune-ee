@@ -26,7 +26,7 @@ import { openHistoryScreen } from '../pv/js/screens-history.js';
 import { buildComenziActive } from '../pv/js/screens-comenzi.js';
 import { openSettingsScreen } from '../pv/js/screens-setup.js';
 
-export const SOFER_VERSION = 's10';
+export const SOFER_VERSION = 's11';
 
 const KEY_ZI = 'ee-sofer-zi'; // ziua deschisa: { zi, coleg, carId, km, trasee, zile, zona, ordine, ruta }
 const KEY_ULTIMA = 'ee-sofer-ultima'; // ultimele alegeri (masina, traseu, zona) — precompletare
@@ -92,8 +92,10 @@ async function resincronizeaza() {
 }
 
 // ---------- listele pentru „Ziua de azi” (colegi, trasee, zone, saptamani) ----------
+// Traseul evenimentelor: se poate bifa langa orice traseu, in orice zi, pe orice masina
+const TRASEU_EV = 'Traseu-EV';
 function listeImplicite() {
-  return { colegi: [], trasee: ['Traseu I', 'Traseu II', 'Traseu III'], zone: [], saptamani: [], ...(citeste(KEY_LISTE) || {}) };
+  return { colegi: [], trasee: ['Traseu I', 'Traseu II', 'Traseu III', TRASEU_EV], zone: [], saptamani: [], ...(citeste(KEY_LISTE) || {}) };
 }
 
 async function incarcaListe() {
@@ -111,7 +113,8 @@ async function incarcaListe() {
     if (clienti?.data?.length) {
       const t = new Set(liste.trasee);
       clienti.data.forEach((r) => { if (r.masina) t.add(String(r.masina).trim()); });
-      liste.trasee = [...t].sort((a, b) => a.length - b.length || a.localeCompare(b));
+      t.add(TRASEU_EV);
+      liste.trasee = [...t].sort((a, b) => (a === TRASEU_EV) - (b === TRASEU_EV) || a.length - b.length || a.localeCompare(b));
     }
     if (sesiuni?.data) liste.zone = [...new Set(sesiuni.data.map((r) => String(r.zona || '').trim().toUpperCase()).filter(Boolean))].sort();
     if (sapt?.data?.length) liste.saptamani = sapt.data.map((w) => ({ num: w.week_num, start: w.start_date, end: w.end_date }));

@@ -596,6 +596,7 @@
         <option value="Traseu I">Traseu I</option>
         <option value="Traseu II">Traseu II</option>
         <option value="Traseu III">Traseu III</option>
+        <option value="Traseu-EV">Traseu-EV (evenimente)</option>
       </select>
     </div>
     <div class="start-field">
@@ -2796,7 +2797,9 @@ function render(){
   depotNavCard.style.display = routeApplicable ? 'flex' : 'none';
 
   if(rows.length === 0){
-    listEl.innerHTML = '<div class="empty">Niciun rezultat pentru filtrele selectate.</div>';
+    // ruta fara niciun punct trebuie sa poata fi finalizata (km final), nu doar din GestiuneEE
+    listEl.innerHTML = '<div class="empty">Niciun rezultat pentru filtrele selectate.</div>'
+      + ((!q && currentSessionId) ? '<div class="finish-route-btn" id="btnFinishRoute">🏁 Finalizează ruta</div>' : '');
     routeSummary.style.display = 'none';
     return;
   }
