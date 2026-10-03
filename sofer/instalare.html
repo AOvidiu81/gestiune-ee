@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="ro">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Instalare Șofer EE</title>
+<meta name="theme-color" content="#0b3b66">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icons/icon-192.png">
+<style>
+  body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;background:#0b3b66;color:#fff;font-family:system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif}
+  main{width:100%;max-width:380px;padding:28px 22px;text-align:center}
+  img{width:112px;height:112px;border-radius:24px;box-shadow:0 6px 24px rgba(0,0,0,.35)}
+  h1{font-size:24px;margin:18px 0 8px}
+  p{font-size:16px;line-height:1.45;margin:0 0 16px;text-wrap:pretty}
+  .btn{display:block;width:100%;box-sizing:border-box;padding:15px 18px;border:0;border-radius:12px;background:#f26a1b;color:#fff;font-size:18px;font-weight:700;text-decoration:none;cursor:pointer}
+  .btn[disabled]{opacity:.5}
+  .nota{font-size:14px;opacity:.85;margin-top:16px}
+  .nota a{color:#fff}
+  code{word-break:break-all;font-size:13px}
+</style>
+</head>
+<body>
+<main>
+  <img src="icons/icon-192.png" alt="">
+  <h1>Șofer EE</h1>
+  <p id="msg">Se verifică…</p>
+  <button id="btn" class="btn" hidden></button>
+  <p id="nota" class="nota"></p>
+</main>
+<script>
+// Pagina de instalare: instalarea se oferă DOAR din Google Chrome.
+const APP = "index.html";
+const ua = navigator.userAgent;
+const android = /Android/i.test(ua);
+const alt = /SamsungBrowser|OPR\/|Opera|EdgA?\/|Firefox|FxiOS|DuckDuckGo|YaBrowser|UCBrowser|MiuiBrowser|HuaweiBrowser|Vivaldi|; wv\)|FBAN|FBAV|Instagram/i.test(ua) || !!navigator.brave;
+const chrome = /Chrome\/\d+/.test(ua) && !alt;
+const $ = id => document.getElementById(id);
+const msg = t => { $("msg").textContent = t; };
+const buton = (t, f) => { const b = $("btn"); b.textContent = t; b.hidden = false; b.disabled = false; b.onclick = f; };
+
+if (matchMedia("(display-mode: standalone)").matches) {
+  location.replace(APP);
+} else if (!chrome) {
+  if (android) {
+    const tinta = "intent://" + location.host + location.pathname + "#Intent;scheme=https;package=com.android.chrome;end";
+    msg("Aplicația se instalează doar din Google Chrome. Acum ești în alt browser.");
+    buton("Deschide în Chrome", () => { location.href = tinta; });
+    $("nota").textContent = "Dacă nu se întâmplă nimic, deschide Chrome și scanează din nou codul sau scrie adresa de mai sus.";
+  } else {
+    msg("Aplicația se instalează doar din Google Chrome. Deschide în Chrome adresa:");
+    $("nota").innerHTML = "<code>" + location.href + "</code>";
+  }
+} else {
+  let oferta = null;
+  msg("Apasă butonul ca să instalezi aplicația pe acest dispozitiv.");
+  buton("Instalează", async () => {
+    if (!oferta) return;
+    oferta.prompt();
+    const r = await oferta.userChoice; oferta = null;
+    if (r.outcome === "accepted") { $("btn").hidden = true; msg("Se instalează… O găsești pe ecranul principal."); }
+  });
+  $("btn").disabled = true;
+  addEventListener("beforeinstallprompt", e => { e.preventDefault(); oferta = e; $("btn").disabled = false; $("nota").textContent = ""; });
+  addEventListener("appinstalled", () => { $("btn").hidden = true; msg("Aplicația e instalată. O găsești pe ecranul principal."); $("nota").innerHTML = '<a href="' + APP + '">Deschide aplicația</a>'; });
+  setTimeout(() => {
+    if (oferta || $("btn").hidden) return;
+    $("nota").innerHTML = 'Dacă butonul rămâne stins: meniul ⋮ din Chrome → „Instalează aplicația” (sau „Adaugă pe ecranul principal”). Dacă e deja instalată, deschide-o de pe ecranul principal.<br><br><a href="' + APP + '">Deschide aplicația în browser</a>';
+  }, 5000);
+  if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(() => {});
+}
+</script>
+</body>
+</html>
