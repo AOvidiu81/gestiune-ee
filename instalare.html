@@ -15,6 +15,7 @@
   p{font-size:16px;line-height:1.45;margin:0 0 16px;text-wrap:pretty}
   .btn{display:block;width:100%;box-sizing:border-box;padding:15px 18px;border:0;border-radius:12px;background:#f26a1b;color:#fff;font-size:18px;font-weight:700;text-decoration:none;cursor:pointer}
   .btn[disabled]{opacity:.5}
+  .btn[hidden]{display:none}
   .nota{font-size:14px;opacity:.85;margin-top:16px}
   .nota a{color:#fff}
   code{word-break:break-all;font-size:13px}
@@ -29,21 +30,22 @@
   <p id="nota" class="nota"></p>
 </main>
 <script>
+(function(){
 // Pagina de instalare: instalarea se oferă DOAR din Google Chrome.
 const APP = "index.html";
 const ua = navigator.userAgent;
 const android = /Android/i.test(ua);
 const alt = /SamsungBrowser|OPR\/|Opera|EdgA?\/|Firefox|FxiOS|DuckDuckGo|YaBrowser|UCBrowser|MiuiBrowser|HuaweiBrowser|Vivaldi|; wv\)|FBAN|FBAV|Instagram/i.test(ua) || !!navigator.brave;
-const chrome = /Chrome\/\d+/.test(ua) && !alt;
+const eChrome = /Chrome\/\d+/.test(ua) && !alt;
 const $ = id => document.getElementById(id);
+const tinta = "intent://" + location.host + location.pathname + "#Intent;scheme=https;package=com.android.chrome;end";
 const msg = t => { $("msg").textContent = t; };
 const buton = (t, f) => { const b = $("btn"); b.textContent = t; b.hidden = false; b.disabled = false; b.onclick = f; };
 
 if (matchMedia("(display-mode: standalone)").matches) {
   location.replace(APP);
-} else if (!chrome) {
+} else if (!eChrome) {
   if (android) {
-    const tinta = "intent://" + location.host + location.pathname + "#Intent;scheme=https;package=com.android.chrome;end";
     msg("Aplicația se instalează doar din Google Chrome. Acum ești în alt browser.");
     buton("Deschide în Chrome", () => { location.href = tinta; });
     $("nota").textContent = "Dacă nu se întâmplă nimic, deschide Chrome și scanează din nou codul sau scrie adresa de mai sus.";
@@ -65,10 +67,13 @@ if (matchMedia("(display-mode: standalone)").matches) {
   addEventListener("appinstalled", () => { $("btn").hidden = true; msg("Aplicația e instalată. O găsești pe ecranul principal."); $("nota").innerHTML = '<a href="' + APP + '">Deschide aplicația</a>'; });
   setTimeout(() => {
     if (oferta || $("btn").hidden) return;
-    $("nota").innerHTML = 'Dacă butonul rămâne stins: meniul ⋮ din Chrome → „Instalează aplicația” (sau „Adaugă pe ecranul principal”). Dacă e deja instalată, deschide-o de pe ecranul principal.<br><br><a href="' + APP + '">Deschide aplicația în browser</a>';
+    // Pagina deschisă din cititorul de coduri e o fereastră „împrumutată” de la Chrome, care nu poate instala.
+    if (android) { msg("De aici nu se poate instala. Deschide pagina în Chrome, apoi apasă Instalează."); buton("Deschide în Chrome", () => { location.href = tinta; }); }
+    $("nota").innerHTML = 'Sau: meniul ⋮ → „Deschide în Chrome”, apoi ⋮ → „Instalează aplicația” (sau „Adaugă pe ecranul principal”). Dacă e deja instalată, deschide-o de pe ecranul principal.<br><br><a href="' + APP + '">Deschide aplicația în browser</a>';
   }, 5000);
   if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(() => {});
 }
+})();
 </script>
 </body>
 </html>
