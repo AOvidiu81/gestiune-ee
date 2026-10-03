@@ -594,7 +594,7 @@
 
 <!-- ================= RAPORT FOI PARCURS ================= -->
 <section class="page" id="p-foi">
-  <div class="card noprint"><p class="muted" style="margin:0">Câte un rând pentru fiecare rută pornită de șoferi: mașina, șoferii, km, orele și vizitele. Datele vin singure de pe telefon, la „Salvează” de la finalizarea rutei. „PDF” face aici, pe loc, același raport zilnic pe care îl face șoferul pe telefon (nu e salvat în bază). Buton portocaliu = încă negenerat; verde = l-ai generat deja pe acest calculator.</p></div>
+  <div class="card noprint"><p class="muted" style="margin:0">Câte un rând pentru fiecare rută pornită de șoferi: mașina, șoferii, km, orele și vizitele. Datele vin singure de pe telefon, la „Salvează” de la finalizarea rutei. „PDF” face aici, pe loc, același raport zilnic pe care îl face șoferul pe telefon (nu e salvat în bază). Buton portocaliu = încă negenerat; verde = a fost deja generat (se ține minte în bază, se vede de pe orice calculator).</p></div>
   <div class="card">
     <div class="row noprint">
       <div style="flex:0;min-width:160px"><label>Luna</label><input type="month" id="fp-luna" onchange="fpAfiseaza()"></div>
@@ -2988,10 +2988,11 @@ let FP = { ses:[], vis:[], cl:[] }, FP_GATA = false, FP_ROWS = [], FP_VIZ = {}, 
 const FP_LUNI = ["Ianuarie","Februarie","Martie","Aprilie","Mai","Iunie","Iulie","August","Septembrie","Octombrie","Noiembrie","Decembrie"];
 const FP_ZILE = ["Duminica","Luni","Marti","Miercuri","Joi","Vineri","Sambata"];
 const fpFaraDiac = t => String(t == null ? "" : t).normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-// Ce PDF-uri au fost deja generate se ține minte în browserul acestui PC (nu în bază): { id rută: momentul }
+// Ce PDF-uri au fost deja generate se ține minte în bază (route_sessions.pdf_generat_at), ca să se vadă de pe orice PC.
+// FP_PDF = ce s-a generat din acest browser înainte de coloana din bază (v4.31 de probă) sau când salvarea în bază nu a mers.
 let FP_PDF = {}; try{ FP_PDF = JSON.parse(localStorage.getItem("ee-fp-pdf") || "{}") || {}; }catch(e){}
 function fpButonPdf(x, i){
-  const cand = FP_PDF[x.s.id];
+  const cand = x.s.pdf_generat_at || FP_PDF[x.s.id];
   const stil = cand ? "background:rgba(46,139,60,.28);border:1px solid #2E8B3C" : "background:rgba(217,119,6,.28);border:1px solid #D97706";
   const tit = cand ? "PDF generat la " + dRO(new Date(cand)) + " " + izOra(cand) + " — apasă ca să îl faci din nou" : "PDF negenerat încă";
   return `<button class="btn sec" style="padding:3px 10px;white-space:nowrap;${stil}" title="${tit}" onclick="fpPdf(${i})">${cand ? "✓ PDF" : "PDF"}</button>`;
@@ -3081,8 +3082,12 @@ async function fpPdf(i){
     doc.setFontSize(9);
     doc.text(`Total vizite: ${linii.length}`, 14, (doc.lastAutoTable ? doc.lastAutoTable.finalY : 48) + 8);
     doc.save(`Foaie_parcurs_${x.zi}_${fpFaraDiac(s.driver1 || "").replace(/\s+/g, "_")}.pdf`);
-    FP_PDF[s.id] = new Date().toISOString();
-    try{ localStorage.setItem("ee-fp-pdf", JSON.stringify(FP_PDF)); }catch(e){}
+    const acum = new Date().toISOString();
+    const { error } = await db.from("route_sessions").update({ pdf_generat_at: acum }).eq("id", s.id);
+    if(error){ // rămâne ținut minte măcar în acest browser
+      FP_PDF[s.id] = acum; try{ localStorage.setItem("ee-fp-pdf", JSON.stringify(FP_PDF)); }catch(e){}
+      toast("PDF făcut, dar nu am putut nota în bază: " + error.message, true);
+    } else s.pdf_generat_at = acum;
     fpAfiseaza();
   }catch(e){ toast("PDF: " + e.message, true); }
 }
