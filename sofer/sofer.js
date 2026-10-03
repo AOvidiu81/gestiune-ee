@@ -26,12 +26,13 @@ import { openHistoryScreen } from '../pv/js/screens-history.js';
 import { buildComenziActive } from '../pv/js/screens-comenzi.js';
 import { openSettingsScreen } from '../pv/js/screens-setup.js';
 
-export const SOFER_VERSION = 's9';
+export const SOFER_VERSION = 's10';
 
 const KEY_ZI = 'ee-sofer-zi'; // ziua deschisa: { zi, coleg, carId, km, trasee, zile, zona, ordine, ruta }
 const KEY_ULTIMA = 'ee-sofer-ultima'; // ultimele alegeri (masina, traseu, zona) — precompletare
 const KEY_LISTE = 'ee-sofer-liste'; // colegi, trasee, zone, saptamani — pentru pornirea fara semnal
 const KEY_FILA = 'ee-sofer-fila'; // ultima fila deschisa
+const KEY_INCEPUT = 'ee-sofer-inceput'; // inceputul zilei netrimis inca in GestiuneEE (tabelul inceput_zi)
 const KEY_LOGAT = 'ee-sofer-logat'; // ziua in care s-a ales soferul; zi noua -> din nou „Cine ești?”
 const FILE = ['ruta', 'pv', 'comenzi'];
 const PROCESS_ICONS = { pin: '📍', truck: '🚚', wrench: '🔧', block: '⛔', invoice: '🧾' };
@@ -48,6 +49,12 @@ let ui = null; // legatura cu ecranul cu file, dupa ce e construit
 function aziIso() {
   const d = new Date();
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+// „vin 02-oct.-2026”
+function dataScurta(d = new Date()) {
+  const zi = ['dum', 'lun', 'mar', 'mie', 'joi', 'vin', 'sâm'][d.getDay()];
+  const luna = ['ian.', 'feb.', 'mar.', 'apr.', 'mai', 'iun.', 'iul.', 'aug.', 'sep.', 'oct.', 'nov.', 'dec.'][d.getMonth()];
+  return `${zi} ${String(d.getDate()).padStart(2, '0')}-${luna}-${d.getFullYear()}`;
 }
 function citeste(k) {
   try { return JSON.parse(localStorage.getItem(k) || 'null'); } catch (e) { return null; }
@@ -229,7 +236,7 @@ function construiesteZiua({ initial, liste, gata, inapoi, cereColeg }) {
   if (inapoi) {
     screen.appendChild(el('div', { class: 'topbar' }, [
       el('button', { class: 'icon-btn', onclick: () => inapoi() }, ['←']),
-      el('div', { class: 'topbar-title' }, ['Ziua de azi']),
+      el('div', { class: 'topbar-title' }, [`Ziua de azi · ${dataScurta()}`]),
       el('div', { class: 'topbar-spacer' }),
     ]));
   }
@@ -279,7 +286,7 @@ function construiesteZiua({ initial, liste, gata, inapoi, cereColeg }) {
   }
 
   const camp = (t, nod, nota) => el('div', { class: 'field' }, [el('label', { class: 'field-label' }, [t]), nod, nota ? el('div', { class: 'sofer-nota' }, [nota]) : null]);
-  const card = sectionCard('Ziua de azi', [
+  const card = sectionCard(`Ziua de azi · ${dataScurta()}`, [
     echipa,
     masina.nod,
     km.nod,
@@ -312,12 +319,47 @@ function valoriDePornire() {
   };
 }
 
-function salveazaZiua(z) {
-  z = { ...z, sofer: stare.driver?.name || '' }; // ziua e a soferului care a deschis-o
+// `faraInceput`: masina schimbata pe drum — inceputul zilei ramane cu masina si km de dimineata
+function salveazaZiua(z, { faraInceput } = {}) {
+  const nume = stare.driver?.name || '';
+  const vechi = stare.zi || citeste(KEY_ZI);
+  // ora la care s-a deschis ziua prima data; corecturile de peste zi nu o schimba
+  const oraStart = (vechi && vechi.zi === z.zi && vechi.sofer === nume && vechi.oraStart) || new Date().toISOString();
+  z = { ...z, sofer: nume, oraStart }; // ziua e a soferului care a deschis-o
   stare.zi = z;
   stare.car = masinaDupaId(z.carId);
   scrie(KEY_ZI, z);
   scrie(KEY_ULTIMA, { carId: z.carId, trasee: z.trasee, zona: z.zona });
+  if (!faraInceput) noteazaInceput(z);
+}
+
+// Inceputul zilei -> GestiuneEE (tabelul inceput_zi, un rand pe zi si sofer), si pentru „Fără rută azi”.
+// Fara semnal ramane in memoria telefonului si pleaca la urmatoarea incercare.
+function noteazaInceput(z) {
+  const car = masinaDupaId(z.carId);
+  scrie(KEY_INCEPUT, {
+    zi: z.zi, sofer1: z.sofer, sofer2: z.coleg || null,
+    masina_marca: car?.marca || null, masina_numar: car?.numar || null, km_start: z.km,
+    trasee: (z.trasee || []).join('+') || null, zile: (z.zile || []).join('+') || null, zona: z.zona || null,
+    cu_ruta: !!z.ruta, ora_start: z.oraStart, updated_at: new Date().toISOString(),
+  });
+  trimiteInceput();
+}
+let inceputInLucru = false;
+async function trimiteInceput() {
+  const r = citeste(KEY_INCEPUT);
+  if (!r || !r.sofer1 || inceputInLucru) return;
+  inceputInLucru = true;
+  let dinNou = false;
+  try {
+    const sb = await getSupabase();
+    const { error } = await sb.from('inceput_zi').upsert(r, { onConflict: 'zi,sofer1' });
+    if (error) throw error;
+    if (JSON.stringify(citeste(KEY_INCEPUT)) === JSON.stringify(r)) localStorage.removeItem(KEY_INCEPUT);
+    else dinNou = true; // s-a schimbat intre timp
+  } catch (e) { console.warn('Șofer EE: începutul zilei nu a plecat încă', e); }
+  inceputInLucru = false;
+  if (dinNou) trimiteInceput();
 }
 
 // Dimineata: „Alege un coleg” peste pagina „Ziua de azi”
@@ -385,7 +427,7 @@ async function schimbaMasina() {
       });
       return;
     }
-    salveazaZiua({ ...z, carId: r.car.id, km: r.kmStart });
+    salveazaZiua({ ...z, carId: r.car.id, km: r.kmStart }, { faraInceput: true });
     ui?.peMasinaNoua();
     return;
   }
@@ -595,7 +637,7 @@ async function boot() {
   // Zi noua: aplicatia porneste din nou cu „Cine ești?” (cerut 02.10) — login-ul se tine minte doar in aceeasi zi
   if (citeste(KEY_LOGAT) !== aziIso()) {
     // intai pleaca documentele ramase netrimise de ieri (cat mai e logat soferul lor)
-    try { await Promise.race([flushPvQueue(), new Promise((r) => setTimeout(r, 8000))]); } catch (e) {}
+    try { await Promise.race([Promise.all([flushPvQueue(), trimiteInceput()]), new Promise((r) => setTimeout(r, 8000))]); } catch (e) {}
     try { await signOut(); } catch (e) {}
     try { localStorage.removeItem(KEY_ZI); } catch (e) {}
   }
@@ -625,11 +667,14 @@ async function boot() {
   }
 
   ecranFile();
+  trimiteInceput();
+  window.addEventListener('online', () => trimiteInceput());
 
   // La revenirea in aplicatie: date noi din GestiuneEE; zi noua -> se redeschide ziua
   document.addEventListener('visibilitychange', async () => {
     if (document.visibilityState !== 'visible') return;
     if (stare.zi?.zi !== aziIso()) { location.reload(); return; }
+    trimiteInceput();
     await resincronizeaza();
     await incarcaLocal();
     stare.car = masinaDupaId(stare.zi.carId) || stare.car;
