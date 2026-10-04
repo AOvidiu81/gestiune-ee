@@ -806,6 +806,7 @@ export async function openProcessVerbalForm({ driver, car, depot, processType, p
           html,
           title: 'Proces Verbal salvat',
           suggestedFileName: fileName,
+          doneLabel: '📋  Comenzi',
           // Sincronizare in cloud pentru Istoric PV din admin — vezi
           // uploadPvRecordToCloud() din auth.js si comentariul din
           // openPrintPreview(). Doar aici (nu si la onPreview()), fiindca

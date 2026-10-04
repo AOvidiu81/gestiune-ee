@@ -545,7 +545,7 @@ export async function printDocument(html, suggestedTitle) {
  *   soferul revine sa corecteze ceva. Omis la preview-ul DINAINTE de
  *   salvare (onPreview()), unde nu exista nimic de sters.
  */
-export async function openPrintPreview({ html, title = 'Previzualizare document', suggestedFileName, showBadge = false, onConfirmPrint, onPdfReady, onEditAgain }) {
+export async function openPrintPreview({ html, title = 'Previzualizare document', suggestedFileName, showBadge = false, onConfirmPrint, onPdfReady, onEditAgain, doneLabel }) {
   // Fiecare .doc-page e mutata intr-un "frame" care primeste dimensiunile
   // FINALE (scalate) prin JS, ca layout-ul normal (centrare, spatiere) sa
   // functioneze corect indiferent de transform-ul aplicat paginii interioare.
@@ -906,7 +906,10 @@ export async function openPrintPreview({ html, title = 'Previzualizare document'
 
     const saveSendRow = el('div', { style: 'display:flex;gap:10px' }, [saveBtn, sendBtn]);
 
-    const bottomBar = el('div', { class: 'preview-bottom-bar' }, [
+    // PV-uri (cerut de Ovidiu, 04.10): documentul ajunge singur in gestiune, deci jos raman doar doua butoane —
+    // inapoi la Comenzi (inchide previzualizarea si formularul) si Trimite (copie la client, prin WhatsApp etc.).
+    const doneBtn = doneLabel ? el('button', { class: 'btn btn-primary', style: 'flex:1', onclick: () => pop(undefined) }, [doneLabel]) : null;
+    const bottomBar = doneBtn ? el('div', { class: 'preview-bottom-bar' }, [el('div', { style: 'display:flex;gap:10px' }, [doneBtn, sendBtn])]) : el('div', { class: 'preview-bottom-bar' }, [
       el(
         'button',
         {
