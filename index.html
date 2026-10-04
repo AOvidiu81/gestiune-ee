@@ -1318,6 +1318,8 @@ $("mm-anexa").onchange = () => {
   if(a.pers_contact)     $("mm-pers").value = a.pers_contact;
   if(a.telefon)          $("mm-tel").value = a.telefon;
   if(a.frecv_servisare)  $("mm-frecv").value = a.frecv_servisare;
+  // Comandă nouă de amplasare / suplimentare: data comenzii = data amplasării de pe anexă (hotărât de Ovidiu, 04.10).
+  if(!$("mm-id").value && a.data_livrarii && ["AMPLASARE", "SUPLIMENTARE"].includes($("mm-tip").value)) $("mm-data").value = a.data_livrarii;
   semnBuc();
 };
 
@@ -3048,6 +3050,16 @@ async function loadPV(){
   if(error){ toast(error.message, true); return; }
   const cereri = PV_MOD === "cereri";
   PV = (data || []).filter(r => pvEsteCerere(r) === cereri);
+  // Comanda legată de fiecare PV, pentru pătratul PV (- → V → L → X), același cu cel din Comenzi.
+  const PVM = {};
+  if(!cereri && PV.length){
+    const { data: leg } = await db.from("pv_records").select("id,miscare_id").in("id", PV.map(r => r.id)).not("miscare_id", "is", null);
+    const mids = [...new Set((leg || []).map(x => x.miscare_id))];
+    if(mids.length){
+      const { data: ms } = await db.from("miscari").select("id,data,tip_miscare,buc,anexa_id,rpt,rt,fac,pv,act,waap").in("id", mids);
+      (leg || []).forEach(x => { const m = (ms || []).find(y => y.id === x.miscare_id); if(m) PVM[x.id] = m; });
+    }
+  }
   const octeti = PV.reduce((s, r) => s + (+r.file_size || 0), 0);
   $("pv-nota").textContent = (cereri
     ? "Cererile și documentele angajaților (concediu, învoire, demisie), făcute pe telefon și urcate aici. "
@@ -3055,7 +3067,7 @@ async function loadPV(){
     PV.length + " documente · " + pvMarime(octeti) + " în total.";
   $("pv-tbl").innerHTML =
     "<thead><tr><th>Data</th>" + (cereri ? "<th>Document</th><th>Tip</th><th>Angajat</th><th>Perioada / data</th>" : "<th>Nr. PV</th><th>Tip</th><th>Client</th><th>Locație</th>") +
-    "<th>Șofer</th><th>Mașina</th><th>Mărime</th><th>Descărcat</th><th></th></tr></thead><tbody>" +
+    "<th>Șofer</th><th>Mașina</th><th>Mărime</th><th>Descărcat</th>" + (cereri ? "" : '<th title="Verificat: se bifează de mână după descărcare (- → V → L → X) și se vede în Comenzi, la PV">PV</th>') + "<th></th></tr></thead><tbody>" +
     PV.map(r => {
       const d = new Date(r.created_at);
       return `<tr><td>${dRO(d)} ${zi2(d.getHours())}:${zi2(d.getMinutes())}</td>` +
@@ -3066,6 +3078,7 @@ async function loadPV(){
         `<td>${esc(r.driver_name || "—")}</td><td>${esc(r.car_number || "—")}</td>` +
         `<td style="text-align:right">${pvMarime(r.file_size)}</td>` +
         `<td>${r.downloaded_at ? '<span style="color:#6fbf73">✔ ' + dRO(new Date(r.downloaded_at)) + '</span>' : '<span class="muted">nu</span>'}</td>` +
+        (cereri ? "" : `<td>${!r.downloaded_at ? '<span class="muted" title="Apare după ce descarci PV-ul">—</span>' : PVM[r.id] ? flagBtn(PVM[r.id], "pv") : '<span class="muted" title="PV fără comandă legată">fără comandă</span>'}</td>`) +
         `<td class="actions">${r.storage_path ? `<button class="btn sm sec" onclick="pvDeschide('${esc(r.storage_path)}')">Deschide</button> <button class="btn sm" onclick="pvDescarca('${esc(r.id)}')">Descarcă</button>${r.downloaded_at ? ` <button class="btn sm sec" style="color:#e57373" onclick="pvSterge('${esc(r.id)}')">Șterge</button>` : ""}` : ""}</td></tr>`;
     }).join("") + "</tbody>";
 }
@@ -4003,7 +4016,7 @@ function textComanda(){
   if(mmSeriiText()) L.push("Serii: " + mmSeriiText());
   const loc = [$("mm-jud").value, $("mm-loc").value, $("mm-sat").value].filter(Boolean).join(", ");
   if(loc) L.push("Locație: " + loc);
-  if(a.data_livrarii)  L.push("Data amplasării: " + fmtD(a.data_livrarii));
+  if(a.data_livrarii && a.data_livrarii !== $("mm-data").value)  L.push("Data amplasării: " + fmtD(a.data_livrarii));
   if(a.data_ridicarii) L.push("Data ridicării: " + fmtD(a.data_ridicarii));
   if($("mm-dep").value) L.push("Se livrează din depozitul: " + $("mm-dep").value);
   const pers = [$("mm-pers").value, $("mm-tel").value].filter(Boolean).join("  ·  ");
