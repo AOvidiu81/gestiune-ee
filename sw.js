@@ -1,7 +1,7 @@
 // sw.js — GestiuneEE. Ține aplicația instalabilă și o pornește repede,
 // dar NU păstrează niciodată în memorie datele din Supabase: acelea trebuie
 // să fie mereu proaspete.
-const VERSIUNE = 'gestiune-ee-v4.41';
+const VERSIUNE = 'gestiune-ee-v4.42';
 const SCHELET = [
   './',
   './index.html',
@@ -52,7 +52,24 @@ self.addEventListener('fetch', (e) => {
     return;
   }
 
-  // Restul (iconițe, biblioteci de pe CDN): întâi din memorie, apoi de la server.
+  // Fișierele proprii (iconițe, manifest): întâi de la server, ca instalarea să ia
+  // mereu iconița nouă; din memorie doar fără semnal.
+  if (url.origin === self.location.origin) {
+    e.respondWith(
+      fetch(req.url, { cache: 'no-store' })
+        .then((r) => {
+          if (r && r.status === 200) {
+            const copie = r.clone();
+            caches.open(VERSIUNE).then((c) => c.put(req, copie)).catch(() => {});
+          }
+          return r;
+        })
+        .catch(() => caches.match(req))
+    );
+    return;
+  }
+
+  // Bibliotecile de pe CDN: întâi din memorie, apoi de la server.
   e.respondWith(
     caches.match(req).then((din_memorie) => {
       if (din_memorie) return din_memorie;
