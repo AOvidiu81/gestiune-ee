@@ -908,7 +908,11 @@ export async function openPrintPreview({ html, title = 'Previzualizare document'
 
     // PV-uri (cerut de Ovidiu, 04.10): documentul ajunge singur in gestiune, deci jos raman doar doua butoane —
     // inapoi la Comenzi (inchide previzualizarea si formularul) si Trimite (copie la client, prin WhatsApp etc.).
-    const doneBtn = doneLabel ? el('button', { class: 'btn btn-primary', style: 'flex:1', onclick: () => pop(undefined) }, [doneLabel]) : null;
+    const doneBtn = doneLabel ? el('button', { class: 'btn btn-primary', style: 'flex:1', onclick: () => {
+      pop(undefined);
+      // In Șofer EE: inchide si ecranele ramase dedesubt si trece pe fila Comenzi, de oriunde a fost pornit PV-ul.
+      setTimeout(() => { if (window.eeSoferLaComenzi) window.eeSoferLaComenzi(); }, 80);
+    } }, [doneLabel]) : null;
     const bottomBar = doneBtn ? el('div', { class: 'preview-bottom-bar' }, [el('div', { style: 'display:flex;gap:10px' }, [doneBtn, sendBtn])]) : el('div', { class: 'preview-bottom-bar' }, [
       el(
         'button',

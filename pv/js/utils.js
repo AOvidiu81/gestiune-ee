@@ -4,7 +4,7 @@
 // Trebuie tinut manual sincron cu CACHE_VERSION din sw.js la fiecare
 // modificare — afisat pe ecranul de login/acasa ca soferul sa poata
 // confirma dintr-o privire ce versiune ruleaza pe telefon.
-export const APP_VERSION = 'v72';
+export const APP_VERSION = 'v73';
 
 // "Forteaza actualizarea" — echivalentul mobil al Ctrl+Shift+R de pe PC.
 // Pe telefon nu exista alta optiune de hard-refresh, iar un WebAPK Android

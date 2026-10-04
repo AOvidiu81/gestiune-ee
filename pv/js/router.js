@@ -62,6 +62,11 @@ window.addEventListener('popstate', () => {
   if (top) top.resolve(undefined);
 });
 
+/** Inchide toate ecranele deschise peste radacina (de sus in jos). */
+export function popAll() {
+  for (const entry of stack.slice().reverse()) entry.resolve(undefined);
+}
+
 export function replaceRoot(builder) {
   root.innerHTML = '';
   stack.length = 0;

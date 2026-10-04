@@ -14,7 +14,7 @@
 //   Comenzi = comenzile active (screens-comenzi.js, varianta embedded)
 
 import { el, APP_VERSION as PV_VERSION, forceUpdateApp } from '../pv/js/utils.js';
-import { replaceRoot, pushScreen } from '../pv/js/router.js';
+import { replaceRoot, pushScreen, popAll } from '../pv/js/router.js';
 import { DriverRepo, CarRepo, DepotRepo } from '../pv/js/db.js';
 import { runLoginGate } from '../pv/js/screens-login.js';
 import { getCurrentProfile, syncMasterData, getTodayBirthdays, getSupabase, listDriversForLogin, signOut, flushPvQueue, pvQueueCount } from '../pv/js/auth.js';
@@ -26,7 +26,7 @@ import { openHistoryScreen } from '../pv/js/screens-history.js';
 import { buildComenziActive } from '../pv/js/screens-comenzi.js';
 import { openSettingsScreen } from '../pv/js/screens-setup.js';
 
-export const SOFER_VERSION = 's21';
+export const SOFER_VERSION = 's22';
 
 const KEY_ZI = 'ee-sofer-zi'; // ziua deschisa: { zi, coleg, carId, km, trasee, zile, zona, ordine, ruta }
 const KEY_ULTIMA = 'ee-sofer-ultima'; // ultimele alegeri (masina, traseu, zona) — precompletare
@@ -651,6 +651,9 @@ function ecranFile() {
         try { return await cadru.contentWindow.eeSoferSchimbaMasina(m); } catch (e) { return { ok: false }; }
       },
     };
+
+    // Butonul „Comenzi” de dupa generarea unui PV: inchide ce a ramas deschis si arata fila Comenzi.
+    window.eeSoferLaComenzi = () => { popAll(); arata('comenzi'); };
 
     afiseazaSus();
     construiestePv();
