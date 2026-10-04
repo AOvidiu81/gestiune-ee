@@ -1213,7 +1213,23 @@ function subReferinta(m){
 }
 
 // ================= MISCARI =================
+// Punctele de rută (cod + coordonate), pentru culoarea butonului „→ Rute” din Comenzi:
+// verde = punctul comenzii există și are GPS; portocaliu = fără punct sau fără coordonate.
+let PCT = [];
+async function incarcaPct(){
+  const { data, error } = await db.from("clients").select("client_key,lat,lon").limit(5000);
+  if(error) return;
+  PCT = data || []; if(MISC.length) renderMiscari();
+}
+function ruteStil(r){
+  const baza = r.anexa_id ? "A" + r.anexa_id : "C" + r.id;
+  const p = PCT.filter(x => x.client_key === baza || String(x.client_key || "").startsWith(baza + "-"));
+  const ok = p.length && p.every(x => x.lat != null && x.lon != null && +x.lat && +x.lon);
+  const c = ok ? "#2E8B3C" : "#D97706";
+  return `style="background:${c};border-color:${c};color:#fff" data-gps="${ok ? "da" : !p.length ? "fara punct" : "fara coordonate"}"`;
+}
 async function loadMiscari(){
+  incarcaPct();
   let q=db.from("miscari").select("*").order("data",{ascending:false}).order("id",{ascending:false}).limit(3000);
   const an=$("f-an").value, luna=$("f-luna").value;
   if(an){ const m=luna?+luna:null; const from=m?`${an}-${String(m).padStart(2,"0")}-01`:`${an}-01-01`; const to=m?new Date(an,m,0).toISOString().slice(0,10):`${an}-12-31`; q=q.gte("data",from).lte("data",to); }
@@ -1253,7 +1269,7 @@ function renderMiscari(){
   const nrAnx=id=>{ const a=ANX.find(x=>x.id===id); return a?(a.anexa||"—"):""; };
   const sg = c => M_SORT.camp === c ? `<span class="sg pe">${M_SORT.dir > 0 ? "▲" : "▼"}</span>` : '<span class="sg">▼</span>';
   let h=`<tr><th class="sortabil" onclick="sorteazaComenzi('data')" title="Apasă ca să întorci ordinea">Data${sg("data")}</th><th>Comandă</th><th>Buc</th><th>Produs</th><th>Model</th><th>Accesorii</th><th>Client</th><th>Contract</th><th>Anexă</th><th>Jud</th><th>Loc./Com.</th><th>Sat/Str./Locație</th><th>Contract (dep.)</th><th>Depozit</th><th>Resp. șantier</th><th>Telefon</th><th>Rpt</th><th>RT</th><th>FAC</th><th>PV</th><th>ACT</th><th>WaAp</th><th>Frecv.</th><th class="noprint"></th></tr>`;
-  h+=MISC.map(r=>{const sr=subReferinta(r); return `<tr><td>${fmtD(r.data)}${sr?` <span class="pill p-T" title="Mai veche decât data de referință a stocului (${fmtD(sr)}) — nu intră în stoc">sub referință</span>`:""}</td><td>${pill(r.tip_miscare)}</td><td class="${r.buc<0?"neg":"pos"}">${r.buc}</td><td>${esc(r.produs)}</td><td>${esc(r.model)}</td><td style="font-size:12px;white-space:nowrap" title="${esc(r.accesorii||"")}">${esc(accScurt(r.accesorii))}</td><td><b>${esc(r.client)}</b></td><td>${esc(nrCtr(r.contract_id))}</td><td>${esc(nrAnx(r.anexa_id))}</td><td>${esc(r.jud)}</td><td>${esc(r.loc)}</td><td>${esc(r.sat)}</td><td>${esc(r.contract)}</td><td>${esc(r.depozit)}</td><td>${esc(r.pers_resp)}</td><td>${esc(r.telefon)}</td><td>${fl(r.rpt)}</td><td>${fl(r.rt)}</td><td>${fl(r.fac)}</td><td>${fl(r.pv)}${semnPvApp(r)}</td><td>${fl(r.act)}</td><td>${fl(r.waap)}</td><td>${esc(r.frecv_serv)}</td><td class="noprint actions"><button class="btn sm sec" onclick="openMiscare(${r.id})">Edit</button> <button class="btn sm" onclick="spreRute(${r.id})" title="Deschide punctul de rută completat din comandă. Nu se salvează nimic până nu verifici și apeși Salvează.">→ Rute</button></td></tr>`;}).join("");
+  h+=MISC.map(r=>{const sr=subReferinta(r); return `<tr><td>${fmtD(r.data)}${sr?` <span class="pill p-T" title="Mai veche decât data de referință a stocului (${fmtD(sr)}) — nu intră în stoc">sub referință</span>`:""}</td><td>${pill(r.tip_miscare)}</td><td class="${r.buc<0?"neg":"pos"}">${r.buc}</td><td>${esc(r.produs)}</td><td>${esc(r.model)}</td><td style="font-size:12px;white-space:nowrap" title="${esc(r.accesorii||"")}">${esc(accScurt(r.accesorii))}</td><td><b>${esc(r.client)}</b></td><td>${esc(nrCtr(r.contract_id))}</td><td>${esc(nrAnx(r.anexa_id))}</td><td>${esc(r.jud)}</td><td>${esc(r.loc)}</td><td>${esc(r.sat)}</td><td>${esc(r.contract)}</td><td>${esc(r.depozit)}</td><td>${esc(r.pers_resp)}</td><td>${esc(r.telefon)}</td><td>${fl(r.rpt)}</td><td>${fl(r.rt)}</td><td>${fl(r.fac)}</td><td>${fl(r.pv)}${semnPvApp(r)}</td><td>${fl(r.act)}</td><td>${fl(r.waap)}</td><td>${esc(r.frecv_serv)}</td><td class="noprint actions"><button class="btn sm sec" onclick="openMiscare(${r.id})">Edit</button> <button class="btn sm" ${ruteStil(r)} onclick="spreRute(${r.id})" title="Verde = punctul de rută are coordonate GPS; portocaliu = fără punct sau fără coordonate. Deschide punctul de rută completat din comandă. Nu se salvează nimic până nu verifici și apeși Salvează.">→ Rute</button></td></tr>`;}).join("");
   $("m-tbl").innerHTML=h||"<tr><td>Nicio comandă.</td></tr>";
 }
 function exportMiscari(){
@@ -3798,6 +3814,7 @@ async function adminSalveaza(){
     DEP_PRESELECTAT=false;
   }
   closeModal("mod-admin"); toast(A_ID ? "Modificare salvată" : "Adăugat");
+  if(A_TBL==="clients") incarcaPct();
   await adminReimprospateaza(); rUrmator();
 }
 async function adminSterge(){
