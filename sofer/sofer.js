@@ -26,7 +26,7 @@ import { openHistoryScreen } from '../pv/js/screens-history.js';
 import { buildComenziActive } from '../pv/js/screens-comenzi.js';
 import { openSettingsScreen } from '../pv/js/screens-setup.js';
 
-export const SOFER_VERSION = 's23';
+export const SOFER_VERSION = 's24';
 
 const KEY_ZI = 'ee-sofer-zi'; // ziua deschisa: { zi, coleg, carId, km, trasee, zile, zona, ordine, ruta }
 const KEY_ULTIMA = 'ee-sofer-ultima'; // ultimele alegeri (masina, traseu, zona) — precompletare
@@ -694,7 +694,7 @@ function ecranFile() {
         puncteTag.textContent = e.data.puncte || '';
         stareRuta.style.display = e.data.peRuta ? '' : 'none';
       }
-      if (e.data?.type === 'ee-ruta-incheiata') { salveazaZiua({ ...stare.zi, ruta: false }); construiesteRuta(); }
+      if (e.data?.type === 'ee-ruta-incheiata') { salveazaZiua({ ...stare.zi, ruta: false }, { faraInceput: true }); construiesteRuta(); }
     });
 
     ui = {
