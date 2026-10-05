@@ -26,7 +26,7 @@ import { openHistoryScreen } from '../pv/js/screens-history.js';
 import { buildComenziActive } from '../pv/js/screens-comenzi.js';
 import { openSettingsScreen } from '../pv/js/screens-setup.js';
 
-export const SOFER_VERSION = 's22';
+export const SOFER_VERSION = 's23';
 
 const KEY_ZI = 'ee-sofer-zi'; // ziua deschisa: { zi, coleg, carId, km, trasee, zile, zona, ordine, ruta }
 const KEY_ULTIMA = 'ee-sofer-ultima'; // ultimele alegeri (masina, traseu, zona) — precompletare
@@ -476,6 +476,28 @@ function ecranSetari() {
   });
 }
 
+// ---------- seriile pe punctul de ruta (s23) ----------
+// Aceeasi regula ca in GestiuneEE (anexaNr / anexeLinie): linia de produs = anexa + suplimentarile / reducerile ei
+// (2.0, 2.0-S1, 2.0-R1) de pe acelasi contract. Intoarce { "<id anexa>": "ARMAL E-1; MONDO E-2" }.
+function linieAnexa(t) {
+  const s = String(t == null ? '' : t).trim().toUpperCase().replace(/,/g, '.');
+  const m = /(\d+)(?:\.(\d+))?(?:\s*-\s*([SR])\s*(\d+))?\s*$/.exec(s);
+  return m ? String(parseInt(m[1], 10)) + '.' + (m[2] == null ? '0' : String(parseInt(m[2], 10))) : null;
+}
+export function hartaSerii(serii, anexe) {
+  const grup = (a) => { const l = linieAnexa(a.anexa); return l == null ? 'a' + a.id : a.contract_id + '|' + l; };
+  const peGrup = {}, grupAnexa = {};
+  anexe.forEach((a) => { grupAnexa[a.id] = grup(a); });
+  serii.forEach((x) => {
+    const g = grupAnexa[x.anexa_id] || 'a' + x.anexa_id;
+    (peGrup[g] = peGrup[g] || []).push([x.model, x.serie].filter(Boolean).join(' ') || 'fără serie');
+  });
+  const harta = {};
+  anexe.forEach((a) => { const l = peGrup[grupAnexa[a.id]]; if (l && l.length) harta[a.id] = l.join('; '); });
+  serii.forEach((x) => { if (x.anexa_id && !harta[x.anexa_id]) harta[x.anexa_id] = (peGrup['a' + x.anexa_id] || []).join('; '); });
+  return harta;
+}
+
 // ---------- ecranul principal, cu cele 3 file ----------
 function ecranFile() {
   replaceRoot(() => {
@@ -485,10 +507,19 @@ function ecranFile() {
     const masinaBtn = el('button', { class: 'sofer-masina', onclick: () => schimbaMasina() }, ['']);
     // versiunile, langa rotita: Șofer EE + Ruta (cea din cadru, dupa ce s-a incarcat)
     const verTag = el('div', { class: 'sofer-ver' }, [SOFER_VERSION]);
+    // s23: sub versiune si rotita — norisorul (sincronizarea), ce asteapta semnal si numarul de puncte,
+    // trimise de aplicatia de rute din cadru (mesajul 'ee-ruta-antet')
+    const norTag = el('span', { class: 'sofer-nor' }, ['']);
+    const coadaTag = el('span', { class: 'sofer-coada' }, ['']);
+    const puncteTag = el('span', { class: 'sofer-puncte' }, ['']);
+    const stareRuta = el('div', { class: 'sofer-stare-ruta' }, [norTag, coadaTag, puncteTag]);
+    stareRuta.style.display = 'none';
     const top = el('div', { class: 'topbar sofer-top' }, [
       el('div', { class: 'sofer-cine' }, [numeBtn, masinaBtn]),
-      verTag,
-      el('button', { class: 'icon-btn', title: 'Setări', onclick: () => ecranSetari() }, ['⚙']),
+      el('div', { class: 'sofer-dreapta' }, [
+        el('div', { class: 'sofer-dreapta-sus' }, [verTag, el('button', { class: 'icon-btn', title: 'Setări', onclick: () => ecranSetari() }, ['⚙'])]),
+        stareRuta,
+      ]),
     ]);
 
     const panouri = el('div', { class: 'sofer-panouri' });
@@ -589,6 +620,25 @@ function ecranFile() {
     function trimiteLaRuta() {
       if (!cadru || !cadruGata) return;
       try { cadru.contentWindow.eeSoferAplica(dateRuta()); } catch (e) { console.warn('Șofer EE: ruta nu a primit datele', e); }
+      trimiteSerii();
+    }
+    // s23: seriile „la client” (model + serie), pe linia de produs a anexei — aplicatia de rute nu e logata,
+    // deci le citim aici si i le dam. Cheia = id-ul anexei (punctul de ruta are client_key A<id> / A<id>-LU).
+    let seriiInLucru = false;
+    async function trimiteSerii() {
+      if (!cadru || !cadruGata || seriiInLucru) return;
+      seriiInLucru = true;
+      try {
+        const sb = await getSupabase();
+        const [s, a] = await Promise.all([
+          sb.from('serii').select('anexa_id,produs,model,serie').eq('stare', 'LA CLIENT').order('id'),
+          sb.from('anexe').select('id,contract_id,anexa'),
+        ]);
+        if (s.error || a.error) return;
+        const harta = hartaSerii(s.data || [], a.data || []);
+        if (cadru && cadruGata) cadru.contentWindow.eeSoferSerii?.(harta);
+      } catch (e) { /* fara semnal: ruta ramane cu seriile de data trecuta */ }
+      finally { seriiInLucru = false; }
     }
     function construiesteRuta() {
       const p = panou('ruta');
@@ -607,6 +657,7 @@ function ecranFile() {
       }
       cadru = null;
       cadruGata = false;
+      stareRuta.style.display = 'none';
       p.innerHTML = '';
       p.appendChild(el('div', { class: 'screen-scroll' }, [
         sectionCard('Fără rută azi', [
@@ -624,6 +675,7 @@ function ecranFile() {
       });
       if (k === 'comenzi' && curenta && curenta !== 'comenzi') comenzi?.reload?.();
       if (k === 'pv') arataCoada();
+      if (k === 'ruta' && curenta && curenta !== 'ruta') trimiteSerii();
       curenta = k;
       scrie(KEY_FILA, k);
     }
@@ -636,6 +688,12 @@ function ecranFile() {
     window.addEventListener('message', (e) => {
       if (e.origin !== location.origin || !cadru || e.source !== cadru.contentWindow) return;
       if (e.data?.type === 'ee-ruta-editeaza') editeazaZiua();
+      if (e.data?.type === 'ee-ruta-antet') {
+        norTag.textContent = e.data.nor || ''; norTag.title = e.data.titlu || '';
+        coadaTag.textContent = e.data.coada || '';
+        puncteTag.textContent = e.data.puncte || '';
+        stareRuta.style.display = e.data.peRuta ? '' : 'none';
+      }
       if (e.data?.type === 'ee-ruta-incheiata') { salveazaZiua({ ...stare.zi, ruta: false }); construiesteRuta(); }
     });
 
