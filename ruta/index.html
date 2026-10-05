@@ -1033,7 +1033,7 @@ let dayStart = {}; // {brand, plate, kmStart, driver1, driver2, startTime}
 let lastRouteRows = [];
 
 // --- Șofer EE: aplicatia ruleaza in fila „Rută” (../sofer/), care trimite datele zilei ---
-const EE_RUTA_VERSION = 'v15'; // aceeasi cu VERSIUNE din sw.js; Șofer EE o arata langa rotita
+const EE_RUTA_VERSION = 'v16'; // aceeasi cu VERSIUNE din sw.js; Șofer EE o arata langa rotita
 const SOFER_MODE = new URLSearchParams(location.search).get('sofer') === '1';
 let multiZile = null;   // mai multe zile bifate (ruta complementara), altfel null
 let multiTrasee = null; // mai multe trasee bifate, altfel null
@@ -3057,7 +3057,7 @@ function render(){
   lastRouteRows = rows;
 
   const routeApplicable = ((ziua !== 'TOATE' || !!multiZile) && rows.length > 1);
-  depotNavCard.style.display = routeApplicable ? 'flex' : 'none';
+  depotNavCard.style.display = 'none'; // v16: chenarul Depozit - Navigare scos
 
   if(rows.length === 0){
     // ruta fara niciun punct trebuie sa poata fi finalizata (km final), nu doar din GestiuneEE
@@ -3142,13 +3142,8 @@ function render(){
       mapsBtn = `<a class="btn maps" href="${url}" target="_blank" rel="noopener">🗺️ Deschide traseul complet în Maps</a>`;
     }
 
-    routeSummary.style.display = 'flex';
-    routeSummary.innerHTML = `
-      <div>~<b>${totalKm.toFixed(1)} km</b> traseu în linie dreaptă (tur-retur Depozit), ${ordered.length} opriri
-        <div class="route-note">Ordine sugerată după apropiere GPS — nu ține cont de drumuri reale. Verifică traseul final în Maps.</div>
-      </div>
-      ${mapsBtn}
-    `;
+    routeSummary.style.display = 'none'; // v16: fara chenarul cu km si butonul Maps
+    routeSummary.innerHTML = '';
 
     const notDoneOrdered = prioritizeNear(ordered.filter(r=>!isVisitDone(r)));
     const doneOrdered = ordered.filter(r=>isVisitDone(r));
@@ -3162,15 +3157,10 @@ function render(){
       : returnLeg;
 
     let html = '';
-    html += depotCardHtml('Start rută');
     notDoneOrdered.forEach((r,i)=>{
-      html += `<div class="leg-dist">↓ <span>${r._legDist.toFixed(1)} km</span></div>`;
+      if(i>0) html += `<div class="leg-dist">↓ <span>${r._legDist.toFixed(1)} km</span></div>`;
       html += cardHtml(r, i+1);
     });
-    if(ordered.length){
-      html += `<div class="leg-dist">↓ <span>${finalReturnLeg.toFixed(1)} km</span></div>`;
-    }
-    html += depotCardHtml('Retur la depozit');
     if(doneOrdered.length){
       html += `<div class="group-title">✅ Deja vizitați (${doneOrdered.length})</div>`;
       doneOrdered.forEach((r,i)=>{
