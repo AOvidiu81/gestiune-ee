@@ -1033,7 +1033,7 @@ let dayStart = {}; // {brand, plate, kmStart, driver1, driver2, startTime}
 let lastRouteRows = [];
 
 // --- Șofer EE: aplicatia ruleaza in fila „Rută” (../sofer/), care trimite datele zilei ---
-const EE_RUTA_VERSION = 'v16'; // aceeasi cu VERSIUNE din sw.js; Șofer EE o arata langa rotita
+const EE_RUTA_VERSION = 'v17'; // aceeasi cu VERSIUNE din sw.js; Șofer EE o arata langa rotita
 const SOFER_MODE = new URLSearchParams(location.search).get('sofer') === '1';
 let multiZile = null;   // mai multe zile bifate (ruta complementara), altfel null
 let multiTrasee = null; // mai multe trasee bifate, altfel null
@@ -1856,7 +1856,8 @@ function clientRowFromDb(row){
   const sch = row.schimbare;
   if(sch && sch.de_la){
     const d = new Date(), azi = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
-    if(sch.de_la <= azi) row = Object.assign({}, row, sch);
+    // mai multe schimbari la rand: prima in sch, urmatoarele in sch.apoi (GestiuneEE v4.65)
+    [sch].concat(sch.apoi || []).forEach(function(e){ if(e && e.de_la && e.de_la <= azi) row = Object.assign({}, row, e); });
   }
   return {
     status: row.status || '',

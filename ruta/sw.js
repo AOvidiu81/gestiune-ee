@@ -2,7 +2,7 @@
 // repede. Datele din Supabase nu se păstrează niciodată în memorie.
 // {cache:'reload'/'no-store'}: GitHub Pages lasa browserul sa tina fisierele 10 minute; fara asta, dupa un Push
 // telefonul putea lua tot varianta veche (gasit 03.10: ordinea butoanelor nu se schimba).
-const VERSIUNE = 'ruta-ee-v16';
+const VERSIUNE = 'ruta-ee-v17';
 const SCHELET = ['./', './index.html', './manifest.json', './icon-192.png', './icon-512.png'];
 
 self.addEventListener('install', (e) => {
