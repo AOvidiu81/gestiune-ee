@@ -391,7 +391,7 @@
 <header>
   <h1>GestiuneEE <span class="sub-marca">Euro Ecologic</span></h1>
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
-  <span class="ver">v4.69</span>
+  <span class="ver">v4.68</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -4261,10 +4261,8 @@ async function spreRute(id){
   const m = MISC.find(x => x.id === id); if(!m) return;
   RUTE_MID = id;
   const a = ANX.find(x => x.id === m.anexa_id) || {};
+  const baza = m.anexa_id ? "A" + m.anexa_id : "C" + m.id;
   const loc = m.anexa_id ? anexeLocatie(a) : [];
-  // v4.69 (cerut de Ovidiu, 06.10): codul punctului = prima anexă a locației + ziua, la orice frecvență (A173-LU, A173-JO),
-  // nu anexa comenzii — așa o locație are același cod pe toate zilele și după suplimentări / reduceri.
-  const baza = m.anexa_id ? "A" + (loc.length ? Math.min(...loc) : m.anexa_id) : "C" + m.id;
   const { data: gasite, error } = await db.from("clients").select("*").like("client_key", (m.anexa_id ? "A" : baza) + "%").limit(5000);
   if(error){ toast(error.message, true); return; }
   const idCheie = p => { const k = /^A(\d+)(-[A-Z]{2})?$/.exec((p && p.client_key) || ""); return k ? +k[1] : null; };
@@ -4327,7 +4325,7 @@ async function spreRute(id){
     const multe = zile.length > 1 || activ.length > 0;
     const frecv = multe ? "1/Sap" : String(m.frecv_serv || a.frecv_servisare || "").replace(/\s*\/\s*/g, "/");
     lista.forEach(z => {
-      const cheie = z ? baza + "-" + ZI_ABR[z] : baza;
+      const cheie = (multe && z) ? baza + "-" + ZI_ABR[z] : baza;
       const g = (gasite || []).find(p => p.client_key === cheie) || null;   // punct vechi, trecut pe INACTIV, cu același cod
       const rec = g ? viitor(g) : { client_key: cheie, client: m.client || "", jud: m.jud || "", localitate: m.loc || "", locatie: m.sat || "",
                 ziua: ZI_RUTE[z] || "", masina: "", frecventa: frecv,
