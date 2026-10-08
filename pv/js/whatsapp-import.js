@@ -169,6 +169,15 @@ function parseGestiuneOrder(lines) {
   return { clientName, address, persRes, tel, ctr, servisare, dep, productQty, productText, aux };
 }
 
+// s29: comanda de SUPLIMENTARE / REDUCERE / EVENIMENT se face pe PV de AMPLASARE / RIDICARE;
+// pe PV, la "Mentiuni", apare tipul comenzii + anexa (ex. "SUPLIMENTARE - ANEXA NR 1-S1").
+export function mentiuneTip(antet, ctr) {
+  const tip = (faraDiacritice(antet).toUpperCase().match(/^\s*(SUPLIMENTARE|REDUCERE|EVENIMENT-?[AR]?)\b/) || [])[1] || '';
+  if (!tip) return '';
+  const anexa = String(ctr || '').split(/\s*[·•]\s*/).slice(1).join(' ').trim();
+  return tip + (anexa ? ' - ' + anexa : '');
+}
+
 // s28: "DOZATOR SAPUN, L.I." -> ["DOZATOR SAPUN", "L.I."] (potrivirea cu lista modelului se face in formular)
 export function listaAcc(v) {
   return String(v || '').split(/[,;+]/).map((x) => stripWaFormatting(x)).filter(Boolean);
@@ -215,6 +224,7 @@ export function parseWhatsAppOrderText(rawText) {
   const dep = matchLabel(corp, 'DEP(?:OZIT)?');
   const series = parseSerii(matchLabel(corp, 'SERII?'));
   const aux = listaAcc(matchLabel(corp, 'ACC(?:ESORII)?'));
+  const mentiune = mentiuneTip(eAntet(lines[0]) ? lines[0] : '', ctr);
 
   // Randul produsului: "1    TOALETA    CLASIC" — grupurile despartite de 2+ spatii
   // (bucati / produs / model). Se cauta intai deasupra lui NUME CL, ca un rand de
@@ -234,7 +244,7 @@ export function parseWhatsAppOrderText(rawText) {
     }
   }
 
-  return { clientName, address, persRes, tel, ctr, servisare, dep, productQty, productText, series, aux };
+  return { clientName, address, persRes, tel, ctr, servisare, dep, productQty, productText, series, aux, mentiune };
 }
 
 /** Deschide un dialog cu o zona de text unde soferul lipeste mesajul de

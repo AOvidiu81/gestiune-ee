@@ -222,6 +222,7 @@ export async function openProcessVerbalForm({ driver, car, depot, processType, p
       beneficiaryCiUnavailable: false,
       beneficiaryAbsentFromLocation: false,
       secureAreaNoPhoto: false,
+      mentiuneComanda: '',   // s29: "SUPLIMENTARE - ANEXA NR 1-S1" (din comanda), apare la Mentiuni pe PV
       productEntries: [newProductEntry()],
       confirmationPhotos: [], // { rawBlob, previewUrl }
       gps: '',
@@ -610,6 +611,7 @@ export async function openProcessVerbalForm({ driver, car, depot, processType, p
         missing.delete('productDetails');
         anyField = true;
       }
+      if (parsed.mentiune) { state.mentiuneComanda = parsed.mentiune; anyField = true; }
       if (Array.isArray(parsed.aux) && parsed.aux.length) {
         const first = state.productEntries[0];
         first.aux = potrivesteAux(parsed.aux, auxByModel[first.model.trim()] || []);
@@ -701,6 +703,7 @@ export async function openProcessVerbalForm({ driver, car, depot, processType, p
         field3: state.productQuantity.trim(),
         observatii: state.observatii.trim(),
         secureAreaNoPhoto: state.secureAreaNoPhoto,
+        mentiuneComanda: state.mentiuneComanda,
         confirmationPhotoUrls: annotatedPhotoUrls,
         gps: state.gps,
         confirmationTime: state.confirmationTime,

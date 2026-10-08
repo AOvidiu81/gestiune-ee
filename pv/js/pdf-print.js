@@ -215,6 +215,7 @@ function pageOnePv({ model, driver, isPreview, depotEmail, depotPhone, beneficia
   // Observatiile libere ale soferului au propria caseta mai jos
   // (doc-observatii-sofer) si apar doar daca soferul chiar a scris ceva.
   const mentiuni = [];
+  if (model.mentiuneComanda) mentiuni.push(model.mentiuneComanda);   // s29: SUPLIMENTARE / REDUCERE / EVENIMENT + anexa
   if (model.secureAreaNoPhoto) mentiuni.push('ZONA SECURIZATA / FOTO INTERZIS');
   if (showMissingPersonnelNote) mentiuni.push('LIPSA PERSONAL');
   const valueClass = (v) => {
