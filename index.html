@@ -1229,6 +1229,8 @@ async function init(){
     SER=sr.data||[];   // lipsea de la pornire: până la prima salvare butonul scria „Serii” și fereastra apărea goală
     $("conn").textContent="● online"; $("conn").style.color="#9fe0b8";
     fillAll(); await loadStoc(); loadVerif(); loadAtentie();
+    // v5.06: fila din adresă (#raport-luna …) se deschide abia după ce s-au încărcat datele — la F5 rămânea goală
+    INIT_GATA = true; deschideSectiune((location.hash || "").replace("#", ""));
   }catch(e){ console.error(e); $("conn").textContent="● eroare conexiune"; $("conn").style.color="#ffb4ae"; toast("Nu m-am putut conecta la baza de date: "+e.message,true); }
 }
 const nomv = tip => (NOM[tip]||[]).map(r=>r.valoare);
@@ -5640,7 +5642,8 @@ function deschideSectiune(nume){
                   || document.querySelector('nav button[data-p="' + nume + '"]'));
   if(b && !b.classList.contains("on")) b.click();
 }
-window.addEventListener("load", () => deschideSectiune((location.hash || "").replace("#", "")));
+var INIT_GATA = false;
+window.addEventListener("load", () => { if(INIT_GATA) deschideSectiune((location.hash || "").replace("#", "")); });
 window.addEventListener("hashchange", () => deschideSectiune((location.hash || "").replace("#", "")));
 
 // v4.75 (cerut de Ovidiu, 07.10): fereastra comenzii se trage de antet; locul se păstrează cât e pagina deschisă.
