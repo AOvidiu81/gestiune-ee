@@ -395,7 +395,7 @@
 <header>
   <h1>GestiuneEE <span class="sub-marca">Euro Ecologic</span></h1>
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
-  <span class="ver">v4.93</span>
+  <span class="ver">v4.92</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -1744,7 +1744,7 @@ function openAnexaScurta(b, tip){
   $("ma-dx").value = ""; $("ma-xt").value = "";
   $("ma-jud").value = baza.jud || ""; $("ma-loc").value = baza.loc || ""; $("ma-sat").value = baza.sat || ""; $("ma-forma").value = baza.forma || "CHIRIE";
   $("ma-prod").value = baza.produs || ""; umpleModele("ma-prod", "ma-model", baza.model || "", baza.accesorii || "");
-  $("ma-um").value = baza.um || "BUC"; $("ma-cant").value = Math.abs(+$("mm-buc").value || 0) || ""; $("ma-pret").value = baza.pret;   // v4.93: bucățile din comandă $("ma-moneda").value = baza.moneda || "RON"; $("ma-scad").value = baza.scadent;
+  $("ma-um").value = baza.um || "BUC"; $("ma-cant").value = ""; $("ma-pret").value = baza.pret; $("ma-moneda").value = baza.moneda || "RON"; $("ma-scad").value = baza.scadent;
   $("ma-status").value = tip; $("ma-dep").value = baza.depozit || ""; $("ma-ctrdep").value = baza.contract_depozit || "";
   $("ma-dliv").value = $("ma-de").value; $("ma-drid").value = "";
   $("ma-transp").value = 0; const ult = anexaUltima(b.id);
