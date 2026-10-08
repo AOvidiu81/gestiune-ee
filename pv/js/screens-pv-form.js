@@ -222,6 +222,7 @@ export async function openProcessVerbalForm({ driver, car, depot, processType, p
       beneficiaryCiUnavailable: false,
       beneficiaryAbsentFromLocation: false,
       secureAreaNoPhoto: false,
+      seriiPunct: [],        // s30: seriile de la client (din comanda) — butoane deasupra campurilor de serie
       mentiuneComanda: '',   // s29: "SUPLIMENTARE - ANEXA NR 1-S1" (din comanda), apare la Mentiuni pe PV
       productEntries: [newProductEntry()],
       confirmationPhotos: [], // { rawBlob, previewUrl }
@@ -460,6 +461,30 @@ export async function openProcessVerbalForm({ driver, car, depot, processType, p
         );
       }
 
+      if (!state.noSeriesMode && index === 0 && state.seriiPunct.length) {
+        // s30: seriile care sunt acum la client; soferul apasa pe cele pe care le ridica
+        const norm = (s) => String(s || '').trim().replace(/^EE-?\s*/i, '').toUpperCase();
+        const alese = new Set(state.productEntries.flatMap((e) => e.series.map(norm)).filter(Boolean));
+        const chips = state.seriiPunct.map((sp) => {
+          const k = norm(sp.serie), on = alese.has(k);
+          return el('button', {
+            class: 'btn ' + (on ? 'btn-primary' : 'btn-outline'),
+            style: 'width:auto;padding:8px 12px;margin:0;min-height:0',
+            onclick: (ev) => {
+              ev.preventDefault();
+              const i = entry.series.findIndex((s) => norm(s) === k);
+              if (i >= 0) { if (entry.series.length > 1) entry.series.splice(i, 1); else entry.series[0] = ''; }
+              else { const j = entry.series.findIndex((s) => !s.trim()); if (j >= 0) entry.series[j] = sp.serie; else entry.series.push(sp.serie); }
+              syncTotalQuantity(); missing.delete('productDetails'); render();
+            },
+          }, [(on ? '✓ ' : '') + (sp.model ? sp.model + ' ' : '') + 'EE-' + sp.serie]);
+        });
+        rows.push(el('div', { class: 'field' }, [
+          el('label', { class: 'field-label' }, ['Serii la client — apasa pe cele ridicate']),
+          el('div', { style: 'display:flex;flex-wrap:wrap;gap:8px' }, chips),
+        ]));
+      }
+
       if (!state.noSeriesMode) {
         entry.series.forEach((series, si) => {
           const sField = seriesField({ label: `Serie ${si + 1}`, value: series, onInput: (v) => { entry.series[si] = v; missing.delete('productDetails'); } });
@@ -612,6 +637,7 @@ export async function openProcessVerbalForm({ driver, car, depot, processType, p
         anyField = true;
       }
       if (parsed.mentiune) { state.mentiuneComanda = parsed.mentiune; anyField = true; }
+      if (Array.isArray(parsed.seriiPunct) && parsed.seriiPunct.length) { state.seriiPunct = parsed.seriiPunct; anyField = true; }   // s30
       if (Array.isArray(parsed.aux) && parsed.aux.length) {
         const first = state.productEntries[0];
         first.aux = potrivesteAux(parsed.aux, auxByModel[first.model.trim()] || []);
@@ -853,6 +879,8 @@ export async function openProcessVerbalForm({ driver, car, depot, processType, p
                 processType,
                 carNumber: car.numar,
                 miscareId: miscareId || null,
+                // s30: seriile trecute pe PV ajung in GestiuneEE (pv_records.serii), ca Ovidiu sa stie ce s-a ridicat
+                serii: state.noSeriesMode ? '' : state.productEntries.flatMap((e) => e.series.map((x) => x.trim()).filter(Boolean)).join(', '),
                 createdAt,
               },
               blob

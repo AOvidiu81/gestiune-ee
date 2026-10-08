@@ -72,6 +72,8 @@ function prefillDin(c) {
     mentiune: TIP_PV[c.tip_miscare] && TIP_PV[c.tip_miscare] !== c.tip_miscare ? c.tip_miscare + (c.anexa ? ' - ' + c.anexa : '') : '',   // s29
     aux: String(c.accesorii || '').split(',').map((x) => x.trim()).filter(Boolean),   // s28: accesoriile comenzii -> Elemente auxiliare
     series: (Array.isArray(c.serii) ? c.serii : []).map((s) => String((s && s.serie) || '').trim().replace(/^EE-?\s*/i, '')).filter(Boolean),
+    // s30: seriile care sunt acum la client (locatia) — in PV soferul apasa pe cele ridicate
+    seriiPunct: (Array.isArray(c.serii_punct) ? c.serii_punct : []).map((s) => ({ serie: String((s && s.serie) || '').trim().replace(/^EE-?\s*/i, ''), model: (s && (s.model || s.produs)) || '' })).filter((s) => s.serie),
   };
 }
 

@@ -6,7 +6,7 @@
 
 // {cache:'reload'/'no-store'}: GitHub Pages lasa browserul sa tina fisierele 10 minute; fara asta, dupa un Push
 // telefonul putea lua tot varianta veche (gasit 03.10: ordinea butoanelor nu se schimba).
-const VERSIUNE = 'sofer-ee-s29';
+const VERSIUNE = 'sofer-ee-s30';
 const PV = [
   'css/styles.css', 'css/print.css',
   'js/db.js', 'js/utils.js', 'js/router.js', 'js/components.js', 'js/catalog-defaults.js',

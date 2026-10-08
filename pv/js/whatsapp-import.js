@@ -222,7 +222,12 @@ export function parseWhatsAppOrderText(rawText) {
   const ctr = matchLabel(corp, 'CTR|CONTRACT');
   const servisare = matchLabel(corp, 'SERVISARE');
   const dep = matchLabel(corp, 'DEP(?:OZIT)?');
-  const series = parseSerii(matchLabel(corp, 'SERII?'));
+  // s30: "SERII : ALEGE SOFERUL 1 DIN 3 (ARMAL 1; MONDO 2; SATELIT 3)" — nu sunt serii de ridicat,
+  // ci lista de la client din care alege soferul
+  const serRaw = matchLabel(corp, 'SERII?');
+  const alege = /ALEGE/i.test(faraDiacritice(serRaw));
+  const series = alege ? [] : parseSerii(serRaw);
+  const seriiPunct = alege ? parseSerii((/\((.*)\)/.exec(serRaw) || [])[1]).map((serie) => ({ serie, model: '' })) : [];
   const aux = listaAcc(matchLabel(corp, 'ACC(?:ESORII)?'));
   const mentiune = mentiuneTip(eAntet(lines[0]) ? lines[0] : '', ctr);
 
@@ -244,7 +249,7 @@ export function parseWhatsAppOrderText(rawText) {
     }
   }
 
-  return { clientName, address, persRes, tel, ctr, servisare, dep, productQty, productText, series, aux, mentiune };
+  return { clientName, address, persRes, tel, ctr, servisare, dep, productQty, productText, series, seriiPunct, aux, mentiune };
 }
 
 /** Deschide un dialog cu o zona de text unde soferul lipeste mesajul de

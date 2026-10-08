@@ -308,6 +308,7 @@ async function trimiteDocument(meta, blob) {
     file_size: blob.size,
     storage_path: storagePath,
     miscare_id: meta.miscareId || null,
+    serii: meta.serii || null,   // s30
   });
   if (insertErr && String(insertErr.code) !== '23505') {
     console.warn('[pv-sync] salvare rand pv_records esuata:', insertErr.message || insertErr);
