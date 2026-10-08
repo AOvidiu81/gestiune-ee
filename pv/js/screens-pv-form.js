@@ -87,6 +87,27 @@ function productModelSummary(entries) {
     .join(';');
 }
 
+// s28: accesoriile din comanda (nume intregi sau prescurtate: L.I., D.S., D.P.H.) potrivite cu
+// "Elemente auxiliare" ale modelului; ce nu e in lista ramane scris cum a venit.
+function cheieAux(t) {
+  const u = String(t || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase();
+  const s = u.replace(/[^A-Z]/g, '');
+  if (u.includes('DOZATOR') || s === 'DS') return 'DS';
+  if (u.includes('PROSOP') || s === 'DPH') return 'DPH';
+  if (u.includes('LAVOAR') && !u.includes('EXTERIOR') || s === 'LI') return 'LI';
+  return s;
+}
+const AUX_PLIN = { DS: 'DOZATOR SAPUN', DPH: 'DISP. PROSOP HARTIE', LI: 'LAVOAR INTERIOR' };
+function potrivesteAux(dorite, disponibile) {
+  const out = [];
+  (dorite || []).forEach((d) => {
+    const k = cheieAux(d);
+    const g = (disponibile || []).find((a) => cheieAux(a) === k) || AUX_PLIN[k] || String(d).trim().toUpperCase();
+    if (g && !out.includes(g)) out.push(g);
+  });
+  return out.sort();
+}
+
 function productSeriesEncoded(entries, noSeriesMode) {
   return entries
     .filter((e) => e.model.trim())
@@ -587,6 +608,11 @@ export async function openProcessVerbalForm({ driver, car, depot, processType, p
           first.model = parsed.productText;
         }
         missing.delete('productDetails');
+        anyField = true;
+      }
+      if (Array.isArray(parsed.aux) && parsed.aux.length) {
+        const first = state.productEntries[0];
+        first.aux = potrivesteAux(parsed.aux, auxByModel[first.model.trim()] || []);
         anyField = true;
       }
       // Seriile venite din comanda (GestiuneEE): soferul le verifica si le corecteaza

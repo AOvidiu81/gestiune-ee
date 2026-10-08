@@ -165,7 +165,13 @@ function parseGestiuneOrder(lines) {
     productText = prod;
   }
 
-  return { clientName, address, persRes, tel, ctr, servisare, dep, productQty, productText };
+  const aux = listaAcc(valoareDupa(lines, 'Accesorii'));
+  return { clientName, address, persRes, tel, ctr, servisare, dep, productQty, productText, aux };
+}
+
+// s28: "DOZATOR SAPUN, L.I." -> ["DOZATOR SAPUN", "L.I."] (potrivirea cu lista modelului se face in formular)
+export function listaAcc(v) {
+  return String(v || '').split(/[,;+]/).map((x) => stripWaFormatting(x)).filter(Boolean);
 }
 
 // "SERII  :  ARMAL E-1, E-2; MONDO E-3" (cum le scrie GestiuneEE) -> ["E-1","E-2","E-3"].
@@ -208,6 +214,7 @@ export function parseWhatsAppOrderText(rawText) {
   const servisare = matchLabel(corp, 'SERVISARE');
   const dep = matchLabel(corp, 'DEP(?:OZIT)?');
   const series = parseSerii(matchLabel(corp, 'SERII?'));
+  const aux = listaAcc(matchLabel(corp, 'ACC(?:ESORII)?'));
 
   // Randul produsului: "1    TOALETA    CLASIC" — grupurile despartite de 2+ spatii
   // (bucati / produs / model). Se cauta intai deasupra lui NUME CL, ca un rand de
@@ -227,7 +234,7 @@ export function parseWhatsAppOrderText(rawText) {
     }
   }
 
-  return { clientName, address, persRes, tel, ctr, servisare, dep, productQty, productText, series };
+  return { clientName, address, persRes, tel, ctr, servisare, dep, productQty, productText, series, aux };
 }
 
 /** Deschide un dialog cu o zona de text unde soferul lipeste mesajul de

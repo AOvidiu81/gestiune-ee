@@ -69,6 +69,7 @@ function prefillDin(c) {
     productQty: Math.abs(Number(c.buc) || 0),
     productText: [c.produs, c.model].filter(Boolean).join(' '),
     // Seriile trecute in GestiuneEE la amplasare (fara prefixul fix "EE-" al campului)
+    aux: String(c.accesorii || '').split(',').map((x) => x.trim()).filter(Boolean),   // s28: accesoriile comenzii -> Elemente auxiliare
     series: (Array.isArray(c.serii) ? c.serii : []).map((s) => String((s && s.serie) || '').trim().replace(/^EE-?\s*/i, '')).filter(Boolean),
   };
 }
