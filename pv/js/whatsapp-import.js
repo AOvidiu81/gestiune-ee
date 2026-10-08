@@ -227,7 +227,22 @@ export function parseWhatsAppOrderText(rawText) {
   const serRaw = matchLabel(corp, 'SERII?');
   const alege = /ALEGE/i.test(faraDiacritice(serRaw));
   const series = alege ? [] : parseSerii(serRaw);
-  const seriiPunct = alege ? parseSerii((/\((.*)\)/.exec(serRaw) || [])[1]).map((serie) => ({ serie, model: '' })) : [];
+  let seriiPunct = alege ? parseSerii((/\((.*)\)/.exec(serRaw) || [])[1]).map((serie) => ({ serie, model: '' })) : [];
+  // s31: blocul de jos din comanda GestiuneEE v5.01:
+  //   MODEL SI SERIE PRODUS (ALEGE SOFERUL 1 DIN 3)
+  //   ARMAL Seria: 1
+  const iMs = lines.findIndex((l) => /^MODEL\s+(SI|ȘI)\s+SERIE/i.test(faraDiacritice(l)));
+  if (iMs >= 0) {
+    const bloc = [];
+    for (const l of lines.slice(iMs + 1)) {
+      const m = /^(.*?)\s*Seria\s*:\s*(.+)$/i.exec(l);
+      if (!m) break;
+      const serie = m[2].trim().replace(/^EE-?\s*/i, '');
+      if (serie && !/f[aă]r[aă]\s*serie/i.test(faraDiacritice(serie))) bloc.push({ serie, model: m[1].trim() });
+    }
+    if (/ALEGE/i.test(faraDiacritice(lines[iMs]))) { seriiPunct = bloc; }
+    else if (bloc.length) { series.splice(0, series.length, ...bloc.map((x) => x.serie)); seriiPunct = bloc; }
+  }
   const aux = listaAcc(matchLabel(corp, 'ACC(?:ESORII)?'));
   const mentiune = mentiuneTip(eAntet(lines[0]) ? lines[0] : '', ctr);
 

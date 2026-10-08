@@ -26,7 +26,7 @@ import { openHistoryScreen } from '../pv/js/screens-history.js';
 import { buildComenziActive } from '../pv/js/screens-comenzi.js';
 import { openSettingsScreen } from '../pv/js/screens-setup.js';
 
-export const SOFER_VERSION = 's30';
+export const SOFER_VERSION = 's31';
 
 const KEY_ZI = 'ee-sofer-zi'; // ziua deschisa: { zi, coleg, carId, km, trasee, zile, zona, ordine, ruta }
 const KEY_ULTIMA = 'ee-sofer-ultima'; // ultimele alegeri (masina, traseu, zona) — precompletare
@@ -485,7 +485,14 @@ function linieAnexa(t) {
   return m ? String(parseInt(m[1], 10)) + '.' + (m[2] == null ? '0' : String(parseInt(m[2], 10))) : null;
 }
 export function hartaSerii(serii, anexe) {
-  const grup = (a) => { const l = linieAnexa(a.anexa); return l == null ? 'a' + a.id : a.contract_id + '|' + l; };
+  // s31: ca in GestiuneEE v4.98 — locatia = anexa initiala (linie_id) sau aceeasi adresa pe acelasi contract
+  const dupaId = {}; anexe.forEach((a) => { dupaId[a.id] = a; });
+  const adr = (a) => [a.jud, a.loc, a.sat].map((x) => String(x || '').trim().toLowerCase()).join('|');
+  const grup = (a) => {
+    const b = (a.linie_id && dupaId[a.linie_id]) || a;
+    if ('jud' in b && adr(b) !== '||') return a.contract_id + '#' + adr(b);
+    const l = linieAnexa(a.anexa); return l == null ? 'a' + (a.linie_id || a.id) : a.contract_id + '|' + l;
+  };
   const peGrup = {}, grupAnexa = {};
   anexe.forEach((a) => { grupAnexa[a.id] = grup(a); });
   serii.forEach((x) => {
@@ -632,7 +639,7 @@ function ecranFile() {
         const sb = await getSupabase();
         const [s, a] = await Promise.all([
           sb.from('serii').select('anexa_id,produs,model,serie').eq('stare', 'LA CLIENT').order('id'),
-          sb.from('anexe').select('id,contract_id,anexa'),
+          sb.from('anexe').select('id,contract_id,anexa,linie_id,jud,loc,sat'),   // s31
         ]);
         if (s.error || a.error) return;
         const harta = hartaSerii(s.data || [], a.data || []);
