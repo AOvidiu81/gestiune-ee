@@ -395,7 +395,7 @@
 <header>
   <h1>GestiuneEE <span class="sub-marca">Euro Ecologic</span></h1>
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
-  <span class="ver">v4.88</span>
+  <span class="ver">v4.87</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -5072,15 +5072,16 @@ function textComandaDin(d){
   if(d.loc) L.push("LOC.  : " + d.loc);
   if(d.sat) L.push(d.sat);
   if(d.pers || d.tel){ L.push(""); if(d.pers) L.push("PERS. RES.  :  " + d.pers); if(d.tel) L.push("TEL.  :  " + d.tel); }
-  if(d.frecv){ L.push(""); L.push("SERVISARE  :  " + d.frecv); }   // v4.88: fără zilele de servisare (cerut de Ovidiu)
+  const zile = a.zi_servisare ? a.zi_servisare.replace(/,/g, ", ") : "";
+  if(d.frecv || zile){ L.push(""); L.push("SERVISARE  :  " + [d.frecv, zile].filter(Boolean).join(" - ")); }
   const ext = [];
   if(a.data_livrarii && a.data_livrarii !== d.data) ext.push("DATA AMPL.  :  " + dz(a.data_livrarii));
   if(a.data_ridicarii) ext.push("DATA RID.  :  " + dz(a.data_ridicarii));
   if(+a.transport) ext.push("TRANSPORT  :  " + a.transport);
+  if(ext.length){ L.push(""); L.push(...ext); }
   L.push("");
   if(k.nr_ctr) L.push("CTR.  :  " + k.nr_ctr + (a.anexa ? "  ·  " + a.anexa : ""));
   if(d.dep) L.push("DEP.  :  " + d.dep);
-  if(ext.length){ L.push(""); L.push(...ext); }
   const obs = (d.obs || "").trim();
   if(obs){ L.push(""); L.push("OBS.  :  " + obs); }
   L.push("");
