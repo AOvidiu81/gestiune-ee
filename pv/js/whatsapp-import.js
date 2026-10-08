@@ -21,7 +21,8 @@ function stripWaFormatting(value) {
 }
 
 function matchLabel(lines, labelPattern) {
-  const re = new RegExp(`^\\s*(?:${labelPattern})\\s*\\.?\\s*:?\\s*[:\\-]?\\s*(.+)$`, 'i');
+  // \b dupa eticheta (s27): "Telega" sau "Depou" nu mai sunt luate drept TEL / DEP
+  const re = new RegExp(`^\\s*(?:${labelPattern})\\b\\s*\\.?\\s*:?\\s*[:\\-]?\\s*(.+)$`, 'i');
   for (const line of lines) {
     const m = re.exec(line);
     if (m && m[1] && m[1].trim()) return stripWaFormatting(m[1]);
@@ -46,12 +47,13 @@ function matchLabel(lines, labelPattern) {
 // ajunge in adresa, nu se mai pierde niciodata.
 const ADDRESS_LINE_PATTERNS = [
   // Judet — pastram prefixul "Jud. XX", ca pe formular
-  { re: /^\s*JUD(?:ET)?\s*\.?\s*:?\s*[:\-]?\s*(.+)$/i, format: (v) => `Jud. ${v.trim().toUpperCase()}` },
+  { re: /^\s*JUD(?:ET)?\b\s*\.?\s*:?\s*[:\-]?\s*(.+)$/i, format: (v) => `Jud. ${v.trim().toUpperCase()}` },
   // Localitate / oras / comuna / sat — toate sunt aceeasi pozitie in
   // adresa, doar denumiri diferite ale aceleiasi etichete
-  { re: /^\s*(?:LOC(?:ALITATE)?|ORAS|COMUNA|SAT)\s*\.?\s*:?\s*[:\-]?\s*(.+)$/i, format: (v) => v.trim() },
-  // Strada / cartier / zona
-  { re: /^\s*(?:STR(?:ADA)?|CARTIER|ZONA)\s*\.?\s*:?\s*[:\-]?\s*(.+)$/i, format: (v) => v.trim() },
+  { re: /^\s*(?:LOC(?:ALITATE)?|ORAS|COMUNA|SAT)\b\s*\.?\s*:?\s*[:\-]?\s*(.+)$/i, format: (v) => v.trim() },
+  // Strada — pastram "Str." (s27; inainte se pierdea), cartier / zona raman cu eticheta lor
+  { re: /^\s*STR(?:ADA)?\b\s*\.?\s*:?\s*[:\-]?\s*(.+)$/i, format: (v) => `Str. ${v.trim()}` },
+  { re: /^\s*((?:CARTIER|ZONA)\b.*)$/i, format: (v) => v.trim().replace(/\s*:\s*/, ' ').replace(/\s+/g, ' ') },
 ];
 
 function formatAddressLine(line) {
@@ -65,14 +67,18 @@ function formatAddressLine(line) {
 }
 
 const CLIENT_LABEL_RE = /^\s*NUME\s*CL(?:IENT)?\s*\.?\s*:?/i;
-const OTHER_LABEL_RE = /^\s*(?:PERS\.?\s*RES(?:PONSABILA)?|RESPONSABIL|TEL(?:EFON)?|CTR|CONTRACT|SERVISARE|DEP(?:OZIT)?)\s*\.?\s*:?/i;
+// s27: si randurile noi din comanda GestiuneEE (ACC, SERII, DATA, TRANSPORT, OBS, ROG PV, Multumesc) inchid adresa
+const OTHER_LABEL_RE = /^\s*(?:PERS\.?\s*RES(?:PONSABILA)?|RESPONSABIL|TEL(?:EFON)?|CTR|CONTRACT|SERVISARE|DEP(?:OZIT)?|ACC|SERII?|DATA|TRANSPORT|OBS|ROG|MULTUMESC)\b\s*\.?\s*:?/i;
 // Prima linie a comenzii e de obicei tipul de PV + data ("AMPLASARE
 // 15/09/2026") — daca nu exista deloc "NUME CL" in text, nu vrem sa
 // inghitim din greseala aceasta linie in blocul de adresa.
 const HEADER_LINE_RE = /^\s*(?:AMPLASARE|RIDICARE|SERVISARE|LIPSA\s*ACCES|VANZARE)\b/i;
+// s27: primul rand e antet si cand e alt tip de comanda (REDUCERE, SUPLIMENTARE, EVENIMENT…):
+// are o data ("lun/12/10/2026") si nu are ":".
+const eAntet = (l) => HEADER_LINE_RE.test(l || '') || (/\d{1,2}[\/.\-]\d{1,2}[\/.\-]\d{2,4}/.test(l || '') && !String(l).includes(':'));
 
 function extractAddressBlock(lines) {
-  let start = HEADER_LINE_RE.test(lines[0] || '') ? 1 : 0;
+  let start = eAntet(lines[0]) ? 1 : 0;
   const clientIdx = lines.findIndex((l) => CLIENT_LABEL_RE.test(l));
   if (clientIdx >= start) start = clientIdx + 1;
 
@@ -162,6 +168,22 @@ function parseGestiuneOrder(lines) {
   return { clientName, address, persRes, tel, ctr, servisare, dep, productQty, productText };
 }
 
+// "SERII  :  ARMAL E-1, E-2; MONDO E-3" (cum le scrie GestiuneEE) -> ["E-1","E-2","E-3"].
+// Primul element din fiecare grup are modelul in fata; "fara serie" nu se ia; "EE-" se scoate
+// (campul din PV il are deja), la fel ca la "Creeaza PV" din Comenzi.
+function parseSerii(v) {
+  const out = [];
+  String(v || '').split(';').forEach((g) => {
+    g.split(',').map((x) => x.trim()).filter(Boolean).forEach((s, i) => {
+      if (/f[aă]r[aă]\s*serie/i.test(faraDiacritice(s))) return;
+      if (i === 0) { const w = s.split(/\s+/); s = w[w.length - 1]; }
+      s = s.replace(/^EE-?\s*/i, '').trim();
+      if (s) out.push(s);
+    });
+  });
+  return out;
+}
+
 /** Extrage campurile cunoscute dintr-un text liber de tip comanda WhatsApp.
  * Intoarce un obiect cu proprietati goale ("") pentru ce nu s-a gasit —
  * apelantul decide ce campuri suprascrie in formular. */
@@ -175,26 +197,37 @@ export function parseWhatsAppOrderText(rawText) {
   // format decat cea veche din Excel ("NUME CL: ..."), asa ca o citim separat.
   if (isGestiuneFormat(lines)) return parseGestiuneOrder(lines);
 
-  const clientName = matchLabel(lines, 'NUME\\s*CL(?:IENT)?');
+  // antetul ("SERVISARE    lun/12/10/2026") nu e eticheta — altfel la o comanda de
+  // SERVISARE campul Servisare primea data (s27)
+  const corp = eAntet(lines[0]) ? lines.slice(1) : lines;
+  const clientName = matchLabel(corp, 'NUME\\s*CL(?:IENT)?');
   const address = extractAddressBlock(lines);
-  const persRes = matchLabel(lines, 'PERS\\.?\\s*RES(?:PONSABILA)?|RESPONSABIL');
-  const tel = matchLabel(lines, 'TEL(?:EFON)?');
-  const ctr = matchLabel(lines, 'CTR|CONTRACT');
-  const servisare = matchLabel(lines, 'SERVISARE');
-  const dep = matchLabel(lines, 'DEP(?:OZIT)?');
+  const persRes = matchLabel(corp, 'PERS\\.?\\s*RES(?:PONSABILA)?|RESPONSABIL');
+  const tel = matchLabel(corp, 'TEL(?:EFON)?');
+  const ctr = matchLabel(corp, 'CTR|CONTRACT');
+  const servisare = matchLabel(corp, 'SERVISARE');
+  const dep = matchLabel(corp, 'DEP(?:OZIT)?');
+  const series = parseSerii(matchLabel(corp, 'SERII?'));
 
+  // Randul produsului: "1    TOALETA    CLASIC" — grupurile despartite de 2+ spatii
+  // (bucati / produs / model). Se cauta intai deasupra lui NUME CL, ca un rand de
+  // adresa ("14 OCTOMBRIE") sa nu fie luat drept produs.
   let productQty = 0;
   let productText = '';
-  for (const line of lines) {
-    const m = /^(\d{1,3})\s+([A-Za-zĂÂÎȘȚăâîșțŞŢ][A-Za-zĂÂÎȘȚăâîșțŞŢ0-9 \-]{2,60})$/.exec(line);
-    if (m) {
+  const iCl = corp.findIndex((l) => CLIENT_LABEL_RE.test(l));
+  const zone = iCl > 0 ? [corp.slice(0, iCl), corp] : [corp];
+  cauta: for (const z of zone) {
+    for (const line of z) {
+      const m = /^\s*(\d{1,4})\s+([A-Za-zĂÂÎȘȚăâîșțŞŢ].*)$/.exec(line);
+      if (!m || m[2].includes(':')) continue;
+      const grupe = m[2].split(/\s{2,}|\t+/).map((x) => stripWaFormatting(x)).filter(Boolean);
       productQty = parseInt(m[1], 10);
-      productText = stripWaFormatting(m[2]);
-      break;
+      productText = grupe.join(' ').replace(/\s+/g, ' ');
+      break cauta;
     }
   }
 
-  return { clientName, address, persRes, tel, ctr, servisare, dep, productQty, productText };
+  return { clientName, address, persRes, tel, ctr, servisare, dep, productQty, productText, series };
 }
 
 /** Deschide un dialog cu o zona de text unde soferul lipeste mesajul de
