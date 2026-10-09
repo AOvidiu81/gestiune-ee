@@ -3835,7 +3835,7 @@ function verWaPorneste(){
 // completat din comandă; după ultimul formular (Salvează sau Renunță) se ajunge pe Puncte de rută cu banda.
 function rtChei(m){
   const a = ANX.find(x => x.id === m.anexa_id), loc = a ? anexeLocatie(a) : [];
-  const idCheie = k => { const r = /^A(\d+)(-[A-Z]{2})?$/.exec(k || ""); return r ? +r[1] : null; };
+  const idCheie = k => { const r = /^A(\d+)(-\d+)?(-[A-Z]{2})?$/.exec(k || ""); return r ? +r[1] : null; };
   return PCT.filter(p => m.anexa_id ? (loc.includes(idCheie(p.client_key)) || (p.anexe_ids || []).some(i => loc.includes(+i)))
                                     : (p.client_key === "C" + m.id || String(p.client_key || "").startsWith("C" + m.id + "-")))
             .map(p => p.client_key);
@@ -5165,7 +5165,7 @@ function renderAdmin(){
       const vr = A_TBL==="clients" && VER && VER.f==="rt" && (VER.chei||[]).includes(r.client_key);
       return `<tr${inactiv?' style="opacity:.45"':''}${vr?' class="r-ver"':''}>`+
         d.lista.map(([c])=>`<td>${A_TBL==="clients" && c==="status" && r.schimbare ? statusIstoric(r) : esc(adminCelula(r,c))}</td>`).join("")+
-        (A_TBL==="clients" ? `<td>${/^A\d+(-[A-Z]{2})?$/.test(r.client_key||"") ? pvAnexa(parseInt(r.client_key.slice(1))) + flaguriAnexa(parseInt(r.client_key.slice(1)),"rt") : ""}</td>` : "")+
+        (A_TBL==="clients" ? `<td>${/^A\d+(-\d+)?(-[A-Z]{2})?$/.test(r.client_key||"") ? pvAnexa(parseInt(r.client_key.slice(1))) + flaguriAnexa(parseInt(r.client_key.slice(1)),"rt") : ""}</td>` : "")+
         `<td class="actions"><button class="btn sm sec" onclick="adminEdit('${String(r.id).replace(/'/g,"")}')">Editează</button></td></tr>`;
     }).join("")+"</tbody>";
   const n=rows.length, tot=A_ROWS.length;
@@ -5479,7 +5479,7 @@ async function spreRute(id){
   const baza = m.anexa_id ? "A" + (loc.length ? Math.min(...loc) : m.anexa_id) : "C" + m.id;
   const { data: gasite, error } = await db.from("clients").select("*").like("client_key", (m.anexa_id ? "A" : baza) + "%").limit(5000);
   if(error){ toast(error.message, true); return; }
-  const idCheie = p => { const k = /^A(\d+)(-[A-Z]{2})?$/.exec((p && p.client_key) || ""); return k ? +k[1] : null; };
+  const idCheie = p => { const k = /^A(\d+)(-\d+)?(-[A-Z]{2})?$/.exec((p && p.client_key) || ""); return k ? +k[1] : null; };
   const alLoc = p => loc.includes(idCheie(p)) || (p.anexe_ids || []).some(i => loc.includes(+i));
   const pct = (gasite || []).filter(p => m.anexa_id ? alLoc(p) : (p.client_key === baza || p.client_key.startsWith(baza + "-")));
   // punctul așa cum va fi după schimbarea deja programată, dacă are una
