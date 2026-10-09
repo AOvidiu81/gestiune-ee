@@ -5172,6 +5172,7 @@ function renderAdmin(){
         (A_TBL==="clients" ? `<td>${/^A\d+(-\d+)?(-[A-Z]{2})?$/.test(r.client_key||"") ? pvAnexa(parseInt(r.client_key.slice(1))) + flaguriAnexa(parseInt(r.client_key.slice(1)),"rt") : ""}</td>` : "")+
         // v5.17 (cerut de Ovidiu, 09.10): Editează = creion; la puncte de rută și butonul GPS → Google Maps
         `<td class="actions" style="white-space:nowrap"><button class="btn sm sec" title="Editează" onclick="adminEdit('${String(r.id).replace(/'/g,"")}')">✎</button>` +
+        (A_TBL==="clients" ? ` <button class="btn sm sec" title="Punct nou copiat din acesta (următoarea locație, aceeași zi)" onclick="adminCopie('${String(r.id).replace(/'/g,"")}')">⧉</button>` : "") +
         (A_TBL==="clients" ? (r.lat!=null && r.lon!=null && +r.lat && +r.lon
           ? ` <a class="btn sm sec" href="https://www.google.com/maps?q=${+r.lat},${+r.lon}" target="_blank" rel="noopener" title="Deschide punctul GPS în Google Maps (${+r.lat}, ${+r.lon})">📍</a>`
           : ` <button class="btn sm sec" disabled style="opacity:.35" title="Punctul nu are coordonate GPS">📍</button>`) : "") + `</td></tr>`;
@@ -5214,9 +5215,25 @@ function adminDeschide(rec, nou){
   $("a-btn-sterge").style.display = (rec && !nou) ? "" : "none";
   $("mod-admin").classList.add("on");
 }
-function adminNou(){ RUTE_COADA=[]; RUTE_ACUM=null; A_ID=null; adminDeschide(null); }
-function adminEdit(id){
+function adminNou(){ RUTE_COADA=[]; RUTE_ACUM=null; A_ID=null; A_COPIE_IDS=null; adminDeschide(null); }
+// v5.17 (cerut de Ovidiu, 09.10): ⧉ = punct nou copiat din altul (client, județ, localitate, telefon, frecvență, mașină, GPS…).
+// Codul propus: următoarea locație liberă, aceeași zi (A181-01-MA → A181-02-MA). Punctul nou ține și anexele punctului copiat.
+let A_COPIE_IDS = null;
+function adminCopie(id){
   RUTE_COADA=[]; RUTE_ACUM=null;
+  const r=A_ROWS.find(x=>String(x.id)===String(id)); if(!r) return;
+  const c={...r}; delete c.id; delete c.schimbare;
+  const k=/^A(\d+)-(\d+)-([A-Z]{2})$/.exec(r.client_key||"");
+  if(k){
+    const n=Math.max(0,...A_ROWS.map(x=>/^A(\d+)-(\d+)-([A-Z]{2})$/.exec(x.client_key||"")).filter(x=>x&&x[1]===k[1]&&x[3]===k[3]).map(x=>+x[2]))+1;
+    c.client_key="A"+k[1]+"-"+String(n).padStart(k[2].length,"0")+"-"+k[3];
+  }
+  A_ID=null; A_COPIE_IDS=(r.anexe_ids&&r.anexe_ids.length)?r.anexe_ids:null;
+  adminDeschide(c, true);
+  toast("Copie după "+r.client_key+" — schimbă strada, toaletele și GPS-ul, apoi Salvează");
+}
+function adminEdit(id){
+  RUTE_COADA=[]; RUTE_ACUM=null; A_COPIE_IDS=null;
   const r=A_ROWS.find(x=>String(x.id)===String(id));
   if(!r){ toast("Rândul nu mai există, reîncarcă lista",true); return; }
   A_ID=r.id; adminDeschide(r);
@@ -5236,6 +5253,7 @@ async function adminSalveaza(){
   if(A_TBL==="clients" && !A_ID && !rec.client_key)
     rec.client_key = "P"+Date.now().toString(36).toUpperCase();
   if(A_TBL==="clients" && RUTE_ACUM) ruteProgrameaza(rec, RUTE_ACUM);
+  if(A_TBL==="clients" && !A_ID && !RUTE_ACUM && A_COPIE_IDS) rec.anexe_ids = A_COPIE_IDS;
   const q = A_ID ? db.from(A_TBL).update(rec).eq("id",A_ID) : db.from(A_TBL).insert(rec);
   const {error}=await q;
   if(error){ toast(error.message,true); return; }
