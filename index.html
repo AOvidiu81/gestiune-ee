@@ -3860,11 +3860,15 @@ function verRtLipsa(m){
   const loc = anexeLocatie(a);
   const trebuie = Math.max(0, ANX.filter(x => loc.includes(x.id) && campDe(x.produs) === camp && (!x.data_livrarii || x.data_livrarii <= m.data))
     .reduce((t, x) => { const c = Math.abs(+x.cant || 0); return t + (x.tip_anexa === "R" ? -c : c); }, 0) - (m.tip_miscare === "RIDICARE" ? VER.ridSum : 0));
+  // v5.17: o anexă poate avea mai multe locații (Primăria: 19 locații × Marți / Vineri) → se adună punctele aceleiași zile;
+  // la o singură locație e câte un punct pe zi, deci rămâne ca înainte (fiecare punct = tot ce e pe anexă).
+  const peZi = new Map();
   for(const p of PCT.filter(x => (VER.chei || []).includes(x.client_key))){
     const r = { ...p }; schLista(p.schimbare).filter(s => s.de_la <= m.data).forEach(s => { if(camp in s) r[camp] = s[camp]; if("status" in s) r.status = s.status; });
     const are = r.status === "INACTIV" && trebuie ? 0 : (+r[camp] || 0);
-    if(are !== trebuie) return { camp, trebuie, are };
+    peZi.set(p.ziua || "", (peZi.get(p.ziua || "") || 0) + are);
   }
+  for(const [zi, are] of peZi) if(are !== trebuie) return { camp, trebuie, are: are + (peZi.size > 1 || zi ? " (" + (zi || "fără zi") + ")" : "") };
   return null;
 }
 async function verRtPorneste(){
@@ -5074,7 +5078,7 @@ const A_DEF = {
   clients:{
     titlu:"Puncte de rută", ord:"client",
     nota:"Punctele de servisare din aplicația de rute. Coordonatele se folosesc la navigare.",
-    lista:[["client_key","Cod"],["client","Client"],["jud","Jud."],["localitate","Localitate"],["ziua","Ziua"],["masina","Mașina"],["frecventa","Frecvență"],["_produse","Produse"],["status","Status"]],
+    lista:[["client_key","Cod"],["client","Client"],["jud","Jud."],["localitate","Localitate"],["locatie","Strada, nr [ locație ]"],["ziua","Ziua"],["masina","Mașina"],["frecventa","Frecvență"],["_produse","Produse"],["status","Status"]],
     campuri:[
       {c:"client_key",e:"Cod punct",t:"text",req:1},
       {c:"client",e:"Client",t:"text",up:1},
@@ -5166,7 +5170,11 @@ function renderAdmin(){
       return `<tr${inactiv?' style="opacity:.45"':''}${vr?' class="r-ver"':''}>`+
         d.lista.map(([c])=>`<td>${A_TBL==="clients" && c==="status" && r.schimbare ? statusIstoric(r) : esc(adminCelula(r,c))}</td>`).join("")+
         (A_TBL==="clients" ? `<td>${/^A\d+(-\d+)?(-[A-Z]{2})?$/.test(r.client_key||"") ? pvAnexa(parseInt(r.client_key.slice(1))) + flaguriAnexa(parseInt(r.client_key.slice(1)),"rt") : ""}</td>` : "")+
-        `<td class="actions"><button class="btn sm sec" onclick="adminEdit('${String(r.id).replace(/'/g,"")}')">Editează</button></td></tr>`;
+        // v5.17 (cerut de Ovidiu, 09.10): Editează = creion; la puncte de rută și butonul GPS → Google Maps
+        `<td class="actions" style="white-space:nowrap"><button class="btn sm sec" title="Editează" onclick="adminEdit('${String(r.id).replace(/'/g,"")}')">✎</button>` +
+        (A_TBL==="clients" ? (r.lat!=null && r.lon!=null && +r.lat && +r.lon
+          ? ` <a class="btn sm sec" href="https://www.google.com/maps?q=${+r.lat},${+r.lon}" target="_blank" rel="noopener" title="Deschide punctul GPS în Google Maps (${+r.lat}, ${+r.lon})">📍</a>`
+          : ` <button class="btn sm sec" disabled style="opacity:.35" title="Punctul nu are coordonate GPS">📍</button>`) : "") + `</td></tr>`;
     }).join("")+"</tbody>";
   const n=rows.length, tot=A_ROWS.length;
   $("a-nota").textContent = d.nota + "  —  " + (q ? `${n} din ${tot} rânduri` : `${tot} rânduri`);
