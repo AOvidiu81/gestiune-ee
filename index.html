@@ -587,6 +587,7 @@
       <div style="flex:0;min-width:160px"><label>Șofer</label><select id="rr-sofer" onchange="rrAfiseaza()"></select></div>
       <div style="flex:0;min-width:110px"><label>Status</label><select id="rr-status" onchange="rrAfiseaza()"></select></div>
       <div style="flex:0;min-width:130px"><label>Vizita</label><select id="rr-viz" onchange="rrAfiseaza()"><option value="">toate</option><option value="da">vizitate</option><option value="nu">nevizitate</option></select></div>
+      <div style="flex:0;min-width:170px"><label title="Ordinea sosirii = cum au ajuns șoferii la clienți în săptămâna aleasă (de la primul la ultimul); nevizitatele la sfârșit">Ordine</label><select id="rr-ord" onchange="rrAfiseaza()"><option value="">ca în listă</option><option value="sosire">ordinea sosirii (HHMM)</option></select></div>
       <div style="min-width:160px"><label>Caută</label><input id="rr-caut" placeholder="client, localitate…" oninput="rrAfiseaza()"></div>
       <div style="flex:0;min-width:120px"><label>Săptămâni</label><select id="rr-nsapt" onchange="rrAfiseaza()"><option value="3">ultimele 3</option><option value="6" selected>ultimele 6</option><option value="12">ultimele 12</option><option value="toate">toate</option></select></div>
       <div style="flex:0;min-width:140px"><label>Coloane</label><select id="rr-col" onchange="rrAfiseaza()"><option value="">esențiale</option><option value="toate">toate</option></select></div>
@@ -4784,6 +4785,12 @@ function rrAfiseaza(){
       });
     });
   }
+  // v5.18 (cerut de Ovidiu, 09.10): ordinea în care au ajuns șoferii (data + ora sosirii), ca s-o compare cu GPS-ul mașinii
+  const peSosire = $("rr-ord") && $("rr-ord").value === "sosire";
+  if(peSosire){
+    const ts = r => r.v && (r.v.arrive_time || r.v.updated_at) ? String(r.v.arrive_time || r.v.updated_at) : null;
+    rows.sort((a, b) => { const x = ts(a), y = ts(b); return (x ? 0 : 1) - (y ? 0 : 1) || String(x || "").localeCompare(String(y || "")); });
+  }
   RR_ROWS = rows;
   const viz_n = rows.filter(r => r.v).length;
   const wm = RR.wk.find(x => x.week_num === W);
@@ -4811,7 +4818,7 @@ function rrAfiseaza(){
       }
       const sofer = v ? [v.s.driver1, v.s.driver2].filter(Boolean).join(" & ") : "";
       const cel = {
-        "Client": `<b>${esc(c.client || "—")}</b>${c._orfan ? ' <span class="pill p-X" title="Vizita nu se mai potrivește cu niciun punct de rută (punct modificat sau șters)">punct negăsit</span>' : ""}`,
+        "Client": `${peSosire && v ? `<span class="muted" title="A ${i + 1}-a oprire">${i + 1}.</span> ` : ""}<b>${esc(c.client || "—")}</b>${c._orfan ? ' <span class="pill p-X" title="Vizita nu se mai potrivește cu niciun punct de rută (punct modificat sau șters)">punct negăsit</span>' : ""}`,
         "Localitate / locație": `${c.jud ? "<b>[" + esc(c.jud) + "]</b> " : ""}${esc([c.localitate, c.locatie].filter(Boolean).join(", ") || "—")}`,
         "Zi": esc(c.ziua || ""), "Traseu": esc(c.masina || ""), "Produse": esc(produse(c)),
         "Accesorii": `<span style="font-size:12px">${esc(c.accesorii || "")}</span>`,
