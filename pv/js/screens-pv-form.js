@@ -636,6 +636,26 @@ export async function openProcessVerbalForm({ driver, car, depot, processType, p
         missing.delete('productDetails');
         anyField = true;
       }
+      // s32: comanda cu mai multe produse (aceeasi locatie) -> cate un rand de produs pentru fiecare
+      if (Array.isArray(parsed.extraProducts) && parsed.extraProducts.length) {
+        state.productEntries = state.productEntries.slice(0, 1);
+        parsed.extraProducts.forEach((p) => {
+          const e = newProductEntry();
+          const up = withoutDiacritics(p.text || '').toUpperCase();
+          const mm = savedModels.find((m) => up.includes(withoutDiacritics(m).toUpperCase()));
+          if (mm) {
+            e.model = mm;
+            const rest = up.replace(withoutDiacritics(mm).toUpperCase(), '').trim();
+            const mt = (catalogByModel[mm] || []).find((t) => rest.includes(withoutDiacritics(t).toUpperCase()));
+            if (mt) e.type = mt;
+          } else e.model = p.text || '';
+          e.series = Array.from({ length: Math.max(1, Number(p.qty) || 1) }, () => '');
+          if (Array.isArray(p.aux) && p.aux.length) e.aux = potrivesteAux(p.aux, auxByModel[e.model.trim()] || []);
+          state.productEntries.push(e);
+        });
+        syncTotalQuantity();
+        anyField = true;
+      }
       if (parsed.mentiune) { state.mentiuneComanda = parsed.mentiune; anyField = true; }
       if (Array.isArray(parsed.seriiPunct) && parsed.seriiPunct.length) { state.seriiPunct = parsed.seriiPunct; anyField = true; }   // s30
       if (Array.isArray(parsed.aux) && parsed.aux.length) {

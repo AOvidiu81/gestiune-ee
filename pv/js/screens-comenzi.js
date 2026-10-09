@@ -53,7 +53,28 @@ function oraDin(ts) {
 
 /** Comanda -> obiectul pe care formularul de PV il stie deja de la importul
  * din WhatsApp (vezi parseGestiuneOrder in whatsapp-import.js). */
-function prefillDin(c) {
+// s32 (v5.13): comanda pe toata anexa — randurile legate (grup_id) se pun pe comanda principala (c.extra).
+// Randurile al caror rand principal nu mai e in lista (PV = V pe el) nu se mai arata.
+function grupeaza(rows) {
+  const byId = new Map(rows.map((r) => [r.id, r]));
+  rows.forEach((r) => { r.extra = []; });
+  const out = [];
+  rows.forEach((r) => {
+    if (r.grup_id && r.grup_id !== r.id) { const m = byId.get(r.grup_id); if (m) m.extra.push(r); return; }
+    out.push(r);
+  });
+  return out;
+}
+// Produsele comenzii pe locatii: o locatie = un PV (varianta B, Primaria); o singura locatie = un PV cu toate produsele
+function locatiile(c) {
+  const toate = [c, ...(c.extra || [])];
+  const k = (x) => [x.jud, x.loc, x.sat].map((v) => String(v || '').trim().toUpperCase()).join('|');
+  const m = new Map();
+  toate.forEach((x) => { const key = k(x); if (!m.has(key)) m.set(key, []); m.get(key).push(x); });
+  return [...m.values()];
+}
+
+function prefillDin(c, items) {
   const address = [c.jud ? `Jud. ${String(c.jud).toUpperCase()}` : '', c.loc, c.sat].filter(Boolean).join(', ');
   const ctr = c.nr_ctr
     ? `${c.nr_ctr}${c.ctr_data ? ' din ' + formatDateRo(parseDay(c.ctr_data)).replace(/\./g, '-') : ''}${c.anexa ? '  ·  ' + c.anexa : ''}`
@@ -74,6 +95,12 @@ function prefillDin(c) {
     series: (Array.isArray(c.serii) ? c.serii : []).map((s) => String((s && s.serie) || '').trim().replace(/^EE-?\s*/i, '')).filter(Boolean),
     // s30: seriile care sunt acum la client (locatia) — in PV soferul apasa pe cele ridicate
     seriiPunct: (Array.isArray(c.serii_punct) ? c.serii_punct : []).map((s) => ({ serie: String((s && s.serie) || '').trim().replace(/^EE-?\s*/i, ''), model: (s && (s.model || s.produs)) || '' })).filter((s) => s.serie),
+    // s32: celelalte produse ale comenzii (aceeasi locatie) -> randuri noi de produs in PV
+    extraProducts: (items || []).filter((x) => x.id !== c.id).map((x) => ({
+      qty: Math.abs(Number(x.buc) || 0),
+      text: [x.produs, x.model].filter(Boolean).join(' '),
+      aux: String(x.accesorii || '').split(',').map((y) => y.trim()).filter(Boolean),
+    })),
   };
 }
 
@@ -94,6 +121,13 @@ async function citesteDinCloud() {
       });
     }
   } catch (e) { /* fara serii */ }
+  try {
+    const rg = await supabase.rpc('comenzi_active_grup');   // s32
+    if (!rg.error) {
+      const g = new Map((rg.data || []).map((x) => [x.id, x.grup_id]));
+      rows.forEach((r) => { if (g.has(r.id)) r.grup_id = g.get(r.id); });
+    }
+  } catch (e) { /* fara grupare */ }
   await MetaRepo.set(CACHE_KEY, { rows, at: new Date().toISOString() });
   return rows;
 }
@@ -178,7 +212,7 @@ export function buildComenziActive({ driver, car, depot, onFaraComanda, pop, emb
         if (judet && (r.jud || '').toUpperCase() !== judet) return false;
         // Comanda cu PV facut dispare din lista soferilor (cerut 02.10): PV-ul ajunge in GestiuneEE
         // si ramane pe telefon in „Istoric documente”
-        if (r.pv_facut_de) return false;
+        if (locatiile(r).every((L) => L[0].pv_facut_de)) return false;   // s32: dispare cand fiecare locatie are PV
         const d = parseDay(r.data);
         if (!d) return perioada === 'toate';
         // "Azi" cuprinde si comenzile ramase din zilele trecute (inca fara PV = V)
@@ -188,10 +222,12 @@ export function buildComenziActive({ driver, car, depot, onFaraComanda, pop, emb
       });
     }
 
-    async function deschidePv(c) {
+    async function deschidePv(c, items) {
       const processType = TIP_PV[c.tip_miscare];
       if (!processType) return;
-      await openProcessVerbalForm({ driver, car, depot, processType, prefill: prefillDin(c), miscareId: c.id });
+      const L = items || locatiile(c)[0];   // s32: PV-ul unei locatii, cu toate produsele ei
+      const c0 = L[0];
+      await openProcessVerbalForm({ driver, car, depot, processType, prefill: prefillDin(Object.assign({}, c0, { tip_miscare: c.tip_miscare, serii: c0.serii, serii_punct: c0.serii_punct }), L), miscareId: c0.id });
       load(true);
     }
 
@@ -212,6 +248,8 @@ export function buildComenziActive({ driver, car, depot, onFaraComanda, pop, emb
         ]);
       }
       const produs = `${Math.abs(Number(c.buc) || 0)} buc ${[c.produs, c.model].filter(Boolean).join(' ')}`.trim();
+      const locs = locatiile(c);
+      const prodX = (x) => `${Math.abs(Number(x.buc) || 0)} buc ${[x.produs, x.model].filter(Boolean).join(' ')}`.trim() + (x.accesorii ? ` · ${accScurt(x.accesorii)}` : '');
       const serv = [c.frecv_serv, c.zi_servisare ? String(c.zi_servisare).replace(/,/g, ', ') : ''].filter(Boolean).join(', ');
 
       const eu = c.preluat_de && c.preluat_de === driver.name;
@@ -223,13 +261,38 @@ export function buildComenziActive({ driver, car, depot, onFaraComanda, pop, emb
       // „Preiau eu” a fost scos (02.10): PV-ul spune cine a facut comanda
       const actiuni = el('div', { class: 'ca-actiuni' }, [btnPv]);
 
+      // s32: mai multe locatii pe aceeasi comanda (Primaria) — fiecare locatie cu PV-ul ei
+      if (locs.length > 1) {
+        const blocuri = locs.map((L, i) => {
+          const x0 = L[0];
+          const facut = x0.pv_facut_de;
+          return el('div', { class: 'ca-linie', style: 'margin-top:8px;padding-top:6px;border-top:1px dashed rgba(0,0,0,.15)' }, [
+            el('div', {}, [`📍 ${i + 1}) `, [x0.jud, x0.loc, x0.sat].filter(Boolean).join(', ')]),
+            ...L.map((x) => el('div', {}, ['📦 ', prodX(x)])),
+            x0.pers_resp || x0.telefon ? el('div', {}, ['☎ ', x0.pers_resp || '', x0.telefon ? ' · ' : '', x0.telefon ? el('a', { href: `tel:${String(x0.telefon).replace(/[^\d+]/g, '')}`, onclick: (e) => e.stopPropagation() }, [x0.telefon]) : null]) : null,
+            facut
+              ? el('div', { class: 'ca-stare ca-pv' }, [`✔ PV facut de ${facut}, ${oraDin(x0.pv_facut_la)}`])
+              : el('button', { class: 'btn btn-primary ca-btn', style: 'margin-top:6px', onclick: (e) => { e.stopPropagation(); deschidePv(c, L); } }, [`📄 Creează PV · locația ${i + 1}`]),
+          ]);
+        });
+        return el('div', { class: 'ca-card', style: `border-left-color:${accent}` }, [
+          alteZile
+            ? el('div', { class: 'ca-tip ca-tip-rand', style: `color:${accent}`, onclick: (e) => { e.stopPropagation(); deschise.delete(c.id); renderLista(); } }, [el('span', {}, [tipLabel]), el('span', { class: 'ca-sageata' }, ['▴ restrânge'])])
+            : el('div', { class: 'ca-tip', style: `color:${accent}` }, [tipLabel]),
+          el('div', { class: 'ca-client' }, [c.client || '—']),
+          el('div', { class: 'ca-linie' }, [`📍 ${locs.length} locații · ${locs.filter((L) => L[0].pv_facut_de).length} cu PV`]),
+          serv ? el('div', { class: 'ca-linie' }, ['🔁 Servisare: ', serv]) : null,
+          c.observatii ? el('div', { class: 'ca-linie ca-obs' }, ['📝 ', c.observatii]) : null,
+          ...blocuri,
+        ]);
+      }
       return el('div', { class: 'ca-card', style: `border-left-color:${accent}`, onclick: () => deschidePv(c) }, [
         alteZile
           ? el('div', { class: 'ca-tip ca-tip-rand', style: `color:${accent}`, onclick: (e) => { e.stopPropagation(); deschise.delete(c.id); renderLista(); } }, [el('span', {}, [tipLabel]), el('span', { class: 'ca-sageata' }, ['▴ restrânge'])])
           : el('div', { class: 'ca-tip', style: `color:${accent}` }, [tipLabel]),
         el('div', { class: 'ca-client' }, [c.client || '—']),
         adresa ? el('div', { class: 'ca-linie' }, ['📍 ', adresa]) : null,
-        el('div', { class: 'ca-linie' }, ['📦 ', produs, c.accesorii ? ` · ${accScurt(c.accesorii)}` : '']),
+        ...locs[0].map((x) => el('div', { class: 'ca-linie' }, ['📦 ', prodX(x)])),   // s32: toate produsele comenzii
         seriiText(c.serii) ? el('div', { class: 'ca-linie' }, ['🔢 Serii de ridicat: ', seriiText(c.serii)]) : null,
         c.tip_miscare === 'REDUCERE' && seriiText(c.serii_punct) ? el('div', { class: 'ca-linie' }, ['📍 Pe punct acum: ', seriiText(c.serii_punct)]) : null,
         serv ? el('div', { class: 'ca-linie' }, ['🔁 Servisare: ', serv]) : null,
@@ -289,6 +352,7 @@ export function buildComenziActive({ driver, car, depot, onFaraComanda, pop, emb
         rows = cached?.value?.rows || [];
         statusText = cached?.value?.at ? `Se actualizeaza… (lista din ${oraDin(cached.value.at)})` : 'Se incarca…';
       }
+      rows = grupeaza(rows);   // s32
       renderFiltre();
       renderLista();
     }
