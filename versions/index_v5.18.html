@@ -1268,7 +1268,7 @@ document.querySelectorAll("nav button").forEach(b=>b.onclick=()=>{
   if(b.dataset.p==="admin"){ if(b.dataset.a) $("a-tabel").value = b.dataset.a; adminSchimba(); }
   if(b.dataset.p==="verificare") loadVerif();
   if(b.dataset.p==="pv"){ pvMod(b.dataset.v || "pv"); loadPV(); }
-  if(b.dataset.p==="raportrute") loadRR();
+  if(b.dataset.p==="raportrute") loadRR(true);   // v5.18: la fiecare deschidere, datele proaspete din bază
   if(b.dataset.p==="inceput") loadIZ();
   if(b.dataset.p==="foi") loadFP();
   try{ history.replaceState(null,"","#"+(b.dataset.h||b.dataset.p)); }catch(e){}
@@ -4712,6 +4712,24 @@ function rrUmpleFiltre(){
   rrOptiuni("rr-status", [...new Set(RR.cl.map(c => c.status).filter(Boolean))].sort(), "toate");
   if([...$("rr-status").options].some(o => o.value === "ACTIV")) $("rr-status").value = "ACTIV";
 }
+// v5.18 (cerut de Ovidiu, 09.10): cât timp pagina e deschisă, la 15 s se verifică dacă un șofer a apăsat „Am ajuns” /
+// „Am plecat” (ultima oră de sosire / plecare din visit_logs); dacă da, pagina se reîncarcă singură, cu filtrele neschimbate.
+let RR_SEMN = null;
+async function rrSemn(){
+  const [a, b] = await Promise.all([
+    db.from("visit_logs").select("arrive_time").order("arrive_time", { ascending: false, nullsFirst: false }).limit(1),
+    db.from("visit_logs").select("leave_time").order("leave_time", { ascending: false, nullsFirst: false }).limit(1)]);
+  if(a.error || b.error) return null;
+  return JSON.stringify([a.data, b.data]);
+}
+setInterval(async () => {
+  if(document.hidden || !RR_GATA || !$("p-raportrute") || !$("p-raportrute").classList.contains("on")) return;
+  try{
+    const sm = await rrSemn(); if(sm === null) return;
+    if(RR_SEMN !== null && sm !== RR_SEMN){ RR_SEMN = sm; await loadRR(true); toast("Rute șoferi actualizate"); return; }
+    RR_SEMN = sm;
+  }catch(_){}
+}, 15000);
 async function loadRR(forta){
   try{
     if(!RR_GATA || forta){
