@@ -5539,7 +5539,9 @@ async function spreRute(id){
     const zileNoi = zile.filter(z => !activ.some(g => g.ziua === ZI_RUTE[z]));
     const lista = zileNoi.length ? zileNoi : (activ.length ? [] : [""]);
     const multe = zile.length > 1 || activ.length > 0;
-    const frecv = multe ? "1/Sap" : String(m.frecv_serv || a.frecv_servisare || "").replace(/\s*\/\s*/g, "/");
+    // v5.17 (hotărât de Ovidiu, 09.10): punctul primește frecvența din comandă / anexă (2/Sap), și când sunt mai multe zile
+    // (înainte: „1/Sap” pe fiecare punct) — șoferii știu ce înseamnă 2/Sap, 3/Sap.
+    const frecv = String(m.frecv_serv || a.frecv_servisare || "").replace(/\s*\/\s*/g, "/");
     lista.forEach(z => {
       const cheie = z ? baza + "-" + ZI_ABR[z] : baza;
       const g = (gasite || []).find(p => p.client_key === cheie) || null;   // punct vechi, trecut pe INACTIV, cu același cod
