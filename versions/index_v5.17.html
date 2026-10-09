@@ -900,6 +900,7 @@
   #mc-conf.on{display:flex}
   #mc-conf table{width:100%;border-collapse:collapse;font-size:13px} #mc-conf td{padding:5px 8px;border-bottom:1px solid var(--bd);vertical-align:top}
   #mc-conf td:first-child{color:var(--mut);width:42%}
+  .anaf-box{margin:8px 0;padding:8px 10px;border:1px solid var(--bd);border-left:3px solid var(--g2);border-radius:6px;font-size:13px}
 </style>
 <div class="modal" id="mod-c">
   <div class="box">
@@ -908,10 +909,13 @@
     <div id="mc-ciorne"></div>
     <div class="mc-r"><div><label>Client / societate / beneficiar</label><input id="mc-nume"></div></div>
     <div class="mc-r r3">
-      <div><label>Tip ID</label><select id="mc-idtip"></select></div>
+      <div><label>Tip ID</label><select id="mc-idtip" onchange="mcCuiVerif()"></select></div>
       <div><label>Atribut fiscal</label><select id="mc-atr"><option value=""></option></select></div>
-      <div><label>Număr</label><input id="mc-cui"></div>
+      <div><label>Număr</label><div style="display:flex;gap:6px"><input id="mc-cui" oninput="mcCuiVerif()" onblur="mcCuiRO()" style="flex:1;min-width:0">
+        <button type="button" class="btn sm sec" id="mc-anaf-b" onclick="mcAnaf()" title="Caută firma la ANAF după CUI/CIF (denumire, sediu, TVA, stare, bilanț)">ANAF</button></div>
+        <div id="mc-cui-info" style="font-size:12px;margin-top:3px"></div></div>
     </div>
+    <div id="mc-anaf"></div>
     <div class="mc-r r2">
       <div><label>Reprezentant legal</label><input id="mc-pers" placeholder="nume și prenume"></div>
       <div><label>Funcția</label><input id="mc-func" list="dl-functii" placeholder="Administrator, Director general, Primar…"><datalist id="dl-functii"><option value="Administrator"><option value="Director general"><option value="Director"><option value="Primar"><option value="Asociat unic"><option value="Președinte"></datalist></div>
@@ -2290,8 +2294,88 @@ function openClient(id){
   $("mc-pers").value=c?(c.pers_resp||""):""; $("mc-tel").value=c?(c.telefon||""):""; $("mc-email").value=c?(c.email||""):""; $("mc-obs").value=c?(c.observatii||""):"";
   $("mc-func").value=c?(c.reprezentant_functie||""):"";
   MC_CIORNA = null; $("mc-conf").classList.remove("on"); $("mc-ciorne").innerHTML = "";
+  $("mc-anaf").innerHTML = ""; mcCuiVerif();
   $("mod-c").classList.add("on");
   if(!c) mcCiorne();
+}
+// v5.17 (cerut de Ovidiu, 09.10): verificarea numărului DOAR la firme (CUI / CIF) — cifra de control, dublură, căutare la ANAF.
+// La persoane fizice (CNP) nu se verifică nimic. Toate sunt doar avertismente: se poate salva oricum.
+const mcEFirma = () => ["CUI","CIF"].includes($("mc-idtip").value);
+const cuiCurat = v => String(v || "").toUpperCase().replace(/\s/g, "").replace(/^RO/, "");
+function cuiValid(v){
+  const c = cuiCurat(v); if(!/^\d{2,10}$/.test(c)) return false;
+  const k = "753217532", n = c.slice(0, -1).padStart(9, "0");
+  let sum = 0; for(let i = 0; i < 9; i++) sum += (+n[i]) * (+k[i]);
+  let ctl = (sum * 10) % 11; if(ctl === 10) ctl = 0;
+  return ctl === +c.slice(-1);
+}
+function mcCuiProbleme(){
+  if(!mcEFirma()) return [];
+  const c = cuiCurat($("mc-cui").value); if(!c) return [];
+  const p = [];
+  if(!cuiValid(c)) p.push({ r: 1, t: "Număr greșit — cifra de control nu se potrivește. Verifică cifrele." });
+  const id = +$("mc-id").value || 0;
+  const alt = (typeof CLI !== "undefined" ? CLI : []).filter(x => x.id !== id && cuiCurat(x.cui) === c);
+  if(alt.length) p.push({ r: 0, t: "Există deja la clientul " + alt.map(x => x.nume).join(", ") + "." });
+  return p;
+}
+function mcCuiVerif(){
+  const f = mcEFirma(); $("mc-anaf-b").style.display = f ? "" : "none";
+  if(!f) $("mc-anaf").innerHTML = "";
+  const c = cuiCurat($("mc-cui").value), p = mcCuiProbleme();
+  $("mc-cui-info").innerHTML = !f || !c ? "" : p.length
+    ? p.map(x => `<div style="color:${x.r ? "#e5534b" : "#d97706"}">⚠ ${esc(x.t)}</div>`).join("")
+    : '<span style="color:#3fb950">✓ Număr valid</span>';
+}
+function mcCuiRO(){   // „RO123…” scris în Număr → RO trece la Atribut fiscal
+  if(!mcEFirma()) return;
+  const v = $("mc-cui").value.trim();
+  if(/^ro\s*\d/i.test(v)){ $("mc-cui").value = cuiCurat(v); $("mc-atr").value = "RO"; mcCuiVerif(); }
+}
+let MC_ANAF = null;
+const leiF = v => v == null ? "—" : Number(v).toLocaleString("ro-RO") + " lei";
+async function mcAnaf(){
+  const c = cuiCurat($("mc-cui").value);
+  if(!c){ toast("Scrie întâi numărul CUI / CIF", true); $("mc-cui").focus(); return; }
+  const P = $("mc-anaf"); P.innerHTML = '<div class="muted" style="margin:6px 0">Se caută la ANAF…</div>';
+  let r; try { r = await db.functions.invoke("anaf", { body: { cui: c } }); } catch(e){ r = { error: e }; }
+  if(r.error || !r.data){
+    let m = "ANAF nu răspunde acum — completează de mână sau încearcă mai târziu.";
+    try { const j = await r.error.context.json(); if(j && j.eroare) m = j.eroare; } catch(_){}
+    P.innerHTML = `<div class="anaf-box" style="color:#e5534b">⚠ ${esc(m)}</div>`; return;
+  }
+  const d = r.data;
+  if(!d.gasit){ P.innerHTML = '<div class="anaf-box" style="color:#e5534b">⚠ Nu există nicio firmă cu acest număr la ANAF.</div>'; return; }
+  MC_ANAF = d;
+  const b = d.bilant, rau = d.inactiv || d.radiat;
+  const sediu = [d.judet && "Jud. " + d.judet, d.localitate, d.strada].filter(Boolean).join(", ") || d.adresa;
+  const obs = "Sediu: " + sediu + (d.nr_reg_com ? "; Reg. Com.: " + d.nr_reg_com : "");
+  const atrNou = d.platitor_tva ? "RO" : "";
+  const rand = (id, bif, et, val) => `<label style="display:flex;gap:6px;align-items:flex-start;margin:3px 0;font-weight:normal"><input type="checkbox" id="${id}"${bif ? " checked" : ""} style="width:auto;margin-top:3px"><span>${et}: <b>${esc(val || "—")}</b></span></label>`;
+  P.innerHTML = `<div class="anaf-box">
+    <div style="font-weight:600;margin-bottom:4px">Găsit la ANAF</div>
+    ${rau ? `<div style="color:#e5534b;font-weight:600;margin-bottom:4px">⚠ FIRMA ESTE ${d.radiat ? "RADIATĂ" : "INACTIVĂ"} la ANAF — verifică înainte de contract!</div>` : ""}
+    <div class="muted">${esc(d.stare)}${d.forma ? " · " + esc(d.forma) : ""}${d.caen ? " · CAEN " + esc(d.caen) : ""} · ${d.platitor_tva ? "plătitor de TVA" : "neplătitor de TVA"}</div>
+    ${b ? `<div class="muted">Bilanț ${b.an}: cifra de afaceri ${leiF(b.cifra_afaceri)} · ${b.pierdere_neta ? "pierdere " + leiF(b.pierdere_neta) : "profit " + leiF(b.profit_net)} · ${b.angajati ?? "—"} angajați</div>` : '<div class="muted">Bilanț: nu există la ANAF (instituție publică sau firmă nouă).</div>'}
+    <div style="margin-top:6px">Ce se completează:</div>
+    ${rand("mca-nume", true, "Nume", d.denumire)}
+    ${rand("mca-atr", true, "Atribut fiscal", atrNou || "(gol — neplătitor de TVA)")}
+    ${rand("mca-obs", true, "Observații (se adaugă)", obs)}
+    ${d.telefon ? rand("mca-tel", !$("mc-tel").value.trim(), "Telefon", d.telefon) : ""}
+    <div class="row" style="margin-top:6px;justify-content:flex-end"><div style="flex:1"></div>
+      <div style="flex:0"><button type="button" class="btn sm sec" onclick="$('mc-anaf').innerHTML=''">Închide</button></div>
+      <div style="flex:0"><button type="button" class="btn sm" onclick="mcAnafAplica()">Completează</button></div></div>
+  </div>`;
+  P.dataset.obs = obs; P.dataset.atr = atrNou;
+}
+function mcAnafAplica(){
+  const d = MC_ANAF, P = $("mc-anaf"); if(!d) return;
+  const bif = id => $(id) && $(id).checked;
+  if(bif("mca-nume")) $("mc-nume").value = d.denumire;
+  if(bif("mca-atr")) $("mc-atr").value = P.dataset.atr;
+  if(bif("mca-obs")){ const o = $("mc-obs").value.trim(); if(!o.includes(P.dataset.obs)) $("mc-obs").value = (o ? o + "\n" : "") + P.dataset.obs; }
+  if(bif("mca-tel")) $("mc-tel").value = d.telefon;
+  P.innerHTML = ""; mcCuiVerif(); toast("Completat din ANAF — verifică și salvează");
 }
 // v4.77 (cerut de Ovidiu, 08.10): ciornele clienților nesalvați, ținute în bază (tabel `ciorne`, tip 'client').
 let MC_CIORNA = null, MC_CIORNE = [];
@@ -2313,7 +2397,7 @@ function mcCiornaIa(id){
   const x = MC_CIORNE.find(y => y.id === id); if(!x) return;
   const d = x.date || {}; MC_CAMPURI.forEach(([el, c]) => { $(el).value = d[c] || ""; });
   if(!d.id_tip) $("mc-idtip").value = "CUI";
-  MC_CIORNA = id; mcCiorneDeseneaza();
+  MC_CIORNA = id; mcCiorneDeseneaza(); $("mc-anaf").innerHTML = ""; mcCuiVerif();
 }
 async function mcCiornaSterge(id){
   const x = MC_CIORNE.find(y => y.id === id);
@@ -2339,7 +2423,7 @@ function mcGoleste(){
   if(!confirm("Ștergeți informațiile din acest card?")) return;
   MC_CAMPURI.forEach(([el]) => { $(el).value = ""; });
   $("mc-idtip").value = "CUI"; $("mc-atr").value = "RO";
-  MC_CIORNA = null; mcCiorneDeseneaza();
+  MC_CIORNA = null; mcCiorneDeseneaza(); $("mc-anaf").innerHTML = ""; mcCuiVerif();
 }
 function mcVerifica(){
   const d = mcDate();
@@ -2348,7 +2432,8 @@ function mcVerifica(){
   $("mc-conf-t").textContent = nou ? "Creați acest client?" : "Salvați modificările clientului?";
   $("mc-conf-ok").textContent = nou ? "Creează client nou" : "Salvează modificările";
   d.nume = d.nume.toUpperCase();
-  $("mc-conf-date").innerHTML = "<table>" + MC_CAMPURI.map(([, c, l]) => `<tr><td>${esc(l)}</td><td><b>${esc(d[c] || "—")}</b></td></tr>`).join("") + "</table>";
+  const prb = mcCuiProbleme();
+  $("mc-conf-date").innerHTML = prb.map(x => `<div style="color:${x.r ? "#e5534b" : "#d97706"};margin-bottom:6px">⚠ ${esc(x.t)} Poți salva oricum.</div>`).join("") + "<table>" + MC_CAMPURI.map(([, c, l]) => `<tr><td>${esc(l)}</td><td><b>${esc(d[c] || "—")}</b></td></tr>`).join("") + "</table>";
   $("mc-conf").classList.add("on");
 }
 async function saveClient(dupa){
