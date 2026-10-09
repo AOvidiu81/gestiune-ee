@@ -1172,6 +1172,40 @@
   </div>
 </div></div>
 
+<div class="modal" id="mod-pl"><div class="box" style="max-width:1100px">
+  <h3>Puncte pe locații</h3>
+  <div id="pl-cap" class="muted" style="margin-bottom:10px;line-height:1.5"></div>
+  <div id="pl-alege" style="display:none">
+    <p style="margin:0 0 12px">Câte locații are această comandă? <span class="muted">(un punct de rută pe fiecare locație și pe fiecare zi de servisare)</span></p>
+    <div class="row" style="justify-content:flex-start;gap:10px">
+      <div style="flex:0"><button class="btn" onclick="plOLocatie()">O singură locație (ca până acum)</button></div>
+      <div style="flex:0"><button class="btn sec" onclick="plMaiMulte()">Mai multe locații</button></div>
+      <div style="flex:1"></div>
+      <div style="flex:0"><button class="btn sec" onclick="closeModal('mod-pl')">Renunță</button></div>
+    </div>
+  </div>
+  <div id="pl-multe" style="display:none">
+    <div class="grid3" id="pl-comun"></div>
+    <div style="margin:12px 0 6px;font-weight:600">Mașina pe fiecare zi</div>
+    <div id="pl-zile" style="display:flex;gap:12px;flex-wrap:wrap"></div>
+    <details style="margin:12px 0 4px"><summary style="cursor:pointer;font-weight:600">Lipește din Excel</summary>
+      <p class="muted" style="margin:6px 0">Copiază rândurile din Excel (ex. <i>HD · HUNEDOARA · SKATE PARK · 4 · 2/Sap · 45.762878 · 22.912257</i>) și lipește-le aici. Aplicația ia numele locației, numărul de bucăți și cele două coordonate.</p>
+      <textarea id="pl-lipire" rows="4" style="width:100%"></textarea>
+      <div style="margin-top:6px"><button class="btn sm" onclick="plLipeste()">Pune în tabel</button></div>
+    </details>
+    <div class="tw" style="max-height:none;margin-top:8px"><table id="pl-tbl"></table></div>
+    <div class="row" style="margin-top:8px;align-items:center">
+      <div style="flex:0"><button class="btn sm sec" onclick="plRandNou()">+ Locație</button></div>
+      <div style="flex:1" id="pl-total"></div>
+    </div>
+    <div class="row" style="margin-top:14px;justify-content:flex-end">
+      <div style="flex:1"></div>
+      <div style="flex:0"><button class="btn sec" onclick="closeModal('mod-pl')">Renunță</button></div>
+      <div style="flex:0"><button class="btn" onclick="plCreeaza()">Creează punctele</button></div>
+    </div>
+  </div>
+</div></div>
+
 <div class="modal" id="mod-admin"><div class="box">
   <h3 id="a-titlu">Editare</h3>
   <div class="grid3" id="a-form"></div>
@@ -5492,11 +5526,146 @@ function ruteProgrameaza(rec, x){
   const l = schLista(x.orig && x.orig.schimbare).filter(e => e.de_la !== x.deLa); l.push(s);
   rec.schimbare = schImpacheteaza(schLista(schImpacheteaza(l)));
 }
+// ================= v5.17: PUNCTE PE LOCAȚII (propus de Ovidiu, 09.10) =================
+// Comandă cu mai multe locații (Primăria: 30 toalete pe 19 locații, servisare Marți + Vineri): o fereastră cu un rând pe
+// locație (strada / locația, bucăți, GPS) → un punct pe fiecare locație și fiecare zi, cu codul A<anexa>-<nr loc>-<zi>.
+// Punctele care există deja (același cod) se sar. Totalul bucăților se compară cu anexa.
+let PL = null, PL_SARI = false;
+const PL_COD = /^A(\d+)-(\d+)-([A-Z]{2})$/;
+async function plPorneste(m){
+  const a = ANX.find(x => x.id === m.anexa_id) || {}, loc = anexeLocatie(a);
+  const baza = "A" + (loc.length ? Math.min(...loc) : m.anexa_id);
+  const { data: gasite, error } = await db.from("clients").select("*").like("client_key", baza + "-%").limit(5000);
+  if(error){ toast(error.message, true); return; }
+  const prod = faraDiac(m.produs).toUpperCase();
+  const camp = /TOALET/.test(prod) ? "toalete" : /CONTAINER|CAB/.test(prod) ? "containere" : /GARD/.test(prod) ? "garduri" : null;
+  const campDe = p => { const u = faraDiac(p || "").toUpperCase(); return /TOALET/.test(u) ? "toalete" : /CONTAINER|CAB/.test(u) ? "containere" : /GARD/.test(u) ? "garduri" : null; };
+  const total = camp ? ANX.filter(x => loc.includes(x.id) && campDe(x.produs) === camp && (!x.data_livrarii || !m.data || x.data_livrarii <= m.data))
+    .reduce((t, x) => { const c = Math.abs(+x.cant || 0); return t + (x.tip_anexa === "R" ? -c : c); }, 0) : Math.abs(+m.buc || 0);
+  const zile = String(a.zi_servisare || "").split(",").map(z => faraDiac(z).trim().toUpperCase()).filter(z => ZI_ABR[z]);
+  const existente = (gasite || []).filter(p => PL_COD.test(p.client_key));
+  const rows = [];
+  existente.forEach(p => { const k = PL_COD.exec(p.client_key); if(!rows.some(r => r.nr === k[2]))
+    rows.push({ nr: k[2], localitate: p.localitate || "", locatie: p.locatie || "", buc: camp ? (+p[camp] || 0) : "", lat: p.lat ?? "", lon: p.lon ?? "", exista: true }); });
+  rows.sort((x, y) => +x.nr - +y.nr);
+  const masini = {}; zile.forEach(z => { const p = existente.find(q => q.ziua === ZI_RUTE[z]); masini[z] = p ? p.masina : "Traseu I"; });
+  PL = { m, a, loc, baza, camp, total, zile, rows, existente, masini, unic: (gasite || []).some(p => /^A\d+(-[A-Z]{2})?$/.test(p.client_key)) };
+  $("pl-cap").innerHTML = `<b>${esc(m.client || "")}</b> · ${esc(m.tip_miscare)} ${fmtD(m.data)} · ${esc(a.anexa || "")} · <b>${total}</b> ${esc(m.produs || "")} ${esc(m.model || "")} · ` +
+    `${esc(m.frecv_serv || a.frecv_servisare || "")} · ${zile.length ? zile.map(z => ZI_RUTE[z]).join(", ") : "<span style='color:#e5534b'>anexa nu are zile de servisare bifate</span>"}`;
+  const multe = existente.length > 0;
+  $("pl-alege").style.display = multe ? "none" : ""; $("pl-multe").style.display = multe ? "" : "none";
+  if(multe) plDeseneaza();
+  $("mod-pl").classList.add("on");
+}
+function plOLocatie(){ closeModal("mod-pl"); PL_SARI = true; spreRute(PL.m.id); }
+function plMaiMulte(){
+  if(!PL.zile.length){ toast("Bifează întâi zilele de servisare pe anexă", true); return; }
+  if(!PL.rows.length) PL.rows.push({ nr: "01", localitate: PL.a.loc || PL.m.loc || "", locatie: "", buc: "", lat: "", lon: "" });
+  $("pl-alege").style.display = "none"; $("pl-multe").style.display = ""; plDeseneaza();
+}
+function plCiteste(){
+  PL.comun = { jud: $("pl-jud").value.trim().toUpperCase(), telefon: $("pl-tel").value.trim(), frecventa: $("pl-frecv").value.trim(), accesorii: $("pl-acc").value.trim() };
+  PL.zile.forEach(z => { const el = $("pl-m-" + z); if(el) PL.masini[z] = el.value; });
+  document.querySelectorAll("#pl-tbl tr[data-i]").forEach(tr => {
+    const r = PL.rows[+tr.dataset.i]; if(!r || r.exista) return;
+    ["localitate","locatie","buc","lat","lon"].forEach(c => { const el = tr.querySelector(`[data-c="${c}"]`); if(el) r[c] = el.value.trim(); });
+  });
+}
+function plDeseneaza(){
+  const m = PL.m, a = PL.a, c = PL.comun || { jud: a.jud || m.jud || "", telefon: [m.pers_resp, m.telefon].filter(Boolean).join(" "),
+    frecventa: String(m.frecv_serv || a.frecv_servisare || "").replace(/\s*\/\s*/g, "/"), accesorii: m.accesorii || a.accesorii || "" };
+  $("pl-comun").innerHTML = `<div><label>Județ</label><input id="pl-jud" value="${esc(c.jud)}"></div>` +
+    `<div><label>Telefon</label><input id="pl-tel" value="${esc(c.telefon)}"></div>` +
+    `<div><label>Frecvență</label><input id="pl-frecv" list="dl-plf" value="${esc(c.frecventa)}"><datalist id="dl-plf">${nomv("frecv_servisare").map(o => `<option value="${esc(o)}">`).join("")}</datalist></div>` +
+    `<div><label>Accesorii</label><input id="pl-acc" value="${esc(c.accesorii)}"></div>`;
+  const opt = ["Traseu I","Traseu II","Traseu III","Traseu-EV"];
+  $("pl-zile").innerHTML = PL.zile.map(z => `<div><label>${esc(ZI_RUTE[z])}</label><select id="pl-m-${z}">${opt.map(o => `<option${o === PL.masini[z] ? " selected" : ""}>${o}</option>`).join("")}</select></div>`).join("");
+  const inp = (r, cc, w) => r.exista ? `<span>${esc(r[cc])}</span>` : `<input data-c="${cc}" value="${esc(r[cc])}" style="width:${w}" oninput="plTotal()">`;
+  $("pl-tbl").innerHTML = `<tr><th>Nr</th><th>Localitate</th><th>Strada, nr [ locație ]</th><th>Buc.</th><th>Latitudine</th><th>Longitudine</th><th>Coduri</th><th></th></tr>` +
+    PL.rows.map((r, i) => `<tr data-i="${i}"${r.exista ? ' style="opacity:.6" title="Există deja — punctele lui nu se schimbă"' : ""}><td>${esc(r.nr)}</td><td>${inp(r, "localitate", "150px")}</td><td>${inp(r, "locatie", "280px")}</td>` +
+      `<td>${inp(r, "buc", "55px")}</td><td>${inp(r, "lat", "105px")}</td><td>${inp(r, "lon", "105px")}</td>` +
+      `<td class="muted" style="font-size:12px">${PL.zile.map(z => esc(PL.baza + "-" + r.nr + "-" + ZI_ABR[z])).join("<br>")}</td>` +
+      `<td>${r.exista ? '<span class="muted">există</span>' : `<button class="btn sm sec" title="Scoate rândul" onclick="plScoate(${i})">✕</button>`}</td></tr>`).join("");
+  plTotal();
+}
+function plTotal(){
+  if(!PL) return; plCiteste();
+  const t = PL.rows.reduce((s, r) => s + (+r.buc || 0), 0), ok = t === PL.total;
+  $("pl-total").innerHTML = `<span style="color:${ok ? "#3fb950" : "#d97706"};font-weight:600">Total: ${t} din ${PL.total}${ok ? " ✓" : ""}</span>` +
+    ` <span class="muted">· ${PL.rows.length} locații × ${PL.zile.length} zile = ${PL.rows.length * PL.zile.length} puncte</span>`;
+}
+function plUrmNr(){ const n = Math.max(0, ...PL.rows.map(r => +r.nr || 0)) + 1; return String(n).padStart(2, "0"); }
+function plRandNou(){ plCiteste(); PL.rows.push({ nr: plUrmNr(), localitate: PL.a.loc || PL.m.loc || "", locatie: "", buc: "", lat: "", lon: "" }); plDeseneaza(); }
+function plScoate(i){ plCiteste(); PL.rows.splice(i, 1); plDeseneaza(); }
+function plLipeste(){
+  plCiteste();
+  const txt = $("pl-lipire").value; if(!txt.trim()){ toast("Lipește întâi rândurile din Excel", true); return; }
+  // un rând gol (fără locație, bucăți, GPS) se înlocuiește
+  PL.rows = PL.rows.filter(r => r.exista || r.locatie || r.buc || r.lat || r.lon);
+  let n = 0;
+  txt.split(/\r?\n/).forEach(l => {
+    const cel = l.split(l.includes("\t") ? "\t" : /\s{2,}/).map(x => x.trim()).filter(x => x !== ""); if(!cel.length) return;
+    const nr = x => /^-?\d+([.,]\d+)?$/.test(x);
+    const gps = cel.filter(x => /^-?\d+[.,]\d{3,}$/.test(x)).map(x => x.replace(",", "."));
+    const buc = cel.find(x => /^\d+$/.test(x));
+    const text = cel.filter(x => !nr(x) && !/^\d+\s*\/\s*\S+/.test(x));
+    let jud = "", locl = "", strada = "";
+    if(text.length && /^[A-Za-z]{2}$/.test(text[0])) jud = text.shift().toUpperCase();
+    if(text.length >= 2){ locl = text.shift(); strada = text.join(" "); } else strada = text.join(" ");
+    if(jud && !$("pl-jud").value.trim()) $("pl-jud").value = jud;
+    PL.rows.push({ nr: plUrmNr(), localitate: (locl || PL.a.loc || PL.m.loc || "").toUpperCase(), locatie: strada, buc: buc || "", lat: gps[0] || "", lon: gps[1] || "" });
+    n++;
+  });
+  $("pl-lipire").value = ""; plDeseneaza(); toast(n + " locații puse în tabel — verifică-le");
+}
+async function plCreeaza(){
+  plCiteste();
+  const m = PL.m, noi = [], sarite = [], gresite = [];
+  const deLa = (m.data && m.data > today()) ? m.data : null;
+  const ids = [...new Set([...PL.loc, m.anexa_id].filter(Boolean))];
+  for(const r of PL.rows){
+    if(r.exista) { sarite.push(r.nr); continue; }
+    if(!r.locatie && !r.lat){ gresite.push(r.nr + " (fără locație)"); continue; }
+    const lat = r.lat === "" ? null : Number(String(r.lat).replace(",", ".")), lon = r.lon === "" ? null : Number(String(r.lon).replace(",", "."));
+    if((lat !== null && isNaN(lat)) || (lon !== null && isNaN(lon))){ gresite.push(r.nr + " (GPS greșit)"); continue; }
+    for(const z of PL.zile){
+      const cod = PL.baza + "-" + r.nr + "-" + ZI_ABR[z];
+      if(PL.existente.some(p => p.client_key === cod)){ sarite.push(cod); continue; }
+      const rec = { client_key: cod, client: (m.client || "").toUpperCase(), jud: PL.comun.jud || null, localitate: (r.localitate || "").toUpperCase() || null,
+        locatie: r.locatie || null, ziua: ZI_RUTE[z], masina: PL.masini[z] || null, frecventa: PL.comun.frecventa || null, telefon: PL.comun.telefon || null,
+        toalete: 0, containere: 0, garduri: 0, accesorii: PL.comun.accesorii || null, lat, lon, cartela: false, status: "ACTIV" };
+      if(PL.camp) rec[PL.camp] = +r.buc || 0;
+      ruteProgrameaza(rec, { ids, deLa });
+      noi.push(rec);
+    }
+  }
+  if(gresite.length){ toast("De corectat: " + gresite.join(", "), true); return; }
+  if(!noi.length){ toast("Nu e niciun punct nou de creat" + (sarite.length ? " — toate există deja" : ""), true); return; }
+  const t = PL.rows.reduce((s, r) => s + (+r.buc || 0), 0);
+  if(!confirm("Se creează " + noi.length + " puncte de rută noi" + (sarite.length ? " (cele care există deja se sar)" : "") + ".\n\n" +
+    noi.slice(0, 12).map(x => x.client_key + " · " + (x.locatie || "") + " · " + (PL.camp ? x[PL.camp] + " buc" : "")).join("\n") + (noi.length > 12 ? "\n… și încă " + (noi.length - 12) : "") +
+    (t !== PL.total ? "\n\n⚠ Totalul bucăților (" + t + ") nu se potrivește cu anexa (" + PL.total + ")." : "") +
+    (deLa ? "\n\nComanda e din " + fmtD(deLa) + ": punctele stau pe INACTIV până atunci." : "") + "\n\nContinui?")) return;
+  const { error } = await db.from("clients").insert(noi);
+  if(error){ toast(error.message, true); return; }
+  closeModal("mod-pl"); toast(noi.length + " puncte de rută create");
+  await incarcaPct();
+  if($("a-tabel") && $("a-tabel").value === "clients" && A_TBL === "clients") await adminIncarca();
+  if(VER && VER.f === "rt"){ VER.form = false; verRtArata(); }
+}
 // Un punct pe locație și zi (decizia lui Ovidiu, 04.10 + 05.10): suplimentarea / reducerea se trece pe
 // punctele care există deja la aceeași locație (cantitatea totală), iar zilele noi primesc punct nou,
 // tot cu cantitatea totală. Comandă cu dată viitoare → schimbarea intră pe rută din data comenzii.
 async function spreRute(id){
   const m = MISC.find(x => x.id === id); if(!m) return;
+  // v5.17: la amplasare / suplimentare cu mai multe bucăți se întreabă întâi câte locații are (o singură dată:
+  // dacă există deja puncte pe locații A..-NN-.. se deschide direct tabelul; dacă există puncte simple, merge ca înainte)
+  if(!PL_SARI && m.anexa_id && ["AMPLASARE","SUPLIMENTARE","EVENIMENT-A"].includes(m.tip_miscare) && Math.abs(+m.buc || 0) > 1){
+    const a0 = ANX.find(x => x.id === m.anexa_id) || {}, l0 = anexeLocatie(a0), b0 = "A" + (l0.length ? Math.min(...l0) : m.anexa_id);
+    const simple = PCT.some(p => p.client_key === b0 || /^-[A-Z]{2}$/.test(String(p.client_key || "").slice(b0.length)) && String(p.client_key).startsWith(b0));
+    if(!simple){ RUTE_MID = id; await plPorneste(m); return; }
+  }
+  PL_SARI = false;
   RUTE_MID = id;
   const a = ANX.find(x => x.id === m.anexa_id) || {};
   const loc = m.anexa_id ? anexeLocatie(a) : [];
