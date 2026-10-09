@@ -533,6 +533,7 @@
       <div style="flex:0"><label>Județ</label><select id="r-jud" onchange="genereazaRaport()"></select></div>
       <div style="flex:0"><label>Stare contract</label><select id="r-stare" onchange="genereazaRaport()"></select></div>
       <div style="flex:0"><label>TVA %</label><input id="r-tva" type="number" value="21" step="1" oninput="genereazaRaport()"></div>
+      <div style="flex:0" id="r-pana-w"><label title="Gol = zilele se completează până azi. Cu o dată (ex. ultima zi a lunii) se completează până la ea și rămâne așa până o golești.">Completat până la</label><div style="display:flex;gap:6px"><input id="r-pana" type="date" onchange="rlPanaSet(this.value)" style="width:auto"><button class="btn sec" onclick="rlPanaSet('')" title="Golește data — zilele se completează din nou până azi">✕</button></div></div>
       <div style="flex:0" id="r-mod-wrap"><label>Variantă</label><div style="display:flex;gap:6px"><button class="btn sec" id="r-mod-lucru" onclick="setModFact('lucru')">În lucru</button><button class="btn sec" id="r-mod-gata" onclick="setModFact('gata')">Gata de trimis</button></div></div>
       <div style="flex:0"><label>&nbsp;</label><button class="btn sec" onclick="exportRaport()">Export Excel</button></div>
       <div style="flex:0"><label>&nbsp;</label><button class="btn sec" onclick="window.print()">PDF / Print</button></div>
@@ -3501,6 +3502,7 @@ function setModFact(m){ R_MOD = m; genereazaRaport(); }
 function modFactButoane(){
   const fact = $("r-tip").value === "facturare";
   $("r-mod-wrap").style.display = fact ? "" : "none";
+  $("r-pana-w").style.display = fact ? "none" : "";
   const st = (id, activ, cul) => { $(id).style.cssText = activ ? "background:" + cul + ";border-color:" + cul + ";color:#fff" : ""; };
   st("r-mod-lucru", R_MOD === "lucru", "#D97706"); st("r-mod-gata", R_MOD === "gata", "#2E8B3C");
 }
@@ -3583,7 +3585,34 @@ async function miscariLuna(an, luna){
   return data || [];
 }
 
+// v5.17 (cerut de Ovidiu, 09.10): în Raport lună zilele se completează cu bucățile de la client (30, 30, 30…) până azi
+// (luna curentă), toată luna (lunile trecute), nimic (lunile viitoare). „Completat până la” = o dată pusă de el (de ex.
+// ultima zi a lunii, pentru trimiterea în Excel); pornește goală, se ține în bază (ciorne, tip 'rl_pana') până o golește.
+let RL_PANA = null, RL_PANA_ID = null, RL_PANA_INC = false;
+async function rlPanaIncarca(){
+  if(RL_PANA_INC) return; RL_PANA_INC = true;
+  const { data } = await db.from("ciorne").select("id,date").eq("tip", "rl_pana").order("id").limit(1);
+  if(data && data[0]){ RL_PANA_ID = data[0].id; RL_PANA = (data[0].date || {}).data || null; }
+  $("r-pana").value = RL_PANA || "";
+}
+async function rlPanaSet(v){
+  RL_PANA = v || null; $("r-pana").value = RL_PANA || "";
+  const date = { data: RL_PANA }, now = new Date().toISOString();
+  const { data, error } = RL_PANA_ID ? await db.from("ciorne").update({ date, updated_at: now }).eq("id", RL_PANA_ID).select("id")
+                                     : await db.from("ciorne").insert({ tip: "rl_pana", date }).select("id");
+  if(error) toast("Data nu s-a putut ține minte: " + error.message, true);
+  else if(data && data[0]) RL_PANA_ID = data[0].id;
+  toast(RL_PANA ? "Zilele se completează până la " + fmtD(RL_PANA) : "Zilele se completează până azi");
+  genereazaRaport();
+}
+function rlZiLimita(an, luna, nz){
+  const p1 = new Date(an, luna - 1, 1), pN = new Date(an, luna, 0), pe = RL_PANA ? dtz(RL_PANA) : null;
+  if(pe && pe >= p1) return pe > pN ? nz : pe.getDate();
+  const azi = dtz(today());
+  if(azi > pN) return nz; if(azi < p1) return 0; return azi.getDate();
+}
 async function raportLuna(){
+  await rlPanaIncarca();
   const r = randuriRaport();
   const an = +$("r-an").value, luna = +$("r-luna").value, nz = zileInLuna(an, luna);
   const p1 = new Date(an, luna - 1, 1);
@@ -3630,6 +3659,7 @@ async function raportLuna(){
   peAnexa.forEach(p => { const ch = p.nx ? p.x.a.contract_id + "|" + p.nx.linie : "id" + p.x.a.id; if(!grupe.has(ch)) grupe.set(ch, []); grupe.get(ch).push(p); });
   const azi = dtz(today()), pN = new Date(an, luna, 0), ref = azi && azi < pN ? azi : pN;
   let bucGrupate = 0; R_EXTRA = []; R_CEL = [];
+  const zL = rlZiLimita(an, luna, nz);
   // v5.08: locația la care nu mai e nimic de la începutul lunii și nu se schimbă nimic în lună nu mai apare
   [...grupe.keys()].forEach(ch => { const g = grupe.get(ch); if(!g.reduce((t, p) => t + p.col0, 0) && !g.some(p => p.zile.some(Boolean))) grupe.delete(ch); });
   R_RANDURI = [...grupe.values()].map(g => {
@@ -3638,7 +3668,7 @@ async function raportLuna(){
     let acum = g.reduce((t, p) => t + p.col0, 0);
     const col0 = acum || "", zile = new Array(nz).fill("");
     const cel = {};
-    for(let i = 0; i < nz; i++){ const d = g.reduce((t, p) => t + p.zile[i], 0); if(d){ acum += d; zile[i] = acum; cel[10 + i] = d > 0 ? "up" : "down"; } }
+    for(let i = 0; i < nz; i++){ const d = g.reduce((t, p) => t + p.zile[i], 0); if(d){ acum += d; zile[i] = acum; cel[10 + i] = d > 0 ? "up" : "down"; } else if(i < zL && acum) zile[i] = acum; }
     R_CEL.push(cel);
     bucGrupate += acum;
     const ids = g.map(p => p.x.a.id), ms = mis.filter(m => ids.includes(m.anexa_id));
@@ -3677,7 +3707,7 @@ async function raportLuna(){
   $("r-kpi").innerHTML = `<div>Poziții<b>${R_RANDURI.length}</b></div><div>Bucăți<b>${buc}</b></div><div>Mișcări în lună<b>${mis.length}</b></div>` +
     (ramase.length ? `<div>Fără anexă<b>${ramase.length}</b></div>` : "");
   $("r-nota").textContent = "Coloana „0” = ce era deja amplasat la începutul lunii. Zilele 1–" + nz +
-    " arată câte bucăți sunt la client din ziua aceea (se scrie doar în zilele în care s-a schimbat ceva); o linie pe locație și produs, cu ultima anexă în vigoare. „Livrat din depozit” e depozitul trecut pe anexă; dacă există o mișcare în luna aceea, se folosește depozitul mișcării.";
+    " arată câte bucăți sunt la client în fiecare zi, completat până " + (RL_PANA && dtz(RL_PANA) >= p1 ? "la " + fmtD(RL_PANA) : "azi") + " (zilele colorate = schimbări); o linie pe locație și produs, cu ultima anexă în vigoare. „Livrat din depozit” e depozitul trecut pe anexă; dacă există o mișcare în luna aceea, se folosește depozitul mișcării.";
   deseneazaRaport();
 }
 
