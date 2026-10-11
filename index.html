@@ -431,7 +431,7 @@
   <h1>GestiuneEE <span class="sub-marca">Euro Ecologic</span></h1>
   <span id="azi-sus" title="Data de azi (calculatorul)"></span>
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
-  <span class="ver">v5.24</span>
+  <span class="ver">v5.25</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -1062,6 +1062,15 @@
 </div>
 <style>
   /* v4.80 (cerut de Ovidiu, 08.10): fereastra anexei — ordinea lui, se mută / se redimensionează, ciorne, verificare la Salvează */
+  /* v5.25: fereastra din Administrare (și Puncte de rută) — bară albastră, se mută și se redimensionează */
+  #mod-admin .box{resize:both;overflow:auto;width:860px;max-width:98vw;max-height:96vh;min-width:380px;min-height:260px;position:relative}
+  #mod-admin .pr-s>h4{margin:12px 0 8px;font-size:11px;letter-spacing:.09em;text-transform:uppercase;color:var(--mut);font-weight:700;display:flex;gap:10px;align-items:center}
+  #mod-admin .pr-s>h4:after{content:"";flex:1;height:1px;background:var(--bd)}
+  #mod-admin .pr-g{display:grid;gap:10px;margin-bottom:8px}
+  #mod-admin .pr-g.c1{grid-template-columns:1fr} #mod-admin .pr-g.c2{grid-template-columns:1fr 1fr}
+  #mod-admin .pr-g.cj{grid-template-columns:110px 1fr} #mod-admin .pr-g.c4{grid-template-columns:repeat(4,1fr)}
+  #mod-admin textarea{width:100%;min-height:60px;resize:vertical}
+  @media(max-width:600px){ #mod-admin .pr-g.c2,#mod-admin .pr-g.c4,#mod-admin .pr-g.cj{grid-template-columns:1fr} }
   #mod-a .box{resize:both;overflow:auto;width:860px;max-width:98vw;max-height:96vh;min-width:400px;min-height:300px;position:relative}
   #ma-cap{cursor:move;user-select:none}
   #ma-ctx{font-size:13px;font-weight:400;color:var(--mut);margin-left:6px}
@@ -1241,7 +1250,7 @@
 </div></div>
 
 <div class="modal" id="mod-admin"><div class="box">
-  <h3 id="a-titlu">Editare</h3>
+  <h3 id="a-titlu" class="lux-cap cap-mut" title="Trage de aici ca să muți fereastra; dublu-clic = înapoi la loc">Editare</h3>
   <div class="grid3" id="a-form"></div>
   <div class="row" style="margin-top:16px;justify-content:flex-end">
     <div style="flex:0"><button class="btn danger" id="a-btn-sterge" onclick="adminSterge()">Șterge</button></div>
@@ -5248,7 +5257,8 @@ const A_DEF = {
       {c:"client",e:"Client",t:"text",up:1},
       {c:"jud",e:"Județ",t:"text",up:1},
       {c:"localitate",e:"Localitate",t:"text",up:1},
-      {c:"locatie",e:"Strada, nr [ locație ]",t:"text"},
+      {c:"locatie",e:"Strada, nr., sat, locație [ șantier · proiect · reper ]",t:"text"},
+      {c:"pers_resp",e:"Nume reprezentant șantier",t:"text",up:1},
       {c:"ziua",e:"Ziua",t:"sel",op:["Luni","Marti","Miercuri","Joi","Vineri","Sambata","Duminica"]},
       {c:"masina",e:"Mașina",t:"sel",op:["Traseu I","Traseu II","Traseu III","Traseu-EV"]},
       {c:"frecventa",e:"Frecvență",t:"nom",nom:"frecv_servisare"},
@@ -5260,7 +5270,18 @@ const A_DEF = {
       {c:"lat",e:"Latitudine",t:"num"},
       {c:"lon",e:"Longitudine",t:"num"},
       {c:"cartela",e:"Cartelă",t:"bool"},
-      {c:"status",e:"Status",t:"sel",op:["ACTIV","INACTIV"]}
+      {c:"status",e:"Status",t:"sel",op:["ACTIV","INACTIV"]},
+      {c:"observatii",e:"Observații",t:"ta"}
+    ],
+    // v5.25 (cerut de Ovidiu, 11.10): fereastra punctului pe rânduri
+    sectiuni:[
+      ["Client", [["c1",["client"]]]],
+      ["Locația de amplasare", [["cj",["jud","localitate"]],["c1",["locatie"]],["c2",["pers_resp","telefon"]]]],
+      ["Produse", [["c4",["toalete","containere","garduri","accesorii"]]]],
+      ["Punct de rută", [["c4",["client_key","ziua","masina","frecventa"]]]],
+      ["Coordonate GPS", [["c2",["lat","lon"]]]],
+      ["Stare", [["c2",["cartela","status"]]]],
+      ["Observații", [["c1",["observatii"]]]]
     ]
   }
 };
@@ -5352,6 +5373,7 @@ function adminOptiuniRef(ref){
 function adminCampHtml(f){
   const id="af-"+f.c;
   if(f.t==="bool") return `<div><label>${esc(f.e)}</label><select id="${id}"><option value="true">Da</option><option value="false">Nu</option></select></div>`;
+  if(f.t==="ta")   return `<div><label>${esc(f.e)}</label><textarea id="${id}"></textarea></div>`;
   if(f.t==="sel")  return `<div><label>${esc(f.e)}</label><select id="${id}">${f.op.map(o=>`<option value="${esc(o)}">${esc(o)}</option>`).join("")}</select></div>`;
   if(f.t==="ref")  return `<div><label>${esc(f.e)}</label><select id="${id}"><option value="">—</option>${adminOptiuniRef(f.ref).map(o=>`<option value="${o.v}">${esc(o.t)}</option>`).join("")}</select></div>`;
   if(f.t==="nom")  return `<div><label>${esc(f.e)}</label><input id="${id}" list="dl-${f.c}"><datalist id="dl-${f.c}">${nomv(f.nom).map(o=>`<option value="${esc(o)}">`).join("")}</datalist></div>`;
@@ -5362,7 +5384,15 @@ function adminCampHtml(f){
 function adminDeschide(rec, nou){
   const d=A_DEF[A_TBL];
   $("a-titlu").textContent = (rec && !nou ? "Editează" : "Adaugă") + " — " + d.titlu;
-  $("a-form").innerHTML = d.campuri.map(adminCampHtml).join("");
+  if(d.sectiuni){   // v5.25: pe secțiuni și rânduri (Puncte de rută)
+    const dupaC = Object.fromEntries(d.campuri.map(f => [f.c, f]));
+    $("a-form").className = "";
+    $("a-form").innerHTML = d.sectiuni.map(([t, randuri]) => `<div class="pr-s"><h4>${esc(t)}</h4>` +
+      randuri.map(([cl, cs]) => `<div class="pr-g ${cl}">${cs.filter(c => dupaC[c]).map(c => adminCampHtml(dupaC[c])).join("")}</div>`).join("") + `</div>`).join("");
+  } else {
+    $("a-form").className = "grid3";
+    $("a-form").innerHTML = d.campuri.map(adminCampHtml).join("");
+  }
   d.campuri.forEach(f=>{
     const el=$("af-"+f.c); if(!el) return;
     let v = rec ? rec[f.c] : null;
@@ -5694,7 +5724,7 @@ function plMaiMulte(){
   $("pl-alege").style.display = "none"; $("pl-multe").style.display = ""; plDeseneaza();
 }
 function plCiteste(){
-  PL.comun = { jud: $("pl-jud").value.trim().toUpperCase(), telefon: $("pl-tel").value.trim(), frecventa: $("pl-frecv").value.trim(), accesorii: $("pl-acc").value.trim() };
+  PL.comun = { jud: $("pl-jud").value.trim().toUpperCase(), pers: $("pl-pers").value.trim().toUpperCase(), telefon: $("pl-tel").value.trim(), frecventa: $("pl-frecv").value.trim(), accesorii: $("pl-acc").value.trim() };
   PL.zile.forEach(z => { const el = $("pl-m-" + z); if(el) PL.masini[z] = el.value; });
   document.querySelectorAll("#pl-tbl tr[data-i]").forEach(tr => {
     const r = PL.rows[+tr.dataset.i]; if(!r || r.exista) return;
@@ -5702,9 +5732,10 @@ function plCiteste(){
   });
 }
 function plDeseneaza(){
-  const m = PL.m, a = PL.a, c = PL.comun || { jud: a.jud || m.jud || "", telefon: [m.pers_resp, m.telefon].filter(Boolean).join(" "),
+  const m = PL.m, a = PL.a, c = PL.comun || { jud: a.jud || m.jud || "", pers: m.pers_resp || a.pers_contact || "", telefon: m.telefon || a.telefon || "",
     frecventa: String(m.frecv_serv || a.frecv_servisare || "").replace(/\s*\/\s*/g, "/"), accesorii: m.accesorii || a.accesorii || "" };
   $("pl-comun").innerHTML = `<div><label>Județ</label><input id="pl-jud" value="${esc(c.jud)}"></div>` +
+    `<div><label>Reprezentant șantier</label><input id="pl-pers" value="${esc(c.pers || "")}"></div>` +
     `<div><label>Telefon</label><input id="pl-tel" value="${esc(c.telefon)}"></div>` +
     `<div><label>Frecvență</label><input id="pl-frecv" list="dl-plf" value="${esc(c.frecventa)}"><datalist id="dl-plf">${nomv("frecv_servisare").map(o => `<option value="${esc(o)}">`).join("")}</datalist></div>` +
     `<div><label>Accesorii</label><input id="pl-acc" value="${esc(c.accesorii)}"></div>`;
@@ -5762,7 +5793,7 @@ async function plCreeaza(){
       const cod = PL.baza + "-" + r.nr + "-" + ZI_ABR[z];
       if(PL.existente.some(p => p.client_key === cod)){ sarite.push(cod); continue; }
       const rec = { client_key: cod, client: (m.client || "").toUpperCase(), jud: PL.comun.jud || null, localitate: (r.localitate || "").toUpperCase() || null,
-        locatie: r.locatie || null, ziua: ZI_RUTE[z], masina: PL.masini[z] || null, frecventa: PL.comun.frecventa || null, telefon: PL.comun.telefon || null,
+        locatie: r.locatie || null, ziua: ZI_RUTE[z], masina: PL.masini[z] || null, frecventa: PL.comun.frecventa || null, pers_resp: PL.comun.pers || null, telefon: PL.comun.telefon || null,
         toalete: 0, containere: 0, garduri: 0, accesorii: PL.comun.accesorii || null, lat, lon, cartela: false, status: "ACTIV" };
       if(PL.camp) rec[PL.camp] = +r.buc || 0;
       ruteProgrameaza(rec, { ids, deLa });
@@ -5872,7 +5903,7 @@ async function spreRute(id){
       const g = (gasite || []).find(p => p.client_key === cheie) || null;   // punct vechi, trecut pe INACTIV, cu același cod
       const rec = g ? viitor(g) : { client_key: cheie, client: m.client || "", jud: m.jud || "", localitate: m.loc || "", locatie: m.sat || "",
                 ziua: ZI_RUTE[z] || "", masina: "", frecventa: frecv,
-                telefon: [m.pers_resp, m.telefon].filter(Boolean).join(" ") || (model && model.telefon) || "",
+                pers_resp: m.pers_resp || (model && model.pers_resp) || "", telefon: m.telefon || (model && model.telefon) || "",
                 toalete: 0, containere: 0, garduri: 0, accesorii: null,
                 lat: model ? model.lat : null, lon: model ? model.lon : null,
                 cartela: model ? !!model.cartela : false, status: "ACTIV" };
@@ -6526,7 +6557,7 @@ window.addEventListener("hashchange", () => deschideSectiune((location.hash || "
 })();
 // v4.77 (cerut de Ovidiu, 08.10): și fereastra clientului se trage de titlu; dublu-clic pe titlu = înapoi la loc și mărime.
 // v4.79: la fel fereastra contractului.
-[["#mod-c .box", "mc-title"], ["#mod-k .box", "mk-title"], ["#mod-a .box", "ma-cap"]].forEach(([bs, cs]) => {
+[["#mod-c .box", "mc-title"], ["#mod-k .box", "mk-title"], ["#mod-a .box", "ma-cap"], ["#mod-admin .box", "a-titlu"]].forEach(([bs, cs]) => {
   const box = document.querySelector(bs), cap = $(cs);
   let dx = 0, dy = 0, start = null;
   cap.addEventListener("mousedown", e => { start = { x: e.clientX - dx, y: e.clientY - dy, top: box.getBoundingClientRect().top - dy }; e.preventDefault(); });
