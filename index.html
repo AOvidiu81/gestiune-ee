@@ -431,7 +431,7 @@
   <h1>GestiuneEE <span class="sub-marca">Euro Ecologic</span></h1>
   <span id="azi-sus" title="Data de azi (calculatorul)"></span>
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
-  <span class="ver">v5.23</span>
+  <span class="ver">v5.24</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -3918,7 +3918,7 @@ function verBanda(){
 async function verSalveaza(val){
   if(!VER) return;
   const f = VER.f, id = VER.id, v = val || "V";
-  if(!confirm("Salvați bifa " + f.toUpperCase() + " (" + v + (v === "L" ? " — lipsă" : "") + ") pentru această comandă?\n\n" + (VER.m.client || "") + " · " + VER.m.tip_miscare + " " + fmtD(VER.m.data))) return;
+  if(!confirm("Salvați bifa " + f.toUpperCase() + " (" + v + (v === "L" ? " — lipsă" : v === "-" ? " — goală" : "") + ") pentru această comandă?\n\n" + (VER.m.client || "") + " · " + VER.m.tip_miscare + " " + fmtD(VER.m.data))) return;
   const tot = grupTot(id, f);   // v5.14: PV / WaAp se pun pe toată comanda (toate produsele)
   const { error } = await (tot ? db.from("miscari").update({ [f]: v }).or(`id.eq.${id},grup_id.eq.${id}`) : db.from("miscari").update({ [f]: v }).eq("id", id));
   if(error){ toast(error.message, true); return; }
@@ -4063,10 +4063,13 @@ function verBandaPv(){
   const gasit = [...document.querySelectorAll("#pv-tbl tr.r-ver")];
   const desc = [m.tip_miscare + " " + fmtD(m.data), m.client, k ? "CTR " + k.nr_ctr : "", a ? a.anexa : "", Math.abs(+m.buc || 0) + " buc " + (m.produs || "") + " " + (m.model || "")].filter(Boolean).join(" · ");
   const nota = gasit.length ? "PV-ul comenzii e evidențiat mai jos — apasă „Deschide” ca să-l citești, apoi bifează dacă e corect."
-    : "⚠ Șoferul n-a făcut încă PV pentru această comandă (sau nu a ajuns în bază).";
+    : "⚠ Șoferul n-a făcut încă PV pentru această comandă (sau nu a ajuns în bază). Dacă ai PV-ul pe PC / pe hârtie (ex. comandă veche, salvată fără „generează”), bifează V.";
   b.innerHTML = `<div class="vt"><b>Verifici PV (Procese verbale) pentru comanda:</b> ${esc(desc)}<br><span class="muted">${esc(nota)}</span></div>` +
     (gasit.length ? `<button class="btn" onclick="verSalveaza()">✓ E corect — bifează PV</button>`
-                  : `<button class="btn" style="background:#f08c00;border-color:#f08c00" onclick="verSalveaza('L')">L — lipsă PV</button>`) +
+                  : `<button class="btn" style="background:#2f9e44;border-color:#2f9e44" onclick="verSalveaza('V')" title="Ai PV-ul în altă parte (pe PC, pe hârtie) — bifa devine V">V — am PV-ul (PC / hârtie)</button>` +
+                    `<button class="btn" style="background:#f08c00;border-color:#f08c00" onclick="verSalveaza('L')">L — lipsă PV</button>` +
+                    `<button class="btn sec" onclick="verSalveaza('X')" title="PV-ul nu există / nu se face">X — nu există</button>` +
+                    `<button class="btn sec" onclick="verSalveaza('-')" title="Golește bifa">- golește</button>`) +
     `<button class="btn sec" onclick="verInapoi(false)">← Înapoi la Comenzi</button>`;
   b.style.display = "";
   if(gasit[0] && !VER.derulat){ VER.derulat = true; gasit[0].scrollIntoView({ block: "center" }); }
