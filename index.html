@@ -227,6 +227,15 @@
   th.sortabil:hover{background:#d5e9dd}
   th.sortabil .sg{margin-left:4px;font-size:9px;opacity:.35}
   th.sortabil .sg.pe{opacity:1}
+  /* v5.21 (cerut de Ovidiu, 11.10): Comenzi — data colorată pe săptămâni, clientul colorat după bife */
+  td.zd-azi{color:#FACC15;font-weight:700;box-shadow:inset 3px 0 0 #FACC15}
+  td.zd-sa{color:#60A5FA;box-shadow:inset 3px 0 0 #60A5FA}
+  td.zd-st{color:#A78BFA;box-shadow:inset 3px 0 0 #A78BFA}
+  td.zd-sv{color:#2DD4BF;box-shadow:inset 3px 0 0 #2DD4BF}
+  b.cl-toate{color:#4ADE80} b.cl-unele{color:#F59E0B}
+  #m-leg{display:flex;flex-wrap:wrap;gap:14px;font-size:12px;margin:0 0 6px 2px;opacity:.9}
+  #m-leg span::before{content:"";display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:5px;vertical-align:-1px;background:currentColor}
+  #m-leg .lg-n{color:inherit;opacity:.8}
   .search{max-width:320px}
   details summary{cursor:pointer;font-weight:600;color:var(--g);padding:6px 0}
   .badge{background:var(--g);color:#fff;border-radius:10px;padding:1px 7px;font-size:11px;margin-left:6px}
@@ -401,7 +410,7 @@
 <header>
   <h1>GestiuneEE <span class="sub-marca">Euro Ecologic</span></h1>
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
-  <span class="ver">v5.20</span>
+  <span class="ver">v5.21</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -499,6 +508,8 @@
     </div>
   </div>
   <div class="kpi" id="m-kpi" style="display:none"></div><!-- v4.73: căsuțele Comenzi / Amplasate / Ridicate / Net ascunse deocamdată (cerut de Ovidiu, 07.10); se scoate style ca să revină -->
+  <div id="m-leg"><b class="muted">Data:</b><span style="color:#FACC15">Azi</span><span style="color:#60A5FA">Săptămâna asta (luni–duminică)</span><span style="color:#A78BFA">Săptămâna trecută</span><span style="color:#2DD4BF">Săptămâna viitoare</span>
+    <b class="muted" style="margin-left:10px">Client:</b><span style="color:#4ADE80">toate bifele V</span><span style="color:#F59E0B">în lucru (cel puțin o bifă)</span><span class="lg-n">nicio bifă</span></div>
   <div class="tw"><table id="m-tbl"></table></div>
 </section>
 
@@ -1541,11 +1552,37 @@ function pill(t){ const c=/AMPLASARE|EVENIMENT-A|SUPLIMENTARE/.test(t)?"A":/RIDI
 // Apăsarea pe capul coloanei întoarce ordinea. Se sortează lista încărcată, deci
 // exportul Excel iese în aceeași ordine ca ce se vede pe ecran.
 function sorteazaComenzi(camp){
-  M_SORT = { camp, dir: (M_SORT.camp === camp ? -M_SORT.dir : -1) };
+  // v5.21: la Data, trei stări: nou → vechi (▼), vechi → nou (▲), pe grupe (◆: Azi, săpt. asta, trecută, viitoare, apoi restul)
+  const d = M_SORT.camp !== camp ? -1 : camp === "data" ? (M_SORT.dir === -1 ? 1 : M_SORT.dir === 1 ? 0 : -1) : -M_SORT.dir;
+  M_SORT = { camp, dir: d };
   renderMiscari();
 }
+// v5.21: săptămâna începe LUNI și se termină DUMINICĂ (cerut de Ovidiu, 11.10), după ziua de azi a calculatorului
+function ziLocala(dt){ return dt.getFullYear() + "-" + String(dt.getMonth() + 1).padStart(2, "0") + "-" + String(dt.getDate()).padStart(2, "0"); }
+function grupaZilei(data){
+  if(!data) return "";
+  const az = new Date(); az.setHours(12, 0, 0, 0);
+  const azi = ziLocala(az), dum = new Date(az); dum.setDate(az.getDate() - (az.getDay() + 6) % 7);   // dum = lunea săptămânii
+  const plus = n => { const x = new Date(dum); x.setDate(dum.getDate() + n); return ziLocala(x); };
+  const d = String(data).slice(0, 10);
+  if(d === azi) return "azi";
+  if(d >= plus(0) && d <= plus(6)) return "sa";
+  if(d >= plus(-7) && d <= plus(-1)) return "st";
+  if(d >= plus(7) && d <= plus(13)) return "sv";
+  return "";
+}
+const GRUPA_ORD = { azi: 0, sa: 1, st: 2, sv: 3, "": 4 };
 function aplicaSortarea(){
   const c = M_SORT.camp, d = M_SORT.dir;
+  if(c === "data" && d === 0){
+    MISC.sort((a, b) => {
+      const ga = grupaZilei(a.data), gb = grupaZilei(b.data);
+      if(ga !== gb) return GRUPA_ORD[ga] - GRUPA_ORD[gb];
+      const r = String(a.data || "").localeCompare(String(b.data || ""));
+      return r !== 0 ? (ga === "" ? -r : r) : (b.id - a.id);   // în grupe: cronologic; restul: nou → vechi
+    });
+    return;
+  }
   MISC.sort((a, b) => {
     const x = a[c], y = b[c];
     let r;
@@ -1565,9 +1602,13 @@ function renderMiscari(){
   const flVer=(r,f)=>`<span class="flag ${esc(r[f])}" style="cursor:pointer" title="Deschide ${VER_FILE[f].nume} pe această comandă, verifici și bifezi" onclick="verDeschide(${r.id},'${f}')">${esc(r[f]||"-")}</span>`;
   const nrCtr=id=>{ const k=CTR.find(x=>x.id===id); return k?k.nr_ctr||"":""; };
   const nrAnx=id=>{ const a=ANX.find(x=>x.id===id); return a?(a.anexa||"—"):""; };
-  const sg = c => M_SORT.camp === c ? `<span class="sg pe">${M_SORT.dir > 0 ? "▲" : "▼"}</span>` : '<span class="sg">▼</span>';
-  let h=`<tr><th class="sortabil" onclick="sorteazaComenzi('data')" title="Apasă ca să întorci ordinea">Data${sg("data")}</th><th>Comandă</th><th>Buc</th><th>Produs</th><th>Tip</th><th>Accesorii</th><th>Client</th><th>Contract</th><th>Anexă</th><th>Jud</th><th>Loc./Com.</th><th>Sat/Str./Locație</th><th>Contract (dep.)</th><th>Depozit</th><th>Resp. șantier</th><th>Telefon</th><th>Rpt</th><th>RT</th><th>FAC</th><th>PV</th><th>ACT</th><th>WaAp</th><th>Frecv.</th><th class="noprint"></th></tr>`;
-  h+=MISC.map(r=>{const sr=subReferinta(r); return `<tr><td>${fmtD(r.data)}${sr?` <span class="pill p-T" title="Mai veche decât data de referință a stocului (${fmtD(sr)}) — nu intră în stoc">sub referință</span>`:""}</td><td>${r.grup_id&&r.grup_id!==r.id?'<span class="muted" title="Produs din aceeași comandă cu #'+r.grup_id+'">↳ </span>':""}${pill(r.tip_miscare)}${r.grup_id===r.id?' <span class="muted" title="Comanda are mai multe produse">+'+MISC.filter(x=>x.grup_id===r.id&&x.id!==r.id).length+'</span>':""}</td><td class="${r.buc<0?"neg":"pos"}">${r.buc}</td><td>${esc(r.produs)}</td><td>${esc(r.model)}</td><td style="font-size:12px;white-space:nowrap" title="${esc(r.accesorii||"")}">${esc(accScurt(r.accesorii))}</td><td><b>${esc(r.client)}</b></td><td>${esc(nrCtr(r.contract_id))}</td><td>${esc(nrAnx(r.anexa_id))}</td><td>${esc(r.jud)}</td><td>${esc(r.loc)}</td><td>${esc(r.sat)}</td><td>${esc(r.contract)}</td><td>${esc(r.depozit)}</td><td>${esc(r.pers_resp)}</td><td>${esc(r.telefon)}</td><td>${flVer(r, "rpt")}</td><td>${flVer(r, "rt")}</td><td>${flVer(r, "fac")}</td><td>${flVer(r, "pv")}${semnPvApp(r)}</td><td>${flVer(r, "act")}</td><td>${flVer(r, "waap")}</td><td>${esc(r.frecv_serv)}</td><td class="noprint actions"><button class="btn sm sec" onclick="openMiscare(${r.id})">Edit</button> <button class="btn sm" ${ruteStil(r)} onclick="spreRute(${r.id})" title="Verde = punctul de rută are coordonate GPS; portocaliu = fără punct sau fără coordonate. Deschide punctul de rută completat din comandă. Nu se salvează nimic până nu verifici și apeși Salvează.">→ Rute</button></td></tr>`;}).join("");
+  const sg = c => M_SORT.camp === c ? `<span class="sg pe">${M_SORT.dir > 0 ? "▲" : M_SORT.dir < 0 ? "▼" : "◆"}</span>` : '<span class="sg">▼</span>';
+  // v5.21: clientul verde = toate cele 6 bife pe V; normal = toate goale („-”); orice altă combinație (V, X, L, -) = portocaliu
+  const clCls = r => { const v = ["rpt","rt","fac","pv","act","waap"].map(f => r[f] || "-");
+    return v.every(x => x === "V") ? "cl-toate" : v.every(x => x === "-") ? "" : "cl-unele"; };
+  const sTit = M_SORT.camp === "data" ? (M_SORT.dir < 0 ? "Acum: nou → vechi. Apasă: vechi → nou" : M_SORT.dir > 0 ? "Acum: vechi → nou. Apasă: pe grupe (Azi, săptămâna asta, trecută, viitoare)" : "Acum: pe grupe (Azi, săptămâna asta, trecută, viitoare, apoi restul). Apasă: nou → vechi") : "Apasă ca să sortezi după dată";
+  let h=`<tr><th class="sortabil" onclick="sorteazaComenzi('data')" title="${sTit}">Data${sg("data")}</th><th>Comandă</th><th>Buc</th><th>Produs</th><th>Tip</th><th>Accesorii</th><th>Client</th><th>Contract</th><th>Anexă</th><th>Jud</th><th>Loc./Com.</th><th>Sat/Str./Locație</th><th>Contract (dep.)</th><th>Depozit</th><th>Resp. șantier</th><th>Telefon</th><th>Rpt</th><th>RT</th><th>FAC</th><th>PV</th><th>ACT</th><th>WaAp</th><th>Frecv.</th><th class="noprint"></th></tr>`;
+  h+=MISC.map(r=>{const sr=subReferinta(r); const gz=grupaZilei(r.data); return `<tr><td${gz?` class="zd-${gz}"`:""}>${fmtD(r.data)}${sr?` <span class="pill p-T" title="Mai veche decât data de referință a stocului (${fmtD(sr)}) — nu intră în stoc">sub referință</span>`:""}</td><td>${r.grup_id&&r.grup_id!==r.id?'<span class="muted" title="Produs din aceeași comandă cu #'+r.grup_id+'">↳ </span>':""}${pill(r.tip_miscare)}${r.grup_id===r.id?' <span class="muted" title="Comanda are mai multe produse">+'+MISC.filter(x=>x.grup_id===r.id&&x.id!==r.id).length+'</span>':""}</td><td class="${r.buc<0?"neg":"pos"}">${r.buc}</td><td>${esc(r.produs)}</td><td>${esc(r.model)}</td><td style="font-size:12px;white-space:nowrap" title="${esc(r.accesorii||"")}">${esc(accScurt(r.accesorii))}</td><td><b class="${clCls(r)}">${esc(r.client)}</b></td><td>${esc(nrCtr(r.contract_id))}</td><td>${esc(nrAnx(r.anexa_id))}</td><td>${esc(r.jud)}</td><td>${esc(r.loc)}</td><td>${esc(r.sat)}</td><td>${esc(r.contract)}</td><td>${esc(r.depozit)}</td><td>${esc(r.pers_resp)}</td><td>${esc(r.telefon)}</td><td>${flVer(r, "rpt")}</td><td>${flVer(r, "rt")}</td><td>${flVer(r, "fac")}</td><td>${flVer(r, "pv")}${semnPvApp(r)}</td><td>${flVer(r, "act")}</td><td>${flVer(r, "waap")}</td><td>${esc(r.frecv_serv)}</td><td class="noprint actions"><button class="btn sm sec" onclick="openMiscare(${r.id})">Edit</button> <button class="btn sm" ${ruteStil(r)} onclick="spreRute(${r.id})" title="Verde = punctul de rută are coordonate GPS; portocaliu = fără punct sau fără coordonate. Deschide punctul de rută completat din comandă. Nu se salvează nimic până nu verifici și apeși Salvează.">→ Rute</button></td></tr>`;}).join("");
   $("m-tbl").innerHTML=h||"<tr><td>Nicio comandă.</td></tr>";
 }
 function exportMiscari(){
