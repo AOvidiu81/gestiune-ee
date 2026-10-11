@@ -3,6 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<script>/* v5.27: pe ecran îngust (telefon) se pornește varianta de telefon, dacă n-a fost aleasă „Versiunea PC” */
+try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc") !== "1") document.documentElement.classList.add("mob"); }catch(e){}</script>
 <title>Gestiune - Euro Ecologic</title>
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#1a3769">
@@ -407,6 +409,50 @@
   #azi-sus{flex:1;text-align:center;font-size:14px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   #azi-sus .azi-n{opacity:.7;font-weight:500;margin-left:6px}
   @media (max-width:600px){ #azi-sus .azi-l{display:none} #azi-sus .azi-n{margin-left:0;opacity:1} }
+  /* v5.27 (cerut de Ovidiu, 11.10): varianta de telefon — Comenzi (cu comandă de urgență) · Stoc */
+  #mob{display:none}
+  html.mob body>header,html.mob body>nav,html.mob body>main{display:none!important}
+  html.mob #mob{display:flex;flex-direction:column;position:fixed;inset:0;z-index:150;background:var(--bg);color:var(--tx);font-size:15px}
+  #mob .mb-sus{background:#1a3769;color:#fff;padding:10px 14px 8px;display:flex;align-items:center;gap:8px}
+  #mob .mb-sus b{font-size:15px} #mob .mb-sus .mb-d{font-size:12px;opacity:.85}
+  #mob .mb-sus .mb-pc{margin-left:auto;background:rgba(255,255,255,.15);border:0;color:#fff;border-radius:8px;padding:6px 10px;font-size:12px}
+  #mob .mb-corp{flex:1;overflow:auto;padding:10px 12px 90px;-webkit-overflow-scrolling:touch}
+  #mob .mb-jos{display:flex;border-top:1px solid var(--bd);background:var(--card);padding-bottom:env(safe-area-inset-bottom)}
+  #mob .mb-jos button{flex:1;background:none;border:0;color:var(--mut);padding:10px 4px 12px;font-size:13px;font-weight:600}
+  #mob .mb-jos button.on{color:var(--acc)} #mob .mb-jos .mb-ico{display:block;font-size:20px;line-height:1.2}
+  #mob .mb-jos .mb-urg{color:#fff;background:#C0392B;margin:6px;border-radius:12px;flex:1.2}
+  #mob .mb-chips{display:flex;gap:6px;margin-bottom:8px;flex-wrap:wrap}
+  #mob .mb-chips button{border:1px solid var(--bd);background:var(--card);color:var(--tx);border-radius:16px;padding:6px 12px;font-size:13px}
+  #mob .mb-chips button.on{border-color:var(--acc);color:var(--acc);font-weight:700}
+  #mob input,#mob select,#mob textarea{width:100%;font-size:16px;padding:10px;border-radius:9px;border:1px solid var(--bd);background:var(--card2);color:var(--tx);box-sizing:border-box}
+  #mob label{display:block;font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--mut);margin:10px 0 4px;font-weight:700}
+  #mob .mb-card{background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:10px 12px;margin-bottom:8px;box-shadow:inset 4px 0 0 var(--zc,transparent)}
+  #mob .mb-card .mb-r1{display:flex;justify-content:space-between;gap:8px;font-size:12px}
+  #mob .mb-card .mb-cl{font-weight:700;font-size:15px;margin:3px 0}
+  #mob .mb-card .mb-m{color:var(--mut);font-size:13px}
+  #mob .mb-fl{display:flex;gap:4px;margin-top:6px;flex-wrap:wrap}
+  #mob .mb-fl span{font-size:10px;padding:2px 6px;border-radius:6px;border:1px solid var(--bd);color:var(--mut)}
+  #mob .mb-fl span.V{background:#2f9e44;border-color:#2f9e44;color:#fff} #mob .mb-fl span.L{background:#f08c00;border-color:#f08c00;color:#fff}
+  #mob .mb-fl span.X{background:#c92a2a;border-color:#c92a2a;color:#fff}
+  #mob .mb-neg{font-size:11px;color:#f08c00;font-weight:700}
+  #mob .mb-st{background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:10px 12px;margin-bottom:10px}
+  #mob .mb-st h4{margin:0 0 6px;font-size:14px}
+  #mob .mb-st table{width:100%;border-collapse:collapse;font-size:14px}
+  #mob .mb-st td,#mob .mb-st th{padding:7px 4px;border-bottom:1px solid var(--bd);text-align:right}
+  #mob .mb-st td:first-child,#mob .mb-st th:first-child{text-align:left}
+  #mob .mb-st th{font-size:11px;color:var(--mut);text-transform:uppercase}
+  #mob .mb-sheet{position:fixed;inset:0;z-index:160;background:var(--bg);display:none;flex-direction:column}
+  #mob .mb-sheet.on{display:flex}
+  #mob .mb-sheet .mb-sus{background:#C0392B} #mob .mb-sheet.det .mb-sus{background:#1a3769}
+  #mob .mb-sheet .mb-x{margin-left:auto;background:rgba(255,255,255,.18);border:0;color:#fff;border-radius:8px;padding:6px 12px;font-size:14px}
+  #mob .mb-2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  #mob .mb-btns{display:flex;flex-direction:column;gap:8px;margin-top:16px}
+  #mob .mb-btns button{padding:13px;border-radius:10px;border:0;font-size:15px;font-weight:700}
+  #mob .mb-b1{background:var(--acc);color:#fff} #mob .mb-b2{background:#2f9e44;color:#fff} #mob .mb-b3{background:var(--card2);color:var(--tx);border:1px solid var(--bd)!important}
+  #mob .mb-nota{font-size:12px;color:var(--mut);margin:6px 0}
+  #mob .mb-det div{padding:6px 0;border-bottom:1px solid var(--bd);font-size:14px} #mob .mb-det b{color:var(--mut);font-size:11px;text-transform:uppercase;display:block}
+  #btn-mob{display:none} @media (max-width:760px){ #btn-mob{display:inline-block} }
+  html.mob .toast{z-index:300;bottom:90px} html.mob body>.ghid{display:none!important}
   /* La tipărire, mereu pe alb, indiferent de temă. */
   @media print{
     :root,:root[data-tema="inchis"]{--bg:#fff;--card:#fff;--card2:#fff;--tx:#000;--mut:#444;
@@ -430,8 +476,9 @@
 <header>
   <h1>GestiuneEE <span class="sub-marca">Euro Ecologic</span></h1>
   <span id="azi-sus" title="Data de azi (calculatorul)"></span>
+  <button id="btn-mob" class="btn sec" style="padding:5px 10px;font-size:12px" onclick="mobPC(false)" title="Înapoi la varianta de telefon">📱 Telefon</button>
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
-  <span class="ver">v5.26</span>
+  <span class="ver">v5.27</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -1259,6 +1306,25 @@
   </div>
 </div></div>
 
+<!-- v5.27: varianta de telefon (se arată singură pe ecran îngust) -->
+<div id="mob">
+  <div class="mb-sus"><div><b>Gestiune</b> <span id="mb-dep" class="mb-d"></span><div id="mb-azi" class="mb-d"></div></div>
+    <button class="mb-pc" onclick="mobPC(true)" title="Deschide varianta de PC pe acest telefon">Versiunea PC</button></div>
+  <div class="mb-corp" id="mb-corp"></div>
+  <div class="mb-jos">
+    <button id="mb-t-cmd" class="on" onclick="mobFila('cmd')"><span class="mb-ico">📋</span>Comenzi</button>
+    <button class="mb-urg" onclick="mobUrgenta()"><span class="mb-ico">＋</span>Comandă urgentă</button>
+    <button id="mb-t-stoc" onclick="mobFila('stoc')"><span class="mb-ico">📦</span>Stoc</button>
+  </div>
+  <div class="mb-sheet" id="mb-form">
+    <div class="mb-sus"><b>Comandă urgentă</b><button class="mb-x" onclick="mobInchide('mb-form')">✕</button></div>
+    <div class="mb-corp" id="mb-form-corp"></div>
+  </div>
+  <div class="mb-sheet det" id="mb-det">
+    <div class="mb-sus"><b id="mb-det-t">Comandă</b><button class="mb-x" onclick="mobInchide('mb-det')">✕</button></div>
+    <div class="mb-corp" id="mb-det-corp"></div>
+  </div>
+</div>
 <div class="toast" id="toast"></div>
 
 <script>
@@ -1339,6 +1405,7 @@ async function init(){
     fillAll(); await loadStoc(); loadVerif(); loadAtentie();
     // v5.06: fila din adresă (#raport-luna …) se deschide abia după ce s-au încărcat datele — la F5 rămânea goală
     INIT_GATA = true; deschideSectiune((location.hash || "").replace("#", ""));
+    mobDupaInit();   // v5.27: varianta de telefon
     ghidPorneste();   // v5.15
   }catch(e){ console.error(e); $("conn").textContent="● eroare conexiune"; $("conn").style.color="#ffb4ae"; toast("Nu m-am putut conecta la baza de date: "+e.message,true); }
 }
@@ -6575,6 +6642,201 @@ window.addEventListener("hashchange", () => deschideSectiune((location.hash || "
   document.addEventListener("mouseup", () => { start = null; });
   cap.addEventListener("dblclick", () => { dx = dy = 0; box.style.transform = ""; box.style.width = ""; box.style.height = ""; });
 });
+
+// ================= v5.27: VARIANTA DE TELEFON =================
+// Cerut de Ovidiu (11.10): pe telefon doar Comenzi (cu „Comandă urgentă”, când nu e la birou) și Stoc.
+// Comanda de urgență se scrie în aceeași tabelă `miscari` ca de pe PC: la birou o deschide din Comenzi → Edit
+// și continuă de acolo (anexă, rută, raport, PV…). „Salvează și trimite” = ca „Salvează și generează” + textul pe WhatsApp.
+let MOB_F = "cmd", MOB_PER = "azi", MOB_Q = "", MOB_L = [];
+const mobEste = () => document.documentElement.classList.contains("mob");
+function mobPC(pc){
+  try{ pc ? localStorage.setItem("ee-pc", "1") : localStorage.removeItem("ee-pc"); }catch(e){}
+  document.documentElement.classList.toggle("mob", !pc);
+  if(pc){ if(INIT_GATA) loadMiscari(); } else mobDupaInit();
+}
+function mobAzi(){
+  const d = new Date(), Z = ["Duminică","Luni","Marți","Miercuri","Joi","Vineri","Sâmbătă"], z2 = n => String(n).padStart(2, "0");
+  $("mb-azi").textContent = Z[d.getDay()] + ", " + z2(d.getDate()) + "." + z2(d.getMonth() + 1) + "." + d.getFullYear();
+}
+async function mobDupaInit(){
+  if(!mobEste()) return;
+  const dp = depPrincipal(); $("mb-dep").textContent = dp ? "· Depozit " + String(dp).toUpperCase() : "";
+  mobAzi(); $("mb-corp").innerHTML = '<p class="mb-nota">Se încarcă…</p>';
+  await mobIncarca(); mobFila(MOB_F);
+}
+async function mobIncarca(){
+  const { data, error } = await db.from("miscari").select("*").order("data", { ascending: false }).order("id", { ascending: false }).limit(600);
+  if(error){ toast(error.message, true); return; }
+  MOB_L = data || []; MISC = MOB_L;   // textul WhatsApp caută celelalte produse ale comenzii în MISC
+}
+function mobFila(f){
+  MOB_F = f; $("mb-t-cmd").classList.toggle("on", f === "cmd"); $("mb-t-stoc").classList.toggle("on", f === "stoc");
+  if(f === "stoc") mobStoc(); else mobComenzi();
+  $("mb-corp").scrollTop = 0;
+}
+const mobCl = r => { const v = ["rpt","rt","fac","pv","act","waap"].map(f => r[f] || "-");
+  return v.every(x => x === "V") ? "cl-toate" : v.every(x => x === "-") ? "" : "cl-unele"; };
+const MOB_ZC = { azi: "var(--z-azi)", sa: "var(--z-sa)", st: "var(--z-st)", sv: "var(--z-sv)" };
+function mobComenzi(){
+  const per = [["azi","Azi"],["sapt","Săptămâna asta"],["viit","De azi încolo"],["toate","Toate"]];
+  $("mb-corp").innerHTML =
+    `<div class="mb-chips">${per.map(([k, t]) => `<button class="${k === MOB_PER ? "on" : ""}" onclick="MOB_PER='${k}';mobComenzi()">${t}</button>`).join("")}</div>` +
+    `<input id="mb-q" placeholder="Caută client / localitate…" value="${esc(MOB_Q)}" oninput="MOB_Q=this.value;mobLista()" style="margin-bottom:10px">` +
+    `<div id="mb-lista"></div>`;
+  mobLista();
+}
+function mobLista(){
+  const azi = ziLocala(new Date());
+  let L = MOB_L.filter(r => !(r.grup_id && r.grup_id !== r.id));
+  if(MOB_PER === "azi") L = L.filter(r => r.data === azi);
+  else if(MOB_PER === "sapt") L = L.filter(r => ["azi","sa"].includes(grupaZilei(r.data)));
+  else if(MOB_PER === "viit") L = L.filter(r => (r.data || "") >= azi);
+  const q = MOB_Q.trim();
+  if(q) L = L.filter(r => potrivesteCautarea([r.client, r.loc, r.sat, r.jud, r.produs, r.tip_miscare].filter(Boolean).join(" "), q));
+  if(MOB_PER !== "toate") L = L.slice().sort((a, b) => String(a.data).localeCompare(String(b.data)) || a.id - b.id);
+  const el = $("mb-lista"); if(!el) return;
+  el.innerHTML = L.length ? L.map(r => {
+    const g = grupaZilei(r.data), z = MOB_ZC[g], n = r.grup_id === r.id ? MOB_L.filter(x => x.grup_id === r.id && x.id !== r.id).length : 0;
+    return `<div class="mb-card" style="--zc:${z || "transparent"}" onclick="mobDetaliu(${r.id})">
+      <div class="mb-r1"><span style="color:${z || "inherit"};font-weight:${g === "azi" ? 700 : 500}">${fmtD(r.data)}</span><span class="tc tc-${tipLit(r.tip_miscare)}">${esc(r.tip_miscare)}</span></div>
+      <div class="mb-cl"><b class="${mobCl(r)}">${esc(r.client || "(fără client)")}</b></div>
+      <div><span class="tc tc-${tipLit(r.tip_miscare)}">${Math.abs(+r.buc || 0)}</span> ${esc(r.produs || "")} ${esc(r.model || "")}${n ? ` <span class="mb-m">+${n} produse</span>` : ""}</div>
+      <div class="mb-m">${esc([r.loc, r.sat].filter(Boolean).join(" – "))}${r.jud ? " · " + esc(r.jud) : ""}</div>
+      <div class="mb-fl">${["rpt","rt","fac","pv","act","waap"].map(f => `<span class="${esc(r[f] || "")}">${f.toUpperCase()}</span>`).join("")}${r.generat_la ? "" : ` <span class="mb-neg">negenerată</span>`}</div>
+    </div>`; }).join("") : '<p class="mb-nota">Nicio comandă pe perioada aleasă.</p>';
+}
+function mobDetaliu(id){
+  const m = MOB_L.find(x => x.id === id); if(!m) return;
+  const k = CTR.find(x => x.id === m.contract_id), a = ANX.find(x => x.id === m.anexa_id);
+  const rand = (t, v) => v ? `<div><b>${t}</b>${esc(v)}</div>` : "";
+  $("mb-det-t").textContent = m.tip_miscare + " · " + fmtD(m.data);
+  $("mb-det-corp").innerHTML = `<div class="mb-det">` +
+    rand("Client", m.client) + rand("Contract", k ? k.nr_ctr : "") + rand("Anexă", a ? a.anexa : "") +
+    rand("Produs", [Math.abs(+m.buc || 0), m.produs, m.model, accScurt(m.accesorii)].filter(Boolean).join(" ")) +
+    rand("Locația", [m.jud, m.loc, m.sat].filter(Boolean).join(" · ")) + rand("Reprezentant șantier", m.pers_resp) + rand("Telefon", m.telefon) +
+    rand("Servisare", m.frecv_serv) + rand("Contract (gestiune) · depozit", [m.contract, m.depozit].filter(Boolean).join(" · ")) + rand("Observații", m.observatii) +
+    `<div><b>Bife</b>${["rpt","rt","fac","pv","act","waap"].map(f => f.toUpperCase() + " " + (m[f] || "-")).join(" · ")}</div>` +
+    `<div><b>Text pentru șoferi</b>${m.generat_la ? "generat" : "negenerat — „Trimite” îl generează"}</div></div>` +
+    `<div class="mb-btns"><button class="mb-b2" onclick="mobTrimiteSalvata(${m.id})">Trimite pe WhatsApp</button>` +
+    `<button class="mb-b3" onclick="mobCopiaza(${m.id})">Copiază textul</button></div>` +
+    `<p class="mb-nota">Restul (anexă, rută, raport, PV, bife) se face pe PC: Comenzi → Edit.</p>`;
+  $("mb-det").classList.add("on");
+}
+function mobInchide(id){ $(id).classList.remove("on"); }
+async function mobPartaja(text){
+  if(navigator.share){ try{ await navigator.share({ text }); return; }catch(e){ if(e && e.name === "AbortError") return; } }
+  window.open("https://wa.me/?text=" + encodeURIComponent(text), "_blank");
+}
+async function mobTrimiteSalvata(id){
+  const m = MOB_L.find(x => x.id === id); if(!m) return;
+  if(!m.generat_la){
+    const t = new Date().toISOString();
+    const { error } = await db.from("miscari").update({ generat_la: t }).eq("id", id);
+    if(error){ toast(error.message, true); return; }
+    m.generat_la = t;
+  }
+  await mobPartaja(textComandaSalvata(m)); mobDetaliu(id); mobLista();
+}
+async function mobCopiaza(id){
+  const m = MOB_L.find(x => x.id === id); if(!m) return;
+  try{ await navigator.clipboard.writeText(textComandaSalvata(m)); toast("Textul a fost copiat"); }catch(e){ toast("Nu s-a putut copia", true); }
+}
+function mobStoc(){
+  const byDep = {}; (STOC || []).forEach(r => { (byDep[r.depozit] = byDep[r.depozit] || []).push(r); });
+  const order = nomv("produs"), poz = p => { const i = order.indexOf(p); return i < 0 ? 1e6 : i; };
+  $("mb-corp").innerHTML = `<div class="mb-chips"><button onclick="loadStoc().then(mobStoc)">↻ Reîncarcă</button></div>` +
+    (Object.keys(byDep).sort((a, b) => (a === depPrincipal() ? -1 : b === depPrincipal() ? 1 : a.localeCompare(b))).map(dep => {
+      const rows = byDep[dep].filter(r => !esteAscuns(dep, r.produs) && (r.total || r.inchiriate || r.in_depozit || order.includes(r.produs)))
+        .sort((a, b) => poz(a.produs) - poz(b.produs));
+      return `<div class="mb-st"><h4>${esc(dep)}</h4><table><tr><th>Produs</th><th>Închiriate</th><th>Depozit</th><th>Total</th></tr>` +
+        rows.map(r => `<tr><td>${esc(r.produs)}</td><td>${r.inchiriate || 0}</td><td${(+r.in_depozit || 0) < 0 ? ' style="color:#e03131;font-weight:700"' : ""}>${r.in_depozit || 0}</td><td><b>${r.total || 0}</b></td></tr>`).join("") +
+        `</table></div>`; }).join("") || '<p class="mb-nota">Nu există stoc definit.</p>') +
+    `<p class="mb-nota">Doar de citit. Stocul inițial și corecțiile se fac pe PC.</p>`;
+}
+// ---- Comanda urgentă ----
+function mobUrgenta(){
+  const opt = (l, v, gol) => (gol !== undefined ? `<option value="">${gol}</option>` : "") + l.map(x => `<option${x === v ? " selected" : ""}>${esc(x)}</option>`).join("");
+  const deps = DEP.map(d => d.nume), dp = depPrincipal();
+  $("mb-form-corp").innerHTML =
+    `<p class="mb-nota">Se salvează în Comenzi, ca de pe PC. La birou o deschizi cu <b>Edit</b> și continui (anexă, rută, raport, PV…).</p>` +
+    `<div class="mb-2"><div><label>Data</label><input type="date" id="mb-data" data-cal="1" value="${ziLocala(new Date())}"></div>` +
+    `<div><label>Tip comandă</label><select id="mb-tip">${opt(nomv("tip_miscare"), "AMPLASARE")}</select></div></div>` +
+    `<label>Client</label><input id="mb-client" list="mb-dl-cli" autocomplete="off" placeholder="Alege din listă sau scrie unul nou" onchange="mobClient()">` +
+    `<datalist id="mb-dl-cli">${CLI.filter(c => c.activ !== false).map(c => `<option value="${esc(c.nume)}">`).join("")}</datalist>` +
+    `<div id="mb-cl-nota" class="mb-nota"></div>` +
+    `<div id="mb-ctr-w" style="display:none" class="mb-2"><div><label>Contract</label><select id="mb-ctr" onchange="mobContract()"></select></div>` +
+    `<div><label>Anexă</label><select id="mb-anx" onchange="mobAnexa()"></select></div></div>` +
+    `<div class="mb-2"><div><label>Produs</label><select id="mb-prod" onchange="mobModele()">${opt(nomv("produs"), "TOALETA")}</select></div>` +
+    `<div><label>Tip</label><select id="mb-model"></select></div></div>` +
+    `<label>Bucăți</label><input id="mb-buc" type="number" inputmode="numeric" min="1" value="1">` +
+    `<div class="mb-2"><div><label>Județ</label><input id="mb-jud" value="HD" style="text-transform:uppercase"></div>` +
+    `<div><label>Localitate</label><input id="mb-loc" style="text-transform:uppercase"></div></div>` +
+    `<label>Sat / stradă / locație</label><input id="mb-sat" style="text-transform:uppercase">` +
+    `<div class="mb-2"><div><label>Reprezentant șantier</label><input id="mb-pers" style="text-transform:uppercase"></div>` +
+    `<div><label>Telefon</label><input id="mb-tel" type="tel" inputmode="tel"></div></div>` +
+    `<label>Frecvență servisare</label><input id="mb-frecv" list="mb-dl-fr"><datalist id="mb-dl-fr">${nomv("frecv_servisare").map(o => `<option value="${esc(o)}">`).join("")}</datalist>` +
+    `<div class="mb-2"><div><label>Contract (gestiune)</label><select id="mb-cdep">${opt(deps, dp, "—")}</select></div>` +
+    `<div><label>Depozit</label><select id="mb-dep">${opt(deps, dp, "—")}</select></div></div>` +
+    `<label>Observații</label><textarea id="mb-obs" rows="3"></textarea>` +
+    `<div class="mb-btns"><button class="mb-b2" onclick="mobSalveaza(true)">Salvează și trimite pe WhatsApp</button>` +
+    `<button class="mb-b1" onclick="mobSalveaza(false)">Salvează (continui la PC)</button>` +
+    `<button class="mb-b3" onclick="mobInchide('mb-form')">Renunță</button></div>`;
+  mobModele(); $("mb-form").classList.add("on"); $("mb-form-corp").scrollTop = 0;
+}
+function mobModele(pastreaza){
+  const l = modeleDe($("mb-prod").value);
+  $("mb-model").innerHTML = `<option value=""></option>` + l.map(x => `<option${x === pastreaza ? " selected" : ""}>${esc(x)}</option>`).join("");
+}
+function mobClient(){
+  const v = $("mb-client").value.trim(), c = CLI.find(x => x.nume.toLowerCase() === v.toLowerCase());
+  $("mb-cl-nota").textContent = !v ? "" : c ? "Client existent — alege contractul și anexa (completează locația)." : "Client nou — îl creezi pe PC (fișa clientului, contract, anexă).";
+  const ks = c ? CTR.filter(k => k.client_id === c.id) : [];
+  $("mb-ctr-w").style.display = ks.length ? "" : "none";
+  $("mb-ctr").innerHTML = `<option value="">—</option>` + ks.map(k => `<option value="${k.id}">${esc(k.nr_ctr || "")}</option>`).join("");
+  if(ks.length === 1) $("mb-ctr").value = ks[0].id;
+  mobContract();
+}
+function mobContract(){
+  const kid = +$("mb-ctr").value || null;
+  const as = kid ? ANX.filter(a => a.contract_id === kid && anexaActiva(a)) : [];
+  $("mb-anx").innerHTML = `<option value="">—</option>` + as.map(a => `<option value="${a.id}">${esc([a.anexa, a.loc, a.sat].filter(Boolean).join(" · "))}</option>`).join("");
+  if(as.length === 1){ $("mb-anx").value = as[0].id; mobAnexa(); }
+}
+function mobAnexa(){
+  const a = ANX.find(x => x.id === +$("mb-anx").value); if(!a) return;
+  const s = (id, v) => { if(v != null && v !== "") $(id).value = v; };
+  s("mb-jud", a.jud); s("mb-loc", a.loc); s("mb-sat", a.sat); s("mb-pers", a.pers_contact); s("mb-tel", a.telefon); s("mb-frecv", a.frecv_servisare);
+  if(a.produs){ $("mb-prod").value = a.produs; mobModele(a.model || ""); }
+  if(a.contract_depozit) $("mb-cdep").value = a.contract_depozit;
+  if(a.depozit) $("mb-dep").value = a.depozit;
+  if(a.cant && $("mb-tip").value === "AMPLASARE") $("mb-buc").value = Math.abs(+a.cant);
+}
+async function mobSalveaza(trimite){
+  const tip = $("mb-tip").value; let buc = Math.abs(+$("mb-buc").value || 0);
+  if(!buc){ toast("Scrie numărul de bucăți", true); return; }
+  if(NEG.test(tip)) buc = -buc;
+  const client = $("mb-client").value.trim().toUpperCase();
+  if(!client){ toast("Scrie clientul", true); return; }
+  const c = CLI.find(x => x.nume.toLowerCase() === client.toLowerCase());
+  const up = id => ($(id).value || "").trim().toUpperCase() || null, tx = id => ($(id).value || "").trim() || null;
+  const rec = { data: $("mb-data").value || ziLocala(new Date()), tip_miscare: tip, buc, produs: $("mb-prod").value, model: $("mb-model").value || null,
+    client_id: c ? c.id : null, client: c ? c.nume : client, jud: up("mb-jud"), loc: up("mb-loc"), sat: up("mb-sat"),
+    contract: $("mb-cdep").value || null, depozit: $("mb-dep").value || null, pers_resp: up("mb-pers"), telefon: tx("mb-tel"),
+    frecv_serv: tx("mb-frecv"), observatii: tx("mb-obs"), contract_id: +$("mb-ctr").value || null, anexa_id: +$("mb-anx").value || null,
+    generat_la: trimite ? new Date().toISOString() : null };
+  const d = DEP.find(x => x.nume === rec.contract || x.cod === rec.contract);
+  if(d && d.tip === "secundar"){ rec.client_id = null; rec.contract_id = null; rec.anexa_id = null; }   // clientul exterior, ca pe PC
+  const ef = (NOM.tip_miscare || []).find(t => t.valoare === tip), efect = ef ? (ef.efect_stoc || "niciun") : "niciun";
+  if(efect !== "niciun"){
+    const lipsa = []; if(!rec.depozit) lipsa.push("Depozit"); if(efect === "inchiriere" && !rec.contract) lipsa.push("Contract (gestiune)");
+    if(lipsa.length && !confirm("Lipsește " + lipsa.join(" și ") + ".\n\nComanda se salvează, dar nu va intra în stoc.\n\nContinui?")) return;
+  }
+  const { data: m, error } = await db.from("miscari").insert(rec).select("*").single();
+  if(error){ toast(error.message, true); return; }
+  mobInchide("mb-form"); toast("Comandă salvată" + (trimite ? "" : " — o continui la PC"));
+  await mobIncarca(); MOB_PER = rec.data === ziLocala(new Date()) ? "azi" : "viit"; mobFila("cmd"); loadStoc();
+  if(trimite) await mobPartaja(textComandaSalvata(m));
+}
 
 calendarActiveaza(document);
 porneteCautarile();
