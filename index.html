@@ -402,6 +402,11 @@
     #nav-jos .cine-blk{display:none}
   }
 
+  /* v5.23 (cerut de Ovidiu, 11.10): data de azi mereu sus */
+  header h1{flex:0 0 auto}
+  #azi-sus{flex:1;text-align:center;font-size:14px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  #azi-sus .azi-n{opacity:.7;font-weight:500;margin-left:6px}
+  @media (max-width:600px){ #azi-sus .azi-l{display:none} #azi-sus .azi-n{margin-left:0;opacity:1} }
   /* La tipărire, mereu pe alb, indiferent de temă. */
   @media print{
     :root,:root[data-tema="inchis"]{--bg:#fff;--card:#fff;--card2:#fff;--tx:#000;--mut:#444;
@@ -424,8 +429,9 @@
 
 <header>
   <h1>GestiuneEE <span class="sub-marca">Euro Ecologic</span></h1>
+  <span id="azi-sus" title="Data de azi (calculatorul)"></span>
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
-  <span class="ver">v5.22</span>
+  <span class="ver">v5.23</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -1570,6 +1576,14 @@ function dataStil(n){ DATA_STIL = n; try{ localStorage.setItem("ee-data-stil", n
 const tipLit = t => /AMPLASARE|EVENIMENT-A|SUPLIMENTARE/.test(t)?"A":/RIDICARE|EVENIMENT-R|REDUCERE/.test(t)?"R":/SERVISARE/.test(t)?"S":/Transfer|VANZARE/.test(t)?"T":"X";
 const tipTxt = t => `<span class="tc tc-${tipLit(t)}">${esc(t)}</span>`;
 // v5.22: titlul ferestrei — „Gestiune - Euro Ecologic - Depozit <principal>” (depozitul vine din Administrare → Depozite)
+// v5.23: „Duminică, 11 Oct. 2026 · 11.10.2026” sus, se schimbă singură la miezul nopții
+function aziSus(){
+  const el = document.getElementById("azi-sus"); if(!el) return;
+  const d = new Date(), Z = ["Duminică","Luni","Marți","Miercuri","Joi","Vineri","Sâmbătă"],
+        L = ["Ian.","Feb.","Mar.","Apr.","Mai","Iun.","Iul.","Aug.","Sep.","Oct.","Nov.","Dec."], z2 = n => String(n).padStart(2, "0");
+  el.innerHTML = `<span class="azi-l">${Z[d.getDay()]}, ${d.getDate()} ${L[d.getMonth()]} ${d.getFullYear()} ·</span><span class="azi-n">${z2(d.getDate())}.${z2(d.getMonth() + 1)}.${d.getFullYear()}</span>`;
+}
+setTimeout(aziSus, 0); setInterval(aziSus, 60000);
 function puneTitlul(){ const d = depPrincipal(); document.title = "Gestiune - Euro Ecologic" + (d ? " - Depozit " + String(d).toUpperCase() : ""); }
 function pill(t){ const c=/AMPLASARE|EVENIMENT-A|SUPLIMENTARE/.test(t)?"A":/RIDICARE|EVENIMENT-R|REDUCERE/.test(t)?"R":/SERVISARE/.test(t)?"S":/Transfer|VANZARE/.test(t)?"T":"X"; return `<span class="pill p-${c}">${esc(t)}</span>`; }
 // Apăsarea pe capul coloanei întoarce ordinea. Se sortează lista încărcată, deci
