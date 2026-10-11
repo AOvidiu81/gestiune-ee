@@ -431,7 +431,7 @@
   <h1>GestiuneEE <span class="sub-marca">Euro Ecologic</span></h1>
   <span id="azi-sus" title="Data de azi (calculatorul)"></span>
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
-  <span class="ver">v5.25</span>
+  <span class="ver">v5.26</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -3019,6 +3019,13 @@ function serAdauga(){
   serDeseneaza();
   const inp=document.querySelectorAll("#ms-tab .ser-serie"); if(inp.length) inp[inp.length-1].focus();
 }
+// v5.25 (v5.26, cerut de Ovidiu, 11.10): el scrie doar cifrele seriei (12345) → se scrie „EE-12345”.
+// „ee12345”, „EE 12345”, „EE-12345” → „EE-12345”; orice altceva (ex. HANDY-E4598) rămâne cum e, cu majuscule.
+function serFormat(v){
+  const t=String(v||"").trim().toUpperCase(); if(!t) return "";
+  const m=/^(?:EE[\s\-_.]*)?(\d+)$/.exec(t);
+  return m ? "EE-"+m[1] : t;
+}
 function serSet(i,camp,v){
   const r=SR_ROWS[i]; if(!r) return; r[camp]=v;
   if(camp==="produs"){ if(!modeleDe(v).includes(r.tip)) r.tip=""; }
@@ -3039,7 +3046,7 @@ function serDeseneaza(){
       <td><select style="${st}" onchange="serSet(${i},'produs',this.value)">${opt(nomv("produs"),r.produs||"")}</select></td>
       <td><select style="${st}" onchange="serSet(${i},'tip',this.value)"><option value=""></option>${opt(modeleDe(r.produs||""),r.tip||"")}</select></td>
       <td><select style="${st}" onchange="serSet(${i},'model',this.value)"><option value=""></option>${opt(modeleFiziceDe(r.produs||"",r.tip||""),r.model||"")}</select></td>
-      <td><input class="ser-serie" style="${st}" value="${esc(r.serie||"")}" placeholder="EE-1234" oninput="serSet(${i},'serie',this.value)"></td>
+      <td><input class="ser-serie" style="${st}" value="${esc(r.serie||"")}" placeholder="12345 → EE-12345" oninput="serSet(${i},'serie',this.value)" onchange="this.value=serFormat(this.value);serSet(${i},'serie',this.value)" title="Scrie doar cifrele (12345) — devine EE-12345"></td>
       <td><select class="ser-st ${/DAUN|FURT/.test(r.stare||"")?"st-dauna":r.stare==="RIDICATA"?"st-rid":"st-client"}" style="width:100%" onchange="serSet(${i},'stare',this.value)">${opt(["LA CLIENT","RIDICATA"],r.stare||"LA CLIENT")}</select></td>
       <td><input type="date" style="min-width:104px" value="${r.data_amplasarii||""}" onchange="serSet(${i},'data_amplasarii',this.value||null)"></td>
       <td><input type="date" style="min-width:104px" value="${r.data_ridicarii||""}" onchange="serSet(${i},'data_ridicarii',this.value||null)"></td>
@@ -3066,6 +3073,7 @@ async function serSalveaza(){
   const a=SR_AN; if(!a) return;
   const k=CTR.find(x=>x.id===a.contract_id);
   for(const r of SR_ROWS){ if(!r.produs){ toast("Alege produsul pe fiecare bucată",true); return; } }
+  SR_ROWS.forEach(r=>{ if(r.serie) r.serie=serFormat(r.serie); });   // v5.26: și seriile vechi (72782 → EE-72782)
   const dub=serDubluri(SR_ROWS, SER, a.id);
   if(dub.length && !confirm("Atenție, serie deja la client:\n\n"+dub.map(d=>"• "+d.serie+" — "+d.unde).join("\n")+"\n\nSalvezi oricum?")) return;
   const laClient=SR_ROWS.filter(r=>r.stare==="LA CLIENT").length;
