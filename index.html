@@ -401,7 +401,7 @@
 <header>
   <h1>GestiuneEE <span class="sub-marca">Euro Ecologic</span></h1>
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
-  <span class="ver">v5.19</span>
+  <span class="ver">v5.20</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -2586,6 +2586,27 @@ function mkGoleste(){
   $("mk-nr").value = ""; $("mk-de").value = today(); $("mk-dx").value = ""; $("mk-xt").value = ""; $("mk-stare").value = "ACTIV"; mkNedet(false);
   MK_CIORNA = null; mkCiorneDeseneaza();
 }
+// v5.20 (cerut de Ovidiu, 11.10): perioada dintre emitere și expirare, doar informativ (ambele zile incluse).
+function perioadaCtr(de, dx){
+  if(!de || !dx) return "";
+  const a = new Date(de + "T12:00:00"), b = new Date(dx + "T12:00:00");
+  if(isNaN(a) || isNaN(b)) return "";
+  if(b < a) return "⚠ data expirării e înaintea datei de emitere";
+  const zile = Math.round((b - a) / 864e5) + 1;
+  const c = new Date(b); c.setDate(c.getDate() + 1);           // ziua de după expirare
+  const plus = m => { const y = a.getFullYear(), mo = a.getMonth() + m, ult = new Date(y, mo + 1, 0).getDate();
+    return new Date(y, mo, Math.min(a.getDate(), ult), 12); };          // a + m luni (31 ian + 1 = 28/29 feb)
+  let m = (c.getFullYear() - a.getFullYear()) * 12 + c.getMonth() - a.getMonth() + 1;
+  while(m > 0 && plus(m) > c) m--;
+  const z = Math.round((c - plus(m)) / 864e5), ani = Math.floor(m / 12), luni = m % 12;
+  const pl = (n, u, m) => n === 1 ? "1 " + u : n + " " + m;
+  const parti = [];
+  if(ani) parti.push(pl(ani, "an", "ani"));
+  if(luni) parti.push(pl(luni, "lună", "luni"));
+  if(z) parti.push(pl(z, "zi", "zile"));
+  const txt = parti.length > 1 ? parti.slice(0, -1).join(", ") + " și " + parti[parti.length - 1] : (parti[0] || "");
+  return txt + (ani || luni ? " (" + zile + " zile)" : "");
+}
 function mkVerifica(){
   const d = mkDate();
   if(!d.nr_ctr){ toast("Nr. contract obligatoriu", true); $("mk-nr").focus(); return; }
@@ -2594,7 +2615,8 @@ function mkVerifica(){
   $("mk-conf-ok").textContent = nou ? "Creează contract nou" : "Salvează modificările";
   const v = c => /^data_/.test(c) ? fmtD(d[c]) : d[c];
   $("mk-conf-date").innerHTML = "<table>" + `<tr><td>Client</td><td><b>${esc(cl ? cl.nume : "—")}</b></td></tr>` +
-    MK_CAMPURI.map(([, c, l]) => `<tr><td>${esc(l)}</td><td><b>${esc(v(c) || "—")}</b></td></tr>`).join("") + "</table>";
+    MK_CAMPURI.map(([, c, l]) => `<tr><td>${esc(l)}</td><td><b>${esc(v(c) || "—")}</b></td></tr>` +
+      (c === "data_expirare" ? `<tr><td>Perioada contract <span class="muted">(informativ)</span></td><td>${esc(perioadaCtr(d.data_emitere, d.data_expirare) || "—")}</td></tr>` : "")).join("") + "</table>";
   $("mk-conf").classList.add("on");
 }
 async function saveContract(dupa){
