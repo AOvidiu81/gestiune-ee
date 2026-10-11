@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>GestiuneEE – Euro Ecologic</title>
+<title>Gestiune - Euro Ecologic</title>
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#1a3769">
 <link rel="icon" href="icons/icon-192.png">
@@ -228,10 +228,25 @@
   th.sortabil .sg{margin-left:4px;font-size:9px;opacity:.35}
   th.sortabil .sg.pe{opacity:1}
   /* v5.21 (cerut de Ovidiu, 11.10): Comenzi — data colorată pe săptămâni, clientul colorat după bife */
-  td.zd-azi{color:#FACC15;font-weight:700;box-shadow:inset 3px 0 0 #FACC15}
-  td.zd-sa{color:#60A5FA;box-shadow:inset 3px 0 0 #60A5FA}
-  td.zd-st{color:#A78BFA;box-shadow:inset 3px 0 0 #A78BFA}
-  td.zd-sv{color:#2DD4BF;box-shadow:inset 3px 0 0 #2DD4BF}
+  /* v5.22: culorile datei pe teme + 3 stiluri de probă (1 pastilă, 2 celulă, 3 plin) */
+  :root{--z-azi:#a16207;--z-sa:#1d4ed8;--z-st:#6d28d9;--z-sv:#0f766e}
+  :root[data-tema="inchis"]{--z-azi:#FACC15;--z-sa:#60A5FA;--z-st:#A78BFA;--z-sv:#2DD4BF}
+  td.zd-azi{--zc:var(--z-azi);font-weight:700} td.zd-sa{--zc:var(--z-sa)} td.zd-st{--zc:var(--z-st)} td.zd-sv{--zc:var(--z-sv)}
+  td[class*="zd-"]{color:var(--zc)}
+  td[class*="zd-"] .zd{display:inline-block;padding:2px 8px;border-radius:10px;white-space:nowrap}
+  .ds-1 td[class*="zd-"] .zd{background:color-mix(in srgb,var(--zc) 20%,transparent);font-weight:600}
+  .ds-2 td[class*="zd-"]{background:color-mix(in srgb,var(--zc) 15%,transparent);box-shadow:inset 3px 0 0 var(--zc)}
+  .ds-2 td[class*="zd-"] .zd{padding:0}
+  .ds-3 td[class*="zd-"] .zd{background:var(--zc);color:var(--bg);font-weight:700}
+  #m-leg .ds-b{padding:1px 8px;border-radius:8px;border:1px solid var(--bd);background:transparent;color:inherit;cursor:pointer;font-size:11px}
+  #m-leg .ds-b.on{border-color:var(--acc);color:var(--acc);font-weight:700}
+  #m-leg .ds-b::before{display:none}
+  /* v5.22: tipul comenzii și BUC doar cu text colorat */
+  .tc{font-weight:700;font-size:11px}
+  .tc-A{color:#145c34}.tc-R{color:#8a1d17}.tc-S{color:#1e3a8a}.tc-T{color:#7a4a00}.tc-X{color:#444}
+  :root[data-tema="inchis"] .tc-A{color:#7ee2a8}:root[data-tema="inchis"] .tc-R{color:#ff9c96}:root[data-tema="inchis"] .tc-S{color:#9dbcff}
+  :root[data-tema="inchis"] .tc-T{color:#f4c77a}:root[data-tema="inchis"] .tc-X{color:#aab3bf}
+  td.tc{font-size:inherit}
   b.cl-toate{color:#4ADE80} b.cl-unele{color:#F59E0B}
   #m-leg{display:flex;flex-wrap:wrap;gap:14px;font-size:12px;margin:0 0 6px 2px;opacity:.9}
   #m-leg span::before{content:"";display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:5px;vertical-align:-1px;background:currentColor}
@@ -410,7 +425,7 @@
 <header>
   <h1>GestiuneEE <span class="sub-marca">Euro Ecologic</span></h1>
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
-  <span class="ver">v5.21</span>
+  <span class="ver">v5.22</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -508,7 +523,8 @@
     </div>
   </div>
   <div class="kpi" id="m-kpi" style="display:none"></div><!-- v4.73: căsuțele Comenzi / Amplasate / Ridicate / Net ascunse deocamdată (cerut de Ovidiu, 07.10); se scoate style ca să revină -->
-  <div id="m-leg"><b class="muted">Data:</b><span style="color:#FACC15">Azi</span><span style="color:#60A5FA">Săptămâna asta (luni–duminică)</span><span style="color:#A78BFA">Săptămâna trecută</span><span style="color:#2DD4BF">Săptămâna viitoare</span>
+  <div id="m-leg"><b class="muted">Data:</b><span style="color:var(--z-azi)">Azi</span><span style="color:var(--z-sa)">Săptămâna asta (luni–duminică)</span><span style="color:var(--z-st)">Săptămâna trecută</span><span style="color:var(--z-sv)">Săptămâna viitoare</span>
+    <b class="muted">Stil dată (de probă):</b><button type="button" class="ds-b" data-ds="1" onclick="dataStil(1)">1 pastilă</button><button type="button" class="ds-b" data-ds="2" onclick="dataStil(2)">2 celulă</button><button type="button" class="ds-b" data-ds="3" onclick="dataStil(3)">3 plin</button>
     <b class="muted" style="margin-left:10px">Client:</b><span style="color:#4ADE80">toate bifele V</span><span style="color:#F59E0B">în lucru (cel puțin o bifă)</span><span class="lg-n">nicio bifă</span></div>
   <div class="tw"><table id="m-tbl"></table></div>
 </section>
@@ -1302,7 +1318,7 @@ async function init(){
     ]);
     if(n.error) throw n.error;
     NOM={}; n.data.forEach(r=>{(NOM[r.tip]=NOM[r.tip]||[]).push(r);});
-    DEP=d.data||[]; SOF=s.data||[]; MAS=m.data||[]; CLI=c.data||[]; CTR=k.data||[]; ANX=a.data||[]; SI=si.data||[];
+    DEP=d.data||[]; puneTitlul(); SOF=s.data||[]; MAS=m.data||[]; CLI=c.data||[]; CTR=k.data||[]; ANX=a.data||[]; SI=si.data||[];
     SER=sr.data||[];   // lipsea de la pornire: până la prima salvare butonul scria „Serii” și fereastra apărea goală
     $("conn").textContent="● online"; $("conn").style.color="#9fe0b8";
     fillAll(); await loadStoc(); loadVerif(); loadAtentie();
@@ -1548,6 +1564,13 @@ async function loadMiscari(){
   MISC=data; renderMiscari(); incarcaCma();
 }
 $("f-q").addEventListener("keydown",e=>{if(e.key==="Enter")loadMiscari();});
+// v5.22: stilul de probă al datei în Comenzi (ales de Ovidiu după ce le vede; ținut doar pe acest calculator)
+let DATA_STIL = 1; try{ DATA_STIL = +localStorage.getItem("ee-data-stil") || 1; }catch(e){}
+function dataStil(n){ DATA_STIL = n; try{ localStorage.setItem("ee-data-stil", n); }catch(e){} renderMiscari(); }
+const tipLit = t => /AMPLASARE|EVENIMENT-A|SUPLIMENTARE/.test(t)?"A":/RIDICARE|EVENIMENT-R|REDUCERE/.test(t)?"R":/SERVISARE/.test(t)?"S":/Transfer|VANZARE/.test(t)?"T":"X";
+const tipTxt = t => `<span class="tc tc-${tipLit(t)}">${esc(t)}</span>`;
+// v5.22: titlul ferestrei — „Gestiune - Euro Ecologic - Depozit <principal>” (depozitul vine din Administrare → Depozite)
+function puneTitlul(){ const d = depPrincipal(); document.title = "Gestiune - Euro Ecologic" + (d ? " - Depozit " + String(d).toUpperCase() : ""); }
 function pill(t){ const c=/AMPLASARE|EVENIMENT-A|SUPLIMENTARE/.test(t)?"A":/RIDICARE|EVENIMENT-R|REDUCERE/.test(t)?"R":/SERVISARE/.test(t)?"S":/Transfer|VANZARE/.test(t)?"T":"X"; return `<span class="pill p-${c}">${esc(t)}</span>`; }
 // Apăsarea pe capul coloanei întoarce ordinea. Se sortează lista încărcată, deci
 // exportul Excel iese în aceeași ordine ca ce se vede pe ecran.
@@ -1607,9 +1630,11 @@ function renderMiscari(){
   const clCls = r => { const v = ["rpt","rt","fac","pv","act","waap"].map(f => r[f] || "-");
     return v.every(x => x === "V") ? "cl-toate" : v.every(x => x === "-") ? "" : "cl-unele"; };
   const sTit = M_SORT.camp === "data" ? (M_SORT.dir < 0 ? "Acum: nou → vechi. Apasă: vechi → nou" : M_SORT.dir > 0 ? "Acum: vechi → nou. Apasă: pe grupe (Azi, săptămâna asta, trecută, viitoare)" : "Acum: pe grupe (Azi, săptămâna asta, trecută, viitoare, apoi restul). Apasă: nou → vechi") : "Apasă ca să sortezi după dată";
-  let h=`<tr><th class="sortabil" onclick="sorteazaComenzi('data')" title="${sTit}">Data${sg("data")}</th><th>Comandă</th><th>Buc</th><th>Produs</th><th>Tip</th><th>Accesorii</th><th>Client</th><th>Contract</th><th>Anexă</th><th>Jud</th><th>Loc./Com.</th><th>Sat/Str./Locație</th><th>Contract (dep.)</th><th>Depozit</th><th>Resp. șantier</th><th>Telefon</th><th>Rpt</th><th>RT</th><th>FAC</th><th>PV</th><th>ACT</th><th>WaAp</th><th>Frecv.</th><th class="noprint"></th></tr>`;
-  h+=MISC.map(r=>{const sr=subReferinta(r); const gz=grupaZilei(r.data); return `<tr><td${gz?` class="zd-${gz}"`:""}>${fmtD(r.data)}${sr?` <span class="pill p-T" title="Mai veche decât data de referință a stocului (${fmtD(sr)}) — nu intră în stoc">sub referință</span>`:""}</td><td>${r.grup_id&&r.grup_id!==r.id?'<span class="muted" title="Produs din aceeași comandă cu #'+r.grup_id+'">↳ </span>':""}${pill(r.tip_miscare)}${r.grup_id===r.id?' <span class="muted" title="Comanda are mai multe produse">+'+MISC.filter(x=>x.grup_id===r.id&&x.id!==r.id).length+'</span>':""}</td><td class="${r.buc<0?"neg":"pos"}">${r.buc}</td><td>${esc(r.produs)}</td><td>${esc(r.model)}</td><td style="font-size:12px;white-space:nowrap" title="${esc(r.accesorii||"")}">${esc(accScurt(r.accesorii))}</td><td><b class="${clCls(r)}">${esc(r.client)}</b></td><td>${esc(nrCtr(r.contract_id))}</td><td>${esc(nrAnx(r.anexa_id))}</td><td>${esc(r.jud)}</td><td>${esc(r.loc)}</td><td>${esc(r.sat)}</td><td>${esc(r.contract)}</td><td>${esc(r.depozit)}</td><td>${esc(r.pers_resp)}</td><td>${esc(r.telefon)}</td><td>${flVer(r, "rpt")}</td><td>${flVer(r, "rt")}</td><td>${flVer(r, "fac")}</td><td>${flVer(r, "pv")}${semnPvApp(r)}</td><td>${flVer(r, "act")}</td><td>${flVer(r, "waap")}</td><td>${esc(r.frecv_serv)}</td><td class="noprint actions"><button class="btn sm sec" onclick="openMiscare(${r.id})">Edit</button> <button class="btn sm" ${ruteStil(r)} onclick="spreRute(${r.id})" title="Verde = punctul de rută are coordonate GPS; portocaliu = fără punct sau fără coordonate. Deschide punctul de rută completat din comandă. Nu se salvează nimic până nu verifici și apeși Salvează.">→ Rute</button></td></tr>`;}).join("");
+  let h=`<tr><th class="sortabil" onclick="sorteazaComenzi('data')" title="${sTit}">Data${sg("data")}</th><th>Comandă</th><th>Buc</th><th>Produs</th><th>Tip</th><th>Accesorii</th><th>Client</th><th>Nr. contract</th><th>Anexă</th><th>Jud</th><th>Loc./Com.</th><th>Sat/Str./Locație</th><th>Contract</th><th>Depozit</th><th>Resp. șantier</th><th>Telefon</th><th>Rpt</th><th>RT</th><th>FAC</th><th>PV</th><th>ACT</th><th>WaAp</th><th>Frecv.</th><th class="noprint"></th></tr>`;
+  h+=MISC.map(r=>{const sr=subReferinta(r); const gz=grupaZilei(r.data); return `<tr><td${gz?` class="zd-${gz}"`:""}><span class="zd">${fmtD(r.data)}</span>${sr?` <span class="pill p-T" title="Mai veche decât data de referință a stocului (${fmtD(sr)}) — nu intră în stoc">sub referință</span>`:""}</td><td>${r.grup_id&&r.grup_id!==r.id?'<span class="muted" title="Produs din aceeași comandă cu #'+r.grup_id+'">↳ </span>':""}${tipTxt(r.tip_miscare)}${r.grup_id===r.id?' <span class="muted" title="Comanda are mai multe produse">+'+MISC.filter(x=>x.grup_id===r.id&&x.id!==r.id).length+'</span>':""}</td><td class="tc tc-${tipLit(r.tip_miscare)}">${r.buc}</td><td>${esc(r.produs)}</td><td>${esc(r.model)}</td><td style="font-size:12px;white-space:nowrap" title="${esc(r.accesorii||"")}">${esc(accScurt(r.accesorii))}</td><td><b class="${clCls(r)}">${esc(r.client)}</b></td><td>${esc(nrCtr(r.contract_id))}</td><td>${esc(nrAnx(r.anexa_id))}</td><td>${esc(r.jud)}</td><td>${esc(r.loc)}</td><td>${esc(r.sat)}</td><td>${esc(r.contract)}</td><td>${esc(r.depozit)}</td><td>${esc(r.pers_resp)}</td><td>${esc(r.telefon)}</td><td>${flVer(r, "rpt")}</td><td>${flVer(r, "rt")}</td><td>${flVer(r, "fac")}</td><td>${flVer(r, "pv")}${semnPvApp(r)}</td><td>${flVer(r, "act")}</td><td>${flVer(r, "waap")}</td><td>${esc(r.frecv_serv)}</td><td class="noprint actions"><button class="btn sm sec" onclick="openMiscare(${r.id})">Edit</button> <button class="btn sm" ${ruteStil(r)} onclick="spreRute(${r.id})" title="Verde = punctul de rută are coordonate GPS; portocaliu = fără punct sau fără coordonate. Deschide punctul de rută completat din comandă. Nu se salvează nimic până nu verifici și apeși Salvează.">→ Rute</button></td></tr>`;}).join("");
   $("m-tbl").innerHTML=h||"<tr><td>Nicio comandă.</td></tr>";
+  $("m-tbl").className = "ds-" + DATA_STIL;
+  document.querySelectorAll("#m-leg .ds-b").forEach(b => b.classList.toggle("on", +b.dataset.ds === DATA_STIL));
 }
 function exportMiscari(){
   const rows=MISC.map(r=>({AN:r.data.slice(0,4),LUNA:LUNI[+r.data.slice(5,7)-1],DATA:fmtD(r.data),MISCARE:r.tip_miscare,BUC:r.buc,PRODUSE:r.produs,TIP:r.model,ACCESORII:r.accesorii||"",CLIENT:r.client,"NR CONTRACT":(CTR.find(x=>x.id===r.contract_id)||{}).nr_ctr||"","ANEXA":(ANX.find(x=>x.id===r.anexa_id)||{}).anexa||"",JUD:r.jud,"LOC. / COM.":r.loc,"SAT / STR. / LOCATIE":r.sat,CONTRACT:r.contract,DEPOZIT:r.depozit,"RESP SANTIER":r.pers_resp,TELEFON:r.telefon,Rpt:r.rpt,RT:r.rt,FAC:r.fac,PV:r.pv,ACT:r.act,WaAp:r.waap,"Frecv. Serv":r.frecv_serv,OBS:r.observatii}));
@@ -5404,7 +5429,7 @@ async function adminReimprospateaza(){
     db.from("soferi").select("*").eq("activ",true).order("nume"),
     db.from("masini").select("*").eq("activ",true).order("marca")
   ]);
-  DEP=d.data||DEP; SOF=s.data||SOF; MAS=m.data||MAS;
+  DEP=d.data||DEP; puneTitlul(); SOF=s.data||SOF; MAS=m.data||MAS;
   fillAll();
   await adminIncarca(); loadVerif();
 }
