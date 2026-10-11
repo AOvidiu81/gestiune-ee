@@ -160,11 +160,11 @@ const MONTH_ABBR_RO = ['Ian','Feb','Mar','Apr','Mai','Iun','Iul','Aug','Sep','Oc
 const periodFilter = document.getElementById('periodFilter');
 const isoLocal = x => x.getFullYear()+'-'+String(x.getMonth()+1).padStart(2,'0')+'-'+String(x.getDate()).padStart(2,'0');
 const dataEticheta = d => `${DAY_ABBR_RO[d.getDay()]}, ${String(d.getDate()).padStart(2,'0')}-${MONTH_ABBR_RO[d.getMonth()]}-${d.getFullYear()}`;
-// Perioada in care cade ziua aleasa: ziua, saptamana (duminica–sambata, ca saptamanile W din rute), luna sau anul ei
+// Perioada in care cade ziua aleasa: ziua, saptamana (LUNI–DUMINICA, ca saptamanile W din rute — regula lui Ovidiu, 11.10.2026), luna sau anul ei
 function perioada(){
   const d = new Date((dateFilter.value || isoLocal(new Date()))+'T00:00:00');
   let a = new Date(d), b = new Date(d);
-  if(periodFilter.value === 'sapt'){ a.setDate(d.getDate() - d.getDay()); b = new Date(a); b.setDate(a.getDate() + 6); }
+  if(periodFilter.value === 'sapt'){ a.setDate(d.getDate() - (d.getDay() + 6) % 7); b = new Date(a); b.setDate(a.getDate() + 6); }
   else if(periodFilter.value === 'luna'){ a = new Date(d.getFullYear(), d.getMonth(), 1); b = new Date(d.getFullYear(), d.getMonth() + 1, 0); }
   else if(periodFilter.value === 'an'){ a = new Date(d.getFullYear(), 0, 1); b = new Date(d.getFullYear(), 11, 31); }
   return { a, b, de: isoLocal(a), la: isoLocal(b), oZi: periodFilter.value === 'zi' };

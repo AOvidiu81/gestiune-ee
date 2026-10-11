@@ -1,6 +1,6 @@
 // sw.js — Dashboard EuroEcologic. Face aplicația instalabilă și o pornește
 // repede. Datele din Supabase nu se păstrează niciodată în memorie.
-const VERSIUNE = 'dashboard-ee-v2';
+const VERSIUNE = 'dashboard-ee-v3';
 const SCHELET = ['./', './index.html', './manifest.json', './icon-192.png', './icon-512.png'];
 
 self.addEventListener('install', (e) => {
