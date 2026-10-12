@@ -1033,7 +1033,7 @@ let dayStart = {}; // {brand, plate, kmStart, driver1, driver2, startTime}
 let lastRouteRows = [];
 
 // --- Șofer EE: aplicatia ruleaza in fila „Rută” (../sofer/), care trimite datele zilei ---
-const EE_RUTA_VERSION = 'v17'; // aceeasi cu VERSIUNE din sw.js; Șofer EE o arata langa rotita
+const EE_RUTA_VERSION = 'v18'; // aceeasi cu VERSIUNE din sw.js; Șofer EE o arata langa rotita
 const SOFER_MODE = new URLSearchParams(location.search).get('sofer') === '1';
 let multiZile = null;   // mai multe zile bifate (ruta complementara), altfel null
 let multiTrasee = null; // mai multe trasee bifate, altfel null
@@ -2851,7 +2851,8 @@ function updateSpeedTracking(pos){
    Punctul se leaga de anexa prin clients.client_key = A<id> / A<id>-LU. ===== */
 let EE_SERII = {};
 try{ EE_SERII = JSON.parse(localStorage.getItem('ee-ruta-serii') || '{}') || {}; }catch(e){ EE_SERII = {}; }
-function seriiPunct(r){ const m = /^A(\d+)/.exec((r && r.clientKey) || ''); return m ? (EE_SERII[m[1]] || '') : ''; }
+// v18: punctul cu locatie numerotata (A181-05-MA) arata doar seriile locatiei A181-05; restul — ale anexei, ca inainte
+function seriiPunct(r){ const m = /^A(\d+)(-\d+)?/.exec((r && r.clientKey) || ''); if(!m) return ''; return m[2] ? (EE_SERII['A' + m[1] + m[2]] || '') : (EE_SERII[m[1]] || ''); }
 window.eeSoferSerii = function(harta){
   EE_SERII = harta || {};
   try{ localStorage.setItem('ee-ruta-serii', JSON.stringify(EE_SERII)); }catch(e){}

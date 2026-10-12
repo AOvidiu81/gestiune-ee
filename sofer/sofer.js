@@ -26,7 +26,7 @@ import { openHistoryScreen } from '../pv/js/screens-history.js';
 import { buildComenziActive } from '../pv/js/screens-comenzi.js';
 import { openSettingsScreen } from '../pv/js/screens-setup.js';
 
-export const SOFER_VERSION = 's34';
+export const SOFER_VERSION = 's35';
 
 const KEY_ZI = 'ee-sofer-zi'; // ziua deschisa: { zi, coleg, carId, km, trasee, zile, zona, ordine, ruta }
 const KEY_ULTIMA = 'ee-sofer-ultima'; // ultimele alegeri (masina, traseu, zona) — precompletare
@@ -509,6 +509,10 @@ export function hartaSerii(serii, anexe) {
   const harta = {};
   anexe.forEach((a) => { const l = peGrup[grupAnexa[a.id]]; if (l && l.length) harta[a.id] = l.join('; '); });
   serii.forEach((x) => { if (x.anexa_id && !harta[x.anexa_id]) harta[x.anexa_id] = (peGrup['a' + x.anexa_id] || []).join('; '); });
+  // s35: si pe locatia punctului de ruta (serii.punct = A181-05) — ruta arata pe A181-05-MA / -VI doar seriile locatiei
+  const peLoc = {};
+  serii.forEach((x) => { if (x.punct) (peLoc[x.punct] = peLoc[x.punct] || []).push([x.model, x.serie].filter(Boolean).join(' ') || 'fără serie'); });
+  Object.keys(peLoc).forEach((k) => { harta[k] = peLoc[k].join('; '); });
   return harta;
 }
 
@@ -645,7 +649,7 @@ function ecranFile() {
       try {
         const sb = await getSupabase();
         const [s, a] = await Promise.all([
-          sb.from('serii').select('anexa_id,produs,model,serie').eq('stare', 'LA CLIENT').order('id'),
+          sb.from('serii').select('anexa_id,produs,model,serie,punct').eq('stare', 'LA CLIENT').order('id'),
           sb.from('anexe').select('id,contract_id,anexa,linie_id,jud,loc,sat'),   // s31
         ]);
         if (s.error || a.error) return;
