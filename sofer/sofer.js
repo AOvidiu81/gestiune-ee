@@ -26,7 +26,7 @@ import { openHistoryScreen } from '../pv/js/screens-history.js';
 import { buildComenziActive } from '../pv/js/screens-comenzi.js';
 import { openSettingsScreen } from '../pv/js/screens-setup.js';
 
-export const SOFER_VERSION = 's33';
+export const SOFER_VERSION = 's34';
 
 const KEY_ZI = 'ee-sofer-zi'; // ziua deschisa: { zi, coleg, carId, km, trasee, zile, zona, ordine, ruta }
 const KEY_ULTIMA = 'ee-sofer-ultima'; // ultimele alegeri (masina, traseu, zona) — precompletare
@@ -326,9 +326,10 @@ function valoriDePornire() {
 // `faraInceput`: masina schimbata pe drum — inceputul zilei ramane cu masina si km de dimineata
 function salveazaZiua(z, { faraInceput } = {}) {
   const nume = stare.driver?.name || '';
-  const vechi = stare.zi || citeste(KEY_ZI) || citeste(KEY_START);
   // ora la care s-a deschis ziua prima data; corecturile de peste zi nu o schimba
-  const oraStart = (vechi && vechi.zi === z.zi && vechi.sofer === nume && vechi.oraStart) || new Date().toISOString();
+  // s34: se cauta in toate cele trei locuri o zi cu aceeasi data si acelasi sofer (inainte, o zi veche din KEY_ZI o ascundea pe cea din KEY_START)
+  const vechi = [stare.zi, citeste(KEY_ZI), citeste(KEY_START)].find((v) => v && v.zi === z.zi && v.sofer === nume && v.oraStart);
+  const oraStart = (vechi && vechi.oraStart) || new Date().toISOString();
   z = { ...z, sofer: nume, oraStart }; // ziua e a soferului care a deschis-o
   stare.zi = z;
   stare.car = masinaDupaId(z.carId);
@@ -358,7 +359,13 @@ async function trimiteInceput() {
   let dinNou = false;
   try {
     const sb = await getSupabase();
-    const { error } = await sb.from('inceput_zi').upsert(r, { onConflict: 'zi,sofer1' });
+    // s34: ora de inceput din baza nu se muta mai tarziu (ziua deschisa din nou pe alt telefon / calculator)
+    let rr = r;
+    try {
+      const { data: ex } = await sb.from('inceput_zi').select('ora_start').eq('zi', r.zi).eq('sofer1', r.sofer1).maybeSingle();
+      if (ex && ex.ora_start && (!r.ora_start || new Date(ex.ora_start) < new Date(r.ora_start))) rr = { ...r, ora_start: ex.ora_start };
+    } catch (e) { /* daca nu se poate citi, se trimite ca inainte */ }
+    const { error } = await sb.from('inceput_zi').upsert(rr, { onConflict: 'zi,sofer1' });
     if (error) throw error;
     if (JSON.stringify(citeste(KEY_INCEPUT)) === JSON.stringify(r)) localStorage.removeItem(KEY_INCEPUT);
     else dinNou = true; // s-a schimbat intre timp

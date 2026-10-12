@@ -489,7 +489,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <span id="azi-sus" title="Data de azi (calculatorul)"></span>
   <button id="btn-mob" class="btn sec" style="padding:5px 10px;font-size:12px" onclick="mobPC(false)" title="Înapoi la varianta de telefon">📱 Telefon</button>
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
-  <span class="ver">v5.39</span>
+  <span class="ver">v5.40</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -5249,7 +5249,15 @@ function fpRand(s){
     traseu: [String(s.last_masina || "").split("+").filter(Boolean).join(", "), String(s.last_ziua || "").split("+").filter(Boolean).join(", ")].filter(Boolean).join(" · "),
     km: s.km_start != null && s.km_end != null ? s.km_end - s.km_start : "", oraStart: izOra(s.created_at), oraStop: izOra(gata),
     ore: min != null && min >= 0 && min < 24 * 60 ? fpOre(min) : "",
-    inceput: izOra(((FP.iz || []).find(r => r.zi === zi && r.sofer1 === s.driver1) || {}).ora_start) };   // v5.36
+    inceput: izOra(fpInceput(zi, s.driver1)) };   // v5.36
+}
+// v5.40: „Început zi” nu poate fi după prima rută a zilei — se ia cea mai devreme dintre ora din inceput_zi și pornirea primei rute
+// (ora din inceput_zi putea fi rescrisă mai târziu, ex. ziua deschisă din nou pe alt telefon / calculator)
+function fpInceput(zi, sofer){
+  const t = [((FP.iz || []).find(r => r.zi === zi && r.sofer1 === sofer) || {}).ora_start]
+    .concat((FP.ses || []).filter(x => x.driver1 === sofer && (x.created_at ? izZiLocala(x.created_at) : x.session_date) === zi).map(x => x.created_at))
+    .filter(Boolean).sort((a, b) => new Date(a) - new Date(b));
+  return t[0] || "";
 }
 async function loadFP(forta){
   try{
