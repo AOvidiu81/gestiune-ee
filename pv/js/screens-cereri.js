@@ -6,6 +6,7 @@
 // dispozitie de utilizator — vezi js/pdf-cereri.js pentru continutul exact
 // al documentelor generate.
 //
+// (v81: se pastreaza pe telefon in "Documente generate" — vezi urcaCerere.)
 // Documentele NU se numeroteaza si nu se salveaza in istoric (spre deosebire
 // de Procesul Verbal) — se genereaza direct din formular si se trimit mai
 // departe (WhatsApp/alta aplicatie) prin acelasi ecran de previzualizare
@@ -13,9 +14,11 @@
 // duplicare de UI/logica.
 
 import { el, formatDateRo, countBusinessDaysInclusive, addBusinessDays, parseIsoDate, toIsoDate, fileToken, uuid } from './utils.js';
-import { uploadPvRecordToCloud } from './auth.js';
+import { uploadPvRecordToCloud, flushPvQueue } from './auth.js';
+import { MetaRepo } from './db.js';
+import { downloadPdf, shareOrDownloadPdf } from './pdf-generate.js';
 import { pushScreen } from './router.js';
-import { textField, textAreaField, dateField, sectionCard, primaryButton, outlineButton, showToast, tile } from './components.js';
+import { textField, textAreaField, dateField, sectionCard, primaryButton, outlineButton, showToast, tile, confirmDialog } from './components.js';
 import { openPrintPreview } from './pdf-print.js';
 import { buildCerereConcediuHtml, buildCerereInvoireHtml, buildCerereDemisieHtml } from './pdf-cereri.js';
 
@@ -52,12 +55,84 @@ function radioRow({ name, checked, title, sub, onChange }) {
 // ------------------------------------------------------------------
 // v69: cererile generate (nu si Preview) ajung in GestiuneEE, in fila Procese verbale,
 // la fel ca PV-urile (aceeasi coada: fara semnal pleaca singure mai tarziu).
+// v81 / s38 (cerut de Ovidiu, 12.10): fiecare cerere generata se pastreaza si pe telefon (IndexedDB, cheia
+// "cerere:<id>", cu PDF-ul) — fila "Documente generate". Raman acolo cat vrea soferul (le sterge el).
+// La birou ajung ca pana acum (GestiuneEE → Cereri / documente angajati), acelasi id.
+const CERERE_PREFIX = 'cerere:';
 function urcaCerere(tip, { driver, depot }, detalii, blob) {
+  const id = uuid(), createdAt = new Date().toISOString();
+  const fileName = `${tip.replace('CERERE ', '')} - ${fileToken(driver?.name)} - ${fileToken(String(detalii || '').split(' ')[0])}`;
+  MetaRepo.set(CERERE_PREFIX + id, { id, tip, detalii: detalii || '', driverName: driver?.name || '', fileName, createdAt, blob })
+    .catch((e) => console.warn('[cereri] nu am putut pastra cererea pe telefon:', e?.message || e));
   uploadPvRecordToCloud({
-    id: uuid(), pvNumber: tip.replace('CERERE ', ''), driverName: driver?.name || '', depotName: depot?.name || '',
+    id, pvNumber: tip.replace('CERERE ', ''), driverName: driver?.name || '', depotName: depot?.name || '',
     clientName: driver?.name || '', location: detalii || '', county: null, processType: tip,
-    carNumber: null, miscareId: null, createdAt: new Date().toISOString(),
+    carNumber: null, miscareId: null, createdAt,
   }, blob);
+}
+
+const TIP_ETICHETA = { 'CERERE CONCEDIU': 'Cerere de concediu', 'CERERE INVOIRE': 'Cerere de invoire', 'CERERE DEMISIE': 'Cerere de demisie' };
+function oraRo(iso) { const d = new Date(iso); return isNaN(d) ? '' : `${formatDateRo(d)}, ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`; }
+
+async function openDocumenteGenerate() {
+  return pushScreen(({ pop }) => {
+    const screen = el('div', { class: 'screen' });
+    screen.appendChild(topBar('Documente generate', () => pop(undefined)));
+    const lista = el('div', { style: 'display:flex;flex-direction:column;gap:12px;margin-top:6px' });
+    screen.appendChild(el('div', { class: 'screen-scroll' }, [lista]));
+
+    async function deseneaza() {
+      let toate = [];
+      try { toate = await MetaRepo.all(); } catch (e) { toate = []; }
+      const inCoada = new Set(toate.filter((r) => String(r.key).startsWith('pvUpload:')).map((r) => String(r.key).slice(9)));
+      const cereri = toate.filter((r) => String(r.key).startsWith(CERERE_PREFIX) && r.value && r.value.blob).map((r) => r.value)
+        .sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)));
+      lista.innerHTML = '';
+      if (!cereri.length) {
+        lista.appendChild(el('div', { style: 'text-align:center;color:#6b7a90;padding:30px 10px;font-size:14px;line-height:1.5' },
+          ['Nicio cerere generata pe acest telefon inca.', el('br'), 'Cererile pe care le generezi de acum inainte se pastreaza aici.']));
+        return;
+      }
+      lista.appendChild(el('div', { style: 'color:#6b7a90;font-size:12px;line-height:1.4;padding:0 4px' },
+        ['Se pastreaza pe acest telefon pana le stergi tu. La birou ajung singure, cand e semnal.']));
+      cereri.forEach((c) => {
+        const ajuns = !inCoada.has(c.id);
+        const btnSave = el('button', { class: 'btn btn-outline', style: 'flex:1;padding:8px 6px;font-size:13px' }, ['💾 Salveaza PDF']);
+        const btnSend = el('button', { class: 'btn btn-outline', style: 'flex:1;padding:8px 6px;font-size:13px' }, ['📤 Trimite']);
+        const btnDel = el('button', { class: 'btn btn-outline', style: 'flex:0 0 auto;padding:8px 12px;font-size:13px;color:#C0392B;border-color:#e6b8b2' }, ['🗑']);
+        btnSave.addEventListener('click', () => {
+          try { showToast('PDF salvat in Descarcari: ' + downloadPdf(c.blob, c.fileName || 'Cerere')); }
+          catch (e) { showToast('Nu am putut salva PDF-ul: ' + e.message, { danger: true }); }
+        });
+        btnSend.addEventListener('click', async () => {
+          try {
+            const r = await shareOrDownloadPdf(c.blob, c.fileName || 'Cerere', { title: c.fileName || 'Cerere' });
+            if (r && r.status === 'downloaded') showToast('Trimiterea nu a fost posibila, PDF-ul a fost descarcat.', { danger: true });
+          } catch (e) { showToast('Nu am putut trimite PDF-ul: ' + e.message, { danger: true }); }
+        });
+        btnDel.addEventListener('click', async () => {
+          const ok = await confirmDialog({ title: 'Stergi cererea de pe telefon?', message: (TIP_ETICHETA[c.tip] || c.tip) + ' · ' + c.detalii +
+            (ajuns ? ' — La birou a ajuns deja — acolo ramane.' : ' — ATENTIE: nu a ajuns inca la birou (asteapta semnal). Trimiterea continua si daca o stergi de aici.'),
+            okLabel: 'Sterge', danger: true });
+          if (!ok) return;
+          try { await MetaRepo.remove(CERERE_PREFIX + c.id); } catch (e) { showToast('Nu am putut sterge: ' + e.message, { danger: true }); return; }
+          deseneaza();
+        });
+        lista.appendChild(el('div', { class: 'section-card', style: 'padding:12px 14px' }, [
+          el('div', { style: 'display:flex;justify-content:space-between;gap:8px;align-items:baseline' }, [
+            el('div', { style: 'font-weight:700;font-size:15px;color:#13294b' }, [TIP_ETICHETA[c.tip] || c.tip]),
+            el('div', { style: `font-size:12px;font-weight:600;white-space:nowrap;color:${ajuns ? '#2E8B3C' : '#D97706'}` }, [ajuns ? '✓ ajunsa la birou' : '⏳ asteapta semnal']),
+          ]),
+          el('div', { style: 'font-size:14px;margin-top:2px' }, [c.detalii || '']),
+          el('div', { style: 'font-size:12px;color:#6b7a90;margin-top:2px' }, ['generata ' + oraRo(c.createdAt) + (c.driverName ? ' · ' + c.driverName : '')]),
+          el('div', { style: 'display:flex;gap:8px;margin-top:10px' }, [btnSave, btnSend, btnDel]),
+        ]));
+      });
+    }
+    deseneaza();
+    flushPvQueue().then(deseneaza).catch(() => {});
+    return screen;
+  });
 }
 
 export async function openCereriMenu({ driver, car, depot }) {
@@ -92,11 +167,11 @@ export async function openCereriMenu({ driver, car, depot }) {
       }),
       tile({
         label: 'DOCUMENTE GENERATE',
-        sub: 'Istoric cereri (in curand)',
+        sub: 'Cererile tale, pastrate pe acest telefon',
         icon: '📁',
         accent: '#2D4D7A',
         badge: '#EEF3FA',
-        disabled: true,
+        onClick: () => openDocumenteGenerate(),
       }),
     ]);
 
