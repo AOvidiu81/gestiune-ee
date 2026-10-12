@@ -489,7 +489,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <span id="azi-sus" title="Data de azi (calculatorul)"></span>
   <button id="btn-mob" class="btn sec" style="padding:5px 10px;font-size:12px" onclick="mobPC(false)" title="Înapoi la varianta de telefon">📱 Telefon</button>
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
-  <span class="ver">v5.38</span>
+  <span class="ver">v5.39</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -588,7 +588,6 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   </div>
   <div class="kpi" id="m-kpi" style="display:none"></div><!-- v4.73: căsuțele Comenzi / Amplasate / Ridicate / Net ascunse deocamdată (cerut de Ovidiu, 07.10); se scoate style ca să revină -->
   <div id="m-leg"><b class="muted">Data:</b><span style="color:var(--z-azi)">Azi</span><span style="color:var(--z-sa)">Săptămâna asta (luni–duminică)</span><span style="color:var(--z-st)">Săptămâna trecută</span><span style="color:var(--z-sv)">Săptămâna viitoare</span>
-    <b class="muted">Stil dată (de probă):</b><button type="button" class="ds-b" data-ds="1" onclick="dataStil(1)">1 pastilă</button><button type="button" class="ds-b" data-ds="2" onclick="dataStil(2)">2 celulă</button><button type="button" class="ds-b" data-ds="3" onclick="dataStil(3)">3 plin</button>
     <b class="muted" style="margin-left:10px">Client:</b><span style="color:#4ADE80">toate bifele V</span><span style="color:#F59E0B">în lucru (cel puțin o bifă)</span><span class="lg-n">nicio bifă</span><span class="tel-v">📱 de verificat</span> = făcută pe telefon, încă nesalvată pe PC</div>
   <div class="tw"><table id="m-tbl"></table></div>
 </section>
@@ -1663,8 +1662,7 @@ async function loadMiscari(){
 }
 $("f-q").addEventListener("keydown",e=>{if(e.key==="Enter")loadMiscari();});
 // v5.22: stilul de probă al datei în Comenzi (ales de Ovidiu după ce le vede; ținut doar pe acest calculator)
-let DATA_STIL = 1; try{ DATA_STIL = +localStorage.getItem("ee-data-stil") || 1; }catch(e){}
-function dataStil(n){ DATA_STIL = n; try{ localStorage.setItem("ee-data-stil", n); }catch(e){} renderMiscari(); }
+const DATA_STIL = 1;   // v5.39: ales de Ovidiu (12.10) — „1 pastilă”; butoanele de probă scoase
 const tipLit = t => /AMPLASARE|EVENIMENT-A|SUPLIMENTARE/.test(t)?"A":/RIDICARE|EVENIMENT-R|REDUCERE/.test(t)?"R":/SERVISARE/.test(t)?"S":/Transfer|VANZARE/.test(t)?"T":"X";
 const tipTxt = t => `<span class="tc tc-${tipLit(t)}">${esc(t)}</span>`;
 // v5.22: titlul ferestrei — „Gestiune - Euro Ecologic - Depozit <principal>” (depozitul vine din Administrare → Depozite)
@@ -1748,7 +1746,6 @@ function renderMiscari(){
   h+=MISC.map(r=>{const sr=subReferinta(r); const gz=grupaZilei(r.data); return `<tr><td${gz?` class="zd-${gz}"`:""}><span class="zd">${fmtD(r.data)}</span>${sr?` <span class="pill p-T" title="Mai veche decât data de referință a stocului (${fmtD(sr)}) — nu intră în stoc">sub referință</span>`:""}</td><td>${r.grup_id&&r.grup_id!==r.id?'<span class="muted" title="Produs din aceeași comandă cu #'+r.grup_id+'">↳ </span>':""}${tipTxt(r.tip_miscare)}${r.grup_id===r.id?' <span class="muted" title="Comanda are mai multe produse">+'+MISC.filter(x=>x.grup_id===r.id&&x.id!==r.id).length+'</span>':""}</td><td class="tc tc-${tipLit(r.tip_miscare)}">${r.buc}</td><td>${esc(r.produs)}</td><td>${esc(r.model)}</td><td style="font-size:12px;white-space:nowrap" title="${esc(r.accesorii||"")}">${esc(accScurt(r.accesorii))}</td><td><b class="${clCls(r)}">${esc(r.client)}</b>${r.din_telefon?' <span class="tel-v" title="Făcută pe telefon — deschide cu Edit, verifică și apasă Salvează pe PC">📱 de verificat</span>':""}</td><td>${esc(nrCtr(r.contract_id))}</td><td>${esc(nrAnx(r.anexa_id))}</td><td>${esc(r.jud)}</td><td>${esc(r.loc)}</td><td>${esc(r.sat)}</td><td>${esc(r.contract)}</td><td>${esc(r.depozit)}</td><td>${esc(r.pers_resp)}</td><td>${esc(r.telefon)}</td><td>${flVer(r, "rpt")}</td><td>${flVer(r, "rt")}</td><td>${flVer(r, "fac")}</td><td>${flVer(r, "pv")}${semnPvApp(r)}</td><td>${flVer(r, "act")}</td><td>${flVer(r, "waap")}</td><td>${esc(r.frecv_serv)}</td><td class="noprint actions"><button class="btn sm sec" onclick="openMiscare(${r.id})">Edit</button> <button class="btn sm" ${ruteStil(r)} onclick="spreRute(${r.id})" title="Verde = punctul de rută are coordonate GPS; portocaliu = fără punct sau fără coordonate. Deschide punctul de rută completat din comandă. Nu se salvează nimic până nu verifici și apeși Salvează.">→ Rute</button></td></tr>`;}).join("");
   $("m-tbl").innerHTML=h||"<tr><td>Nicio comandă.</td></tr>";
   $("m-tbl").className = "ds-" + DATA_STIL;
-  document.querySelectorAll("#m-leg .ds-b").forEach(b => b.classList.toggle("on", +b.dataset.ds === DATA_STIL));
 }
 function exportMiscari(){
   const rows=MISC.map(r=>({AN:r.data.slice(0,4),LUNA:LUNI[+r.data.slice(5,7)-1],DATA:fmtD(r.data),MISCARE:r.tip_miscare,BUC:r.buc,PRODUSE:r.produs,TIP:r.model,ACCESORII:r.accesorii||"",CLIENT:r.client,"NR CONTRACT":(CTR.find(x=>x.id===r.contract_id)||{}).nr_ctr||"","ANEXA":(ANX.find(x=>x.id===r.anexa_id)||{}).anexa||"",JUD:r.jud,"LOC. / COM.":r.loc,"SAT / STR. / LOCATIE":r.sat,CONTRACT:r.contract,DEPOZIT:r.depozit,"RESP SANTIER":r.pers_resp,TELEFON:r.telefon,Rpt:r.rpt,RT:r.rt,FAC:r.fac,PV:r.pv,ACT:r.act,WaAp:r.waap,"Frecv. Serv":r.frecv_serv,OBS:r.observatii}));
