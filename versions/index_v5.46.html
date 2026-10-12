@@ -62,8 +62,8 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   /* v5.06: o pastilă mică, centrată în celulă, colțuri rotunjite (cerut de Ovidiu) */
   tr td.rl-up, tr td.rl-down{text-align:center!important}
   .rl-b{display:inline-block;min-width:16px;padding:0 5px;border-radius:6px;font-weight:700;font-size:11.5px;line-height:17px}
-  td.rl-up .rl-b{background:rgba(46,139,60,.28);border:1px solid rgba(76,175,90,.6);color:#8fe39c}
-  td.rl-down .rl-b{background:rgba(192,57,43,.28);border:1px solid rgba(224,90,80,.6);color:#ffa094}
+  td.rl-up .rl-b{background:rgba(46,139,60,.28);border:1px solid rgba(76,175,90,.6);color:var(--t-ok)}
+  td.rl-down .rl-b{background:rgba(192,57,43,.28);border:1px solid rgba(224,90,80,.6);color:var(--t-err)}
   .flag.V{background:#1f9d55;color:#fff;border-color:#1f9d55}.flag.L{background:#f08c00;color:#fff;border-color:#f08c00}.flag.X{background:#d93025;color:#fff;border-color:#d93025}
   .stoc-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:12px}
   .stoc{background:#fff;border:1px solid var(--bd);border-radius:10px;padding:12px}
@@ -72,7 +72,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   .st-hd h4{margin:0 0 10px}
   .st-set{display:flex;flex-wrap:wrap;gap:6px 16px;padding:10px 0 12px;margin-bottom:10px;border-bottom:1px solid var(--bd)}
   .st-set label{display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;white-space:nowrap}
-  .st-av{margin-top:10px;font-size:12px;color:#e0a030}
+  .st-av{margin-top:10px;font-size:12px;color:var(--t-warn)}
   .stoc .n{display:flex;justify-content:space-between;padding:3px 0;font-size:13px}
   .stoc .n b{font-size:16px}
   .stoc .tot{border-top:1px solid var(--bd);margin-top:6px;padding-top:6px;font-weight:700}
@@ -234,6 +234,8 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   /* v5.21 (cerut de Ovidiu, 11.10): Comenzi — data colorată pe săptămâni, clientul colorat după bife */
   /* v5.22: culorile datei pe teme + 3 stiluri de probă (1 pastilă, 2 celulă, 3 plin) */
   :root{--z-azi:#a16207;--z-sa:#1d4ed8;--z-st:#6d28d9;--z-sv:#0f766e}
+  /* v5.46: textele de stare (ok / eroare / atenție) — pastel pe temă închisă, închise la culoare pe tema deschisă */
+  :root{--t-ok:#7ad69a;--t-err:#ff9c96;--t-warn:#e8a33d}
   :root[data-tema="inchis"]{--z-azi:#FACC15;--z-sa:#60A5FA;--z-st:#A78BFA;--z-sv:#2DD4BF}
   td.zd-azi{--zc:var(--z-azi);font-weight:700} td.zd-sa{--zc:var(--z-sa)} td.zd-st{--zc:var(--z-st)} td.zd-sv{--zc:var(--z-sv)}
   td[class*="zd-"]{color:var(--zc)}
@@ -480,6 +482,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
     --ok:#1E7A4C; --red:#B42318; --amb:#B54708;
     --rand-hov:#F5F8FD; --umbra:none; --r:4px;
     --z-azi:#9A6700; --cl-toate:#1E7A4C; --cl-unele:#B45309;
+    --t-ok:#1E7A4C; --t-err:#B42318; --t-warn:#9A5B00;
   }
   :root:not([data-tema="inchis"]) body{font-family:Manrope,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
   :root:not([data-tema="inchis"]) header{border-bottom:0}
@@ -509,6 +512,10 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   :root:not([data-tema="inchis"]) .kpi div b{font-weight:700}
   :root:not([data-tema="inchis"]) #fe-bara button{border-radius:4px}
   :root:not([data-tema="inchis"]) .tel-v{color:#1F5FD1;border-color:#1F5FD1}
+  :root:not([data-tema="inchis"]) td.rl-up .rl-b{background:#DDF0E4;border-color:#8CC4A2}
+  :root:not([data-tema="inchis"]) td.rl-down .rl-b{background:#FBE3E0;border-color:#E3A097}
+  :root:not([data-tema="inchis"]) .kpi div{color:#4F5B72;font-weight:600}
+  :root:not([data-tema="inchis"]) .toast{background:#1F2A3D;color:#fff;border-color:#1F2A3D}
   }
   /* La tipărire, mereu pe alb, indiferent de temă. */
   @media print{
@@ -669,7 +676,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
       <div style="flex:0"><label>Județ</label><select id="r-jud" onchange="genereazaRaport()"></select></div>
       <div style="flex:0"><label>Stare contract</label><select id="r-stare" onchange="genereazaRaport()"></select></div>
       <div style="flex:0"><label>TVA %</label><input id="r-tva" type="number" value="21" step="1" oninput="genereazaRaport()"></div>
-      <div style="flex:0" id="r-pana-w"><label title="Gol = zilele se completează până azi. Cu o dată (ex. ultima zi a lunii) se completează până la ea și rămâne așa până o golești.">Completat până la</label><div style="display:flex;gap:6px"><input id="r-pana" type="date" onchange="rlPanaSet(this.value)" style="width:auto"><button class="btn sec" onclick="rlPanaSet('')" title="Golește data — zilele se completează din nou până azi">✕</button></div></div>
+      <div style="flex:0 0 auto" id="r-pana-w"><label title="Gol = zilele se completează până azi. Cu o dată (ex. ultima zi a lunii) se completează până la ea și rămâne așa până o golești.">Completat până la</label><div style="display:flex;gap:6px"><input id="r-pana" type="date" onchange="rlPanaSet(this.value)" style="width:150px;flex:0 0 150px"><button class="btn sec" style="flex:0 0 auto" onclick="rlPanaSet('')" title="Golește data — zilele se completează din nou până azi">✕</button></div></div>
       <div style="flex:0" id="r-mod-wrap"><label>Variantă</label><div style="display:flex;gap:6px"><button class="btn sec" id="r-mod-lucru" onclick="setModFact('lucru')">În lucru</button><button class="btn sec" id="r-mod-gata" onclick="setModFact('gata')">Gata de trimis</button></div></div>
       <div style="flex:0"><label>&nbsp;</label><button class="btn sec" onclick="exportRaport()">Export Excel</button></div>
       <div style="flex:0"><label>&nbsp;</label><button class="btn sec" onclick="window.print()">PDF / Print</button></div>
@@ -2103,7 +2110,7 @@ function maEtichete(lit, fin){
   const r = lit === "R";
   $("ma-cant-l").textContent = fin ? "Cantitate (se ridică tot)" : r ? "Cantitate (se scade)" : "Cantitate";
   $("ma-dliv-l").textContent = fin ? "Data ridicării" : r ? "Data reducerii" : "Data amplasării";
-  $("ma-cant").style.color = r ? "#e05050" : "";
+  $("ma-cant").style.color = r ? "var(--t-err)" : "";
   $("ma-cant").style.fontWeight = r ? "700" : "";
 }
 const MA_SCURT_VIZ = ["ma-an", "ma-de", "ma-dliv", "ma-cant", "ma-pret", "ma-frecv", "ma-zile"];   // v4.94: + data amplasării   // v4.61: și frecvența + zilele de servisare
@@ -2409,7 +2416,7 @@ function mmPvHtml(l){
   const potr=l.filter(x=>MM_PV.serii.some(s=>serN(s)===serN(x.serie)));
   const nec=MM_PV.serii.filter(s=>!l.some(x=>serN(x.serie)===serN(s)));
   const dif=potr.length && (potr.length!==l.filter(x=>MM_SER.has(x.id)).length || potr.some(x=>!MM_SER.has(x.id)));
-  const P='<span style="color:#e8a33d">';
+  const P='<span style="color:var(--t-warn)">';
   return `<div style="margin-top:8px">📄 În PV ${esc(MM_PV.pv)} șoferul a trecut: <b>${potr.length?esc(seriiGrupate(potr)):"—"}</b>`+
     (dif?` ${P}· diferă de bife</span>`:"")+
     (nec.length?` ${P}· serie necunoscută: <b>${esc(nec.join(", "))}</b> — adaug-o din butonul 🔢, apoi redeschide comanda</span>`:"")+`</div>`;
@@ -2637,8 +2644,8 @@ function mcCuiVerif(){
   if(!f) $("mc-anaf").innerHTML = "";
   const c = cuiCurat($("mc-cui").value), p = mcCuiProbleme();
   $("mc-cui-info").innerHTML = !f || !c ? "" : p.length
-    ? p.map(x => `<div style="color:${x.r ? "#e5534b" : "#d97706"}">⚠ ${esc(x.t)}</div>`).join("")
-    : '<span style="color:#3fb950">✓ Număr valid</span>';
+    ? p.map(x => `<div style="color:${x.r ? "var(--t-err)" : "#d97706"}">⚠ ${esc(x.t)}</div>`).join("")
+    : '<span style="color:var(--t-ok)">✓ Număr valid</span>';
 }
 function mcCuiRO(){   // „RO123…” scris în Număr → RO trece la Atribut fiscal
   if(!mcEFirma()) return;
@@ -2655,10 +2662,10 @@ async function mcAnaf(){
   if(r.error || !r.data){
     let m = "ANAF nu răspunde acum — completează de mână sau încearcă mai târziu.";
     try { const j = await r.error.context.json(); if(j && j.eroare) m = j.eroare; } catch(_){}
-    P.innerHTML = `<div class="anaf-box" style="color:#e5534b">⚠ ${esc(m)}</div>`; return;
+    P.innerHTML = `<div class="anaf-box" style="color:var(--t-err)">⚠ ${esc(m)}</div>`; return;
   }
   const d = r.data;
-  if(!d.gasit){ P.innerHTML = '<div class="anaf-box" style="color:#e5534b">⚠ Nu există nicio firmă cu acest număr la ANAF.</div>'; return; }
+  if(!d.gasit){ P.innerHTML = '<div class="anaf-box" style="color:var(--t-err)">⚠ Nu există nicio firmă cu acest număr la ANAF.</div>'; return; }
   MC_ANAF = d;
   const b = d.bilant, rau = d.inactiv || d.radiat;
   const sediu = [d.judet && "Jud. " + d.judet, d.localitate, d.strada].filter(Boolean).join(", ") || d.adresa;
@@ -2667,7 +2674,7 @@ async function mcAnaf(){
   const rand = (id, bif, et, val) => `<label style="display:flex;gap:6px;align-items:flex-start;margin:3px 0;font-weight:normal"><input type="checkbox" id="${id}"${bif ? " checked" : ""} style="width:auto;margin-top:3px"><span>${et}: <b>${esc(val || "—")}</b></span></label>`;
   P.innerHTML = `<div class="anaf-box">
     <div style="font-weight:600;margin-bottom:4px">Găsit la ANAF</div>
-    ${rau ? `<div style="color:#e5534b;font-weight:600;margin-bottom:4px">⚠ FIRMA ESTE ${d.radiat ? "RADIATĂ" : "INACTIVĂ"} la ANAF — verifică înainte de contract!</div>` : ""}
+    ${rau ? `<div style="color:var(--t-err);font-weight:600;margin-bottom:4px">⚠ FIRMA ESTE ${d.radiat ? "RADIATĂ" : "INACTIVĂ"} la ANAF — verifică înainte de contract!</div>` : ""}
     <div class="muted">${esc(d.stare)}${d.forma ? " · " + esc(d.forma) : ""}${d.caen ? " · CAEN " + esc(d.caen) : ""} · ${d.platitor_tva ? "plătitor de TVA" : "neplătitor de TVA"}</div>
     ${b ? `<div class="muted">Bilanț ${b.an}: cifra de afaceri ${leiF(b.cifra_afaceri)} · ${b.pierdere_neta ? "pierdere " + leiF(b.pierdere_neta) : "profit " + leiF(b.profit_net)} · ${b.angajati ?? "—"} angajați</div>` : '<div class="muted">Bilanț: nu există la ANAF (instituție publică sau firmă nouă).</div>'}
     <div style="margin-top:6px">Ce se completează:</div>
@@ -2746,7 +2753,7 @@ function mcVerifica(){
   $("mc-conf-ok").textContent = nou ? "Creează client nou" : "Salvează modificările";
   d.nume = d.nume.toUpperCase();
   const prb = mcCuiProbleme();
-  $("mc-conf-date").innerHTML = prb.map(x => `<div style="color:${x.r ? "#e5534b" : "#d97706"};margin-bottom:6px">⚠ ${esc(x.t)} Poți salva oricum.</div>`).join("") + "<table>" + MC_CAMPURI.map(([, c, l]) => `<tr><td>${esc(l)}</td><td><b>${esc(d[c] || "—")}</b></td></tr>`).join("") + "</table>";
+  $("mc-conf-date").innerHTML = prb.map(x => `<div style="color:${x.r ? "var(--t-err)" : "#d97706"};margin-bottom:6px">⚠ ${esc(x.t)} Poți salva oricum.</div>`).join("") + "<table>" + MC_CAMPURI.map(([, c, l]) => `<tr><td>${esc(l)}</td><td><b>${esc(d[c] || "—")}</b></td></tr>`).join("") + "</table>";
   $("mc-conf").classList.add("on");
 }
 async function saveClient(dupa){
@@ -3094,7 +3101,7 @@ function maConfRanduri(){
     `<td>${esc([x.frecv_servisare || "fără servisare", (x.zi_servisare || "").replace(/,/g, ", ")].filter(Boolean).join(" · "))}</td>` +
     `<td>${x.id ? "" : "<span class='muted'>nou</span>"}</td></tr>`).join("") + "</table>" +
     (MA_UN_RAND ? `<p style="margin:8px 0 0"><b>La facturare: un singur rând</b> pentru produsele cu același preț și aceeași perioadă.</p>` : "") +
-    (MA_STERSE.length ? `<p style="color:#e05050;margin:8px 0 0">Se scot de pe anexă ${MA_STERSE.length} ${MA_STERSE.length === 1 ? "rând" : "rânduri"}.</p>` : "");
+    (MA_STERSE.length ? `<p style="color:var(--t-err);margin:8px 0 0">Se scot de pe anexă ${MA_STERSE.length} ${MA_STERSE.length === 1 ? "rând" : "rânduri"}.</p>` : "");
 }
 // v5.10: dublu-click pe Salvează nu mai face două anexe
 let MA_SALV = false;
@@ -4958,7 +4965,7 @@ async function loadPV(){
         `<td>${r.county ? "<b>[" + esc(r.county) + "]</b> " : ""}${esc(r.location || "—")}</td>` +
         `<td>${esc(r.driver_name || "—")}</td><td>${esc(r.car_number || "—")}</td>` +
         `<td style="text-align:right">${pvMarime(r.file_size)}</td>` +
-        `<td>${r.downloaded_at ? '<span style="color:#6fbf73">✔ ' + dRO(new Date(r.downloaded_at)) + '</span>' : '<span class="muted">nu</span>'}</td>` +
+        `<td>${r.downloaded_at ? '<span style="color:var(--t-ok)">✔ ' + dRO(new Date(r.downloaded_at)) + '</span>' : '<span class="muted">nu</span>'}</td>` +
         (cereri ? "" : `<td>${!r.downloaded_at ? '<span class="muted" title="Apare după ce descarci PV-ul">—</span>' : PVM[r.id] ? flagBtn(PVM[r.id], "pv") : '<span class="muted" title="PV fără comandă legată">fără comandă</span>'}</td>`) +
         `<td class="actions">${r.storage_path ? `<button class="btn sm sec" onclick="pvDeschide('${esc(r.storage_path)}')">Deschide</button> <button class="btn sm" onclick="pvDescarca('${esc(r.id)}')">Descarcă</button>${r.downloaded_at ? ` <button class="btn sm sec" style="color:#e57373" onclick="pvSterge('${esc(r.id)}')">Șterge</button>` : ""}` : ""}</td></tr>`;
     }).join("") + "</tbody>";
@@ -5663,7 +5670,7 @@ function statusIstoric(r){
   const l = schLista(r.schimbare);
   const campuri = [["toalete","toalete"],["containere","containere"],["garduri","garduri"]].filter(([c]) => [r, ...l].some(s => +s[c]));
   const prod = s => (campuri.length ? campuri : [["toalete","toalete"]]).map(([c, e]) => (+s[c] || 0) + " " + e).join(", ");
-  const rand = (eticheta, s, st) => `<div style="white-space:nowrap">${esc(eticheta)} · <b style="color:${st === "INACTIV" ? "#ffa094" : "#8fe39c"}">${esc(st || "")}</b> · ${esc(prod(st === "INACTIV" ? {} : s))}</div>`;   /* pe INACTIV nu se servisează nimic: 0 */
+  const rand = (eticheta, s, st) => `<div style="white-space:nowrap">${esc(eticheta)} · <b style="color:${st === "INACTIV" ? "var(--t-err)" : "var(--t-ok)"}">${esc(st || "")}</b> · ${esc(prod(st === "INACTIV" ? {} : s))}</div>`;   /* pe INACTIV nu se servisează nimic: 0 */
   let ac = { ...r };
   const urm = l.map(s => { ac = { ...ac }; SCH_CAMPURI.forEach(c => { if(c in s) ac[c] = s[c]; }); return rand("din " + fmtD(s.de_la), ac, ac.status); });
   return `<details class="st-ist"><summary style="cursor:pointer;white-space:nowrap">${rand("azi " + fmtD(today()), r, r.status).replace(/^<div[^>]*>|<\/div>$/g, "")} <span class="muted">(+${l.length} programate)</span></summary>` +
@@ -6064,7 +6071,7 @@ async function plPorneste(m){
   const masini = {}; zile.forEach(z => { const p = existente.find(q => q.ziua === ZI_RUTE[z]); masini[z] = p ? p.masina : "Traseu I"; });
   PL = { m, a, loc, baza, camp, total, zile, rows, existente, masini, unic: (gasite || []).some(p => /^A\d+(-[A-Z]{2})?$/.test(p.client_key)) };
   $("pl-cap").innerHTML = `<b>${esc(m.client || "")}</b> · ${esc(m.tip_miscare)} ${fmtD(m.data)} · ${esc(a.anexa || "")} · <b>${total}</b> ${esc(m.produs || "")} ${esc(m.model || "")} · ` +
-    `${esc(m.frecv_serv || a.frecv_servisare || "")} · ${zile.length ? zile.map(z => ZI_RUTE[z]).join(", ") : "<span style='color:#e5534b'>anexa nu are zile de servisare bifate</span>"}`;
+    `${esc(m.frecv_serv || a.frecv_servisare || "")} · ${zile.length ? zile.map(z => ZI_RUTE[z]).join(", ") : "<span style='color:var(--t-err)'>anexa nu are zile de servisare bifate</span>"}`;
   const multe = existente.length > 0;
   $("pl-alege").style.display = multe ? "none" : ""; $("pl-multe").style.display = multe ? "" : "none";
   if(multe) plDeseneaza();
@@ -6105,7 +6112,7 @@ function plDeseneaza(){
 function plTotal(){
   if(!PL) return; plCiteste();
   const t = PL.rows.reduce((s, r) => s + (+r.buc || 0), 0), ok = t === PL.total;
-  $("pl-total").innerHTML = `<span style="color:${ok ? "#3fb950" : "#d97706"};font-weight:600">Total: ${t} din ${PL.total}${ok ? " ✓" : ""}</span>` +
+  $("pl-total").innerHTML = `<span style="color:${ok ? "var(--t-ok)" : "#d97706"};font-weight:600">Total: ${t} din ${PL.total}${ok ? " ✓" : ""}</span>` +
     ` <span class="muted">· ${PL.rows.length} locații × ${PL.zile.length} zile = ${PL.rows.length * PL.zile.length} puncte</span>`;
 }
 function plUrmNr(){ const n = Math.max(0, ...PL.rows.map(r => +r.nr || 0)) + 1; return String(n).padStart(2, "0"); }
