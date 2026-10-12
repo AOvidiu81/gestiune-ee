@@ -489,7 +489,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <span id="azi-sus" title="Data de azi (calculatorul)"></span>
   <button id="btn-mob" class="btn sec" style="padding:5px 10px;font-size:12px" onclick="mobPC(false)" title="Înapoi la varianta de telefon">📱 Telefon</button>
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
-  <span class="ver">v5.41</span>
+  <span class="ver">v5.42</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -745,7 +745,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
 <section class="page" id="p-admin">
   <div class="card noprint">
     <div class="row">
-      <div style="flex:0;min-width:210px"><label>Secțiune</label>
+      <div style="flex:0;min-width:210px" id="a-w-sect"><label>Secțiune</label>
         <select id="a-tabel" onchange="adminSchimba()">
           <optgroup label="Oameni și resurse">
             <option value="soferi">Angajați</option>
@@ -770,6 +770,22 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
       <div style="flex:0" id="a-w-export"><label>&nbsp;</label><button class="btn sec" onclick="adminExport()">Export Excel</button></div>
     </div>
     <p class="muted" id="a-nota" style="margin:10px 0 0"></p>
+  </div>
+
+  <!-- v5.42 (cerut de Ovidiu, 12.10): filtre ajutătoare doar în fila Puncte de rută; listele se îngustează una pe alta -->
+  <div class="card noprint" id="a-card-pf" style="display:none">
+    <div class="row">
+      <div><label>Client</label><select id="pf-client" onchange="renderAdmin()"></select></div>
+      <div style="flex:0;min-width:90px"><label>Județ</label><select id="pf-jud" onchange="renderAdmin()"></select></div>
+      <div><label>Localitate</label><select id="pf-loc" onchange="renderAdmin()"></select></div>
+      <div><label>Strada, nr [ locație ]</label><select id="pf-locatie" onchange="renderAdmin()"></select></div>
+      <div style="flex:0;min-width:110px"><label>Ziua</label><select id="pf-ziua" onchange="renderAdmin()"></select></div>
+      <div style="flex:0;min-width:120px"><label>Mașina (traseu)</label><select id="pf-masina" onchange="renderAdmin()"></select></div>
+      <div style="flex:0;min-width:110px"><label>Status</label><select id="pf-status" onchange="renderAdmin()"></select></div>
+      <div style="flex:0;min-width:100px"><label>GPS</label><select id="pf-gps" onchange="renderAdmin()"><option value="">toate</option><option value="da">cu GPS</option><option value="nu">fără GPS</option></select></div>
+      <div style="flex:0"><label>&nbsp;</label><button class="btn sec" onclick="pfGoleste()">✕ Golește filtrele</button></div>
+    </div>
+    <div class="kpi" id="pf-kpi" style="margin:12px 0 0"></div>
   </div>
 
   <div class="card noprint ver-banda" id="a-ver" style="display:none"></div>
@@ -5517,6 +5533,8 @@ function adminSchimba(){
   $("a-card-curat").style.display = (v === "_curat") ? "" : "none";
   $("a-card-ghid").style.display = (v === "_ghid") ? "" : "none";   // v5.15
   ["a-w-cauta","a-w-nou","a-w-reload","a-w-export"].forEach(id => $(id).style.display = eTabel ? "" : "none");
+  $("a-w-sect").style.display = (v === "clients") ? "none" : "";   // v5.42: Puncte de rută e filă separată, fără lista Secțiune
+  $("a-card-pf").style.display = (v === "clients") ? "" : "none";
   if(!eTabel){
     $("a-nota").textContent = (v === "_liste")
       ? "Listele care apar în formularele aplicației: tipuri de mișcare, frecvențe, funcții, mărci. Produsele și modelele au fila lor, Produse. „Efect stoc” se completează doar la tipurile de mișcare."
@@ -5566,9 +5584,37 @@ function statusIstoric(r){
   return `<details class="st-ist"><summary style="cursor:pointer;white-space:nowrap">${rand("azi " + fmtD(today()), r, r.status).replace(/^<div[^>]*>|<\/div>$/g, "")} <span class="muted">(+${l.length} programate)</span></summary>` +
     `<div style="margin:4px 0 2px 14px;line-height:1.6">${urm.join("")}</div></details>`;
 }
+// v5.42: filtrele din Puncte de rută (fiecare listă arată doar valorile rămase după celelalte filtre)
+let A_VAZUTE=null;
+const PF = [["pf-client","client"],["pf-jud","jud"],["pf-loc","localitate"],["pf-locatie","locatie"],["pf-ziua","ziua"],["pf-masina","masina"],["pf-status","status"]];
+const pfVal = (r, c) => String(r[c] ?? "").trim();
+const pfGps = r => !!(+r.lat && +r.lon);
+function pfFiltreaza(rows, fara){
+  const g = $("pf-gps").value;
+  return rows.filter(r => PF.every(([id, c]) => id === fara || !$(id).value || pfVal(r, c) === $(id).value) &&
+                          (fara === "pf-gps" || !g || (g === "da") === pfGps(r)));
+}
+function pfOptiuni(){
+  PF.forEach(([id, c]) => {
+    const el = $(id), v = el.value;
+    const vals = [...new Set(pfFiltreaza(A_ROWS, id).map(r => pfVal(r, c)).filter(Boolean))].sort((a, b) => a.localeCompare(b, "ro", { numeric: true }));
+    if(v && !vals.includes(v)) vals.unshift(v);
+    el.innerHTML = '<option value="">toate</option>' + vals.map(x => `<option${x === v ? " selected" : ""}>${esc(x)}</option>`).join("");
+  });
+}
+function pfGoleste(){ PF.forEach(([id]) => $(id).value = ""); $("pf-gps").value = ""; renderAdmin(); }
+function pfKpi(rows){
+  const loc = {}; rows.forEach(r => { if(r.status === "INACTIV") return; const k = [r.client, r.jud, r.localitate, r.locatie].map(x => String(x || "").trim()).join("|"); loc[k] = Math.max(loc[k] || 0, +r.toalete || 0); });
+  const t = [["Puncte", rows.length], ["Clienți", new Set(rows.map(r => r.client).filter(Boolean)).size], ["Locații active", Object.keys(loc).length],
+             ["Toalete pe locații", Object.values(loc).reduce((a, b) => a + b, 0)], ["Inactive", rows.filter(r => r.status === "INACTIV").length], ["Fără GPS", rows.filter(r => !pfGps(r)).length]];
+  $("pf-kpi").innerHTML = t.map(([e, n]) => `<div><b>${n}</b>${e}</div>`).join("");
+}
 function renderAdmin(){
   const d=A_DEF[A_TBL], q=($("a-cauta").value||"").trim().toLowerCase();
-  const rows=q ? A_ROWS.filter(r=>Object.values(r).some(v=>v!=null&&String(v).toLowerCase().includes(q))) : A_ROWS;
+  let baza=A_ROWS; if(A_TBL==="clients"){ pfOptiuni(); baza=pfFiltreaza(A_ROWS); }   // v5.42
+  const rows=q ? baza.filter(r=>Object.values(r).some(v=>v!=null&&String(v).toLowerCase().includes(q))) : baza;
+  if(A_TBL==="clients") pfKpi(rows);
+  A_VAZUTE=rows;
   $("a-tbl").innerHTML =
     "<thead><tr>"+d.lista.map(([,e])=>`<th>${esc(e)}</th>`).join("")+(A_TBL==="clients"?'<th title="RT pe comenzile legate de acest punct — se bifează de mână">RT</th>':"")+"<th></th></tr></thead><tbody>"+
     rows.map(r=>{
@@ -5585,7 +5631,7 @@ function renderAdmin(){
           : ` <button class="btn sm sec" disabled style="opacity:.35" title="Punctul nu are coordonate GPS">📍</button>`) : "") + `</td></tr>`;
     }).join("")+"</tbody>";
   const n=rows.length, tot=A_ROWS.length;
-  $("a-nota").textContent = d.nota + "  —  " + (q ? `${n} din ${tot} rânduri` : `${tot} rânduri`);
+  $("a-nota").textContent = d.nota + "  —  " + (n !== tot ? `${n} din ${tot} rânduri` : `${tot} rânduri`);
   verBandaRt();
 }
 function adminOptiuniRef(ref){
@@ -5704,7 +5750,7 @@ async function adminReimprospateaza(){
 }
 function adminExport(){
   const d=A_DEF[A_TBL];
-  const ws=XLSX.utils.json_to_sheet(A_ROWS);
+  const ws=XLSX.utils.json_to_sheet(A_TBL==="clients" && A_VAZUTE ? A_VAZUTE : A_ROWS);   // v5.42: la Puncte de rută, ce se vede (după filtre)
   const wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,ws,A_TBL.toUpperCase().slice(0,28));
   XLSX.writeFile(wb,`${d.titlu.replace(/[^\wăâîșțĂÂÎȘȚ]+/g,"_")}_${today()}.xlsx`);
 }
