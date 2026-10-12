@@ -363,6 +363,21 @@ export function buildComenziActive({ driver, car, depot, onFaraComanda, pop, emb
     if (!embedded) screen.appendChild(el('div', { class: 'bottom-actions' }, [faraComanda]));
     screen.reload = () => load(true);
 
+    // s33 / v80: lista se actualizeaza singura la 20 s (doar daca s-a schimbat ceva; fara semnal ramane lista salvata)
+    let ultim = null;
+    const tic = setInterval(async () => {
+      if (!screen.isConnected) { clearInterval(tic); return; }
+      if (document.hidden || !navigator.onLine) return;
+      try {
+        const noi = await citesteDinCloud();
+        const semn = JSON.stringify(noi);
+        offline = false;
+        statusText = `Actualizat la ${oraDin(new Date().toISOString())}`;
+        if (semn !== ultim) { ultim = semn; rows = grupeaza(noi); renderFiltre(); renderLista(); }
+        else status.textContent = statusText;
+      } catch (e) { /* fara semnal: ramane lista de acum */ }
+    }, 20000);
+
     load(false).then(() => load(true));
     return screen;
   })();
