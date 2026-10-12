@@ -112,7 +112,34 @@
     background:rgba(255,93,93,0.12); border:1px solid rgba(255,93,93,0.4); color:var(--inactiv);
     border-radius:10px; padding:12px 14px; margin-bottom:16px; font-size:0.85rem;
   }
+  /* v4 (cerut de Ovidiu, 12.10): aceeași temă ca GestiuneEE — „gee_tema” din memoria browserului (aceeași adresă,
+     deci aceeași memorie). „inchis” = bleumarin estompat, altfel = deschis estompat (C1). Colțuri 4 px, Manrope. */
+  :root[data-tema="inchis"]{
+    --bg:#243149; --panel:#2C3A55; --panel-2:#27354F; --border:#3C4C6A;
+    --text:#EAF0F8; --text-dim:#A9B7CE; --accent:#FFA45C; --accent-2:#7BE0A8; --activ:#7BE0A8; --inactiv:#FFB5AE;
+  }
+  :root[data-tema="deschis"]{
+    --bg:#DDE3EC; --panel:#EBEFF5; --panel-2:#F3F6FA; --border:#C6D0DD;
+    --text:#16203A; --text-dim:#4F5D78; --accent:#B4530E; --accent-2:#1B6E44; --activ:#1B6E44; --inactiv:#A8261C;
+  }
+  :root[data-tema] body{font-family:Manrope,'Segoe UI',Roboto,Arial,sans-serif}
+  :root[data-tema] .summary-card,:root[data-tema] .session-card{border-radius:4px}
+  :root[data-tema] .filter-row select,:root[data-tema] .filter-row input,:root[data-tema] .date-filter-label,
+  :root[data-tema] .finalize-btn,:root[data-tema] .error-box{border-radius:3px}
+  :root[data-tema] .status-badge,:root[data-tema] .live-badge{border-radius:4px}
+  :root[data-tema="deschis"] .status-badge.activa{background:#CFE6D8;border-color:#7FB898}
+  :root[data-tema="deschis"] .finalize-btn{background:#CFE6D8;border-color:#7FB898}
+  :root[data-tema="deschis"] .error-box{background:#F1D3CF;border-color:#D69A92}
 </style>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script>
+  (function(){
+    function pune(){ try{ var t = localStorage.getItem("gee_tema"); document.documentElement.dataset.tema = t === "deschis" ? "deschis" : "inchis"; }catch(e){} }
+    pune();
+    window.addEventListener("storage", function(e){ if(!e.key || e.key === "gee_tema") pune(); });
+    window.eeTema = function(t){ document.documentElement.dataset.tema = t === "deschis" ? "deschis" : "inchis"; };
+  })();
+</script>
 </head>
 <body>
 <div class="wrap">
