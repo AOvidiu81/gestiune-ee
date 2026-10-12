@@ -26,7 +26,7 @@ import { openHistoryScreen } from '../pv/js/screens-history.js';
 import { buildComenziActive } from '../pv/js/screens-comenzi.js';
 import { openSettingsScreen } from '../pv/js/screens-setup.js';
 
-export const SOFER_VERSION = 's35';
+export const SOFER_VERSION = 's36';
 
 const KEY_ZI = 'ee-sofer-zi'; // ziua deschisa: { zi, coleg, carId, km, trasee, zile, zona, ordine, ruta }
 const KEY_ULTIMA = 'ee-sofer-ultima'; // ultimele alegeri (masina, traseu, zona) — precompletare
@@ -491,6 +491,9 @@ function linieAnexa(t) {
   const m = /(\d+)(?:\.(\d+))?(?:\s*-\s*([SR])\s*(\d+))?\s*$/.exec(s);
   return m ? String(parseInt(m[1], 10)) + '.' + (m[2] == null ? '0' : String(parseInt(m[2], 10))) : null;
 }
+// s36: bucata fara placuta (serie goala sau scrisa „FARA”) apare „MONDO fără serie”
+const serieText = (x) => { const s = /^(FARA|FĂRĂ|FARA SERIE|FĂRĂ SERIE)$/i.test(String(x.serie || '').trim()) ? '' : String(x.serie || '').trim();
+  return [x.model, s || 'fără serie'].filter(Boolean).join(' '); };
 export function hartaSerii(serii, anexe) {
   // s31: ca in GestiuneEE v4.98 — locatia = anexa initiala (linie_id) sau aceeasi adresa pe acelasi contract
   const dupaId = {}; anexe.forEach((a) => { dupaId[a.id] = a; });
@@ -504,14 +507,14 @@ export function hartaSerii(serii, anexe) {
   anexe.forEach((a) => { grupAnexa[a.id] = grup(a); });
   serii.forEach((x) => {
     const g = grupAnexa[x.anexa_id] || 'a' + x.anexa_id;
-    (peGrup[g] = peGrup[g] || []).push([x.model, x.serie].filter(Boolean).join(' ') || 'fără serie');
+    (peGrup[g] = peGrup[g] || []).push(serieText(x));
   });
   const harta = {};
   anexe.forEach((a) => { const l = peGrup[grupAnexa[a.id]]; if (l && l.length) harta[a.id] = l.join('; '); });
   serii.forEach((x) => { if (x.anexa_id && !harta[x.anexa_id]) harta[x.anexa_id] = (peGrup['a' + x.anexa_id] || []).join('; '); });
   // s35: si pe locatia punctului de ruta (serii.punct = A181-05) — ruta arata pe A181-05-MA / -VI doar seriile locatiei
   const peLoc = {};
-  serii.forEach((x) => { if (x.punct) (peLoc[x.punct] = peLoc[x.punct] || []).push([x.model, x.serie].filter(Boolean).join(' ') || 'fără serie'); });
+  serii.forEach((x) => { if (x.punct) (peLoc[x.punct] = peLoc[x.punct] || []).push(serieText(x)); });
   Object.keys(peLoc).forEach((k) => { harta[k] = peLoc[k].join('; '); });
   return harta;
 }
