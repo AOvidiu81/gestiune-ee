@@ -610,17 +610,13 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
      Iconițe (linie, 1.75, rotunjite), text 14.5 px, nume scurtate (numele întreg rămâne la trecerea cu mausul),
      buton în bara de sus care strânge meniul la iconițe — animație „ease-in-out” pe lățimea coloanei. */
   @media screen{
-  header .nav-tg{display:none}
+  #nav-sus{display:none}
+  #titlu-sus{display:none}
   .nv-i{width:20px;height:20px;flex:0 0 20px;fill:none;stroke:currentColor;stroke-width:1.75;stroke-linecap:round;stroke-linejoin:round;opacity:.78;transition:opacity .2s,transform .25s cubic-bezier(.65,0,.35,1)}
   nav button.on .nv-i{opacity:1}
   nav button:hover .nv-i{opacity:1;transform:translateX(1px)}
   }
   @media screen and (min-width:900px){
-  header .nav-tg{display:grid;place-items:center;width:34px;height:34px;margin:-4px 2px -4px -6px;padding:0;border:0;border-radius:6px;background:none;color:#fff;cursor:pointer}
-  header .nav-tg:hover{background:rgba(255,255,255,.12)}
-  header .nav-tg svg{width:21px;height:21px;fill:none;stroke:currentColor;stroke-width:1.75;stroke-linecap:round;stroke-linejoin:round}
-  header .nav-tg .nt-sag{transition:transform .45s cubic-bezier(.65,0,.35,1);transform-origin:14.5px 12px}
-  html[data-nav="mic"] header .nav-tg .nt-sag{transform:scaleX(-1)}
   html.nv-anim body{transition:grid-template-columns .45s cubic-bezier(.65,0,.35,1)}
   html[data-nav="mic"] body{grid-template-columns:68px minmax(0,1fr)}
   nav{overflow-x:hidden}
@@ -638,6 +634,37 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   html[data-nav="mic"] #nav-jos .cine-blk{display:none}
   nav > button{border-radius:var(--r,4px)}   /* pastila filei alese / la maus: colțuri ca în restul aplicației (era 10 px) */
   }
+  /* ================= v5.58 (cerut de Ovidiu, 13.10): MENIUL PÂNĂ SUS =================
+     Meniul ocupă toată înălțimea, bara de sus stă doar deasupra conținutului. În capul meniului: buton de strângere,
+     „GestiuneEE” și logo-ul Euro Ecologic; strâns = doar semnul EE (clic pe el = deschide). În bara de sus, la mijloc:
+     titlul ferestrei („Gestiune - Euro Ecologic - Depozit …”) deasupra datei. */
+  @media screen and (min-width:900px){
+  body{grid-template-columns:244px minmax(0,1fr)}
+  header{grid-column:2;grid-row:1;min-height:56px;box-sizing:border-box}
+  header h1{display:none}
+  .hd-mij{flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;line-height:1.25}
+  #titlu-sus{display:block;font-size:12.5px;font-weight:600;opacity:.78;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+  .hd-mij #azi-sus{flex:0 0 auto;max-width:100%}
+  nav{grid-column:1;grid-row:1 / span 2;top:0;height:100vh;padding-top:0}
+  #nav-sus{display:flex;align-items:center;gap:8px;height:56px;flex:0 0 56px;padding:0 10px 0 12px;margin-bottom:8px;
+           border-bottom:1px solid var(--bd);position:relative;overflow:hidden;box-sizing:border-box}
+  #nav-sus .nav-tg{display:grid;place-items:center;flex:0 0 32px;width:32px;height:32px;border-radius:var(--r,4px);cursor:pointer;color:var(--nav-tx)}
+  #nav-sus .nav-tg:hover{background:var(--nav-hov)}
+  #nav-sus .nav-tg svg{width:21px;height:21px;fill:none;stroke:currentColor;stroke-width:1.75;stroke-linecap:round;stroke-linejoin:round}
+  #nav-sus .nt-sag{transition:transform .45s cubic-bezier(.65,0,.35,1);transform-origin:14.5px 12px}
+  #nav-sus .ns-nume{font-size:16px;font-weight:700;letter-spacing:-.01em;color:var(--tx);white-space:nowrap}
+  #nav-sus .ns-logo{height:26px;width:auto;margin-left:auto;display:block}
+  #nav-sus .ns-semn{position:absolute;left:50%;top:50%;height:30px;transform:translate(-50%,-50%) scale(.8);opacity:0;pointer-events:none;cursor:pointer}
+  #nav-sus .nav-tg,#nav-sus .ns-nume,#nav-sus .ns-logo{transition:opacity .28s ease .14s}
+  #nav-sus .ns-semn{transition:opacity .3s ease,transform .45s cubic-bezier(.65,0,.35,1)}
+  html[data-nav="mic"] #nav-sus .nav-tg,html[data-nav="mic"] #nav-sus .ns-nume,html[data-nav="mic"] #nav-sus .ns-logo{opacity:0;pointer-events:none;transition-delay:0s}
+  html[data-nav="mic"] #nav-sus .ns-semn{opacity:1;pointer-events:auto;transform:translate(-50%,-50%) scale(1);transition-delay:.2s}
+  html[data-nav="mic"] #nav-sus .ns-semn:hover{filter:drop-shadow(0 0 6px rgba(74,134,236,.6))}
+  :root[data-tema="inchis"] #nav-sus .ns-logo,:root[data-tema="inchis"] #nav-sus .ns-semn{filter:brightness(0) invert(1);opacity:.92}
+  :root[data-tema="inchis"] html[data-nav="mic"] #nav-sus .ns-logo{opacity:0}
+  }
+  html[data-tema="inchis"][data-nav="mic"] #nav-sus .ns-logo{opacity:0}
+  html[data-tema="inchis"]:not([data-nav="mic"]) #nav-sus .ns-semn{opacity:0}
   /* La tipărire, mereu pe alb, indiferent de temă. */
   @media print{
     :root,:root[data-tema="inchis"]{--bg:#fff;--card:#fff;--card2:#fff;--tx:#000;--mut:#444;
@@ -659,17 +686,21 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
 </div>
 
 <header>
-  <button id="btn-nav" class="nav-tg" type="button" title="Strânge / arată meniul" onclick="navComuta()"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2.5"/><path d="M9 4v16"/><path class="nt-sag" d="M15.5 10l-2 2 2 2"/></svg></button>
   <h1>GestiuneEE <span class="sub-marca">Euro Ecologic</span></h1>
-  <span id="azi-sus" title="Data de azi (calculatorul)"></span>
+  <div class="hd-mij"><div id="titlu-sus"></div><span id="azi-sus" title="Data de azi (calculatorul)"></span></div>
   <button id="btn-mob" class="btn sec" style="padding:5px 10px;font-size:12px" onclick="mobPC(false)" title="Înapoi la varianta de telefon">📱 Telefon</button>
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
-  <span class="ver">v5.57</span>
+  <span class="ver">v5.58</span>
   <select id="sel-font" class="font-sel" title="Fontul aplicației (probă — alege și rămâne)" onchange="eeFont(this.value)"></select>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
 <nav>
+  <div id="nav-sus">
+    <span class="nav-tg" role="button" tabindex="0" title="Strânge meniul" onclick="navComuta()"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2.5"/><path d="M9 4v16"/><path class="nt-sag" d="M15.5 10l-2 2 2 2"/></svg></span>
+    <b class="ns-nume">GestiuneEE</b><img class="ns-logo" src="icons/logo-ee.png" alt="Euro Ecologic">
+    <img class="ns-semn" src="icons/logo-ee-semn.png" alt="Euro Ecologic" title="Arată meniul" onclick="navComuta()">
+  </div>
   <button class="on" data-p="atentie">De urmărit <span id="t-badge" class="badge" style="display:none">0</span></button>
   <button data-p="stoc">Stoc</button>
   <button data-p="miscari">Comenzi</button>
@@ -1951,7 +1982,8 @@ function aziSus(){
   el.innerHTML = `<span class="azi-l">${Z[d.getDay()]}, ${d.getDate()} ${L[d.getMonth()]} ${d.getFullYear()} ·</span><span class="azi-n">${z2(d.getDate())}.${z2(d.getMonth() + 1)}.${d.getFullYear()}</span><span class="azi-w">· Week Nr.: ${saptISO(d).nr} din ${saptISO(d).total}</span>`;
 }
 setTimeout(aziSus, 0); setInterval(aziSus, 60000);
-function puneTitlul(){ const d = depPrincipal(); document.title = "Gestiune - Euro Ecologic" + (d ? " - Depozit " + String(d).toUpperCase() : ""); }
+function puneTitlul(){ const d = depPrincipal(); document.title = "Gestiune - Euro Ecologic" + (d ? " - Depozit " + String(d).toUpperCase() : "");
+  const t = $("titlu-sus"); if(t) t.textContent = document.title; }   // v5.58: titlul și în bara de sus, deasupra datei
 function pill(t){ const c=/AMPLASARE|EVENIMENT-A|SUPLIMENTARE/.test(t)?"A":/RIDICARE|EVENIMENT-R|REDUCERE/.test(t)?"R":/SERVISARE/.test(t)?"S":/Transfer|VANZARE/.test(t)?"T":"X"; return `<span class="pill p-${c}">${esc(t)}</span>`; }
 // Apăsarea pe capul coloanei întoarce ordinea. Se sortează lista încărcată, deci
 // exportul Excel iese în aceeași ordine ca ce se vede pe ecran.
