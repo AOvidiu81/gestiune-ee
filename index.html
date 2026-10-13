@@ -8,7 +8,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
 <title>Gestiune - Euro Ecologic</title>
 <link rel="manifest" href="manifest.json">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;600;700&display=swap" rel="stylesheet">
 <meta name="theme-color" content="#1a3769">
 <link rel="icon" href="icons/icon-192.png">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
@@ -26,7 +26,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   window.EE_FONTURI = { "Manrope":"Manrope:wght@400;500;600;700", "Inter":"Inter:wght@400;500;600;700",
     "IBM Plex Sans":"IBM+Plex+Sans:wght@400;500;600;700", "Source Sans 3":"Source+Sans+3:wght@400;500;600;700",
     "Atkinson Hyperlegible":"Atkinson+Hyperlegible:wght@400;700", "Nunito Sans":"Nunito+Sans:wght@400;600;700",
-    "Lato":"Lato:wght@400;700", "Roboto":"Roboto:wght@400;500;700", "Noto Sans":"Noto+Sans:wght@400;500;600;700", "Segoe UI":"" };
+    "Lato":"Lato:wght@400;700", "Roboto":"", "Noto Sans":"Noto+Sans:wght@400;500;600;700", "Segoe UI":"" };
   window.eeFontPune = function(n){
     if(!(n in EE_FONTURI)) n = "Manrope";
     const g = EE_FONTURI[n];
@@ -34,7 +34,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
       l.href = "https://fonts.googleapis.com/css2?family=" + g + "&display=swap"; document.head.appendChild(l); }
     document.documentElement.style.setProperty("--ff", '"' + n + '"'); document.documentElement.dataset.font = n;
   };
-  try{ eeFontPune(localStorage.getItem("gee_font") || "Manrope"); }catch(e){ eeFontPune("Manrope"); }
+  eeFontPune("Roboto");   /* v5.60: ales de Ovidiu (13.10) — Roboto peste tot; lista de probă din bara de sus a fost scoasă */
   /* v5.56: meniul din stânga strâns (doar iconițe) sau întreg — ținut minte pe calculator */
   try{ if(localStorage.getItem("gee_nav") === "mic") document.documentElement.dataset.nav = "mic"; }catch(e){}
 </script>
@@ -596,10 +596,11 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   header .font-sel option{background:#172033;color:#fff}
   :root[data-tema="inchis"]{ --card:#131A29; --bd:#2A3853; --rand-hov:#1F2B44; }
   :root[data-tema="inchis"] td{border-bottom-color:#212C43}
-  #p-admin table{font-size:15px}
-  #p-admin th{font-size:13px}
-  #p-admin td{padding:3px 8px;vertical-align:middle;line-height:1.3}
-  #p-admin td button.btn.sm,#p-admin td .btn.sm{padding:1px 7px;font-size:12px;line-height:1.4}
+  /* v5.60 (cerut de Ovidiu, 13.10): ca în Puncte de rută, pe TOATE tabelele din pagini (nu și în ferestre) */
+  main table{font-size:15px}
+  main th{font-size:13px}
+  main td{padding:3px 8px;vertical-align:middle;line-height:1.3}
+  main td button.btn.sm,main td .btn.sm{padding:1px 7px;font-size:12px;line-height:1.4}
   }
   /* v5.55 (cerut de Ovidiu, 13.10): casetele „cât conținutul” (flex:0) dintr-un rând nu mai pot fi strânse sub lățimea lor
      — înainte se suprapuneau peste vecinul (ex. Facturare: „Gata de trimis” peste „Export Excel”). Pe toate filele și ferestrele.
@@ -691,8 +692,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <div class="hd-mij"><div id="titlu-sus"></div><span id="azi-sus" title="Data de azi (calculatorul)"></span></div>
   <button id="btn-mob" class="btn sec" style="padding:5px 10px;font-size:12px" onclick="mobPC(false)" title="Înapoi la varianta de telefon">📱 Telefon</button>
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
-  <span class="ver">v5.59</span>
-  <select id="sel-font" class="font-sel" title="Fontul aplicației (probă — alege și rămâne)" onchange="eeFont(this.value)"></select>
+  <span class="ver">v5.60</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
