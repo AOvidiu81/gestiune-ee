@@ -721,7 +721,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <div class="hd-mij"><div id="titlu-sus"></div><span id="azi-sus" title="Data de azi (calculatorul)"></span></div>
   <button id="btn-mob" class="btn sec" style="padding:5px 10px;font-size:12px" onclick="mobPC(false)" title="Înapoi la varianta de telefon">📱 Telefon</button>
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
-  <span class="ver">v5.79</span>
+  <span class="ver">v5.80</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -1142,6 +1142,11 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   #mu-corp .mu-b input{width:auto;height:auto;flex:0 0 auto;margin:0}
   #mu-corp .mu-g{display:grid;grid-template-columns:1fr 150px 150px;gap:10px}
   #mu-corp .mu-tab td{padding:4px 10px 4px 0;font-size:13px}
+  #sz-corp .mu-s{margin:0 0 14px} #sz-corp .mu-s>h4{margin:0 0 8px;font-size:11px;letter-spacing:.09em;text-transform:uppercase;color:var(--mut);font-weight:700}
+  #sz-corp .mu-b{display:flex;align-items:center;gap:8px;padding:4px 0;font-size:14px;text-transform:none;letter-spacing:0;cursor:pointer}
+  #sz-corp .mu-b input{width:auto;height:auto;flex:0 0 auto;margin:0}
+  #sz-corp .mu-g{display:grid;grid-template-columns:1fr 150px 150px;gap:10px}
+  #sz-corp .mu-tab td{padding:4px 10px 4px 0;font-size:13px}
   #mu-corp .mu-gol{border:1px solid #D97706;border-radius:8px;padding:10px 12px}
   #mu-corp textarea{width:100%;font-family:ui-monospace,Consolas,monospace;font-size:13px}
   .modal .box.fe-max{position:fixed!important;inset:8px!important;width:auto!important;height:auto!important;max-width:none!important;
@@ -1419,6 +1424,18 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
       <div style="flex:1"></div>
       <div style="flex:0"><button class="btn sec" onclick="closeModal('mod-mu')">Anulează</button></div>
       <div style="flex:0"><button class="btn" onclick="muSalveaza()">Salvează mutarea</button></div>
+    </div>
+  </div>
+</div>
+<div class="modal" id="mod-sz">
+  <div class="box" style="max-width:680px">
+    <h3 id="sz-title" class="lux-cap cap-mut" title="Trage de aici ca să muți fereastra; dublu-clic = înapoi la loc">Schimbă zilele / frecvența</h3>
+    <p class="muted" id="sz-sub" style="margin:0 0 10px"></p>
+    <div id="sz-corp"></div>
+    <div class="row" style="margin-top:14px;justify-content:flex-end">
+      <div style="flex:1"></div>
+      <div style="flex:0"><button class="btn sec" onclick="closeModal('mod-sz')">Anulează</button></div>
+      <div style="flex:0"><button class="btn" onclick="szSalveaza()">Salvează</button></div>
     </div>
   </div>
 </div>
@@ -1961,6 +1978,7 @@ let PCT = [];
 // Schimbare programată pe punct (clients.schimbare): { de_la, toalete, containere, garduri, accesorii, status, anexe_ids }.
 // Vine din „→ Rute” pe o comandă cu dată viitoare; din ziua de_la valorile trec în coloanele punctului.
 const SCH_CAMPURI = ["toalete","containere","garduri","accesorii","status","anexe_ids"];
+const SCH_TOATE = [...SCH_CAMPURI, "frecventa"];   // v5.80: și frecvența (din 📅), doar la aplicare / afișare
 // v4.65: un punct poate ține mai multe schimbări programate, una după alta. Prima stă în `schimbare` (ca până acum),
 // următoarele în `schimbare.apoi` (listă, în ordinea datei). Coloana din bază a rămas aceeași.
 function schLista(s){
@@ -1981,7 +1999,7 @@ async function aplicaSchimbariRute(){
       const scad = l.filter(e => e.de_la <= azi);
       if(!scad.length) continue;
       const rec = {};
-      scad.forEach(s => SCH_CAMPURI.forEach(c => { if(c in s) rec[c] = s[c]; }));
+      scad.forEach(s => SCH_TOATE.forEach(c => { if(c in s) rec[c] = s[c]; }));
       rec.schimbare = schImpacheteaza(l.filter(e => e.de_la > azi));
       await db.from("clients").update(rec).eq("id", p.id);
     }
@@ -1995,6 +2013,7 @@ function schText1(s){
   const b = [];
   [["toalete","toalete"],["containere","containere"],["garduri","garduri"]].forEach(([c,e]) => { if(c in s && +s[c]) b.push(s[c] + " " + e); });
   if(s.status) b.push(s.status);
+  if(s.frecventa) b.push("frecvența " + s.frecventa);
   return "din " + fmtD(s.de_la) + ": " + b.join(", ");
 }
 async function schAnuleaza(){
@@ -3517,7 +3536,8 @@ async function serLocatii(ids){
 }
 function butonSeriiPunct(r){
   const l=punctLoc(r.client_key); if(!l || !ANX.some(x=>x.id===l.anexa)) return "";
-  const muta = k => ` <button class="btn sm sec" title="Mută produse de pe locația ${k} pe altă locație a aceleiași anexe sau pe o locație nouă (seriile și numărul de produse de pe punctele de rută)" onclick="openMutare(${l.anexa},'${k}')">⇄</button>`;
+  const muta = k => ` <button class="btn sm sec" title="Mută produse de pe locația ${k} pe altă locație a aceleiași anexe sau pe o locație nouă (seriile și numărul de produse de pe punctele de rută)" onclick="openMutare(${l.anexa},'${k}')">⇄</button>` +
+    ` <button class="btn sm sec" title="Schimbă zilele de servisare / frecvența locației ${k}, de la o dată (azi = pe loc; în viitor = programat)" onclick="openSchZi(${l.anexa},'${k}')">📅</button>`;
   const key = l.loc || "A" + l.anexa;
   // v5.68: locația simplă (A182-MA) — butonul de serii al anexei, ca înainte, cât timp anexa nu are locații numerotate
   const areNr = (A_ROWS||[]).some(p => { const q = punctLoc(p.client_key); return q && q.anexa === l.anexa && q.loc; });
@@ -6041,7 +6061,7 @@ function statusIstoric(r){
   const prod = s => (campuri.length ? campuri : [["toalete","toalete"]]).map(([c, e]) => (+s[c] || 0) + " " + e).join(", ");
   const rand = (eticheta, s, st) => `<div style="white-space:nowrap">${esc(eticheta)} · <b style="color:${st === "INACTIV" ? "var(--t-err)" : "var(--t-ok)"}">${esc(st || "")}</b> · ${esc(prod(st === "INACTIV" ? {} : s))}</div>`;   /* pe INACTIV nu se servisează nimic: 0 */
   let ac = { ...r };
-  const urm = l.map(s => { ac = { ...ac }; SCH_CAMPURI.forEach(c => { if(c in s) ac[c] = s[c]; }); return rand("din " + fmtD(s.de_la), ac, ac.status); });
+  const urm = l.map(s => { ac = { ...ac }; SCH_TOATE.forEach(c => { if(c in s) ac[c] = s[c]; }); return rand("din " + fmtD(s.de_la), ac, ac.status); });
   return `<details class="st-ist"><summary style="cursor:pointer;white-space:nowrap">${rand("azi " + fmtD(today()), r, r.status).replace(/^<div[^>]*>|<\/div>$/g, "")} <span class="muted">(+${l.length} programate)</span></summary>` +
     `<div style="margin:4px 0 2px 14px;line-height:1.6">${urm.join("")}</div></details>`;
 }
@@ -6580,7 +6600,7 @@ async function spreRute(id){
   // punctul așa cum va fi după schimbarea deja programată, dacă are una
   // (v4.65: doar schimbările programate până la data comenzii, în ordine)
   const panaLa = (m.data && m.data > today()) ? m.data : today();
-  const viitor = g => { const r = { ...g }; schLista(g.schimbare).filter(s => s.de_la <= panaLa).forEach(s => SCH_CAMPURI.forEach(c => { if(c in s) r[c] = s[c]; })); delete r.schimbare; return r; };
+  const viitor = g => { const r = { ...g }; schLista(g.schimbare).filter(s => s.de_la <= panaLa).forEach(s => SCH_TOATE.forEach(c => { if(c in s) r[c] = s[c]; })); delete r.schimbare; return r; };
   const idsPe = g => [...new Set([...((g && g.anexe_ids) || []).map(Number), idCheie(g), m.anexa_id].filter(Boolean))];
   const deLa = (m.data && m.data > today()) ? m.data : null;
   const notaData = nou => deLa ? ` <b>Se aplică pe rută din ${fmtD(deLa)}</b> (data comenzii); până atunci ` + (nou ? "punctul stă pe INACTIV." : "punctul rămâne cum e acum.") : "";
@@ -7488,6 +7508,129 @@ async function muSalveaza(){
   toast("Mutat: " + MU.n + " " + MU_UM[camp] + " din " + src + " în " + dest + (nou ? " (locație nouă, " + muZileNou().length + " puncte de rută)" : ""));
 }
 
+// ================= v5.80: 📅 SCHIMBĂ ZILELE / FRECVENȚA DE LA DATA… (hotărât de Ovidiu, 13.10) =================
+// Pe o locație (toate punctele ei de rută, câte unul pe zi): bifezi zilele noi, frecvența și data de la care se aplică.
+//  - zi scoasă → punctul ei trece pe INACTIV (istoricul vizitelor rămâne pe cod);
+//  - zi adăugată → punct nou copiat din locație (cod <locație>-<ZI>), sau punctul vechi al acelei zile reactivat;
+//  - frecvența → pe toate punctele rămase active.
+// Data azi / în urmă = se face pe loc. Data în viitor = schimbare programată (clients.schimbare), se aplică singură din acea zi.
+// Locația (mutarea) NU se face aici — pentru asta e ⇄. Prețul / anexa nouă rămân separat, la el.
+let SZ = null;
+const szZi = p => faraDiac(p.ziua || "").toUpperCase();
+function szCod(z){ return (locSimpla(SZ.key) ? "A" + SZ.anexa : SZ.key) + "-" + ZI_ABR[z]; }
+function szPunctZi(z){ const l = SZ.puncte.filter(p => szZi(p) === z); return l.find(p => p.status !== "INACTIV") || l[0] || null; }
+function szAdaugaSch(s0, e){ const l = schLista(s0); const v = l.find(x => x.de_la === e.de_la); if(v) Object.assign(v, e); else l.push(e); return schImpacheteaza(schLista(schImpacheteaza(l))); }
+async function openSchZi(anexaId, key){
+  const { data, error } = await db.from("clients").select("*").or(`client_key.eq.A${anexaId},client_key.like.A${anexaId}-*`).limit(2000);
+  if(error){ toast("Nu s-au putut citi punctele: " + error.message, true); return; }
+  const puncte = (data || []).filter(p => locKey(p) === key);
+  if(!puncte.length){ toast("Locația " + key + " nu are puncte de rută", true); return; }
+  const act = puncte.filter(p => p.status !== "INACTIV"), sursa = act[0] || puncte[0];
+  const zile = new Set(act.map(szZi).filter(z => ZI_ABR[z]));
+  const a = ANX.find(x => x.id === anexaId) || null;
+  SZ = { anexa: anexaId, a, key, toate: data || [], puncte, act, sursa, zile0: new Set(zile), zile, frecv0: sursa.frecventa || "", frecv: sursa.frecventa || "",
+         data: muZi(), peAnexa: !!a, nume: (act.find(p => p.locatie) || sursa).locatie || "", client: sursa.client || "" };
+  $("sz-title").textContent = "Schimbă zilele / frecvența · " + key + (SZ.nume ? " · " + SZ.nume : "");
+  $("sz-sub").textContent = [SZ.client, a ? a.anexa || "" : "", "locația (mutarea) se schimbă cu ⇄"].filter(Boolean).join(" · ");
+  szDeseneaza(); $("mod-sz").classList.add("on");
+}
+function szSet(c, v){
+  if(c === "zi"){ SZ.zile.has(v) ? SZ.zile.delete(v) : SZ.zile.add(v);
+    const n = SZ.zile.size, f = n >= 5 ? "Zilnic" : n >= 1 ? n + "/Sap" : "";
+    if(SZ.zile.size !== SZ.zile0.size && f) SZ.frecv = f; }
+  else if(c === "peAnexa") SZ.peAnexa = !!v;
+  else SZ[c] = v;
+  szDeseneaza();
+}
+function szPlan(){
+  const zN = ZILE_ORD.filter(z => SZ.zile.has(z)), z0 = ZILE_ORD.filter(z => SZ.zile0.has(z));
+  const scoase = z0.filter(z => !SZ.zile.has(z)), puse = zN.filter(z => !SZ.zile0.has(z));
+  return { zN, z0, scoase, puse, frecvSch: (SZ.frecv || "") !== (SZ.frecv0 || ""), viitor: SZ.data > muZi() };
+}
+function szText(){
+  const p = szPlan(), zt = l => l.map(z => ZI_RUTE[z]).join(", ") || "—";
+  return ["📅 SCHIMBARE SERVISARE", "CLIENT  :  " + SZ.client, "LOCAȚIA  :  " + SZ.key + (SZ.nume ? " · " + SZ.nume : ""), "DE LA  :  " + muDataRo(SZ.data),
+    "ZILE  :  " + zt(p.z0) + " → " + zt(p.zN)].concat(p.frecvSch ? ["FRECVENȚĂ  :  " + (SZ.frecv0 || "—") + " → " + (SZ.frecv || "—")] : []).join("\n");
+}
+function szDeseneaza(){
+  const p = szPlan(), fr = nomv("frecv_servisare");
+  let h = `<div class="mu-s"><h4>1. Zilele de servisare (acum: ${esc(p.z0.map(z => ZI_RUTE[z]).join(", ") || "niciuna activă")})</h4>
+    <div style="display:flex;flex-wrap:wrap;gap:4px 14px">${ZILE_ORD.map(z => `<label class="mu-b"><input type="checkbox" ${SZ.zile.has(z) ? "checked" : ""} onchange="szSet('zi','${z}')"> ${ZI_RUTE[z]}</label>`).join("")}</div>
+    <div class="mu-g" style="margin-top:10px"><div><label>Frecvența</label><select onchange="szSet('frecv',this.value)"><option value="">—</option>${fr.map(f => `<option${f === SZ.frecv ? " selected" : ""}>${esc(f)}</option>`).join("")}${SZ.frecv && !fr.includes(SZ.frecv) ? `<option selected>${esc(SZ.frecv)}</option>` : ""}</select></div>
+    <div><label>De la data</label><input type="date" value="${SZ.data}" onchange="szSet('data',this.value)"></div><div></div></div></div>`;
+  const rand = (cod, ce) => `<tr><td><b>${esc(cod)}</b></td><td>${ce}</td></tr>`;
+  let r = "";
+  p.scoase.forEach(z => { const x = szPunctZi(z); r += rand(x ? x.client_key : szCod(z), `${ZI_RUTE[z]} → <b style="color:var(--t-err)">INACTIV</b>`); });
+  p.puse.forEach(z => { const x = szPunctZi(z); r += rand(x ? x.client_key : szCod(z), x ? `${ZI_RUTE[z]} → <b style="color:var(--t-ok)">reactivat</b> (punctul vechi al zilei)` : `${ZI_RUTE[z]} → <b style="color:var(--t-ok)">punct nou</b> (copiat din ${esc(SZ.sursa.client_key)})`); });
+  if(p.frecvSch) r += rand("toate active", `frecvența ${esc(SZ.frecv0 || "—")} → <b>${esc(SZ.frecv || "—")}</b>`);
+  h += `<div class="mu-s"><h4>2. Ce se schimbă la Salvează${p.viitor ? " — programat din " + muDataRo(SZ.data) : " — pe loc"}</h4>` +
+    (r ? `<table class="mu-tab">${r}</table>` : `<div class="muted" style="font-size:13px">Nimic încă — bifează alte zile sau alege altă frecvență.</div>`) +
+    (p.viitor && r ? `<div class="muted" style="font-size:13px;margin-top:4px">Până la ${muDataRo(SZ.data)} șoferii merg ca acum; din acea zi se schimbă singur (la prima deschidere a GestiuneEE).</div>` : "") + `</div>`;
+  if(SZ.a){
+    const zA = String(SZ.a.zi_servisare || ""), zA2 = p.zN.join(","), fA = SZ.a.frecv_servisare || "";
+    h += `<div class="mu-s"><h4>3. Anexa ${esc(SZ.a.anexa || "")}</h4><label class="mu-b"><input type="checkbox" ${SZ.peAnexa ? "checked" : ""} onchange="szSet('peAnexa',this.checked)">
+      Trec și pe anexă (evidența): zile <b>${esc(zA || "—")}</b> → <b>${esc(zA2 || "—")}</b> · frecvență <b>${esc(fA || "—")}</b> → <b>${esc(SZ.frecv || "—")}</b></label>
+      <div class="muted" style="font-size:13px">Se scrie pe loc, oricare ar fi data. Dacă se schimbă și prețul → anexă nouă / act adițional, separat.</div></div>`;
+  }
+  h += `<div class="mu-s"><h4>Text pentru șoferi (WhatsApp)</h4><textarea id="sz-text" rows="6">${esc(szText())}</textarea>
+    <div style="margin-top:6px"><button class="btn sm sec" onclick="szCopiaza()">Copiază textul</button></div></div>`;
+  $("sz-corp").innerHTML = h;
+}
+async function szCopiaza(){
+  const t = $("sz-text"); try{ await navigator.clipboard.writeText(t.value); toast("Textul e copiat — dă-l paste pe WhatsApp"); }
+  catch(e){ t.select(); document.execCommand("copy"); toast("Textul e copiat"); }
+}
+async function szSalveaza(){
+  const p = szPlan();
+  if(!p.zN.length){ toast("Bifează cel puțin o zi. Pentru oprirea servisării: ridicare / punct INACTIV.", true); return; }
+  if(!SZ.data){ toast("Alege data", true); return; }
+  if(!p.scoase.length && !p.puse.length && !p.frecvSch && !(SZ.peAnexa && SZ.a && (String(SZ.a.zi_servisare || "") !== p.zN.join(",") || (SZ.a.frecv_servisare || "") !== (SZ.frecv || "")))){ toast("Nu s-a schimbat nimic", true); return; }
+  const acum = new Date().toISOString(), de = SZ.data, nota = "din " + muDataRo(de) + ": zile " + (p.z0.map(z => ZI_ABR[z]).join("+") || "—") + " → " + p.zN.map(z => ZI_ABR[z]).join("+");
+  const frecv = SZ.frecv || null, prod = ["toalete", "containere", "garduri", "accesorii"];
+  const upd = async (id, u, cod) => { const { error } = await db.from("clients").update({ ...u, updated_at: acum }).eq("id", id); if(error) throw new Error("Punctul " + cod + ": " + error.message); };
+  try{
+    // 1) zilele noi — întâi, ca să nu rămână locația fără puncte dacă ceva nu merge
+    for(const z of p.puse){
+      const x = szPunctZi(z), cop = {}; prod.forEach(c => cop[c] = SZ.sursa[c] === undefined ? null : SZ.sursa[c]);
+      if(x){
+        if(p.viitor) await upd(x.id, { schimbare: szAdaugaSch(x.schimbare, { de_la: de, status: "ACTIV", ...cop, ...(frecv ? { frecventa: frecv } : {}) }) }, x.client_key);
+        else await upd(x.id, { status: "ACTIV", ...cop, ...(frecv ? { frecventa: frecv } : {}) }, x.client_key);
+      } else {
+        const cod = szCod(z);
+        if(SZ.toate.some(q => q.client_key === cod)) throw new Error("Codul " + cod + " e deja folosit — verifică punctele locației");
+        const r = { ...SZ.sursa };
+        ["id", "schimbare", "updated_at", "verificat_la", "verificat_de", "note_verificare"].forEach(f => delete r[f]);
+        Object.assign(r, { client_key: cod, ziua: ZI_RUTE[z], frecventa: frecv, observatii: "zi nouă — " + nota,
+          status: p.viitor ? "INACTIV" : "ACTIV", schimbare: p.viitor ? { de_la: de, status: "ACTIV" } : null });
+        const { error } = await db.from("clients").insert(r);
+        if(error) throw new Error("Punctul nou " + cod + ": " + error.message);
+      }
+    }
+    // 2) zilele scoase
+    for(const z of p.scoase){
+      for(const x of SZ.act.filter(q => szZi(q) === z)){
+        if(p.viitor) await upd(x.id, { schimbare: szAdaugaSch(x.schimbare, { de_la: de, status: "INACTIV" }) }, x.client_key);
+        else await upd(x.id, { status: "INACTIV", observatii: (x.observatii ? x.observatii + "; " : "") + nota }, x.client_key);
+      }
+    }
+    // 3) frecvența pe punctele care rămân
+    if(p.frecvSch){
+      for(const x of SZ.act.filter(q => SZ.zile.has(szZi(q)))){
+        if(p.viitor) await upd(x.id, { schimbare: szAdaugaSch(x.schimbare, { de_la: de, frecventa: frecv }) }, x.client_key);
+        else await upd(x.id, { frecventa: frecv }, x.client_key);
+      }
+    }
+    // 4) anexa (evidența), pe loc
+    if(SZ.peAnexa && SZ.a){
+      const { error } = await db.from("anexe").update({ zi_servisare: p.zN.join(","), frecv_servisare: frecv }).eq("id", SZ.a.id);
+      if(error) throw new Error("Anexa: " + error.message);
+    }
+  }catch(e){ toast(e.message + " — ce era înainte s-a salvat; redeschide fereastra și verifică", true); await reloadClienti(); if(A_TBL === "clients") await adminIncarca(); return; }
+  closeModal("mod-sz"); await reloadClienti();
+  if(A_TBL === "clients") await adminIncarca();
+  toast((p.viitor ? "Programat din " + muDataRo(de) : "Schimbat") + ": " + SZ.key + " · " + p.zN.map(z => ZI_RUTE[z]).join(", ") + (frecv ? " · " + frecv : ""));
+}
+
 // v5.44 (cerut de Ovidiu, 12.10): butoanele din colțul ferestrelor, ca în Windows — ‒ minimizează · ☐ mărește / ❐ înapoi · ✕ închide.
 // ✕ face exact ce face butonul Renunță / Anulează al ferestrei (ciornele se păstrează la fel).
 // Minimizată, fereastra rămâne deschisă cu tot ce ai scris; jos în stânga apare o etichetă cu titlul — clic pe ea = înapoi.
@@ -7502,7 +7645,7 @@ async function muSalveaza(){
   const INCHIDE = {
     "mod-m": () => closeModal("mod-m"), "mod-c": () => mcAnuleaza(), "mod-k": () => mkAnuleaza(), "mod-a": () => maAnuleaza(),
     "mod-inch": () => closeModal("mod-inch"), "mod-s": () => closeModal("mod-s"), "mod-doc": () => docRenunta(),
-    "mod-cmd": () => cmdInchide(), "mod-pl": () => closeModal("mod-pl"), "mod-mu": () => closeModal("mod-mu"), "mod-admin": () => { closeModal("mod-admin"); rUrmator(); }
+    "mod-cmd": () => cmdInchide(), "mod-pl": () => closeModal("mod-pl"), "mod-mu": () => closeModal("mod-mu"), "mod-sz": () => closeModal("mod-sz"), "mod-admin": () => { closeModal("mod-admin"); rUrmator(); }
   };
   let bara = null;
   const baraJos = () => { if(!bara){ bara = document.createElement("div"); bara.id = "fe-bara"; document.body.appendChild(bara); } return bara; };
