@@ -721,7 +721,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <div class="hd-mij"><div id="titlu-sus"></div><span id="azi-sus" title="Data de azi (calculatorul)"></span></div>
   <button id="btn-mob" class="btn sec" style="padding:5px 10px;font-size:12px" onclick="mobPC(false)" title="Înapoi la varianta de telefon">📱 Telefon</button>
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
-  <span class="ver">v5.75</span>
+  <span class="ver">v5.76</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -1211,7 +1211,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
       </div>
 
       <div class="sect" id="mm-doc-sect" style="display:none">
-        <h4>Produsele anexei pe această comandă <span class="hint">debifează ce nu pleacă acum</span></h4>
+        <h4>Produse pe această comandă <span class="hint">bifează ce pleacă acum (și din alte anexe ale contractului)</span></h4>
         <div id="mm-doc"></div>
       </div>
       <div class="sect" id="mm-serii-sect" style="display:none">
@@ -2759,14 +2759,22 @@ async function clientReactiveaza(id){
 // Anexa aleasă face parte dintr-o anexă cu mai multe produse / locații (anexe.doc_id) → celelalte rânduri apar cu bife
 // (toate bifate; el debifează ce nu pleacă acum). Fiecare produs bifat = un rând în `miscari`, legat de rândul principal
 // prin grup_id (= id-ul rândului principal). La RIDICARE / REDUCERE cantitatea = ce e acum la client pe acel produs.
-let MM_GR = new Set(), MM_FRATI = [];
+let MM_GR = new Set(), MM_FRATI = [], MM_ALTE = new Set();
+// v5.76 (cerut de Ovidiu, 13.10): pe aceeași comandă și ALTE anexe ale aceluiași contract (ANEXA NR 1 + NR 2 + NR 3
+// care pleacă împreună). Apar sub produsele anexei alese, NEBIFATE; el bifează ce pleacă acum. Fiecare produs bifat =
+// un rând în `miscari` cu anexa lui (facturare / raport lună rămân pe anexă), legat prin grup_id, un singur text.
 function mmDocRanduri(){
   const a = ANX.find(x => x.id == $("mm-anexa").value); if(!a || mmExterior()) return [];
   const b = ANX.find(x => x.id === (a.linie_id || a.id)) || a;
-  if(!b.doc_id) return [];
   const rid = NEG.test($("mm-tip").value);
-  return ANX.filter(x => x.doc_id === b.doc_id && x.id !== b.id).sort((x, y) => x.id - y.id)
-    .map(x => anexaUltima(x.id)).filter(x => !rid || cantLinie(x.id) > 0);
+  const frati = b.doc_id ? ANX.filter(x => x.doc_id === b.doc_id && x.id !== b.id).sort((x, y) => x.id - y.id) : [];
+  const inDoc = x => x.id === b.id || (b.doc_id && x.doc_id === b.doc_id);
+  const alte = ANX.filter(x => x.contract_id === b.contract_id && !x.linie_id && !x.tip_anexa && !inDoc(x) && (x.activ === undefined || x.activ) && (rid || !x.data_ridicarii))
+    .sort((x, y) => String(x.anexa || "").localeCompare(String(y.anexa || ""), "ro", { numeric: true }) || x.id - y.id);
+  MM_ALTE = new Set();
+  const l = frati.map(x => anexaUltima(x.id));
+  alte.forEach(x => { const u = anexaUltima(x.id); MM_ALTE.add(u.id); l.push(u); });
+  return l.filter(x => !rid || cantLinie(x.id) > 0);
 }
 const mmDocCant = (x, rid) => rid ? cantLinie(x.id) : Math.abs(+x.cant || 0);
 const mmLocK = x => [x.jud, x.loc, x.sat].map(v => String(v || "").trim().toUpperCase()).join("|");
@@ -2779,12 +2787,14 @@ function mmDoc(reset){
   const sect = $("mm-doc-sect"), l = mmDocRanduri();
   if(!l.length){ sect.style.display = "none"; MM_GR = new Set(); return; }
   sect.style.display = "";
-  if(reset) MM_GR = new Set((+$("mm-id").value ? l.filter(x => mmFrateAl(x)) : l).map(x => x.id));
+  if(reset) MM_GR = new Set((+$("mm-id").value ? l.filter(x => mmFrateAl(x)) : l.filter(x => !MM_ALTE.has(x.id))).map(x => x.id));
   const rid = NEG.test($("mm-tip").value), a0 = ANX.find(x => x.id == $("mm-anexa").value);
   const multiLoc = new Set([a0, ...l].map(mmLocK)).size > 1;
   $("mm-doc").innerHTML = `<div class="muted" style="margin-bottom:6px">Anexa aleasă: <b>${esc(mmDocEt(Object.assign({}, a0, { produs: $("mm-prod").value, model: $("mm-model").value, accesorii: accCitite("mm-acc") }), rid, multiLoc, Math.abs(+$("mm-buc").value || 0)))}</b></div>` +
-    '<div style="display:flex;flex-direction:column;gap:4px">' + l.map(x =>
-      `<label style="display:flex;align-items:center;gap:6px;margin:0"><input type="checkbox" style="width:auto" ${MM_GR.has(x.id) ? "checked" : ""} onchange="mmDocBifa(${x.id},this.checked)"> ${esc(mmDocEt(x, rid, multiLoc))}${mmFrateAl(x) ? ' <span class="muted">· pe comandă</span>' : ""}</label>`).join("") + "</div>";
+    (() => { const rand = x => `<label style="display:flex;align-items:center;gap:6px;margin:0"><input type="checkbox" style="width:auto" ${MM_GR.has(x.id) ? "checked" : ""} onchange="mmDocBifa(${x.id},this.checked)"> ${MM_ALTE.has(x.id) ? "<b>" + esc(x.anexa || "") + "</b> · " : ""}${esc(mmDocEt(x, rid, multiLoc))}${mmFrateAl(x) ? ' <span class="muted">· pe comandă</span>' : ""}</label>`;
+      const fr = l.filter(x => !MM_ALTE.has(x.id)), al = l.filter(x => MM_ALTE.has(x.id));
+      return (fr.length ? '<div style="display:flex;flex-direction:column;gap:4px">' + fr.map(rand).join("") + "</div>" : "") +
+        (al.length ? `<div class="muted" style="margin:${fr.length ? 10 : 2}px 0 4px">Alte anexe ale contractului — bifează ce pleacă tot cu această comandă (un singur text):</div><div style="display:flex;flex-direction:column;gap:4px">` + al.map(rand).join("") + "</div>" : ""); })();
 }
 function mmDocBifa(id, on){ if(on) MM_GR.add(id); else MM_GR.delete(id); mmSchimbat(); }
 async function mmFratiIncarca(id){
@@ -2795,7 +2805,7 @@ async function mmFratiIncarca(id){
 // produsele bifate, pentru textul comenzii
 function mmDocExtra(){
   const rid = NEG.test($("mm-tip").value);
-  return mmDocRanduri().filter(x => MM_GR.has(x.id)).map(x => ({ buc: mmDocCant(x, rid), produs: x.produs, model: x.model, acc: x.accesorii,
+  return mmDocRanduri().filter(x => MM_GR.has(x.id)).map(x => ({ buc: mmDocCant(x, rid), produs: x.produs, model: x.model, acc: x.accesorii, anexa: x.anexa || "",
     jud: x.jud, loc: x.loc, sat: x.sat, pers: x.pers_contact, tel: x.telefon })).filter(x => x.buc);
 }
 async function mmDocSalveaza(id, rec){
@@ -2806,7 +2816,8 @@ async function mmDocSalveaza(id, rec){
     const q = mmDocCant(x, rid) * (rid ? -1 : 1);
     const r2 = Object.assign({}, rec, { buc: q, produs: x.produs, model: x.model || null, accesorii: x.accesorii || null, anexa_id: x.id,
       jud: x.jud || null, loc: x.loc || null, sat: x.sat || null, pers_resp: x.pers_contact || rec.pers_resp, telefon: x.telefon || rec.telefon,
-      frecv_serv: x.frecv_servisare || null, grup_id: id });
+      frecv_serv: x.frecv_servisare || null, grup_id: id,
+      contract: x.contract_depozit || rec.contract, depozit: x.depozit || rec.depozit });   // v5.76: anexa altă poate veni din alt depozit
     const f = mmFrateAl(x);
     const { error } = f ? await db.from("miscari").update(r2).eq("id", f.id) : await db.from("miscari").insert(r2);
     if(error){ toast("Produsul " + (x.produs || "") + " nu s-a salvat pe comandă: " + error.message, true); continue; }
@@ -6667,7 +6678,8 @@ function textComandaDin(d){
   if(a.data_ridicarii) ext.push("DATA RID.  :  " + dz(a.data_ridicarii));
   if(+a.transport) ext.push("TRANSPORT  :  " + a.transport);
   L.push("");
-  if(k.nr_ctr) L.push("CTR.  :  " + k.nr_ctr + (a.anexa ? "  ·  " + a.anexa : ""));
+  const anxT = [...new Set([a.anexa, ...(d.extra || []).map(x => x.anexa)].filter(Boolean))].join(", ");   // v5.76: toate anexele de pe comandă
+  if(k.nr_ctr) L.push("CTR.  :  " + k.nr_ctr + (anxT ? "  ·  " + anxT : ""));
   else if(d.cdep) L.push("CTR.  :  " + d.cdep);   // v5.31: fără număr de contract, se scrie contractul (gestiune)
   if(d.dep) L.push("DEP.  :  " + d.dep);
   if(ext.length){ L.push(""); L.push(...ext); }
@@ -6703,7 +6715,7 @@ function textComandaSalvata(m){
   return textComandaDin({ tip: m.tip_miscare, data: m.data, client: m.client, anexa_id: m.anexa_id, contract_id: m.contract_id,
     buc: m.buc, produs: m.produs, model: m.model, acc: m.accesorii, ser: ser.length ? { lista: ser, alege: 0 } : serAlegeSalvata(m),
     jud: m.jud, loc: m.loc, sat: m.sat, dep: m.depozit, cdep: m.contract, pers: m.pers_resp, tel: m.telefon, frecv: m.frecv_serv, obs: m.observatii,
-    extra: m.grup_id === m.id ? (MISC || []).filter(x => x.grup_id === m.id && x.id !== m.id).sort((x, y) => x.id - y.id).map(x => ({ buc: x.buc, produs: x.produs, model: x.model, acc: x.accesorii, jud: x.jud, loc: x.loc, sat: x.sat, pers: x.pers_resp, tel: x.telefon })) : [] });   // v5.13
+    extra: m.grup_id === m.id ? (MISC || []).filter(x => x.grup_id === m.id && x.id !== m.id).sort((x, y) => x.id - y.id).map(x => ({ buc: x.buc, produs: x.produs, model: x.model, acc: x.accesorii, anexa: (ANX.find(z => z.id === x.anexa_id) || {}).anexa || "", jud: x.jud, loc: x.loc, sat: x.sat, pers: x.pers_resp, tel: x.telefon })) : [] });   // v5.13
 }
 function deschideComanda(){
   if(!$("mm-client").value.trim()){ toast("Alege întâi clientul", true); return; }
