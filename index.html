@@ -649,7 +649,8 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   #nav-sus{display:flex;align-items:center;gap:8px;height:56px;flex:0 0 56px;padding:0 10px 0 12px;margin-bottom:8px;
            border-bottom:1px solid var(--bd);position:relative;overflow:hidden;box-sizing:border-box}
   #nav-sus .nav-tg{display:grid;place-items:center;flex:0 0 32px;width:32px;height:32px;border-radius:var(--r,4px);cursor:pointer;color:var(--nav-tx)}
-  #nav-sus .nav-tg:hover{background:var(--nav-hov)}
+  #nav-sus{cursor:pointer;user-select:none;transition:background .2s}
+  #nav-sus:hover{background:var(--nav-hov)}   /* v5.59: tot capul meniului e buton */
   #nav-sus .nav-tg svg{width:21px;height:21px;fill:none;stroke:currentColor;stroke-width:1.75;stroke-linecap:round;stroke-linejoin:round}
   #nav-sus .nt-sag{transition:transform .45s cubic-bezier(.65,0,.35,1);transform-origin:14.5px 12px}
   #nav-sus .ns-nume{font-size:16px;font-weight:700;letter-spacing:-.01em;color:var(--tx);white-space:nowrap}
@@ -690,16 +691,16 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <div class="hd-mij"><div id="titlu-sus"></div><span id="azi-sus" title="Data de azi (calculatorul)"></span></div>
   <button id="btn-mob" class="btn sec" style="padding:5px 10px;font-size:12px" onclick="mobPC(false)" title="Înapoi la varianta de telefon">📱 Telefon</button>
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
-  <span class="ver">v5.58</span>
+  <span class="ver">v5.59</span>
   <select id="sel-font" class="font-sel" title="Fontul aplicației (probă — alege și rămâne)" onchange="eeFont(this.value)"></select>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
 <nav>
-  <div id="nav-sus">
-    <span class="nav-tg" role="button" tabindex="0" title="Strânge meniul" onclick="navComuta()"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2.5"/><path d="M9 4v16"/><path class="nt-sag" d="M15.5 10l-2 2 2 2"/></svg></span>
+  <div id="nav-sus" onclick="navComuta()" title="Strânge / arată meniul">
+    <span class="nav-tg" aria-hidden="true"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2.5"/><path d="M9 4v16"/><path class="nt-sag" d="M15.5 10l-2 2 2 2"/></svg></span>
     <b class="ns-nume">GestiuneEE</b><img class="ns-logo" src="icons/logo-ee.png" alt="Euro Ecologic">
-    <img class="ns-semn" src="icons/logo-ee-semn.png" alt="Euro Ecologic" title="Arată meniul" onclick="navComuta()">
+    <img class="ns-semn" src="icons/logo-ee-semn.png" alt="Euro Ecologic">
   </div>
   <button class="on" data-p="atentie">De urmărit <span id="t-badge" class="badge" style="display:none">0</span></button>
   <button data-p="stoc">Stoc</button>
@@ -893,7 +894,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
     </div>
     <div class="tw" style="margin-top:10px"><table id="rr-tbl"></table></div>
   </div>
-  <div class="card" id="rr-foi"></div><!-- v5.36: rutele (foile de parcurs) pentru filtrele de sus -->
+  <!-- v5.59 (cerut de Ovidiu, 13.10): scos cardul „Foi de parcurs” de aici — nu ajuta (rrFoi rămâne nefolosită) -->
 </section>
 
 <!-- ================= ÎNCEPUTUL ZILEI ================= -->
@@ -5428,7 +5429,6 @@ function rrAfiseaza(){
           return `<td style="font-size:12px;white-space:nowrap;${stil}"${tit}>${esc(x.k)}</td>`;
         }).join("") + "</tr>";
     }).join("") + "</tbody>";
-  try{ rrFoi(); }catch(e){ console.warn("rrFoi", e); }
 }
 // v5.36 (cerut de Ovidiu, 12.10): sub tabel, capul foii de parcurs (ca în PDF) pentru fiecare rută din săptămâna / ziua /
 // traseul / mașina / șoferul alese — ca să compare punctele cu ruta făcută.
