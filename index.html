@@ -346,6 +346,8 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   .pictograma{background:transparent;border:1px solid var(--bd);color:var(--tx);width:30px;height:30px;
               border-radius:9px;cursor:pointer;font-size:14px;line-height:1;flex:0 0 auto;padding:0}
   .pictograma:hover{background:var(--nav-hov)}
+  #btn-iesi{display:inline-flex;align-items:center;justify-content:center}
+  #btn-iesi svg{width:17px;height:17px;display:block;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
 
   nav{background:var(--nav);border-color:var(--bd)}
   nav button{color:var(--nav-tx);font-weight:600}
@@ -638,7 +640,10 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   /* v5.63 (cerut de Ovidiu, 13.10): inițialele și butonul de ieșire = pătrate cu colțuri de 6 px, pe roșu deschis când meniul e strâns */
   #nav-jos .ini{border-radius:6px;width:32px;height:32px;box-shadow:inset 0 0 0 1px transparent;
      transition:background .45s cubic-bezier(.65,0,.35,1),color .45s cubic-bezier(.65,0,.35,1),box-shadow .45s cubic-bezier(.65,0,.35,1)}
-  #nav-jos #btn-iesi{border-radius:6px;width:32px;height:32px}
+  #nav-jos #btn-iesi{border-radius:6px;width:32px;height:32px;display:inline-flex;align-items:center;justify-content:center;padding:0;
+     color:var(--mut);transition:background .2s,color .2s,border-color .2s,opacity .25s ease .2s,visibility 0s linear 0s}
+  #nav-jos #btn-iesi svg{width:17px;height:17px;display:block;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+  #nav-jos #btn-iesi:hover{color:#d64545;border-color:rgba(214,69,69,.45);background:rgba(214,69,69,.08)}
   html[data-nav="mic"] #nav-jos .ini{background:rgba(214,69,69,.14);color:#d64545;box-shadow:inset 0 0 0 1px rgba(214,69,69,.35)}
   nav > button{border-radius:var(--r,4px)}   /* pastila filei alese / la maus: colțuri ca în restul aplicației (era 10 px) */
   }
@@ -699,7 +704,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <div class="hd-mij"><div id="titlu-sus"></div><span id="azi-sus" title="Data de azi (calculatorul)"></span></div>
   <button id="btn-mob" class="btn sec" style="padding:5px 10px;font-size:12px" onclick="mobPC(false)" title="Înapoi la varianta de telefon">📱 Telefon</button>
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
-  <span class="ver">v5.64</span>
+  <span class="ver">v5.65</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -728,7 +733,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <div id="nav-jos" style="display:none">
     <div class="ini" id="nav-ini">—</div>
     <div class="cine-blk"><div id="cine"></div><div id="cine-rol"></div></div>
-    <button id="btn-iesi" class="pictograma" title="Ieși din cont" onclick="iesi()">⏻</button>
+    <button id="btn-iesi" class="pictograma" title="Ieși din cont" onclick="iesi()"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.5v7.5"/><path d="M7.05 6.6a7.5 7.5 0 1 0 9.9 0"/></svg></button>
   </div>
 </nav>
 <main>
