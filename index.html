@@ -721,7 +721,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <div class="hd-mij"><div id="titlu-sus"></div><span id="azi-sus" title="Data de azi (calculatorul)"></span></div>
   <button id="btn-mob" class="btn sec" style="padding:5px 10px;font-size:12px" onclick="mobPC(false)" title="Înapoi la varianta de telefon">📱 Telefon</button>
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
-  <span class="ver">v5.73</span>
+  <span class="ver">v5.74</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -1496,7 +1496,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
       </div>
       <div class="ma-g"><div class="maf"><label>Accesorii</label><div id="ma-acc" class="acc-box"></div></div></div>
       <div class="ma-g c3">
-        <div class="maf"><label>Preț</label><input type="number" step="0.01" id="ma-pret" value="0"></div>
+        <div class="maf"><label>Preț</label><input type="number" step="0.01" min="0" id="ma-pret" value="0.00" onblur="pret2(this)"></div>
         <div class="maf"><label>Monedă</label><select id="ma-moneda"></select></div>
         <div class="maf"><label>Scadent (zile)</label><input type="number" id="ma-scad" value="30"></div>
       </div>
@@ -2842,7 +2842,7 @@ function renderClienti(){
       ks.map(k=>{ const an=ANX.filter(a=>a.contract_id===k.id);
         return `<div style="margin:8px 0 4px;padding-left:8px;border-left:3px solid var(--gl)"><b>CTR ${esc(k.nr_ctr)}</b> <span class="muted">${fmtD(k.data_emitere)} → ${k.data_expirare?fmtD(k.data_expirare):esc(k.expirare_text||"")} · ${esc(k.stare)}</span> <button class="btn sm sec noprint" onclick="openContract(${k.id})">Edit</button> <button class="btn sm noprint" onclick="openAnexa(null,${k.id})">+ Anexă</button>
         <div class="tw" style="max-height:none;margin-top:4px"><table><tr><th>Anexa</th><th>Emitere</th><th>Expirare</th><th>Jud</th><th>Loc.</th><th>Locație</th><th>Forma</th><th>Produs</th><th>Tip</th><th>Cant</th><th>Preț</th><th>Status</th><th>Depozit</th><th class="noprint" title="ACT pe comenzile acestei anexe">ACT</th><th class="noprint"></th></tr>`+
-        an.map(a=>`<tr${VER&&VER.f==="act"&&VER.m.anexa_id===a.id?' class="r-ver"':''}><td>${esc(a.anexa)}</td><td>${fmtD(a.data_emitere)}</td><td>${a.data_expirare?fmtD(a.data_expirare):esc(a.expirare_text)}</td><td>${esc(a.jud)}</td><td>${esc(a.loc)}</td><td>${esc(a.sat)}</td><td>${esc(a.forma)}</td><td>${esc(a.produs)}</td><td>${esc(a.model)}</td><td>${a.cant}</td><td>${a.pret} ${esc(a.moneda)}</td><td>${esc(a.status)}</td><td>${esc(a.depozit)}</td><td class="noprint">${flaguriAnexa(a.id,"act")}</td><td class="noprint"><button class="btn sm sec" onclick="openAnexa(${a.id})">Edit</button> ${butonSerii(a)}</td></tr>`).join("")+`</table></div></div>`; }).join("")+`</details></div>`;
+        an.map(a=>`<tr${VER&&VER.f==="act"&&VER.m.anexa_id===a.id?' class="r-ver"':''}><td>${esc(a.anexa)}</td><td>${fmtD(a.data_emitere)}</td><td>${a.data_expirare?fmtD(a.data_expirare):esc(a.expirare_text)}</td><td>${esc(a.jud)}</td><td>${esc(a.loc)}</td><td>${esc(a.sat)}</td><td>${esc(a.forma)}</td><td>${esc(a.produs)}</td><td>${esc(a.model)}</td><td>${a.cant}</td><td>${fmtPret(a.pret)} ${esc(a.moneda)}</td><td>${esc(a.status)}</td><td>${esc(a.depozit)}</td><td class="noprint">${flaguriAnexa(a.id,"act")}</td><td class="noprint"><button class="btn sm sec" onclick="openAnexa(${a.id})">Edit</button> ${butonSerii(a)}</td></tr>`).join("")+`</table></div></div>`; }).join("")+`</details></div>`;
   }).join("")||'<p class="muted">Niciun client.</p>';
   verBandaAct();
 }
@@ -3218,12 +3218,15 @@ function openAnexa(id,contractId){
 }
 // v5.11: câmpurile unui rând (produs + locație + servisare); a gol / parțial = valorile de pornire
 let MA_RAND = [{}], MA_I = 0, MA_STERSE = [], MA_UN_RAND = false;
+// v5.74 (cerut de Ovidiu, 13.10): prețul cu subunități, mereu cu 2 zecimale — 0.50; 3.68; 16.99 (și cu virgulă: 3,68)
+const fmtPret = v => { const n = +String(v ?? "").replace(",", "."); return isFinite(n) ? n.toFixed(2) : "0.00"; };
+function pret2(el){ if(el && el.value !== "") el.value = fmtPret(el.value); }
 function maUmpleRand(a){
   const g = (k, d) => a && a[k] != null && a[k] !== "" ? a[k] : d;
   $("ma-dx").value=g("data_expirare",""); $("ma-xt").value=g("expirare_text","");
   $("ma-jud").value=g("jud","HD"); $("ma-loc").value=g("loc",""); $("ma-sat").value=g("sat",""); $("ma-forma").value=g("forma","CHIRIE");
   $("ma-prod").value=g("produs", nomv("produs")[0]||""); umpleModele("ma-prod","ma-model", g("model",""), g("accesorii",""));
-  $("ma-um").value=g("um","BUC"); $("ma-cant").value=g("cant",1); $("ma-pret").value=g("pret",0); $("ma-moneda").value=g("moneda","RON"); $("ma-scad").value=g("scadent",30);
+  $("ma-um").value=g("um","BUC"); $("ma-cant").value=g("cant",1); $("ma-pret").value=fmtPret(g("pret",0)); $("ma-moneda").value=g("moneda","RON"); $("ma-scad").value=g("scadent",30);
   $("ma-status").value=g("status",""); $("ma-dep").value=g("depozit","");
   $("ma-ctrdep").value=g("contract_depozit", depPrincipal());
   $("ma-dliv").value=g("data_livrarii", ($("mod-m").classList.contains("on") && $("mm-data").value) || today()); $("ma-drid").value=g("data_ridicarii","");
@@ -3350,7 +3353,7 @@ function maConfRanduri(){
   if(MA_SCURT || MA_RAND.length < 2) return "";
   return `<h4 style="margin:14px 0 6px">Toate produsele de pe anexă (${MA_RAND.length})</h4><table>` + MA_RAND.map((x, i) =>
     `<tr><td>${i + 1}.</td><td><b>${esc(Math.abs(+x.cant || 0) + " " + (x.produs || "") + " " + (x.model || ""))}</b>${x.accesorii ? " <span class='muted'>" + esc(x.accesorii) + "</span>" : ""}</td>` +
-    `<td>${esc((+x.pret || 0) + " " + (x.moneda || ""))}</td><td>${esc([x.jud, x.loc, x.sat].filter(Boolean).join(" "))}</td>` +
+    `<td>${esc(fmtPret(x.pret) + " " + (x.moneda || ""))}</td><td>${esc([x.jud, x.loc, x.sat].filter(Boolean).join(" "))}</td>` +
     `<td>${esc([x.frecv_servisare || "fără servisare", (x.zi_servisare || "").replace(/,/g, ", ")].filter(Boolean).join(" · "))}</td>` +
     `<td>${x.id ? "" : "<span class='muted'>nou</span>"}</td></tr>`).join("") + "</table>" +
     (MA_UN_RAND ? `<p style="margin:8px 0 0"><b>La facturare: un singur rând</b> pentru produsele cu același preț și aceeași perioadă.</p>` : "") +
@@ -4248,7 +4251,7 @@ async function raportFacturare(){
              "EMITERE ANEXA","DATA AMPLASARII","JUD","LOCALITATE","SAT / LOCATIE / STRADA","FORMA","PRODUS",
              "TIP","UM","CANT.","PRET","MONEDA","STATUS","INCEPUT LUNA","SFARSIT LUNA","NR Z.",
              "VALOARE FARA TVA","VALOARE CU TVA","SCADENT"];
-  R_NUM = new Set([18, 19, 24, 25, 26]);
+  R_NUM = new Set([18, 19, 24, 25, 26]); R_FMT2 = new Set([19, 25, 26]);   // v5.74: PRET și valorile cu 2 zecimale (0.50, 3.68)
   R_RANDURI = r.map(x => {
     const cant = x.cant, pret = +x.a.pret || 0;
     const st = FS[x.a.id] || "ACTIV";
