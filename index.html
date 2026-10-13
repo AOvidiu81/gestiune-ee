@@ -595,7 +595,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <span id="azi-sus" title="Data de azi (calculatorul)"></span>
   <button id="btn-mob" class="btn sec" style="padding:5px 10px;font-size:12px" onclick="mobPC(false)" title="Înapoi la varianta de telefon">📱 Telefon</button>
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
-  <span class="ver">v5.52</span>
+  <span class="ver">v5.53</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -7019,7 +7019,12 @@ async function openMutare(anexaId, src){
   if(!locs[src]){ toast("Locația " + src + " nu are puncte de rută", true); return; }
   const k = CTR.find(x => x.id === a.contract_id), c = k ? CLI.find(x => x.id === k.client_id) : null;
   const serii = SER.filter(x => x.punct === src && x.stare === "LA CLIENT");
-  MU = { a, src, locs, client: c ? c.nume : (locs[src].puncte[0].client || ""), ctr: k ? k.nr_ctr : "", serii, bife: new Set(), dest: "",
+  // v5.53: codul următoarei locații libere a anexei sursei (A181-20), din toate punctele citite (și cele INACTIVE)
+  const srcAn = punctLoc(src).anexa, pad = (src.split("-")[1] || "00").length;
+  const maxNr = Math.max(0, ...(r1.data || []).map(p => { const m = new RegExp("^A" + srcAn + "-(\\d+)").exec(p.client_key || ""); return m ? +m[1] : 0; }));
+  const zileSrc = new Set(locs[src].puncte.filter(p => p.status !== "INACTIV").map(p => faraDiac(p.ziua || "").toUpperCase()).filter(z => ZI_ABR[z]));
+  const nou = { cod: "A" + srcAn + "-" + String(maxNr + 1).padStart(pad, "0"), nume: "", gps: "", zile: zileSrc, zileSrc: new Set(zileSrc) };
+  MU = { mod: Object.keys(locs).length > 1 ? "exist" : "nou", nou, a, src, locs, client: c ? c.nume : (locs[src].puncte[0].client || ""), ctr: k ? k.nr_ctr : "", serii, bife: new Set(), dest: "",
          camp: (serii.map(x => muCampDe(x.produs)).find(Boolean)) || muCampDe(a.produs) || "toalete", n: 1, gol: "", data: muZi() };
   $("mu-title").textContent = "Mută produse · " + src + (locs[src].nume ? " · " + locs[src].nume : "");
   $("mu-sub").textContent = [MU.client, MU.ctr ? "CTR " + MU.ctr : "", a.anexa || "", "anexa, stocul și facturarea nu se schimbă"].filter(Boolean).join(" · ");
@@ -7032,8 +7037,24 @@ function muSet(c, v){
   if(c !== "gol" && muCate(MU.src) - MU.n !== 0) MU.gol = "";
   muDeseneaza();
 }
+function muSetNou(c, v){
+  if(c === "zi"){ MU.nou.zile.has(v) ? MU.nou.zile.delete(v) : MU.nou.zile.add(v); muDeseneaza(); return; }
+  MU.nou[c] = v; const t = $("mu-text"); if(t) t.value = muText();
+  const d = $("mu-dnume"); if(d) d.textContent = MU.nou.nume.trim().toUpperCase();
+}
+function muGps(t){ const m = String(t || "").replace(/;/g, ",").match(/-?\d+(?:\.\d+)?/g); return m && m.length === 2 ? { lat: +m[0], lon: +m[1] } : null; }
+function muZileNou(){ return ZILE_ORD.filter(z => MU.nou.zile.has(z)); }
+function muDestKey(){ return MU.mod === "nou" ? MU.nou.cod : MU.dest; }
 function muText(){
   const um = MU_UM[MU.camp], L = MU.locs[MU.src], D = MU.locs[MU.dest];
+  if(MU.mod === "nou"){
+    const ser = MU.serii.filter(x => MU.bife.has(x.id)).map(muSerieTxt), g = muGps(MU.nou.gps), nm = MU.nou.nume.trim().toUpperCase();
+    return ["🔁 MUTARE (intern) — LOCAȚIE NOUĂ", "CLIENT  :  " + MU.client, "DATA  :  " + muDataRo(MU.data),
+      "DIN  :  " + MU.src + (L && L.nume ? " · " + L.nume : ""), "ÎN  :  " + MU.nou.cod + " · " + (nm || "(scrie locația)") + " (LOCAȚIE NOUĂ)",
+      "ZILE  :  " + (muZileNou().map(z => ZI_RUTE[z]).join(", ") || "(alege zilele)"), "BUC.  :  " + MU.n + " " + um]
+      .concat(ser.length ? ["SERII  :  " + ser.join("; ")] : [])
+      .concat(g ? ["GPS  :  " + g.lat + ", " + g.lon, "https://maps.google.com/?q=" + g.lat + "," + g.lon] : []).join("\n");
+  }
   const ser = MU.serii.filter(x => MU.bife.has(x.id)).map(muSerieTxt);
   return ["🔁 MUTARE (intern)", "CLIENT  :  " + MU.client, "DATA  :  " + muDataRo(MU.data),
     "DIN  :  " + MU.src + (L && L.nume ? " · " + L.nume : ""), "ÎN  :  " + (MU.dest ? MU.dest + (D && D.nume ? " · " + D.nume : "") : "(alege locația)"),
@@ -7051,13 +7072,27 @@ function muDeseneaza(){
   h += `<div class="mu-g" style="margin-top:10px"><div><label>Produsul</label><select onchange="muSet('camp',this.value)">${Object.keys(MU_UM).map(c => `<option value="${c}"${c === MU.camp ? " selected" : ""}>${MU_UM[c]}</option>`).join("")}</select></div>
     <div><label>Câte muți</label><input type="number" min="1" max="${are}" value="${MU.n}" onchange="muSet('n',this.value)"></div>
     <div><label>Data mutării</label><input type="date" value="${MU.data}" onchange="muSet('data',this.value)"></div></div></div>`;
-  h += `<div class="mu-s"><h4>2. Unde le muți</h4><select style="width:100%" onchange="muSet('dest',this.value)"><option value="">— alege locația —</option>` +
-    alte.map(l => { const act = muActive(l.key).length; return `<option value="${l.key}"${l.key === MU.dest ? " selected" : ""}>${esc(l.key + " · " + (l.nume || "") + " (" + muCate(l.key) + " " + MU_UM[MU.camp] + ")" + (act ? "" : " · inactivă — se reactivează"))}</option>`; }).join("") +
-    `</select>${alte.length ? "" : `<div class="muted" style="font-size:13px;margin-top:6px">Anexa nu are alte locații. Locație nouă = etapa C (încă nefăcută).</div>`}</div>`;
+  const nou = MU.mod === "nou";
+  h += `<div class="mu-s"><h4>2. Unde le muți</h4>
+    <label class="mu-b"><input type="radio" name="mu-mod" ${!nou ? "checked" : ""} ${alte.length ? "" : "disabled"} onchange="muSet('mod','exist')"> Locație existentă a anexei${alte.length ? "" : " <span class=\"muted\">(anexa nu are alte locații)</span>"}</label>`;
+  if(!nou) h += `<select style="width:100%;margin:2px 0 8px" onchange="muSet('dest',this.value)"><option value="">— alege locația —</option>` +
+    alte.map(l => { const act = muActive(l.key).length; return `<option value="${l.key}"${l.key === MU.dest ? " selected" : ""}>${esc(l.key + " · " + (l.nume || "") + " (" + muCate(l.key) + " " + MU_UM[MU.camp] + ")" + (act ? "" : " · inactivă — se reactivează"))}</option>`; }).join("") + `</select>`;
+  h += `<label class="mu-b"><input type="radio" name="mu-mod" ${nou ? "checked" : ""} onchange="muSet('mod','nou')"> Locație nouă</label>`;
+  if(nou){
+    h += `<div class="mu-g" style="margin-top:4px"><div><label>Cod (pus de aplicație)</label><input value="${esc(MU.nou.cod)}" readonly></div>
+      <div style="grid-column:span 2"><label>Denumirea locației (strada) *</label><input value="${esc(MU.nou.nume)}" placeholder="ex. STR. MUREȘULUI NR. 5" oninput="muSetNou('nume',this.value)" style="text-transform:uppercase"></div></div>
+      <div class="mu-g" style="margin-top:6px"><div style="grid-column:span 3"><label>GPS (opțional) — lat, lon</label><input value="${esc(MU.nou.gps)}" placeholder="ex. 45.7597, 22.9099" oninput="muSetNou('gps',this.value)"></div></div>
+      <label style="display:block;margin-top:8px">Zilele de servisare <span class="muted">(bifate ca la ${esc(src)})</span></label>
+      <div style="display:flex;flex-wrap:wrap;gap:4px 14px">${ZILE_ORD.map(z => `<label class="mu-b"><input type="checkbox" ${MU.nou.zile.has(z) ? "checked" : ""} onchange="muSetNou('zi','${z}')"> ${ZI_RUTE[z]}</label>`).join("")}</div>
+      <div class="muted" style="font-size:13px;margin-top:6px">Frecvența, traseul, mașina, județul, localitatea, telefonul, accesoriile se copiază de la ${esc(src)}.
+      Doar în cadrul aceluiași șantier / aceleiași anexe — alt șantier = anexă nouă.</div>`;
+  }
+  h += `</div>`;
   h += `<div class="mu-s"><h4>3. Ce se schimbă la Salvează</h4><table class="mu-tab">
     <tr><td><b>${esc(src)}</b> ${esc(MU.locs[src].nume || "")}</td><td>${are} → <b>${dupa}</b> ${MU_UM[MU.camp]}</td><td class="muted">${esc(zile(src))}</td></tr>
-    <tr><td><b>${esc(MU.dest || "—")}</b> ${esc(MU.dest && MU.locs[MU.dest] ? MU.locs[MU.dest].nume || "" : "")}</td><td>${MU.dest ? destAre + " → <b>" + (destAre + MU.n) + "</b> " + MU_UM[MU.camp] : ""}</td><td class="muted">${esc(MU.dest ? zile(MU.dest) : "")}</td></tr>
-    </table>${MU.bife.size ? `<div class="muted" style="font-size:13px;margin-top:4px">${MU.bife.size} serii trec pe ${esc(MU.dest || "locația nouă")}, cu nota „mutată din ${esc(src)} în … la ${muDataRo(MU.data)}” la Observații.</div>` : ""}</div>`;
+    ${nou ? `<tr><td><b>${esc(MU.nou.cod)}</b> <span id="mu-dnume">${esc(MU.nou.nume.trim().toUpperCase())}</span> <span class="muted">(nouă)</span></td><td>0 → <b>${MU.n}</b> ${MU_UM[MU.camp]}</td><td class="muted">${esc(muZileNou().map(z => MU.nou.cod + "-" + ZI_ABR[z]).join(", "))}</td></tr>`
+    : `<tr><td><b>${esc(MU.dest || "—")}</b> ${esc(MU.dest && MU.locs[MU.dest] ? MU.locs[MU.dest].nume || "" : "")}</td><td>${MU.dest ? destAre + " → <b>" + (destAre + MU.n) + "</b> " + MU_UM[MU.camp] : ""}</td><td class="muted">${esc(MU.dest ? zile(MU.dest) : "")}</td></tr>`}
+    </table>${MU.bife.size ? `<div class="muted" style="font-size:13px;margin-top:4px">${MU.bife.size} serii trec pe ${esc(muDestKey() || "locația aleasă")}, cu nota „mutată din ${esc(src)} în … la ${muDataRo(MU.data)}” la Observații.</div>` : ""}</div>`;
   if(dupa === 0 && are > 0){
     h += `<div class="mu-s mu-gol"><h4 style="color:#D97706">Locația ${esc(src)} rămâne fără produse — ce fac cu punctele ei de rută?</h4>
       <label class="mu-b"><input type="radio" name="mu-gol" ${MU.gol === "inactiv" ? "checked" : ""} onchange="muSet('gol','inactiv')"> Trec pe INACTIV (șoferii nu mai merg acolo)</label>
@@ -7073,15 +7108,40 @@ async function muCopiaza(){
 }
 async function muSalveaza(){
   const src = MU.src, are = muCate(src), dupa = are - MU.n, camp = MU.camp;
-  if(!MU.dest){ toast("Alege locația unde muți", true); return; }
+  const nou = MU.mod === "nou", dest = muDestKey(), nmNou = MU.nou.nume.trim().toUpperCase(), gNou = muGps(MU.nou.gps);
+  if(!nou && !MU.dest){ toast("Alege locația unde muți", true); return; }
+  if(nou && !nmNou){ toast("Scrie denumirea locației noi (strada)", true); return; }
+  if(nou && !MU.nou.zile.size){ toast("Bifează cel puțin o zi de servisare pentru locația nouă", true); return; }
+  if(nou && MU.nou.gps.trim() && !gNou){ toast("GPS-ul nu se înțelege — scrie „lat, lon” (ex. 45.7597, 22.9099) sau lasă gol", true); return; }
   if(MU.n < 1){ toast("Scrie câte produse muți", true); return; }
   if(MU.n > are){ toast("Pe " + src + " sunt doar " + are + " " + MU_UM[camp] + " (după punctele de rută)", true); return; }
   if(MU.bife.size > MU.n){ toast("Ai bifat " + MU.bife.size + " serii, dar muți " + MU.n + " produse", true); return; }
   if(dupa === 0 && !MU.gol){ toast("Alege ce se face cu punctele locației " + src + " (rămâne fără produse)", true); return; }
   if(!MU.data){ toast("Alege data mutării", true); return; }
-  const acum = new Date().toISOString(), nota = "mutată din " + src + " în " + MU.dest + " la " + muDataRo(MU.data);
+  const acum = new Date().toISOString(), nota = "mutată din " + src + " în " + dest + (nou ? " (locație nouă)" : "") + " la " + muDataRo(MU.data);
+  // v5.53: locația nouă se creează ÎNTÂI — dacă nu merge, nu s-a schimbat nimic
+  if(nou){
+    const ver = await db.from("clients").select("client_key").like("client_key", dest + "%");
+    if(ver.error){ toast("Nu s-a putut verifica codul: " + ver.error.message, true); return; }
+    if((ver.data || []).some(p => punctLoc(p.client_key) && punctLoc(p.client_key).loc === dest)){ toast("Codul " + dest + " e deja folosit — închide și redeschide fereastra", true); return; }
+    const ids = muActive(src).concat(MU.locs[src].puncte).map(p => p.id);
+    const rs = await db.from("clients").select("*").in("id", [...new Set(ids)]);
+    if(rs.error || !(rs.data || []).length){ toast("Nu s-a putut citi punctul sursă: " + (rs.error ? rs.error.message : "lipsă"), true); return; }
+    const surse = rs.data.sort((x, y) => (x.status === "INACTIV") - (y.status === "INACTIV"));
+    const zileN = muZileNou(), frecv = zileN.length !== MU.nou.zileSrc.size ? zileN.length + "/Sap" : null;
+    const rec = zileN.map(z => {
+      const t = surse.find(p => faraDiac(p.ziua || "").toUpperCase() === z) || surse[0], r = { ...t };
+      ["id", "schimbare", "updated_at", "verificat_la", "verificat_de", "note_verificare"].forEach(f => delete r[f]);
+      Object.assign(r, { client_key: dest + "-" + ZI_ABR[z], ziua: ZI_RUTE[z], locatie: nmNou, lat: gNou ? gNou.lat : null, lon: gNou ? gNou.lon : null,
+        toalete: 0, containere: 0, garduri: 0, [camp]: MU.n, status: "ACTIV", observatii: "locație nouă — mutare din " + src + " la " + muDataRo(MU.data) });
+      if(frecv) r.frecventa = frecv;
+      return r;
+    });
+    const ins = await db.from("clients").insert(rec);
+    if(ins.error){ toast("Locația nouă nu s-a creat: " + ins.error.message, true); return; }
+  }
   for(const x of MU.serii.filter(x => MU.bife.has(x.id))){
-    const { error } = await db.from("serii").update({ punct: MU.dest, observatii: (x.observatii ? x.observatii + "; " : "") + nota, updated_at: acum }).eq("id", x.id);
+    const { error } = await db.from("serii").update({ punct: dest, observatii: (x.observatii ? x.observatii + "; " : "") + nota, updated_at: acum }).eq("id", x.id);
     if(error){ toast("Seria " + (x.serie || x.id) + ": " + error.message, true); return; }
   }
   for(const p of muActive(src)){
@@ -7089,14 +7149,14 @@ async function muSalveaza(){
     const { error } = await db.from("clients").update(u).eq("id", p.id);
     if(error){ toast("Punctul " + p.client_key + ": " + error.message, true); return; }
   }
-  const destAct = muActive(MU.dest), destPuncte = destAct.length ? destAct : MU.locs[MU.dest].puncte, destNou = muCate(MU.dest) + MU.n;
+  const destAct = nou ? [] : muActive(MU.dest), destPuncte = nou ? [] : destAct.length ? destAct : MU.locs[MU.dest].puncte, destNou = nou ? 0 : muCate(MU.dest) + MU.n;
   for(const p of destPuncte){
     const { error } = await db.from("clients").update({ [camp]: destNou, status: "ACTIV", updated_at: acum }).eq("id", p.id);
     if(error){ toast("Punctul " + p.client_key + ": " + error.message, true); return; }
   }
   closeModal("mod-mu"); await reloadClienti();
   if(A_TBL === "clients") await adminIncarca();
-  toast("Mutat: " + MU.n + " " + MU_UM[camp] + " din " + src + " în " + MU.dest);
+  toast("Mutat: " + MU.n + " " + MU_UM[camp] + " din " + src + " în " + dest + (nou ? " (locație nouă, " + muZileNou().length + " puncte de rută)" : ""));
 }
 
 // v5.44 (cerut de Ovidiu, 12.10): butoanele din colțul ferestrelor, ca în Windows — ‒ minimizează · ☐ mărește / ❐ înapoi · ✕ închide.
