@@ -721,7 +721,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <div class="hd-mij"><div id="titlu-sus"></div><span id="azi-sus" title="Data de azi (calculatorul)"></span></div>
   <button id="btn-mob" class="btn sec" style="padding:5px 10px;font-size:12px" onclick="mobPC(false)" title="Înapoi la varianta de telefon">📱 Telefon</button>
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
-  <span class="ver">v5.78</span>
+  <span class="ver">v5.79</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -1681,11 +1681,12 @@ const depPrincipal   = () => { const p=DEP.find(d=>d.tip==="principal"); return 
 const livrExterior = r => !!(r && r.depozit && r.contract && r.contract === depPrincipal() && r.depozit !== depPrincipal());
 // v5.75 (cerut de Ovidiu, 13.10): ce bife contează pe o comandă, după cine gestionează și cine livrează.
 //  - contract pe alt depozit (ARAD…), livrat de la el: Rpt, FAC, ACT nu intră la el;
-//  - contract la el, livrat din alt depozit (HARGHITA…): RT și PV nu sunt ale lui (șoferii celuilalt depozit).
+//  - contract la el, livrat din alt depozit (HARGHITA…): RT nu e al lui (șoferii celuilalt depozit).
+//    v5.79 (decizia lui): PV-ul contează — pornește pe X (neprimit încă), îl trece el pe V când îl are, sau L dacă lipsește.
 // Clientul e verde când toate bifele care contează sunt V; celelalte pot rămâne „-”.
 const ctrExterior = r => { const d = DEP.find(x => x.nume === (r && r.contract)); return !!(d && d.tip === "secundar"); };
 const FLAGURI = ["rpt","rt","fac","pv","act","waap"];
-function flaguriNuConteaza(r){ const n = new Set(); if(ctrExterior(r)) ["rpt","fac","act"].forEach(f => n.add(f)); if(livrExterior(r)) ["rt","pv"].forEach(f => n.add(f)); return n; }
+function flaguriNuConteaza(r){ const n = new Set(); if(ctrExterior(r)) ["rpt","fac","act"].forEach(f => n.add(f)); if(livrExterior(r)) n.add("rt"); return n; }   // v5.79: PV contează și la livrarea din alt depozit (X → V / L)
 function clStare(r){
   const nu = flaguriNuConteaza(r), v = FLAGURI.filter(f => !nu.has(f)).map(f => r[f] || "-");
   if(FLAGURI.every(f => (r[f] || "-") === "-")) return "";
@@ -2520,6 +2521,10 @@ function mmStareGen(){
 function mmSchimbat(){ if(MM_GEN){ MM_GEN = null; mmStareGen(); } }
 ["input","change"].forEach(ev => document.querySelector("#mod-m .lux-corp").addEventListener(ev, mmSchimbat));
 $("mm-flags").addEventListener("click", mmSchimbat);
+// v5.79: livrare din alt depozit decât cel principal → PV pornește pe X (control: PV neprimit încă), doar dacă e „-”.
+function mmPvX(){ const d = $("mm-dep").value; const f = document.querySelector('#mm-flags .flag[data-f="pv"]');
+  if(f && d && d !== depPrincipal() && f.textContent === "-") setFlag(f, "X"); }
+$("mm-dep").addEventListener("change", mmPvX);
 // Randul de sub titlu: clientul si contractul, cat se vad in acest moment in formular.
 function mmAntet(){
   const el=$("mm-sub"); if(!el) return;
@@ -2578,6 +2583,7 @@ async function saveMiscare(genereaza){
     pers_resp:$("mm-pers").value||null,telefon:$("mm-tel").value||null,frecv_serv:$("mm-frecv").value||null,observatii:$("mm-obs").value||null,
     contract_id:+$("mm-ctr").value||null, anexa_id:+$("mm-anexa").value||null};
   if(mmExterior()){ rec.client_id = null; rec.contract_id = null; rec.anexa_id = null; }   // v4.78: clientul exterior nu e în baza lui
+  mmPvX();
   document.querySelectorAll("#mm-flags .flag").forEach(f=>rec[f.dataset.f]=f.textContent);
   // „Salvează” simplu lasă textul negenerat (portocaliu); „Salvează și generează” pune ora.
   // v5.33 (decizia lui): o comandă deja trimisă rămâne la șoferi și după editare (se actualizează la ei); textul WhatsApp se retrimite doar dacă e nevoie
