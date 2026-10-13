@@ -692,7 +692,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <div class="hd-mij"><div id="titlu-sus"></div><span id="azi-sus" title="Data de azi (calculatorul)"></span></div>
   <button id="btn-mob" class="btn sec" style="padding:5px 10px;font-size:12px" onclick="mobPC(false)" title="Înapoi la varianta de telefon">📱 Telefon</button>
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
-  <span class="ver">v5.60</span>
+  <span class="ver">v5.61</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -5854,7 +5854,7 @@ function adminCelula(r,c){
   if(A_TBL==="clients" && c==="status" && r.schimbare) return (r.status||"") + " · " + schText(r.schimbare);
   if(A_TBL==="clients" && c==="_produse"){   // v4.58: produsele de pe punct, fără să intri în Editează
     const p=[]; if(+r.toalete) p.push(r.toalete+" toalete"); if(+r.containere) p.push(r.containere+" containere"); if(+r.garduri) p.push(r.garduri+" garduri");
-    return p.join(" · ") + (r.accesorii ? " ["+accScurt(r.accesorii)+"]" : "");
+    return p.join(" · ") + (r.accesorii && +r.toalete ? " ["+accScurt(r.accesorii)+"]" : "");   // v5.61: accesoriile țin de toalete — fără toalete nu se afișează
   }
   const v=r[c];
   if(v===true) return "Da"; if(v===false) return "Nu";
@@ -7147,7 +7147,7 @@ async function openMutare(anexaId, src){
   const ids = serLocIds(a.id); if(!ids.includes(a.id)) ids.push(a.id);
   const or = ids.map(i => `client_key.eq.A${i},client_key.like.A${i}-*`).join(",");
   const [r1, r2] = await Promise.all([
-    db.from("clients").select("id,client_key,client,locatie,ziua,status,toalete,containere,garduri").or(or).limit(2000),
+    db.from("clients").select("id,client_key,client,locatie,ziua,status,toalete,containere,garduri,accesorii").or(or).limit(2000),
     db.from("serii").select("*").order("id")
   ]);
   if(r1.error || r2.error){ toast("Nu s-au putut citi datele: " + (r1.error || r2.error).message, true); return; }
@@ -7258,6 +7258,8 @@ async function muSalveaza(){
   if(MU.bife.size > MU.n){ toast("Ai bifat " + MU.bife.size + " serii, dar muți " + MU.n + " produse", true); return; }
   if(dupa === 0 && !MU.gol){ toast("Alege ce se face cu punctele locației " + src + " (rămâne fără produse)", true); return; }
   if(!MU.data){ toast("Alege data mutării", true); return; }
+  // v5.61: accesoriile (lavoar int., dozator…) țin de toalete și se mută odată cu ele
+  const eToal = camp === "toalete", accSrc = eToal ? ((muActive(src).concat(MU.locs[src].puncte).find(p => p.accesorii) || {}).accesorii || null) : null;
   const acum = new Date().toISOString(), nota = "mutată din " + src + " în " + dest + (nou ? " (locație nouă)" : "") + " la " + muDataRo(MU.data);
   // v5.53: locația nouă se creează ÎNTÂI — dacă nu merge, nu s-a schimbat nimic
   if(nou){
@@ -7275,6 +7277,7 @@ async function muSalveaza(){
       Object.assign(r, { client_key: dest + "-" + ZI_ABR[z], ziua: ZI_RUTE[z], locatie: nmNou, lat: gNou ? gNou.lat : null, lon: gNou ? gNou.lon : null,
         toalete: 0, containere: 0, garduri: 0, [camp]: MU.n, status: "ACTIV", observatii: "locație nouă — mutare din " + src + " la " + muDataRo(MU.data) });
       if(frecv) r.frecventa = frecv;
+      r.accesorii = eToal ? (accSrc || r.accesorii || null) : null;
       return r;
     });
     const ins = await db.from("clients").insert(rec);
@@ -7286,12 +7289,14 @@ async function muSalveaza(){
   }
   for(const p of muActive(src)){
     const u = { [camp]: dupa, updated_at: acum }; if(dupa === 0 && MU.gol === "inactiv") u.status = "INACTIV";
+    if(eToal && dupa === 0) u.accesorii = null;
     const { error } = await db.from("clients").update(u).eq("id", p.id);
     if(error){ toast("Punctul " + p.client_key + ": " + error.message, true); return; }
   }
   const destAct = nou ? [] : muActive(MU.dest), destPuncte = nou ? [] : destAct.length ? destAct : MU.locs[MU.dest].puncte, destNou = nou ? 0 : muCate(MU.dest) + MU.n;
   for(const p of destPuncte){
-    const { error } = await db.from("clients").update({ [camp]: destNou, status: "ACTIV", updated_at: acum }).eq("id", p.id);
+    const ud = { [camp]: destNou, status: "ACTIV", updated_at: acum }; if(eToal && accSrc && !p.accesorii) ud.accesorii = accSrc;
+    const { error } = await db.from("clients").update(ud).eq("id", p.id);
     if(error){ toast("Punctul " + p.client_key + ": " + error.message, true); return; }
   }
   closeModal("mod-mu"); await reloadClienti();
