@@ -692,7 +692,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <div class="hd-mij"><div id="titlu-sus"></div><span id="azi-sus" title="Data de azi (calculatorul)"></span></div>
   <button id="btn-mob" class="btn sec" style="padding:5px 10px;font-size:12px" onclick="mobPC(false)" title="Înapoi la varianta de telefon">📱 Telefon</button>
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
-  <span class="ver">v5.61</span>
+  <span class="ver">v5.62</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -989,7 +989,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
       <div><label>Strada, nr [ locație ]</label><select id="pf-locatie" onchange="renderAdmin()"></select></div>
       <div style="flex:0;min-width:110px"><label>Ziua</label><select id="pf-ziua" onchange="renderAdmin()"></select></div>
       <div style="flex:0;min-width:120px"><label>Mașina (traseu)</label><select id="pf-masina" onchange="renderAdmin()"></select></div>
-      <div style="flex:0;min-width:110px"><label>Status</label><select id="pf-status" onchange="renderAdmin()"></select></div>
+      <div style="flex:0"><label>Status</label><div style="display:flex;gap:6px"><button class="btn sec" id="pf-st-ACTIV" onclick="pfSt('ACTIV')" title="Doar punctele active (implicit)">Active</button><button class="btn sec" id="pf-st-INACTIV" onclick="pfSt('INACTIV')" title="Doar punctele inactive">Inactive</button><button class="btn sec" id="pf-st-" onclick="pfSt('')" title="Toate punctele">Toate</button></div></div>
       <div style="flex:0;min-width:100px"><label>GPS</label><select id="pf-gps" onchange="renderAdmin()"><option value="">toate</option><option value="da">cu GPS</option><option value="nu">fără GPS</option></select></div>
       <div style="flex:0"><label>&nbsp;</label><button class="btn sec" onclick="pfGoleste()">✕ Golește filtrele</button></div>
     </div>
@@ -5874,13 +5874,21 @@ function statusIstoric(r){
 }
 // v5.42: filtrele din Puncte de rută (fiecare listă arată doar valorile rămase după celelalte filtre)
 let A_VAZUTE=null;
-const PF = [["pf-client","client"],["pf-jud","jud"],["pf-loc","localitate"],["pf-locatie","locatie"],["pf-ziua","ziua"],["pf-masina","masina"],["pf-status","status"]];
+const PF = [["pf-client","client"],["pf-jud","jud"],["pf-loc","localitate"],["pf-locatie","locatie"],["pf-ziua","ziua"],["pf-masina","masina"]];
+// v5.62 (cerut de Ovidiu, 13.10): Status = comutator Active (implicit) / Inactive / Toate
+let PF_ST = "ACTIV";
+const pfStOk = r => !PF_ST || (PF_ST === "INACTIV") === (String(r.status || "").trim().toUpperCase() === "INACTIV");
+function pfSt(v){ PF_ST = v; renderAdmin(); }
+function pfStButoane(){
+  const cul = { ACTIV: "#2E8B3C", INACTIV: "#C0392B", "": "#1a3769" };
+  Object.keys(cul).forEach(k => { const b = $("pf-st-" + k); if(b) b.style.cssText = PF_ST === k ? "background:" + cul[k] + ";border-color:" + cul[k] + ";color:#fff" : ""; });
+}
 const pfVal = (r, c) => String(r[c] ?? "").trim();
 const pfGps = r => !!(+r.lat && +r.lon);
 function pfFiltreaza(rows, fara){
   const g = $("pf-gps").value;
   return rows.filter(r => PF.every(([id, c]) => id === fara || !$(id).value || pfVal(r, c) === $(id).value) &&
-                          (fara === "pf-gps" || !g || (g === "da") === pfGps(r)));
+                          (fara === "pf-gps" || !g || (g === "da") === pfGps(r)) && (fara === "pf-st" || pfStOk(r)));
 }
 function pfOptiuni(){
   PF.forEach(([id, c]) => {
@@ -5890,18 +5898,19 @@ function pfOptiuni(){
     el.innerHTML = '<option value="">toate</option>' + vals.map(x => `<option${x === v ? " selected" : ""}>${esc(x)}</option>`).join("");
   });
 }
-function pfGoleste(){ PF.forEach(([id]) => $(id).value = ""); $("pf-gps").value = ""; renderAdmin(); }
-function pfKpi(rows){
+function pfGoleste(){ PF.forEach(([id]) => $(id).value = ""); $("pf-gps").value = ""; PF_ST = "ACTIV"; renderAdmin(); }
+function pfKpi(rows, inact){
   const loc = {}; rows.forEach(r => { if(r.status === "INACTIV") return; const k = [r.client, r.jud, r.localitate, r.locatie].map(x => String(x || "").trim()).join("|"); loc[k] = Math.max(loc[k] || 0, +r.toalete || 0); });
   const t = [["Puncte", rows.length], ["Clienți", new Set(rows.map(r => r.client).filter(Boolean)).size], ["Locații active", Object.keys(loc).length],
-             ["Toalete pe locații", Object.values(loc).reduce((a, b) => a + b, 0)], ["Inactive", rows.filter(r => r.status === "INACTIV").length], ["Fără GPS", rows.filter(r => !pfGps(r)).length]];
+             ["Toalete pe locații", Object.values(loc).reduce((a, b) => a + b, 0)], ["Inactive", (inact == null ? rows.filter(r => r.status === "INACTIV").length : inact)], ["Fără GPS", rows.filter(r => !pfGps(r)).length]];
   $("pf-kpi").innerHTML = t.map(([e, n]) => `<div><b>${n}</b>${e}</div>`).join("");
 }
 function renderAdmin(){
   const d=A_DEF[A_TBL], q=($("a-cauta").value||"").trim().toLowerCase();
   let baza=A_ROWS; if(A_TBL==="clients"){ pfOptiuni(); baza=pfFiltreaza(A_ROWS); }   // v5.42
   const rows=q ? baza.filter(r=>Object.values(r).some(v=>v!=null&&String(v).toLowerCase().includes(q))) : baza;
-  if(A_TBL==="clients") pfKpi(rows);
+  if(A_TBL==="clients"){ pfStButoane(); const fs = pfFiltreaza(A_ROWS, "pf-st"), fq = q ? fs.filter(r=>Object.values(r).some(v=>v!=null&&String(v).toLowerCase().includes(q))) : fs;
+    pfKpi(rows, fq.filter(r => String(r.status||"").trim().toUpperCase() === "INACTIV").length); }
   A_VAZUTE=rows;
   $("a-tbl").innerHTML =
     "<thead><tr>"+d.lista.map(([,e])=>`<th>${esc(e)}</th>`).join("")+(A_TBL==="clients"?'<th title="RT pe comenzile legate de acest punct — se bifează de mână">RT</th>':"")+"<th></th></tr></thead><tbody>"+
