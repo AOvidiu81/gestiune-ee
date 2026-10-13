@@ -721,7 +721,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <div class="hd-mij"><div id="titlu-sus"></div><span id="azi-sus" title="Data de azi (calculatorul)"></span></div>
   <button id="btn-mob" class="btn sec" style="padding:5px 10px;font-size:12px" onclick="mobPC(false)" title="Înapoi la varianta de telefon">📱 Telefon</button>
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
-  <span class="ver">v5.82</span>
+  <span class="ver">v5.83</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -7534,7 +7534,7 @@ async function openSchZi(anexaId, key){
   const zile = new Set(act.map(szZi).filter(z => ZI_ABR[z]));
   const a = ANX.find(x => x.id === anexaId) || null;
   SZ = { anexa: anexaId, a, key, toate: data || [], puncte, act, sursa, zile0: new Set(zile), zile, frecv0: szNom(sursa.frecventa), frecv: szNom(sursa.frecventa),
-         data: muZi(), peAnexa: !!a, masini: {}, nume: (act.find(p => p.locatie) || sursa).locatie || "", client: sursa.client || "" };
+         data: muZi(), peAnexa: false, masini: {},   // v5.83: nebifat (anexa = planul inițial) nume: (act.find(p => p.locatie) || sursa).locatie || "", client: sursa.client || "" };
   $("sz-title").textContent = "Schimbă zilele / frecvența · " + key + (SZ.nume ? " · " + SZ.nume : "");
   $("sz-sub").textContent = [SZ.client, a ? a.anexa || "" : "", "locația (mutarea) se schimbă cu ⇄"].filter(Boolean).join(" · ");
   szDeseneaza(); $("mod-sz").classList.add("on");
