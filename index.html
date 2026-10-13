@@ -708,9 +708,8 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
      Celulele cu culoare proprie (stare, tip, dată) își păstrează culoarea — se văd doar liniile de margine. */
   tbody tr:hover td:not([class]){background:color-mix(in srgb, var(--acc) 9%, transparent)!important}
   tbody tr:hover td{box-shadow:inset 0 1px 0 color-mix(in srgb, var(--acc) 45%, transparent), inset 0 -1px 0 color-mix(in srgb, var(--acc) 45%, transparent)}
-  tbody tr.r-ales td:not([class]){background:color-mix(in srgb, var(--acc) 17%, transparent)!important}
-  tbody tr.r-ales td{font-weight:600;box-shadow:inset 0 2px 0 var(--acc), inset 0 -2px 0 var(--acc)!important}
-  tbody tr.r-ales td:first-child{box-shadow:inset 4px 0 0 var(--acc), inset 0 2px 0 var(--acc), inset 0 -2px 0 var(--acc)!important}
+  /* v5.85: rândul marcat = doar fundalul de la mouse (fără linii, fără text îngroșat) */
+  tbody tr.r-ales td:not([class]){background:color-mix(in srgb, var(--acc) 9%, transparent)!important}
   @media print{ tbody tr.r-ales td, tbody tr:hover td{background:none!important;box-shadow:none!important;font-weight:inherit} }
 </style>
 </head>
@@ -731,7 +730,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <div class="hd-mij"><div id="titlu-sus"></div><span id="azi-sus" title="Data de azi (calculatorul)"></span></div>
   <button id="btn-mob" class="btn sec" style="padding:5px 10px;font-size:12px" onclick="mobPC(false)" title="Înapoi la varianta de telefon">📱 Telefon</button>
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
-  <span class="ver">v5.84</span>
+  <span class="ver">v5.85</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
