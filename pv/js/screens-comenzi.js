@@ -133,7 +133,8 @@ async function citesteDinCloud() {
 }
 
 // Accesoriile, prescurtate ca in GestiuneEE (cerut 03.10), ca sa nu lungeasca cardul comenzii
-const ACC_SCURT = { 'LAVOAR INTERIOR': 'L.I.', 'DOZATOR SAPUN': 'D.S.', 'DISPENSER PROSOP': 'D.P.H.', 'DISPENSER PROSOP HARTIE': 'D.P.H.' };
+const ACC_SCURT = { 'LAVOAR INTERIOR': 'L.I.', 'LAVOAR INT.': 'L.I.', 'DOZATOR SAPUN': 'D.S.', 'DISPENSER PROSOP': 'D.P.H.', 'DISPENSER PROSOP HARTIE': 'D.P.H.',
+  'AER CONDITIONAT': 'AC', 'RADIATOR INCALZIRE': 'RI', 'BOILER APA CALDA': 'BAC' };
 // Seriile unei comenzi, grupate pe model: "ARMAL EE-1, EE-2; MONDO EE-3"
 function seriiText(lista) {
   const g = {};
