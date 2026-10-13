@@ -719,7 +719,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <div class="hd-mij"><div id="titlu-sus"></div><span id="azi-sus" title="Data de azi (calculatorul)"></span></div>
   <button id="btn-mob" class="btn sec" style="padding:5px 10px;font-size:12px" onclick="mobPC(false)" title="Înapoi la varianta de telefon">📱 Telefon</button>
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
-  <span class="ver">v5.68</span>
+  <span class="ver">v5.69</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -1320,6 +1320,8 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   .modal h3.cap-mut{display:flex;align-items:baseline;gap:6px;margin:-18px -18px 14px;padding:14px 18px;border-radius:12px 12px 0 0;
     color:#fff;font-size:18px;font-weight:600;position:sticky;top:-18px;z-index:3;cursor:move;user-select:none}
   .modal h3.cap-mut #ma-ctx{color:rgba(255,255,255,.8)}
+  #mod-k .mk-per{min-height:34px;box-sizing:border-box;padding:7px 10px;border:1px dashed var(--bd);border-radius:6px;background:var(--card2);font-weight:600;font-size:14px;line-height:1.35}
+  #mod-k .mk-per .muted{font-weight:400}
   #mod-k .mk-g{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px}
   @media(max-width:600px){ #mod-k .mk-g{grid-template-columns:1fr} }
   #mod-k .nedet{display:flex;align-items:center;gap:8px;height:38px;font-size:13px;text-transform:none;letter-spacing:0;cursor:pointer}
@@ -1345,14 +1347,15 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
     <div id="mk-ciorne"></div>
     <div class="mk-g">
       <div><label>Nr. contract</label><input id="mk-nr" placeholder="ex: 1551 HD"></div>
-      <div><label>Data emitere</label><input type="date" id="mk-de"></div>
+      <div><label>Data emitere</label><input type="date" id="mk-de" oninput="mkPer()" onchange="mkPer()"></div>
     </div>
     <div class="mk-g">
-      <div><label>Data expirare</label><input type="date" id="mk-dx"></div>
+      <div><label>Data expirare</label><input type="date" id="mk-dx" oninput="mkPer()" onchange="mkPer()"></div>
       <div><label>Expirare nedeterminată</label><label class="nedet"><input type="checkbox" id="mk-nedet" onchange="mkNedet(true)"> Nedeterminat (fără dată de expirare)</label><input type="hidden" id="mk-xt"></div>
     </div>
     <div class="mk-g">
       <div><label>Stare</label><select id="mk-stare"></select></div>
+      <div><label>Perioada contract <span class="muted">(estimativ)</span></label><div id="mk-per" class="mk-per">—</div></div>
     </div>
     <div class="row" style="margin-top:14px;justify-content:flex-end">
       <div style="flex:1"></div>
@@ -3075,6 +3078,16 @@ function mkNedet(dinBifa){
   else b.checked = /NEDETERMINAT/i.test($("mk-xt").value || "");
   if(b.checked) $("mk-dx").value = "";
   $("mk-dx").disabled = b.checked;
+  mkPer();
+}
+// v5.69 (cerut de Ovidiu, 13.10): perioada estimată (ani, luni, zile) de la emitere până la expirare, sub ochi, cât scrie
+function mkPer(){
+  const el = $("mk-per"); if(!el) return;
+  if($("mk-nedet").checked){ el.innerHTML = 'Nedeterminată <span class="muted">(fără dată de expirare)</span>'; return; }
+  const de = $("mk-de").value, dx = $("mk-dx").value;
+  if(!de || !dx){ el.innerHTML = '<span class="muted">— alege ambele date</span>'; return; }
+  const t = perioadaCtr(de, dx);
+  el.innerHTML = /^⚠/.test(t) ? `<span style="color:var(--red)">${esc(t)}</span>` : esc(t || "—");
 }
 // v4.79 (cerut de Ovidiu, 08.10): ciornele contractelor nesalvate (tabel `ciorne`, tip 'contract'), arătate doar la clientul lor.
 let MK_CIORNA = null, MK_CIORNE = [];
