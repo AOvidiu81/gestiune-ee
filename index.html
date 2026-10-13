@@ -633,6 +633,11 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   #nav-jos .cine-blk{transition:opacity .28s ease .14s}
   html[data-nav="mic"] #nav-jos{flex-direction:column;padding:10px 0;gap:8px}
   html[data-nav="mic"] #nav-jos .cine-blk{display:none}
+  /* v5.63 (cerut de Ovidiu, 13.10): inițialele și butonul de ieșire = pătrate cu colțuri de 6 px, pe roșu deschis când meniul e strâns */
+  #nav-jos .ini{border-radius:6px;width:32px;height:32px;transition:background .3s,color .3s}
+  #nav-jos #btn-iesi{border-radius:6px;width:32px;height:32px;background:rgba(214,69,69,.10);border-color:rgba(214,69,69,.35);color:#d64545}
+  #nav-jos #btn-iesi:hover{background:rgba(214,69,69,.20)}
+  html[data-nav="mic"] #nav-jos .ini{background:rgba(214,69,69,.14);color:#d64545;box-shadow:inset 0 0 0 1px rgba(214,69,69,.35)}
   nav > button{border-radius:var(--r,4px)}   /* pastila filei alese / la maus: colțuri ca în restul aplicației (era 10 px) */
   }
   /* ================= v5.58 (cerut de Ovidiu, 13.10): MENIUL PÂNĂ SUS =================
@@ -692,7 +697,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <div class="hd-mij"><div id="titlu-sus"></div><span id="azi-sus" title="Data de azi (calculatorul)"></span></div>
   <button id="btn-mob" class="btn sec" style="padding:5px 10px;font-size:12px" onclick="mobPC(false)" title="Înapoi la varianta de telefon">📱 Telefon</button>
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
-  <span class="ver">v5.62</span>
+  <span class="ver">v5.63</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
