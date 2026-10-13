@@ -30,7 +30,7 @@
   *{box-sizing:border-box;}
   html,body{margin:0;padding:0;}
   body{
-    background:var(--bg); color:var(--text); font-family:'Segoe UI', Roboto, Arial, sans-serif;
+    background:var(--bg); color:var(--text); font-family:Roboto,'Segoe UI', Arial, sans-serif;
     -webkit-font-smoothing:antialiased;
   }
   .wrap{max-width:1000px; margin:0 auto; padding:16px 16px 60px;}
@@ -113,7 +113,7 @@
     border-radius:10px; padding:12px 14px; margin-bottom:16px; font-size:0.85rem;
   }
   /* v4 (cerut de Ovidiu, 12.10): aceeași temă ca GestiuneEE — „gee_tema” din memoria browserului (aceeași adresă,
-     deci aceeași memorie). „inchis” = bleumarin estompat, altfel = deschis estompat (C1). Colțuri 4 px, Manrope. */
+     deci aceeași memorie). „inchis” = bleumarin estompat, altfel = deschis estompat (C1). Colțuri 4 px, Roboto (v6, 13.10 — ca GestiuneEE). */
   :root[data-tema="inchis"]{
     --bg:#1B2539; --panel:#24324D; --panel-2:#1E2A42; --border:#36486A;
     --text:#F3F6FB; --text-dim:#B9C5D9; --accent:#FFA45C; --accent-2:#7BE0A8; --activ:#7BE0A8; --inactiv:#FFB5AE;
@@ -122,7 +122,7 @@
     --bg:#DDE3EC; --panel:#EBEFF5; --panel-2:#F3F6FA; --border:#C6D0DD;
     --text:#16203A; --text-dim:#4F5D78; --accent:#B4530E; --accent-2:#1B6E44; --activ:#1B6E44; --inactiv:#A8261C;
   }
-  :root[data-tema] body{font-family:Manrope,'Segoe UI',Roboto,Arial,sans-serif}
+  :root[data-tema] body{font-family:Roboto,'Segoe UI',Arial,sans-serif}
   :root[data-tema] .summary-card,:root[data-tema] .session-card{border-radius:4px}
   :root[data-tema] .filter-row select,:root[data-tema] .filter-row input,:root[data-tema] .date-filter-label,
   :root[data-tema] .finalize-btn,:root[data-tema] .error-box{border-radius:3px}
@@ -131,7 +131,7 @@
   :root[data-tema="deschis"] .finalize-btn{background:#CFE6D8;border-color:#7FB898}
   :root[data-tema="deschis"] .error-box{background:#F1D3CF;border-color:#D69A92}
 </style>
-<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
 <script>
   (function(){
     function pune(){ try{ var t = localStorage.getItem("gee_tema"); document.documentElement.dataset.tema = t === "deschis" ? "deschis" : "inchis"; }catch(e){} }

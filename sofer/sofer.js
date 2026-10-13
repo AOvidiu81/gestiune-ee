@@ -26,7 +26,7 @@ import { openHistoryScreen } from '../pv/js/screens-history.js';
 import { buildComenziActive } from '../pv/js/screens-comenzi.js';
 import { openSettingsScreen } from '../pv/js/screens-setup.js';
 
-export const SOFER_VERSION = 's38';
+export const SOFER_VERSION = 's39';
 
 const KEY_ZI = 'ee-sofer-zi'; // ziua deschisa: { zi, coleg, carId, km, trasee, zile, zona, ordine, ruta }
 const KEY_ULTIMA = 'ee-sofer-ultima'; // ultimele alegeri (masina, traseu, zona) — precompletare
@@ -517,6 +517,7 @@ export function hartaSerii(serii, anexe) {
   const peGrup = {}, grupAnexa = {};
   anexe.forEach((a) => { grupAnexa[a.id] = grup(a); });
   serii.forEach((x) => {
+    if (x.punct && /-\d+$/.test(x.punct)) return;   // s39: bucata mutata pe o locatie numerotata (A182-02) nu mai e pe punctul simplu A182-MA
     const g = grupAnexa[x.anexa_id] || 'a' + x.anexa_id;
     (peGrup[g] = peGrup[g] || []).push(serieText(x, dupaId[x.anexa_id]));
   });
