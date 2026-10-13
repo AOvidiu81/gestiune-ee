@@ -719,7 +719,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <div class="hd-mij"><div id="titlu-sus"></div><span id="azi-sus" title="Data de azi (calculatorul)"></span></div>
   <button id="btn-mob" class="btn sec" style="padding:5px 10px;font-size:12px" onclick="mobPC(false)" title="Înapoi la varianta de telefon">📱 Telefon</button>
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
-  <span class="ver">v5.70</span>
+  <span class="ver">v5.71</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -1175,8 +1175,8 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
           <div><label>Data</label><input type="date" id="mm-data"></div>
           <div><label>Tip comandă</label><select id="mm-tip"></select></div>
           <div><label>Bucăți</label><input type="number" id="mm-buc" value="1"></div>
-          <div><label>Produs</label><select id="mm-prod"></select></div>
-          <div><label>Tip</label><select id="mm-model"></select></div>
+          <div><label>Produs <button type="button" class="cat-plus" onclick="catRapid('mm','prod',this)" title="Categorie nouă în catalog, dacă produsul nu există încă">＋ nou</button></label><select id="mm-prod"></select></div>
+          <div><label>Tip <button type="button" class="cat-plus" onclick="catRapid('mm','model',this)" title="Tip nou la categoria aleasă, dacă nu există încă">＋ nou</button></label><select id="mm-model"></select></div>
         </div>
         <div class="gf g-full">
           <div><label>Accesorii</label><div id="mm-acc" class="acc-box"></div></div>
@@ -1322,6 +1322,12 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   .modal h3.cap-mut #ma-ctx{color:rgba(255,255,255,.8)}
   #mod-k .mk-per{min-height:34px;box-sizing:border-box;padding:7px 10px;border:1px dashed var(--bd);border-radius:6px;background:var(--card2);font-weight:600;font-size:14px;line-height:1.35}
   #mod-k .mk-per .muted{font-weight:400}
+  .cat-plus{border:1px solid var(--bd);background:transparent;color:var(--acc);font-size:11px;font-weight:600;line-height:1.3;padding:0 6px;border-radius:4px;cursor:pointer;margin-left:4px;vertical-align:1px}
+  .cat-plus:hover{background:var(--nav-hov)}
+  #cat-pop{position:fixed;z-index:9999;width:290px;background:var(--card);color:var(--tx);border:1px solid var(--bd);border-radius:6px;box-shadow:0 10px 30px rgba(0,0,0,.25);padding:12px}
+  #cat-pop h4{margin:0 0 6px;font-size:14px} #cat-pop .muted{font-size:12px;margin-bottom:8px}
+  #cat-pop input[type=text]{width:100%;box-sizing:border-box;text-transform:uppercase}
+  #cat-pop .cp-b{display:flex;gap:6px;justify-content:flex-end;margin-top:10px}
   #mod-k .mk-g{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px}
   @media(max-width:600px){ #mod-k .mk-g{grid-template-columns:1fr} }
   #mod-k .nedet{display:flex;align-items:center;gap:8px;height:38px;font-size:13px;text-transform:none;letter-spacing:0;cursor:pointer}
@@ -1481,8 +1487,8 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
       <h4>Produse</h4>
       <div class="ma-g c5">
         <div class="maf"><label>Forma</label><select id="ma-forma"></select></div>
-        <div class="maf"><label>Produs</label><select id="ma-prod"></select></div>
-        <div class="maf"><label>Tip</label><select id="ma-model"></select></div>
+        <div class="maf"><label>Produs <button type="button" class="cat-plus" onclick="catRapid('ma','prod',this)" title="Categorie nouă în catalog, dacă produsul nu există încă">＋ nou</button></label><select id="ma-prod"></select></div>
+        <div class="maf"><label>Tip <button type="button" class="cat-plus" onclick="catRapid('ma','model',this)" title="Tip nou la categoria aleasă, dacă nu există încă">＋ nou</button></label><select id="ma-model"></select></div>
         <div class="maf"><label>UM</label><select id="ma-um"></select></div>
         <div class="maf"><label id="ma-cant-l">Cantitate</label><input type="number" id="ma-cant" value="1"></div>
       </div>
@@ -3778,6 +3784,43 @@ async function adaugaAcc(pid){
 }
 async function stergeAcc(id){ const {error}=await db.from("nomenclatoare").delete().eq("id",id); if(error){ toast(error.message,true); return; } await reloadNom(); }
 const numeLiber=(tip,v,exceptId)=>!(NOM[tip]||[]).some(r=>r.id!==exceptId&&r.valoare.toLowerCase()===v.toLowerCase());
+// v5.71 (cerut de Ovidiu, 13.10): produs care nu e încă în catalog → „＋ nou” lângă Produs / Tip, direct din anexă sau comandă.
+// Se adaugă în catalog (aceeași tabelă ca în Administrare → Produse) și se alege imediat în formular; restul (serii, accesorii, ordine) din catalog.
+function catRapid(f, c, btn){
+  catInchide();
+  const prod = $(f + "-prod").value, eTip = c === "model";
+  if(eTip && !prod){ toast("Alege întâi categoria (Produs)", true); return; }
+  const d = document.createElement("div"); d.id = "cat-pop";
+  d.innerHTML = `<h4>${eTip ? "Tip nou la " + esc(prod) : "Categorie nouă"}</h4>
+    <div class="muted">${eTip ? "Apare în lista Tip a categoriei " + esc(prod) + "." : "Apare în lista Produs și la Stoc (cu 0). Seriile și accesoriile le setezi apoi în Administrare → Produse."}</div>
+    <input type="text" id="cat-val" placeholder="${eTip ? "ex. STANDARD" : "ex. FOSA SEPTICA"}">
+    ${eTip ? "" : `<label style="display:flex;gap:6px;align-items:center;margin-top:8px;font-size:13px"><input type="checkbox" id="cat-serie"> Are serie (se trec serii pe bucată)</label>`}
+    <div class="cp-b"><button type="button" class="btn sm sec" onclick="catInchide()">Renunță</button><button type="button" class="btn sm" onclick="catSalveaza('${f}','${c}')">Adaugă în catalog</button></div>`;
+  document.body.appendChild(d);
+  const r = btn.getBoundingClientRect(); d.style.left = Math.max(8, Math.min(r.left, innerWidth - 300)) + "px"; d.style.top = Math.min(r.bottom + 6, innerHeight - d.offsetHeight - 8) + "px";
+  const i = $("cat-val"); i.focus(); i.onkeydown = e => { if(e.key === "Enter") catSalveaza(f, c); if(e.key === "Escape") catInchide(); };
+  setTimeout(() => document.addEventListener("mousedown", catAfara), 0);
+}
+function catAfara(e){ const d = $("cat-pop"); if(d && !d.contains(e.target)) catInchide(); }
+function catInchide(){ const d = $("cat-pop"); if(d) d.remove(); document.removeEventListener("mousedown", catAfara); }
+async function catSalveaza(f, c){
+  const v = ($("cat-val").value || "").trim().toUpperCase().replace(/\s+/g, " "); if(!v){ $("cat-val").focus(); return; }
+  const eTip = c === "model", prod = $(f + "-prod").value, serie = !eTip && $("cat-serie") && $("cat-serie").checked;
+  if(!eTip && !numeLiber("produs", v)){ toast("Categoria „" + v + "” există deja — o găsești în listă", true); return; }
+  if(eTip && (NOM.model || []).some(m => m.parinte === prod && m.valoare.toLowerCase() === v.toLowerCase())){ toast("Tipul „" + v + "” există deja la " + prod, true); return; }
+  if(f === "ma" && typeof maRandPastreaza === "function") maRandPastreaza();
+  const acc = accCitite(f + "-acc");
+  const ord = eTip ? (NOM.model || []).length : Math.max(-1, ...(NOM.produs || []).map(r => r.ordine || 0)) + 1;
+  const { error } = await adaugaNom(eTip ? "model" : "produs", v, eTip ? prod : null, ord);
+  if(error){ toast(error.message, true); return; }
+  catInchide(); await reloadNom();
+  if(serie){ const p = (NOM.produs || []).find(r => r.valoare === v); if(p){ await db.from("nomenclatoare").update({ are_serie: true }).eq("id", p.id); await reloadNom(); } }
+  if(eTip){ umpleModele(f + "-prod", f + "-model", v, acc); }
+  else { $(f + "-prod").value = v; umpleModele(f + "-prod", f + "-model", "", ""); }
+  $(f + (eTip ? "-model" : "-prod")).dispatchEvent(new Event("change", { bubbles: true }));
+  toast((eTip ? "Tip adăugat la " + prod : "Categorie adăugată") + ": " + v);
+  if(!eTip) loadStoc();
+}
 async function adaugaProdus(){
   const v=$("pr-nou").value.trim().toUpperCase(); if(!v) return;
   if(!numeLiber("produs",v)){ toast("Categoria „"+v+"” există deja",true); return; }
