@@ -721,7 +721,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <div class="hd-mij"><div id="titlu-sus"></div><span id="azi-sus" title="Data de azi (calculatorul)"></span></div>
   <button id="btn-mob" class="btn sec" style="padding:5px 10px;font-size:12px" onclick="mobPC(false)" title="Înapoi la varianta de telefon">📱 Telefon</button>
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
-  <span class="ver">v5.80</span>
+  <span class="ver">v5.81</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -7517,6 +7517,10 @@ async function muSalveaza(){
 // Locația (mutarea) NU se face aici — pentru asta e ⇄. Prețul / anexa nouă rămân separat, la el.
 let SZ = null;
 const szZi = p => faraDiac(p.ziua || "").toUpperCase();
+// v5.81: frecvența are două scrieri — anexa / nomenclatorul „1 / Sap”, punctele de rută „1/Sap” (aplicația de rute compară exact).
+// În fereastră se alege din nomenclator; pe puncte se scrie fără spații, pe anexă ca în nomenclator.
+const szN = v => String(v || "").replace(/\s*\/\s*/g, "/");
+const szNom = v => { const n = szN(v); return nomv("frecv_servisare").find(x => szN(x) === n) || (v || ""); };
 function szCod(z){ return (locSimpla(SZ.key) ? "A" + SZ.anexa : SZ.key) + "-" + ZI_ABR[z]; }
 function szPunctZi(z){ const l = SZ.puncte.filter(p => szZi(p) === z); return l.find(p => p.status !== "INACTIV") || l[0] || null; }
 function szAdaugaSch(s0, e){ const l = schLista(s0); const v = l.find(x => x.de_la === e.de_la); if(v) Object.assign(v, e); else l.push(e); return schImpacheteaza(schLista(schImpacheteaza(l))); }
@@ -7528,7 +7532,7 @@ async function openSchZi(anexaId, key){
   const act = puncte.filter(p => p.status !== "INACTIV"), sursa = act[0] || puncte[0];
   const zile = new Set(act.map(szZi).filter(z => ZI_ABR[z]));
   const a = ANX.find(x => x.id === anexaId) || null;
-  SZ = { anexa: anexaId, a, key, toate: data || [], puncte, act, sursa, zile0: new Set(zile), zile, frecv0: sursa.frecventa || "", frecv: sursa.frecventa || "",
+  SZ = { anexa: anexaId, a, key, toate: data || [], puncte, act, sursa, zile0: new Set(zile), zile, frecv0: szNom(sursa.frecventa), frecv: szNom(sursa.frecventa),
          data: muZi(), peAnexa: !!a, nume: (act.find(p => p.locatie) || sursa).locatie || "", client: sursa.client || "" };
   $("sz-title").textContent = "Schimbă zilele / frecvența · " + key + (SZ.nume ? " · " + SZ.nume : "");
   $("sz-sub").textContent = [SZ.client, a ? a.anexa || "" : "", "locația (mutarea) se schimbă cu ⇄"].filter(Boolean).join(" · ");
@@ -7536,7 +7540,7 @@ async function openSchZi(anexaId, key){
 }
 function szSet(c, v){
   if(c === "zi"){ SZ.zile.has(v) ? SZ.zile.delete(v) : SZ.zile.add(v);
-    const n = SZ.zile.size, f = n >= 5 ? "Zilnic" : n >= 1 ? n + "/Sap" : "";
+    const n = SZ.zile.size, f = n >= 5 ? "Zilnic" : n >= 1 ? szNom(n + "/Sap") : "";
     if(SZ.zile.size !== SZ.zile0.size && f) SZ.frecv = f; }
   else if(c === "peAnexa") SZ.peAnexa = !!v;
   else SZ[c] = v;
@@ -7545,7 +7549,7 @@ function szSet(c, v){
 function szPlan(){
   const zN = ZILE_ORD.filter(z => SZ.zile.has(z)), z0 = ZILE_ORD.filter(z => SZ.zile0.has(z));
   const scoase = z0.filter(z => !SZ.zile.has(z)), puse = zN.filter(z => !SZ.zile0.has(z));
-  return { zN, z0, scoase, puse, frecvSch: (SZ.frecv || "") !== (SZ.frecv0 || ""), viitor: SZ.data > muZi() };
+  return { zN, z0, scoase, puse, frecvSch: szN(SZ.frecv) !== szN(SZ.frecv0), viitor: SZ.data > muZi() };
 }
 function szText(){
   const p = szPlan(), zt = l => l.map(z => ZI_RUTE[z]).join(", ") || "—";
@@ -7584,9 +7588,9 @@ async function szSalveaza(){
   const p = szPlan();
   if(!p.zN.length){ toast("Bifează cel puțin o zi. Pentru oprirea servisării: ridicare / punct INACTIV.", true); return; }
   if(!SZ.data){ toast("Alege data", true); return; }
-  if(!p.scoase.length && !p.puse.length && !p.frecvSch && !(SZ.peAnexa && SZ.a && (String(SZ.a.zi_servisare || "") !== p.zN.join(",") || (SZ.a.frecv_servisare || "") !== (SZ.frecv || "")))){ toast("Nu s-a schimbat nimic", true); return; }
+  if(!p.scoase.length && !p.puse.length && !p.frecvSch && !(SZ.peAnexa && SZ.a && (String(SZ.a.zi_servisare || "") !== p.zN.join(",") || szN(SZ.a.frecv_servisare) !== szN(SZ.frecv)))){ toast("Nu s-a schimbat nimic", true); return; }
   const acum = new Date().toISOString(), de = SZ.data, nota = "din " + muDataRo(de) + ": zile " + (p.z0.map(z => ZI_ABR[z]).join("+") || "—") + " → " + p.zN.map(z => ZI_ABR[z]).join("+");
-  const frecv = SZ.frecv || null, prod = ["toalete", "containere", "garduri", "accesorii"];
+  const frecv = SZ.frecv ? szN(SZ.frecv) : null, frecvAnx = SZ.frecv || null, prod = ["toalete", "containere", "garduri", "accesorii"];
   const upd = async (id, u, cod) => { const { error } = await db.from("clients").update({ ...u, updated_at: acum }).eq("id", id); if(error) throw new Error("Punctul " + cod + ": " + error.message); };
   try{
     // 1) zilele noi — întâi, ca să nu rămână locația fără puncte dacă ceva nu merge
@@ -7622,7 +7626,7 @@ async function szSalveaza(){
     }
     // 4) anexa (evidența), pe loc
     if(SZ.peAnexa && SZ.a){
-      const { error } = await db.from("anexe").update({ zi_servisare: p.zN.join(","), frecv_servisare: frecv }).eq("id", SZ.a.id);
+      const { error } = await db.from("anexe").update({ zi_servisare: p.zN.join(","), frecv_servisare: frecvAnx }).eq("id", SZ.a.id);
       if(error) throw new Error("Anexa: " + error.message);
     }
   }catch(e){ toast(e.message + " — ce era înainte s-a salvat; redeschide fereastra și verifică", true); await reloadClienti(); if(A_TBL === "clients") await adminIncarca(); return; }
