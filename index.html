@@ -719,7 +719,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <div class="hd-mij"><div id="titlu-sus"></div><span id="azi-sus" title="Data de azi (calculatorul)"></span></div>
   <button id="btn-mob" class="btn sec" style="padding:5px 10px;font-size:12px" onclick="mobPC(false)" title="Înapoi la varianta de telefon">📱 Telefon</button>
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
-  <span class="ver">v5.69</span>
+  <span class="ver">v5.70</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -3241,6 +3241,11 @@ function maRanduri(){
     (MA_RAND.length > 1 ? `<label style="margin-left:10px;display:inline-flex;gap:5px;align-items:center;cursor:pointer" title="Ex. Primăria: 30 de toalete pe 20 de locații = un rând (30 buc × zile × preț)"><input type="checkbox" ${MA_UN_RAND ? "checked" : ""} onchange="MA_UN_RAND=this.checked">La facturare: un singur rând</label>` : "");
 }
 function maRandAlege(i){ if(i === MA_I) return; maRandPastreaza(); maRandArata(i); }
+// v5.70: eticheta produsului curent („1. 1 CONTAINER SANITAR”) se scrie pe loc, cât completezi — înainte rămânea „1. 0 ?”
+(function(){ const m = $("mod-a"); if(!m) return;
+  const viu = e => { if(!m.classList.contains("on") || !e.target.closest || e.target.closest("#ma-randuri,#ma-conf,#ma-ciorne")) return;
+    try{ maRandPastreaza(); maRanduri(); }catch(err){} };
+  m.addEventListener("input", viu); m.addEventListener("change", viu); })();
 function maRandNou(){
   maRandPastreaza(); const c = MA_RAND[MA_I];
   // locația, persoana de contact, datele și moneda rămân; produsul, cantitatea, prețul și servisarea se scriu din nou
