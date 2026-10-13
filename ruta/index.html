@@ -1033,7 +1033,7 @@ let dayStart = {}; // {brand, plate, kmStart, driver1, driver2, startTime}
 let lastRouteRows = [];
 
 // --- Șofer EE: aplicatia ruleaza in fila „Rută” (../sofer/), care trimite datele zilei ---
-const EE_RUTA_VERSION = 'v19'; // aceeasi cu VERSIUNE din sw.js; Șofer EE o arata langa rotita
+const EE_RUTA_VERSION = 'v20'; // aceeasi cu VERSIUNE din sw.js; Șofer EE o arata langa rotita
 const SOFER_MODE = new URLSearchParams(location.search).get('sofer') === '1';
 let multiZile = null;   // mai multe zile bifate (ruta complementara), altfel null
 let multiTrasee = null; // mai multe trasee bifate, altfel null
@@ -1230,6 +1230,7 @@ async function runQueueItem(item){
     const { error } = await sb.from('visit_logs').upsert({
       session_id: item.sessionId,
       client_id: item.clientId,
+      client_key: item.clientKey || null,
       client_name: item.clientName,
       localitate: item.localitate,
       arrive_time: item.arrive,
@@ -1458,6 +1459,7 @@ async function syncVisit(clientId, r, patch){
     type: 'visit',
     sessionId: currentSessionId,
     clientId,
+    clientKey: r && r.clientKey ? r.clientKey : null,   // v20: codul punctului (A181-02-VI) — istoricul nu se rupe la schimbarea zilei / locației
     clientName: r ? r.client : null,
     localitate: r ? [r.localitate, r.locatie].filter(Boolean).join(', ') : null,
     arrive: patch.arrive ? patch.arrive.toISOString() : null,
@@ -1908,8 +1910,9 @@ async function loadClientsFromSupabase(){
     const newData = clientRows.map(clientRowFromDb);
     const byKey = {};
     newData.forEach(r=> byKey[makeClientKey(r)] = r);
+    const byCod = {}; newData.forEach(r=>{ if(r.clientKey) byCod[r.clientKey] = r; });
     (cwRows||[]).forEach(cw=>{
-      const r = byKey[cw.client_key];
+      const r = byKey[cw.client_key] || byCod[cw.client_key];   // v20: și codurile ținute pe codul punctului
       if(r) r.weekData[String(cw.week_num)] = cw.code;
     });
 

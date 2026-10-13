@@ -721,7 +721,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <div class="hd-mij"><div id="titlu-sus"></div><span id="azi-sus" title="Data de azi (calculatorul)"></span></div>
   <button id="btn-mob" class="btn sec" style="padding:5px 10px;font-size:12px" onclick="mobPC(false)" title="Înapoi la varianta de telefon">📱 Telefon</button>
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
-  <span class="ver">v5.81</span>
+  <span class="ver">v5.82</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -1978,7 +1978,7 @@ let PCT = [];
 // Schimbare programată pe punct (clients.schimbare): { de_la, toalete, containere, garduri, accesorii, status, anexe_ids }.
 // Vine din „→ Rute” pe o comandă cu dată viitoare; din ziua de_la valorile trec în coloanele punctului.
 const SCH_CAMPURI = ["toalete","containere","garduri","accesorii","status","anexe_ids"];
-const SCH_TOATE = [...SCH_CAMPURI, "frecventa"];   // v5.80: și frecvența (din 📅), doar la aplicare / afișare
+const SCH_TOATE = [...SCH_CAMPURI, "frecventa", "masina"];   // v5.80: și frecvența (din 📅), doar la aplicare / afișare
 // v4.65: un punct poate ține mai multe schimbări programate, una după alta. Prima stă în `schimbare` (ca până acum),
 // următoarele în `schimbare.apoi` (listă, în ordinea datei). Coloana din bază a rămas aceeași.
 function schLista(s){
@@ -5532,8 +5532,10 @@ function rrAfiseaza(){
         sf = $("rr-sofer").value, st = $("rr-status").value, vz = $("rr-viz").value, q = rrNorm($("rr-caut").value);
   const ses = {}; RR.sess.forEach(s => ses[s.id] = { ...s, w: rrSapt(s.session_date) });
   const viz = {}; // cheie -> saptamana -> [vizite]
+  // v5.82 (hotărât de Ovidiu, 13.10): vizita se leagă de CODUL punctului (visit_logs.client_key) — schimbi ziua, locația,
+  // traseul, frecvența cu ✎ și istoricul rămâne. Vizitele fără cod (vechi / orfane) rămân pe cheia lungă client_id.
   RR.vis.forEach(v => { const s = ses[v.session_id]; if(!s || !s.w) return;
-    ((viz[v.client_id] ||= {})[s.w] ||= []).push({ ...v, s }); });
+    ((viz[v.client_key || v.client_id] ||= {})[s.w] ||= []).push({ ...v, s }); });
   const cw = {}; RR.cw.forEach(c => ((cw[c.client_key] ||= {})[c.week_num] = c.code));
   const nS = $("rr-nsapt").value === "toate" ? W : (+$("rr-nsapt").value || 6);
   RR_WEEKS = []; if(W) for(let w = W - nS + 1; w <= W; w++) if(w >= 1) RR_WEEKS.push(w);
@@ -5659,14 +5661,13 @@ function rrFoi(){
 async function rrSalveazaCod(el){
   const r = RR_ROWS[+el.dataset.i], W = +$("rr-sapt").value;
   if(!r || !W) return;
-  const cheie = r.c._orfan ? r.c._cheie : rrKey(r.c);
-  const chei = r.c._orfan ? [cheie] : [r.c.client_key, cheie].filter(Boolean);
+  // v5.82: codul săptămânii se ține pe codul punctului (client_key), ca să nu se piardă la ✎; cheia lungă doar fără cod
+  const cheie = r.c._orfan ? r.c._cheie : (r.c.client_key || rrKey(r.c));
+  const chei = r.c._orfan ? [cheie] : [r.c.client_key, rrKey(r.c)].filter(Boolean);
   const cod = el.value.trim().toUpperCase();
-  let err;
-  if(cod){
+  let { error: err } = await db.from("client_weeks").delete().in("client_key", chei).eq("week_num", W);
+  if(!err && cod){
     ({ error: err } = await db.from("client_weeks").upsert({ client_key: cheie, week_num: W, code: cod }, { onConflict: "client_key,week_num" }));
-  }else{
-    ({ error: err } = await db.from("client_weeks").delete().in("client_key", chei).eq("week_num", W));
   }
   if(err){ toast("Nu s-a salvat codul: " + err.message, true); return; }
   RR.cw = RR.cw.filter(x => !(chei.includes(x.client_key) && x.week_num === W));
@@ -5839,7 +5840,7 @@ function fpAfiseaza(){
 }
 function fpLiniiVizite(x){
   return x.viz.map((v, i) => {
-    const c = FP_CL[v.client_id] || null;
+    const c = FP_CL[v.client_key] || FP_CL[v.client_id] || null;   // v5.82: întâi codul punctului
     const cheie = String(v.client_id || "").split("|");
     let dur = "-";
     if(v.arrive_time && v.leave_time){ const sec = Math.max(0, Math.round((new Date(v.leave_time) - new Date(v.arrive_time)) / 1000)); dur = Math.floor(sec / 60) + "m " + zi2(sec % 60) + "s"; }
@@ -7533,7 +7534,7 @@ async function openSchZi(anexaId, key){
   const zile = new Set(act.map(szZi).filter(z => ZI_ABR[z]));
   const a = ANX.find(x => x.id === anexaId) || null;
   SZ = { anexa: anexaId, a, key, toate: data || [], puncte, act, sursa, zile0: new Set(zile), zile, frecv0: szNom(sursa.frecventa), frecv: szNom(sursa.frecventa),
-         data: muZi(), peAnexa: !!a, nume: (act.find(p => p.locatie) || sursa).locatie || "", client: sursa.client || "" };
+         data: muZi(), peAnexa: !!a, masini: {}, nume: (act.find(p => p.locatie) || sursa).locatie || "", client: sursa.client || "" };
   $("sz-title").textContent = "Schimbă zilele / frecvența · " + key + (SZ.nume ? " · " + SZ.nume : "");
   $("sz-sub").textContent = [SZ.client, a ? a.anexa || "" : "", "locația (mutarea) se schimbă cu ⇄"].filter(Boolean).join(" · ");
   szDeseneaza(); $("mod-sz").classList.add("on");
@@ -7546,6 +7547,14 @@ function szSet(c, v){
   else SZ[c] = v;
   szDeseneaza();
 }
+// v5.82: mașina (traseul) pentru fiecare zi nouă — implicit cea a locației
+const szMasini = () => { const f = (A_DEF.clients.campuri || []).find(x => x.c === "masina"); return (f && f.op) || []; };
+const szMasina = z => SZ.masini[z] || SZ.sursa.masina || "";
+function szSelMasina(z){
+  const l = szMasini(), v = szMasina(z);
+  return ` · traseu <select style="width:auto;display:inline-block;padding:2px 6px" onchange="SZ.masini['${z}']=this.value;const t=$('sz-text');if(t)t.value=szText()">` +
+    (l.includes(v) ? "" : `<option selected>${esc(v)}</option>`) + l.map(m => `<option${m === v ? " selected" : ""}>${esc(m)}</option>`).join("") + `</select>`;
+}
 function szPlan(){
   const zN = ZILE_ORD.filter(z => SZ.zile.has(z)), z0 = ZILE_ORD.filter(z => SZ.zile0.has(z));
   const scoase = z0.filter(z => !SZ.zile.has(z)), puse = zN.filter(z => !SZ.zile0.has(z));
@@ -7554,7 +7563,7 @@ function szPlan(){
 function szText(){
   const p = szPlan(), zt = l => l.map(z => ZI_RUTE[z]).join(", ") || "—";
   return ["📅 SCHIMBARE SERVISARE", "CLIENT  :  " + SZ.client, "LOCAȚIA  :  " + SZ.key + (SZ.nume ? " · " + SZ.nume : ""), "DE LA  :  " + muDataRo(SZ.data),
-    "ZILE  :  " + zt(p.z0) + " → " + zt(p.zN)].concat(p.frecvSch ? ["FRECVENȚĂ  :  " + (SZ.frecv0 || "—") + " → " + (SZ.frecv || "—")] : []).join("\n");
+    "ZILE  :  " + zt(p.z0) + " → " + zt(p.zN)].concat(p.puse.map(z => "  + " + ZI_RUTE[z] + " — " + szMasina(z))).concat(p.frecvSch ? ["FRECVENȚĂ  :  " + (SZ.frecv0 || "—") + " → " + (SZ.frecv || "—")] : []).join("\n");
 }
 function szDeseneaza(){
   const p = szPlan(), fr = nomv("frecv_servisare");
@@ -7565,7 +7574,7 @@ function szDeseneaza(){
   const rand = (cod, ce) => `<tr><td><b>${esc(cod)}</b></td><td>${ce}</td></tr>`;
   let r = "";
   p.scoase.forEach(z => { const x = szPunctZi(z); r += rand(x ? x.client_key : szCod(z), `${ZI_RUTE[z]} → <b style="color:var(--t-err)">INACTIV</b>`); });
-  p.puse.forEach(z => { const x = szPunctZi(z); r += rand(x ? x.client_key : szCod(z), x ? `${ZI_RUTE[z]} → <b style="color:var(--t-ok)">reactivat</b> (punctul vechi al zilei)` : `${ZI_RUTE[z]} → <b style="color:var(--t-ok)">punct nou</b> (copiat din ${esc(SZ.sursa.client_key)})`); });
+  p.puse.forEach(z => { const x = szPunctZi(z); r += rand(x ? x.client_key : szCod(z), (x ? `${ZI_RUTE[z]} → <b style="color:var(--t-ok)">reactivat</b> (punctul vechi al zilei)` : `${ZI_RUTE[z]} → <b style="color:var(--t-ok)">punct nou</b> (copiat din ${esc(SZ.sursa.client_key)})`) + szSelMasina(z)); });
   if(p.frecvSch) r += rand("toate active", `frecvența ${esc(SZ.frecv0 || "—")} → <b>${esc(SZ.frecv || "—")}</b>`);
   h += `<div class="mu-s"><h4>2. Ce se schimbă la Salvează${p.viitor ? " — programat din " + muDataRo(SZ.data) : " — pe loc"}</h4>` +
     (r ? `<table class="mu-tab">${r}</table>` : `<div class="muted" style="font-size:13px">Nimic încă — bifează alte zile sau alege altă frecvență.</div>`) +
@@ -7596,6 +7605,7 @@ async function szSalveaza(){
     // 1) zilele noi — întâi, ca să nu rămână locația fără puncte dacă ceva nu merge
     for(const z of p.puse){
       const x = szPunctZi(z), cop = {}; prod.forEach(c => cop[c] = SZ.sursa[c] === undefined ? null : SZ.sursa[c]);
+      cop.masina = szMasina(z) || null;   // v5.82
       if(x){
         if(p.viitor) await upd(x.id, { schimbare: szAdaugaSch(x.schimbare, { de_la: de, status: "ACTIV", ...cop, ...(frecv ? { frecventa: frecv } : {}) }) }, x.client_key);
         else await upd(x.id, { status: "ACTIV", ...cop, ...(frecv ? { frecventa: frecv } : {}) }, x.client_key);
@@ -7604,7 +7614,7 @@ async function szSalveaza(){
         if(SZ.toate.some(q => q.client_key === cod)) throw new Error("Codul " + cod + " e deja folosit — verifică punctele locației");
         const r = { ...SZ.sursa };
         ["id", "schimbare", "updated_at", "verificat_la", "verificat_de", "note_verificare"].forEach(f => delete r[f]);
-        Object.assign(r, { client_key: cod, ziua: ZI_RUTE[z], frecventa: frecv, observatii: "zi nouă — " + nota,
+        Object.assign(r, { client_key: cod, ziua: ZI_RUTE[z], masina: cop.masina, frecventa: frecv, observatii: "zi nouă — " + nota,
           status: p.viitor ? "INACTIV" : "ACTIV", schimbare: p.viitor ? { de_la: de, status: "ACTIV" } : null });
         const { error } = await db.from("clients").insert(r);
         if(error) throw new Error("Punctul nou " + cod + ": " + error.message);
