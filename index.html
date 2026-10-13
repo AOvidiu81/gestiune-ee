@@ -710,6 +710,15 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   tbody tr:hover td{box-shadow:inset 0 1px 0 color-mix(in srgb, var(--acc) 45%, transparent), inset 0 -1px 0 color-mix(in srgb, var(--acc) 45%, transparent)}
   /* v5.85: rândul marcat = doar fundalul de la mouse (fără linii, fără text îngroșat) */
   tbody tr.r-ales td:not([class]){background:color-mix(in srgb, var(--acc) 9%, transparent)!important}
+  /* v5.86: bara de schimbare în bloc + meniul ⋯ */
+  #pb-bara{position:fixed;left:50%;bottom:14px;transform:translateX(-50%);z-index:55;display:none;align-items:center;gap:12px;flex-wrap:wrap;
+    background:var(--card);border:1px solid var(--acc);border-radius:8px;padding:10px 14px;box-shadow:0 6px 24px rgba(0,0,0,.25);max-width:calc(100vw - 32px)}
+  #pb-bara label{display:flex;align-items:center;gap:6px;margin:0;font-size:13px}
+  #pb-bara select,#pb-bara input{width:auto;padding:4px 6px}
+  #pt-meniu{position:fixed;z-index:60;display:none;width:240px;background:var(--card);border:1px solid var(--bd);border-radius:6px;box-shadow:0 6px 20px rgba(0,0,0,.22);padding:4px}
+  #pt-meniu button{display:block;width:100%;text-align:left;background:none;border:0;padding:8px 10px;border-radius:4px;cursor:pointer;color:inherit;font:inherit;font-size:14px}
+  #pt-meniu button:hover:not([disabled]){background:color-mix(in srgb, var(--acc) 12%, transparent)}
+  #pt-meniu button[disabled]{opacity:.4;cursor:default}
   @media print{ tbody tr.r-ales td, tbody tr:hover td{background:none!important;box-shadow:none!important;font-weight:inherit} }
 </style>
 </head>
@@ -730,7 +739,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <div class="hd-mij"><div id="titlu-sus"></div><span id="azi-sus" title="Data de azi (calculatorul)"></span></div>
   <button id="btn-mob" class="btn sec" style="padding:5px 10px;font-size:12px" onclick="mobPC(false)" title="Înapoi la varianta de telefon">📱 Telefon</button>
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
-  <span class="ver">v5.85</span>
+  <span class="ver">v5.86</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -1030,6 +1039,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
       <div style="flex:0"><label>Status</label><div style="display:flex;gap:6px"><button class="btn sec" id="pf-st-ACTIV" onclick="pfSt('ACTIV')" title="Doar punctele active (implicit)">Active</button><button class="btn sec" id="pf-st-INACTIV" onclick="pfSt('INACTIV')" title="Doar punctele inactive">Inactive</button><button class="btn sec" id="pf-st-" onclick="pfSt('')" title="Toate punctele">Toate</button></div></div>
       <div style="flex:0;min-width:100px"><label>GPS</label><select id="pf-gps" onchange="renderAdmin()"><option value="">toate</option><option value="da">cu GPS</option><option value="nu">fără GPS</option></select></div>
       <div style="flex:0"><label>&nbsp;</label><button class="btn sec" onclick="pfGoleste()">✕ Golește filtrele</button></div>
+      <div style="flex:0"><label>&nbsp;</label><button class="btn sec" id="pb-btn" onclick="pbComuta()" title="Bifezi punctele (ex. jumătate de traseu) și le schimbi ziua și/sau mașina dintr-o dată, de la o dată aleasă">☑ Schimbă la cele bifate</button></div>
     </div>
     <div class="kpi" id="pf-kpi" style="margin:12px 0 0"></div>
   </div>
@@ -1727,6 +1737,7 @@ function pune(sel,val){ const s=$(sel); if(!s||!val) return; if([...s.options].s
 document.querySelectorAll("nav button").forEach(b=>b.onclick=()=>{
   document.querySelectorAll("nav button").forEach(x=>x.classList.remove("on")); b.classList.add("on");
   document.querySelectorAll(".page").forEach(p=>p.classList.remove("on")); $("p-"+b.dataset.p).classList.add("on");
+  if(PB_ON){ PB_ON=false; PB_SEL.clear(); const pb=$("pb-btn"); if(pb){ pb.classList.add("sec"); pb.textContent="☑ Schimbă la cele bifate"; } pbBara(); }   // v5.86: bifarea se oprește la schimbarea filei
   if(VER && b.dataset.p!=="miscari" && (b.dataset.h||b.dataset.p)!==VER_FILE[VER.f].h) VER=null;   // v4.82: verificarea începută din Comenzi se abandonează
   if(b.dataset.p==="atentie") loadAtentie();
   if(b.dataset.p==="stoc") loadStoc();
@@ -1987,7 +1998,7 @@ let PCT = [];
 // Schimbare programată pe punct (clients.schimbare): { de_la, toalete, containere, garduri, accesorii, status, anexe_ids }.
 // Vine din „→ Rute” pe o comandă cu dată viitoare; din ziua de_la valorile trec în coloanele punctului.
 const SCH_CAMPURI = ["toalete","containere","garduri","accesorii","status","anexe_ids"];
-const SCH_TOATE = [...SCH_CAMPURI, "frecventa", "masina"];   // v5.80: și frecvența (din 📅), doar la aplicare / afișare
+const SCH_TOATE = [...SCH_CAMPURI, "frecventa", "masina", "ziua"];   // v5.86: + ziua (schimbare în bloc)   // v5.80: și frecvența (din 📅), doar la aplicare / afișare
 // v4.65: un punct poate ține mai multe schimbări programate, una după alta. Prima stă în `schimbare` (ca până acum),
 // următoarele în `schimbare.apoi` (listă, în ordinea datei). Coloana din bază a rămas aceeași.
 function schLista(s){
@@ -2023,6 +2034,7 @@ function schText1(s){
   [["toalete","toalete"],["containere","containere"],["garduri","garduri"]].forEach(([c,e]) => { if(c in s && +s[c]) b.push(s[c] + " " + e); });
   if(s.status) b.push(s.status);
   if(s.frecventa) b.push("frecvența " + s.frecventa);
+  if(s.ziua) b.push("ziua " + s.ziua); if(s.masina) b.push(s.masina);
   return "din " + fmtD(s.de_la) + ": " + b.join(", ");
 }
 async function schAnuleaza(){
@@ -3545,8 +3557,7 @@ async function serLocatii(ids){
 }
 function butonSeriiPunct(r){
   const l=punctLoc(r.client_key); if(!l || !ANX.some(x=>x.id===l.anexa)) return "";
-  const muta = k => ` <button class="btn sm sec" title="Mută produse de pe locația ${k} pe altă locație a aceleiași anexe sau pe o locație nouă (seriile și numărul de produse de pe punctele de rută)" onclick="openMutare(${l.anexa},'${k}')">⇄</button>` +
-    ` <button class="btn sm sec" title="Schimbă zilele de servisare / frecvența locației ${k}, de la o dată (azi = pe loc; în viitor = programat)" onclick="openSchZi(${l.anexa},'${k}')">📅</button>`;
+  const muta = k => "";   // v5.86: ⇄ și 📅 au trecut în meniul ⋯ de pe rând
   const key = l.loc || "A" + l.anexa;
   // v5.68: locația simplă (A182-MA) — butonul de serii al anexei, ca înainte, cât timp anexa nu are locații numerotate
   const areNr = (A_ROWS||[]).some(p => { const q = punctLoc(p.client_key); return q && q.anexa === l.anexa && q.loc; });
@@ -6109,6 +6120,7 @@ function pfKpi(rows, inact){
   $("pf-kpi").innerHTML = t.map(([e, n]) => `<div><b>${n}</b>${e}</div>`).join("");
 }
 function renderAdmin(){
+  if(PB_ON && A_TBL !== "clients"){ PB_ON = false; PB_SEL.clear(); pbBara(); }
   const d=A_DEF[A_TBL], q=($("a-cauta").value||"").trim().toLowerCase();
   let baza=A_ROWS; if(A_TBL==="clients"){ pfOptiuni(); baza=pfFiltreaza(A_ROWS); }   // v5.42
   const rows=q ? baza.filter(r=>Object.values(r).some(v=>v!=null&&String(v).toLowerCase().includes(q))) : baza;
@@ -6116,19 +6128,16 @@ function renderAdmin(){
     pfKpi(rows, fq.filter(r => String(r.status||"").trim().toUpperCase() === "INACTIV").length); }
   A_VAZUTE=rows;
   $("a-tbl").innerHTML =
-    "<thead><tr>"+d.lista.map(([,e])=>`<th>${esc(e)}</th>`).join("")+(A_TBL==="clients"?'<th title="RT pe comenzile legate de acest punct — se bifează de mână">RT</th>':"")+"<th></th></tr></thead><tbody>"+
+    "<thead><tr>"+(pbOn()?`<th><input type="checkbox" style="width:auto;height:auto" title="Bifează / debifează toate rândurile afișate" ${(A_VAZUTE||[]).length&&(A_VAZUTE||[]).every(x=>PB_SEL.has(String(x.id)))?"checked":""} onchange="pbToate(this.checked)"></th>`:"")+d.lista.map(([,e])=>`<th>${esc(e)}</th>`).join("")+(A_TBL==="clients"?'<th title="RT pe comenzile legate de acest punct — se bifează de mână">RT</th>':"")+"<th></th></tr></thead><tbody>"+
     rows.map(r=>{
       const inactiv = (r.activ===false || r.active===false);
       const vr = A_TBL==="clients" && VER && VER.f==="rt" && (VER.chei||[]).includes(r.client_key);
-      return `<tr${inactiv?' style="opacity:.45"':''}${vr?' class="r-ver"':''}>`+
+      return `<tr${inactiv?' style="opacity:.45"':''}${vr?' class="r-ver"':''}>`+(pbOn()?`<td><input type="checkbox" style="width:auto;height:auto" ${PB_SEL.has(String(r.id))?"checked":""} onchange="pbBifa('${String(r.id).replace(/'/g,"")}',this.checked)"></td>`:"")+
         d.lista.map(([c])=>`<td>${A_TBL==="clients" && c==="status" && r.schimbare ? statusIstoric(r) : esc(adminCelula(r,c))}</td>`).join("")+
         (A_TBL==="clients" ? `<td>${/^A\d+(-\d+)?(-[A-Z]{2})?$/.test(r.client_key||"") ? pvAnexa(parseInt(r.client_key.slice(1))) + flaguriAnexa(parseInt(r.client_key.slice(1)),"rt") : ""}</td>` : "")+
         // v5.17 (cerut de Ovidiu, 09.10): Editează = creion; la puncte de rută și butonul GPS → Google Maps
         `<td class="actions" style="white-space:nowrap"><button class="btn sm sec" title="Editează" onclick="adminEdit('${String(r.id).replace(/'/g,"")}')">✎</button>` +
-        (A_TBL==="clients" ? ` <button class="btn sm sec" title="Punct nou copiat din acesta (următoarea locație, aceeași zi)" onclick="adminCopie('${String(r.id).replace(/'/g,"")}')">⧉</button>` + butonSeriiPunct(r) : "") +
-        (A_TBL==="clients" ? (r.lat!=null && r.lon!=null && +r.lat && +r.lon
-          ? ` <a class="btn sm sec" href="https://www.google.com/maps?q=${+r.lat},${+r.lon}" target="_blank" rel="noopener" title="Deschide punctul GPS în Google Maps (${+r.lat}, ${+r.lon})">📍</a>`
-          : ` <button class="btn sm sec" disabled style="opacity:.35" title="Punctul nu are coordonate GPS">📍</button>`) : "") + `</td></tr>`;
+        (A_TBL==="clients" ? butonSeriiPunct(r) + ` <button class="btn sm sec" title="Mai multe: copiază, mută produse, schimbă zilele, hartă${(r.lat!=null && r.lon!=null && +r.lat && +r.lon) ? "" : " — fără GPS"}" onclick="ptMeniu(event,'${String(r.id).replace(/'/g,"")}')">⋯</button>` : "") + `</td></tr>`;
     }).join("")+"</tbody>";
   const n=rows.length, tot=A_ROWS.length;
   $("a-nota").textContent = d.nota + "  —  " + (n !== tot ? `${n} din ${tot} rânduri` : `${tot} rânduri`);
@@ -7654,6 +7663,72 @@ async function szSalveaza(){
   toast((p.viitor ? "Programat din " + muDataRo(de) : "Schimbat") + ": " + SZ.key + " · " + p.zN.map(z => ZI_RUTE[z]).join(", ") + (frecv ? " · " + frecv : ""));
 }
 
+// ================= v5.86 (cerut de Ovidiu, 13.10): SCHIMBARE ÎN BLOC + MENIUL ⋯ PE PUNCT =================
+// „☑ Schimbă la cele bifate”: bifezi punctele (ex. 18 din 32 ale unui traseu) și le schimbi ziua și/sau mașina, de la o dată.
+// Azi / în urmă = pe loc; dată viitoare = schimbare programată (clients.schimbare). Codul punctului rămâne, deci istoricul
+// vizitelor rămâne (visit_logs.client_key, v5.82). Anexele nu se ating.
+let PB_ON = false, PB_SEL = new Set(), PB_V = { zi: "", masina: "", data: "" };
+const pbOn = () => PB_ON && A_TBL === "clients";
+function pbComuta(){
+  PB_ON = !PB_ON; PB_SEL.clear(); PB_V = { zi: "", masina: "", data: muZi() };
+  const b = $("pb-btn"); if(b){ b.classList.toggle("sec", !PB_ON); b.textContent = PB_ON ? "☑ Bifare pornită — închide" : "☑ Schimbă la cele bifate"; }
+  renderAdmin(); pbBara();
+}
+function pbBifa(id, v){ v ? PB_SEL.add(String(id)) : PB_SEL.delete(String(id)); pbBara(); }
+function pbToate(v){ (A_VAZUTE || []).forEach(r => v ? PB_SEL.add(String(r.id)) : PB_SEL.delete(String(r.id))); renderAdmin(); pbBara(); }
+function pbBara(){
+  let b = $("pb-bara"); if(!b){ b = document.createElement("div"); b.id = "pb-bara"; b.className = "noprint"; document.body.appendChild(b); }
+  if(!pbOn()){ b.style.display = "none"; return; }
+  const zile = Object.values(ZI_RUTE), mas = szMasini();
+  b.style.display = "flex";
+  b.innerHTML = `<b>${PB_SEL.size} bifate</b>
+    <label>Ziua <select onchange="PB_V.zi=this.value"><option value="">— nu schimba —</option>${zile.map(z => `<option${z === PB_V.zi ? " selected" : ""}>${z}</option>`).join("")}</select></label>
+    <label>Mașina <select onchange="PB_V.masina=this.value"><option value="">— nu schimba —</option>${mas.map(m => `<option${m === PB_V.masina ? " selected" : ""}>${esc(m)}</option>`).join("")}</select></label>
+    <label>De la <input type="date" value="${PB_V.data}" onchange="PB_V.data=this.value"></label>
+    <button class="btn" onclick="pbSalveaza()">Salvează</button><button class="btn sec" onclick="pbComuta()">Renunță</button>`;
+}
+async function pbSalveaza(){
+  const sel = (A_ROWS || []).filter(r => PB_SEL.has(String(r.id)));
+  if(!sel.length){ toast("Bifează întâi punctele", true); return; }
+  if(!PB_V.zi && !PB_V.masina){ toast("Alege ziua și/sau mașina nouă", true); return; }
+  if(!PB_V.data){ toast("Alege data", true); return; }
+  const u = {}; if(PB_V.zi) u.ziua = PB_V.zi; if(PB_V.masina) u.masina = PB_V.masina;
+  const viitor = PB_V.data > muZi();
+  // aceeași locație are deja un punct activ pe ziua nouă? (ar ieși două vizite în aceeași zi)
+  const dubluri = !PB_V.zi ? [] : sel.filter(r => { const k = locKey(r); return (A_ROWS || []).some(x => x.id !== r.id && !PB_SEL.has(String(x.id)) && x.status !== "INACTIV" &&
+    (k ? locKey(x) === k : (x.client === r.client && x.locatie === r.locatie)) && faraDiac(x.ziua || "").toUpperCase() === faraDiac(PB_V.zi).toUpperCase()); });
+  const ce = [PB_V.zi ? "ziua → " + PB_V.zi : "", PB_V.masina ? "mașina → " + PB_V.masina : ""].filter(Boolean).join(", ");
+  if(!confirm(`Schimbi ${sel.length} puncte: ${ce}, ${viitor ? "de la " + muDataRo(PB_V.data) + " (programat)" : "acum"}.\n` +
+    (dubluri.length ? `\n⚠ ${dubluri.length} au deja la aceeași locație un punct activ ${PB_V.zi}: ${dubluri.slice(0, 6).map(r => r.client_key || r.client).join(", ")}${dubluri.length > 6 ? "…" : ""}\n` : "") +
+    `\nIstoricul vizitelor rămâne (codul punctului nu se schimbă). Anexele nu se ating.`)) return;
+  const acum = new Date().toISOString(); let gresite = 0;
+  for(const r of sel){
+    const rec = viitor ? { schimbare: szAdaugaSch(r.schimbare, { de_la: PB_V.data, ...u }), updated_at: acum } : { ...u, updated_at: acum };
+    const { error } = await db.from("clients").update(rec).eq("id", r.id);
+    if(error){ gresite++; console.warn("schimbare în bloc", r.client_key, error.message); }
+  }
+  toast(gresite ? `${sel.length - gresite} schimbate, ${gresite} nu (vezi consola)` : `${sel.length} puncte: ${ce}${viitor ? " din " + muDataRo(PB_V.data) : ""}`, !!gresite);
+  PB_SEL.clear(); await adminIncarca(); if(typeof incarcaPct === "function") incarcaPct(); pbBara();
+}
+// Meniul ⋯ de pe punct: Copiază · Mută produse · Schimbă zilele · Harta
+function ptMeniu(ev, id){
+  ev.stopPropagation();
+  let m = $("pt-meniu"); if(!m){ m = document.createElement("div"); m.id = "pt-meniu"; document.body.appendChild(m);
+    document.addEventListener("click", e => { if(!e.target.closest("#pt-meniu")) m.style.display = "none"; });
+    document.addEventListener("keydown", e => { if(e.key === "Escape") m.style.display = "none"; }); }
+  const r = (A_ROWS || []).find(x => String(x.id) === String(id)); if(!r) return;
+  const l = punctLoc(r.client_key), areAnx = l && ANX.some(x => x.id === l.anexa), key = l ? (l.loc || "A" + l.anexa) : "";
+  const gps = r.lat != null && r.lon != null && +r.lat && +r.lon, sid = String(r.id).replace(/'/g, "");
+  const it = (txt, fn, ok, tip) => `<button ${ok ? `onclick="$('pt-meniu').style.display='none';${fn}"` : "disabled"} title="${esc(tip || "")}">${txt}</button>`;
+  m.innerHTML = it("⧉ Copiază punctul", `adminCopie('${sid}')`, true, "Punct nou copiat din acesta (următoarea locație, aceeași zi)") +
+    it("⇄ Mută produse", `openMutare(${l ? l.anexa : 0},'${key}')`, areAnx, areAnx ? "Mută bucăți pe altă locație a anexei sau pe una nouă" : "Punctul nu ține de o anexă") +
+    it("📅 Schimbă zilele / frecvența", `openSchZi(${l ? l.anexa : 0},'${key}')`, areAnx, areAnx ? "Zile adăugate / scoase, frecvența, de la o dată" : "Punctul nu ține de o anexă") +
+    it("📍 Deschide harta", `window.open('https://www.google.com/maps?q=${+r.lat},${+r.lon}','_blank','noopener')`, gps, gps ? "Google Maps" : "Punctul nu are coordonate GPS");
+  m.style.display = "block";
+  const b = ev.currentTarget.getBoundingClientRect(), w = 240;
+  m.style.left = Math.max(8, Math.min(window.innerWidth - w - 8, b.right - w)) + "px";
+  const h = m.offsetHeight; m.style.top = (b.bottom + 4 + h > window.innerHeight ? Math.max(8, b.top - h - 4) : b.bottom + 4) + "px";
+}
 // v5.44 (cerut de Ovidiu, 12.10): butoanele din colțul ferestrelor, ca în Windows — ‒ minimizează · ☐ mărește / ❐ înapoi · ✕ închide.
 // ✕ face exact ce face butonul Renunță / Anulează al ferestrei (ciornele se păstrează la fel).
 // Minimizată, fereastra rămâne deschisă cu tot ce ai scris; jos în stânga apare o etichetă cu titlul — clic pe ea = înapoi.
