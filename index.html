@@ -612,6 +612,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   #c-list > .card > details[open]{padding-bottom:8px}
   #c-list summary .btn.sm{padding:1px 7px;font-size:12px;line-height:1.4}
   #c-list summary .badge{margin:0}
+  #c-list summary .c-nr{min-width:78px;font-weight:700;color:var(--acc);white-space:nowrap}   /* v5.67: nr. contractului în fața numelui (în loc de „1 ctr”) */
   }
   /* v5.55 (cerut de Ovidiu, 13.10): casetele „cât conținutul” (flex:0) dintr-un rând nu mai pot fi strânse sub lățimea lor
      — înainte se suprapuneau peste vecinul (ex. Facturare: „Gata de trimis” peste „Export Excel”). Pe toate filele și ferestrele.
@@ -713,7 +714,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <div class="hd-mij"><div id="titlu-sus"></div><span id="azi-sus" title="Data de azi (calculatorul)"></span></div>
   <button id="btn-mob" class="btn sec" style="padding:5px 10px;font-size:12px" onclick="mobPC(false)" title="Înapoi la varianta de telefon">📱 Telefon</button>
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
-  <span class="ver">v5.66</span>
+  <span class="ver">v5.67</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -2818,7 +2819,7 @@ function renderClienti(){
   });
   $("c-list").innerHTML=list.map(c=>{
     const ks=ctrPt(c);
-    return `<div class="card"><details ${q?"open":""}><summary>${esc(c.nume)} <span class="muted">${esc(c.id_tip||"")} ${esc(c.atr||"")} ${esc(c.cui||"")}</span><span class="badge">${ks.length} ctr</span>${c.activ===false?` <span class="badge" title="Închis la ultima ridicare">INACTIV</span> <button class="btn sm sec noprint" onclick="event.preventDefault();clientReactiveaza(${c.id})">Reactivează</button>`:""} <button class="btn sm sec noprint" onclick="event.preventDefault();openClient(${c.id})">Edit</button></summary>`+
+    return `<div class="card"><details ${q?"open":""}><summary><span class="c-nr" title="Numărul contractului">${ks.length?ks.map(k=>"CTR "+esc(k.nr_ctr||"?")).join(", "):"—"}</span>${esc(c.nume)} <span class="muted">${esc(c.id_tip||"")} ${esc(c.atr||"")} ${esc(c.cui||"")}</span>${c.activ===false?` <span class="badge" title="Închis la ultima ridicare">INACTIV</span> <button class="btn sm sec noprint" onclick="event.preventDefault();clientReactiveaza(${c.id})">Reactivează</button>`:""} <button class="btn sm sec noprint" onclick="event.preventDefault();openClient(${c.id})">Edit</button></summary>`+
       ks.map(k=>{ const an=ANX.filter(a=>a.contract_id===k.id);
         return `<div style="margin:8px 0 4px;padding-left:8px;border-left:3px solid var(--gl)"><b>CTR ${esc(k.nr_ctr)}</b> <span class="muted">${fmtD(k.data_emitere)} → ${k.data_expirare?fmtD(k.data_expirare):esc(k.expirare_text||"")} · ${esc(k.stare)}</span> <button class="btn sm sec noprint" onclick="openContract(${k.id})">Edit</button> <button class="btn sm noprint" onclick="openAnexa(null,${k.id})">+ Anexă</button>
         <div class="tw" style="max-height:none;margin-top:4px"><table><tr><th>Anexa</th><th>Emitere</th><th>Expirare</th><th>Jud</th><th>Loc.</th><th>Locație</th><th>Forma</th><th>Produs</th><th>Tip</th><th>Cant</th><th>Preț</th><th>Status</th><th>Depozit</th><th class="noprint" title="ACT pe comenzile acestei anexe">ACT</th><th class="noprint"></th></tr>`+
