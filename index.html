@@ -739,7 +739,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <div class="hd-mij"><div id="titlu-sus"></div><span id="azi-sus" title="Data de azi (calculatorul)"></span></div>
   <button id="btn-mob" class="btn sec" style="padding:5px 10px;font-size:12px" onclick="mobPC(false)" title="Înapoi la varianta de telefon">📱 Telefon</button>
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
-  <span class="ver">v5.88</span>
+  <span class="ver">v5.89</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -1020,7 +1020,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
         </select>
       </div>
       <div id="a-w-cauta"><label>Caută</label><input id="a-cauta" placeholder="scrie pentru a filtra…" oninput="renderAdmin()"></div>
-      <div style="flex:0" id="a-w-nou"><label>&nbsp;</label><button class="btn" onclick="adminNou()">+ Adaugă</button></div>
+      <div style="flex:0" id="a-w-nou"><label>&nbsp;</label><button class="btn" id="a-btn-nou" onclick="adminNou()">+ Adaugă</button></div>
       <div style="flex:0" id="a-w-reload"><label>&nbsp;</label><button class="btn sec" onclick="adminIncarca()">Reîncarcă</button></div>
       <div style="flex:0" id="a-w-export"><label>&nbsp;</label><button class="btn sec" onclick="adminExport()">Export Excel</button></div>
     </div>
@@ -5999,7 +5999,7 @@ const A_DEF = {
   },
   clients:{
     titlu:"Puncte de rută", ord:"client",
-    nota:"Punctele de servisare din aplicația de rute. Coordonatele se folosesc la navigare.",
+    nota:"Punctele de servisare din aplicația de rute. Coordonatele se folosesc la navigare. „+ Punct fără anexă” = punct de mână (ex. eveniment, oprire internă): nu se facturează, fără serii / RT.",
     lista:[["client_key","Cod"],["client","Client"],["jud","Jud."],["localitate","Localitate"],["locatie","Strada, nr [ locație ]"],["ziua","Ziua"],["masina","Mașina"],["frecventa","Frecvență"],["_produse","Produse"],["status","Status"]],
     campuri:[
       {c:"client_key",e:"Cod punct",t:"text",req:1},
@@ -6077,7 +6077,8 @@ function adminCelula(r,c){
   if(A_TBL==="clients" && c==="status" && r.schimbare) return (r.status||"") + " · " + schText(r.schimbare);
   if(A_TBL==="clients" && c==="_produse"){   // v4.58: produsele de pe punct, fără să intri în Editează
     const p=[]; if(+r.toalete) p.push(r.toalete+" toalete"); if(+r.containere) p.push(r.containere+" containere"); if(+r.garduri) p.push(r.garduri+" garduri");
-    return p.join(" · ") + (r.accesorii && +r.toalete ? " ["+accScurt(r.accesorii)+"]" : "");   // v5.61: accesoriile țin de toalete — fără toalete nu se afișează
+    const alte = Array.isArray(r.echipamente) ? r.echipamente.filter(Boolean) : [];   // v5.89: lavoare, cub IBC, fosă septică…
+    return [p.join(" · ") + (r.accesorii && +r.toalete ? " ["+accScurt(r.accesorii)+"]" : "")].concat(alte).filter(Boolean).join(" · ");   // v5.61: accesoriile țin de toalete — fără toalete nu se afișează
   }
   const v=r[c];
   if(v===true) return "Da"; if(v===false) return "Nu";
@@ -6136,6 +6137,9 @@ function renderAdmin(){
   if(A_TBL==="clients"){ pfStButoane(); const fs = pfFiltreaza(A_ROWS, "pf-st"), fq = q ? fs.filter(r=>Object.values(r).some(v=>v!=null&&String(v).toLowerCase().includes(q))) : fs;
     pfKpi(rows, fq.filter(r => String(r.status||"").trim().toUpperCase() === "INACTIV").length); }
   A_VAZUTE=rows;
+  { const bn = $("a-btn-nou"); if(bn){ const pr = A_TBL === "clients";   // v5.89 (cerut de Ovidiu, 14.10)
+    bn.textContent = pr ? "+ Punct fără anexă" : "+ Adaugă";
+    bn.title = pr ? "Punct de rută făcut de mână, fără anexă (ex. eveniment pe Traseu-EV, o oprire internă). Nu se facturează, nu are serii și nu intră la verificarea RT. Punctele clienților cu anexă se fac din comandă, cu „→ Rute”." : ""; } }
   $("a-tbl").innerHTML =
     "<thead><tr>"+(pbOn()?`<th><input type="checkbox" style="width:auto;height:auto" title="Bifează / debifează toate rândurile afișate" ${(A_VAZUTE||[]).length&&(A_VAZUTE||[]).every(x=>PB_SEL.has(String(x.id)))?"checked":""} onchange="pbToate(this.checked)"></th>`:"")+d.lista.map(([,e])=>`<th>${esc(e)}</th>`).join("")+(A_TBL==="clients"?'<th title="RT pe comenzile legate de acest punct — se bifează de mână">RT</th>':"")+"<th></th></tr></thead><tbody>"+
     rows.map(r=>{
@@ -6189,11 +6193,44 @@ function adminDeschide(rec, nou){
     else el.value = String(v);
   });
   if(A_TBL==="soferi" && rec) $("a-form").insertAdjacentHTML("beforeend", panouCont(rec));
+  if(A_TBL==="clients") prProduse(rec);
   if(A_TBL==="clients" && rec && !nou && rec.schimbare && rec.schimbare.de_la)
     $("a-form").insertAdjacentHTML("afterbegin", `<div class="rute-nota">Schimbare programată — <b>${esc(schText(rec.schimbare))}</b>. Până atunci punctul rămâne cum îl vezi aici. <button type="button" class="btn sm sec" onclick="schAnuleaza()">Renunță la schimbare</button></div>`);
   calendarActiveaza($("a-form"));
   $("a-btn-sterge").style.display = (rec && !nou) ? "" : "none";
   $("mod-admin").classList.add("on");
+}
+// v5.89 (cerut de Ovidiu, 14.10): în fereastra punctului apar doar produsele care sunt pe el; restul se adaugă cu „+ Produs”.
+// Toalete / containere (și cabine) / garduri au coloanele lor; celelalte produse din nomenclator (lavoare, cub IBC, fosă septică…)
+// se țin în clients.echipamente ca „2 LAVOARE” — aplicația de rute le arată deja pe cardul punctului. Accesoriile țin de toalete.
+let PR_ECH = [];
+const PR_CAMP = [["toalete","Toalete"],["containere","Containere / cabine"],["garduri","Garduri"]];
+function prProduse(rec){
+  const t = $("af-toalete"); if(!t) return;
+  const g = t.closest(".pr-g"); if(!g) return;
+  PR_ECH = (Array.isArray(rec && rec.echipamente) ? rec.echipamente : []).filter(Boolean).map(x => { const m = /^(\d+)\s+(.+)$/.exec(String(x).trim()); return m ? { n: +m[1], p: m[2] } : { n: "", p: String(x).trim() }; });
+  PR_CAMP.forEach(([c]) => { const el = $("af-" + c); if(el) el.parentElement.style.display = +el.value ? "" : "none"; });
+  const acc = $("af-accesorii"); if(acc) acc.parentElement.style.display = +t.value || acc.value ? "" : "none";
+  let x = $("pr-ech"); if(!x){ x = document.createElement("div"); x.id = "pr-ech"; g.after(x); }
+  prDeseneaza();
+}
+function prDeseneaza(){
+  const x = $("pr-ech"); if(!x) return;
+  const ascunse = PR_CAMP.filter(([c]) => { const el = $("af-" + c); return el && el.parentElement.style.display === "none"; });
+  const pus = new Set(PR_ECH.map(e => faraDiac(e.p).toUpperCase()));
+  const alte = nomv("produs").filter(v => !muCampDe(v) && !pus.has(faraDiac(v).toUpperCase()));
+  const nimic = PR_CAMP.every(([c]) => { const el = $("af-" + c); return !el || el.parentElement.style.display === "none"; }) && !PR_ECH.length;
+  x.innerHTML = PR_ECH.map((e, i) => `<div style="display:flex;gap:8px;align-items:center;margin:0 0 6px"><input type="number" min="0" step="1" value="${esc(e.n)}" style="width:90px" onchange="PR_ECH[${i}].n=this.value"><b style="flex:1">${esc(e.p)}</b><button type="button" class="btn sm sec" title="Scoate produsul de pe punct" onclick="PR_ECH.splice(${i},1);prDeseneaza()">✕</button></div>`).join("") +
+    (nimic ? `<div class="muted" style="font-size:13px;margin:0 0 6px">Niciun produs pe punct — alege mai jos ce dai la chirie.</div>` : "") +
+    ((ascunse.length || alte.length) ? `<select style="width:auto;margin:2px 0 6px" onchange="prAdauga(this.value)"><option value="">+ Produs…</option>` +
+      ascunse.map(([c, e]) => `<option value="c:${c}">${esc(e)}</option>`).join("") + alte.map(v => `<option value="p:${esc(v)}">${esc(v)}</option>`).join("") + `</select>` : "");
+}
+function prAdauga(v){
+  if(!v) return;
+  if(v.startsWith("c:")){ const c = v.slice(2), el = $("af-" + c); el.parentElement.style.display = ""; if(!+el.value) el.value = 1;
+    if(c === "toalete"){ const a = $("af-accesorii"); if(a) a.parentElement.style.display = ""; }
+    prDeseneaza(); el.focus(); el.select(); return; }
+  PR_ECH.push({ n: 1, p: v.slice(2) }); prDeseneaza();
 }
 function adminNou(){ RUTE_COADA=[]; RUTE_ACUM=null; A_ID=null; A_COPIE_IDS=null; adminDeschide(null); }
 // v5.17 (cerut de Ovidiu, 09.10): ⧉ = punct nou copiat din altul (client, județ, localitate, telefon, frecvență, mașină, GPS…).
@@ -6230,6 +6267,7 @@ async function adminSalveaza(){
     else { rec[f.c] = f.up ? v.toUpperCase() : v; }
     if(f.req && (rec[f.c]===null||rec[f.c]==="")){ toast("Completează „"+f.e+"”",true); el.focus(); return; }
   }
+  if(A_TBL==="clients") rec.echipamente = PR_ECH.filter(x => x.p).map(x => (+x.n ? +x.n + " " : "") + x.p);   // v5.89
   if(A_TBL==="clients" && !A_ID && !rec.client_key)
     rec.client_key = "P"+Date.now().toString(36).toUpperCase();
   if(A_TBL==="clients" && RUTE_ACUM) ruteProgrameaza(rec, RUTE_ACUM);
