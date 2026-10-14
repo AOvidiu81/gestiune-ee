@@ -742,7 +742,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <div class="hd-mij"><div id="titlu-sus"></div><span id="azi-sus" title="Data de azi (calculatorul)"></span></div>
   <button id="btn-mob" class="btn sec" style="padding:5px 10px;font-size:12px" onclick="mobPC(false)" title="Înapoi la varianta de telefon">📱 Telefon</button>
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
-  <span class="ver">v6.03</span>
+  <span class="ver">v6.04</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -796,6 +796,14 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
       <div style="flex:0"><button class="btn sec" onclick="exportAtentie()">Export Excel</button></div>
       <div class="muted" id="t-sumar"></div>
     </div>
+  </div>
+  <!-- v6.04 (cerut de Ovidiu, 14.10): rezumatul bazei — cât ocupă, ce PV-uri / cereri mai stau în Supabase -->
+  <div class="card noprint" id="tb-card" style="display:none">
+    <div class="row" style="align-items:center;margin:0 0 6px">
+      <h3 style="margin:0;color:var(--g);flex:1">Baza de date</h3>
+      <div style="flex:0"><button class="btn sec sm" onclick="rezumatBaza()">Reverifică</button></div>
+    </div>
+    <div id="tb-corp"></div>
   </div>
 </section>
 
@@ -4895,6 +4903,7 @@ async function atSalveaza(i, camp, val){
 function atArataTot(v){ AT_TOATE = !!v; renderPlaci(); }
 
 async function loadAtentie(){
+  rezumatBaza();   // v6.04
   if(!CTR.length) return;
   const azi = today();
   const orizont = new Date(Date.now() + (+$("t-zile").value || 90) * 86400000).toISOString().slice(0, 10);
@@ -5020,6 +5029,48 @@ function renderPlaci(){
 }
 
 function alegeAtentie(cheie){ AT_SEL = cheie; renderPlaci(); }
+
+// ================= v6.04 REZUMATUL BAZEI (cerut de Ovidiu, 14.10) =================
+// Cât ocupă baza și fișierele față de limitele planului gratuit Supabase (500 MB date, 1 GB fișiere),
+// câte PV-uri / cereri mai stau în Supabase (nedescărcate / descărcate dar încă neșterse) și fișierele fără înregistrare.
+// Funcția rezumat_baza() din bază merge doar pentru administrator.
+const TB_NUME = { clients: "Puncte de rută", visit_logs: "Vizite (rute)", client_weeks: "Istoric săptămâni (rute)", route_sessions: "Sesiuni rută",
+  week_meta: "Note săptămâni (rute)", miscari: "Comenzi", anexe: "Anexe", contracte: "Contracte", clienti: "Clienți", serii: "Serii",
+  pv_records: "PV-uri / cereri (înregistrări)", documente: "Registru documente", inceput_zi: "Începutul zilei", atentie_note: "Note De urmărit",
+  ciorne: "Ciorne", profiles: "Conturi", nomenclatoare: "Nomenclatoare", products: "Produse (PV)", stoc_initial: "Stoc inițial",
+  depozite: "Depozite", masini: "Mașini", soferi: "Șoferi", company_info: "Date firmă", facturare_stare: "Stare facturare" };
+const tbMB = b => { b = +b || 0; return b < 1048576 ? (b / 1024).toFixed(0) + " KB" : (b / 1048576).toFixed(1).replace(".", ",") + " MB"; };
+function tbBara(et, b, lim){
+  const pr = Math.min(100, (+b || 0) / lim * 100), cul = pr > 80 ? "#b3261e" : pr > 60 ? "#D97706" : "#2E8B3C";
+  return `<div style="margin:6px 0 10px"><div style="display:flex;justify-content:space-between;font-size:13px"><span>${esc(et)}</span>` +
+    `<span><b>${tbMB(b)}</b> din ${tbMB(lim)} · ${pr.toFixed(1).replace(".", ",")}%</span></div>` +
+    `<div style="height:8px;border-radius:4px;background:var(--gl);overflow:hidden;margin-top:3px"><div style="height:100%;width:${Math.max(pr, .5)}%;background:${cul}"></div></div></div>`;
+}
+async function rezumatBaza(){
+  const card = $("tb-card"); if(!card) return;
+  const { data: r, error } = await db.rpc("rezumat_baza");
+  if(error || !r){ card.style.display = "none"; return; }   // nu e administrator / fără semnal
+  card.style.display = "";
+  const fis = (r.fisiere || []).reduce((t, f) => t + (+f.b || 0), 0);
+  const pv = r.pv || [];
+  const g = (cer, desc) => pv.filter(x => x.cerere === cer && x.desc === desc).reduce((t, x) => ({ n: t.n + (+x.n || 0), b: t.b + (+x.b || 0), v: !t.v || (x.vechi && x.vechi < t.v) ? x.vechi : t.v }), { n: 0, b: 0, v: null });
+  const linie = (cer, et, v) => {
+    const nd = g(cer, false), d = g(cer, true), tot = nd.n + d.n;
+    const zile = nd.v ? Math.floor((Date.now() - new Date(nd.v)) / 86400000) : 0;
+    const st = !tot ? `<span style="color:#2E8B3C">✔ nimic în Supabase</span>` :
+      [nd.n ? `<span style="color:${zile > 3 ? "#b3261e" : "#D97706"};font-weight:700">${nd.n} nedescărcat${nd.n === 1 ? "" : "e"}${nd.v ? " (cel mai vechi din " + fmtD(String(nd.v).slice(0, 10)) + ")" : ""}</span>` : "",
+       d.n ? `<span style="color:#D97706;font-weight:700">${d.n} descărcat${d.n === 1 ? "" : "e"}, de șters din Supabase</span>` : ""].filter(Boolean).join(" · ");
+    return `<tr><td><b>${et}</b></td><td>${tot} · ${tbMB(nd.b + d.b)}</td><td>${st}</td>` +
+      `<td><button class="btn sm sec" onclick="document.querySelector('nav button[data-p=&quot;pv&quot;][data-v=&quot;${v}&quot;]').click()">→ deschide</button></td></tr>`;
+  };
+  let h = tbBara("Date (tabele)", r.db_bytes, 500 * 1048576) + tbBara("Fișiere (PDF-uri PV / cereri)", fis, 1024 * 1048576);
+  h += `<table class="mu-tab" style="width:100%;margin:4px 0 8px">${linie(false, "Procese verbale", "pv")}${linie(true, "Cereri / documente angajați", "cereri")}</table>`;
+  if(+r.orfane) h += `<div style="color:#b3261e;font-size:13px;margin:0 0 8px">⚠ ${r.orfane} fișier${+r.orfane === 1 ? "" : "e"} PDF (${tbMB(r.orfane_b)}) în Supabase fără PV în listă — rămase de la o ștergere incompletă.</div>`;
+  h += `<details><summary style="cursor:pointer;font-size:13px">Tabelele — rânduri și mărime</summary><table class="mu-tab" style="margin-top:6px">` +
+    (r.tabele || []).map(t => `<tr><td>${esc(TB_NUME[t.t] || t.t)}</td><td style="text-align:right">${(+t.n || 0).toLocaleString("ro-RO")} rânduri</td><td style="text-align:right">${tbMB(t.b)}</td></tr>`).join("") +
+    `</table></details><div class="muted" style="font-size:12px;margin-top:6px">Limitele planului gratuit Supabase: 500 MB date, 1 GB fișiere. PV-urile și cererile se descarcă pe calculator și apoi se șterg din Procese verbale / Cereri.</div>`;
+  $("tb-corp").innerHTML = h;
+}
 
 function renderAtentie(){
   const x = AT.find(y => y.cheie === AT_SEL);
