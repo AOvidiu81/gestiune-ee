@@ -169,7 +169,19 @@ export async function openComenziActive(ctx) {
 /** Construieste ecranul de comenzi active. Folosit si de aplicatia unica
  * pentru soferi (/sofer/) ca fila "Comenzi": embedded = fara bara de sus cu
  * sageata si fara butonul de jos; screen.reload() cere din nou lista. */
-export function buildComenziActive({ driver, car, depot, onFaraComanda, pop, embedded = false }) {
+// v86 (cerut de Ovidiu, 14.10): „Am preluat” pe comenzile de azi. Se tine si local (pe telefon, ziua de azi),
+// ca alerta sa se opreasca si fara semnal; in baza se scrie cu preia_comanda (preluat_de / preluat_la).
+const KEY_PRELUATE = 'ee-comenzi-preluate';
+function preluateLocal() {
+  try { const v = JSON.parse(localStorage.getItem(KEY_PRELUATE) || 'null'); if (v && v.zi === isoOf(new Date())) return new Set(v.ids || []); } catch (e) {}
+  return new Set();
+}
+function preluateAdauga(ids) {
+  const s = preluateLocal(); ids.forEach((i) => s.add(i));
+  try { localStorage.setItem(KEY_PRELUATE, JSON.stringify({ zi: isoOf(new Date()), ids: [...s] })); } catch (e) {}
+}
+
+export function buildComenziActive({ driver, car, depot, onFaraComanda, onStare, pop, embedded = false }) {
   return (() => {
     const screen = el('div', { class: 'screen' });
     const refreshBtn = el('button', { class: 'icon-btn', title: 'Reincarca', onclick: () => load(true) }, ['⟳']);
@@ -203,7 +215,7 @@ export function buildComenziActive({ driver, car, depot, onFaraComanda, pop, emb
         ['toate', 'Toate'],
       ].forEach(([k, label]) => {
         chips.appendChild(
-          el('button', { class: `ca-chip${perioada === k ? ' on' : ''}`, onclick: () => { perioada = k; renderFiltre(); renderLista(); } }, [label])
+          el('button', { class: `ca-chip ca-chip-${k}${perioada === k ? ' on' : ''}`, onclick: () => { perioada = k; renderFiltre(); renderLista(); } }, [label])
         );
       });
       filtre.appendChild(chips);
@@ -237,6 +249,42 @@ export function buildComenziActive({ driver, car, depot, onFaraComanda, pop, emb
         if (perioada === 'sapt') return d <= duminica;
         return true;
       });
+    }
+
+    // v86: comanda de azi e „preluata” cand cineva a apasat Am preluat (in baza sau pe telefonul asta)
+    const aziI = () => isoOf(new Date());
+    const preluata = (c) => [c, ...(c.extra || [])].some((x) => x.preluat_de) || preluateLocal().has(c.id);
+    const faraPv = (r) => !locatiile(r).every((L) => L[0].pv_facut_de);
+    // Starea filei Comenzi (Șofer EE): de azi nepreluate (fundal verde + sunet), de azi preluate (chenar verde),
+    // in restul saptamanii, de maine pana duminica (chenar portocaliu). Cele din urma nu se iau in calcul.
+    function stareFila() {
+      if (!onStare) return;
+      const azi = parseDay(aziI());
+      const duminica = new Date(azi); duminica.setDate(azi.getDate() + (7 - azi.getDay()) % 7);
+      const active = rows.filter(faraPv);
+      const deAzi = active.filter((r) => r.data === aziI());
+      onStare({
+        nepreluate: deAzi.filter((r) => !preluata(r)).map((r) => r.id),
+        azi: deAzi.length,
+        sapt: active.filter((r) => { const d = parseDay(r.data); return d && d > azi && d <= duminica; }).length,
+      });
+    }
+    async function preiau(c) {
+      const toate = [c, ...(c.extra || [])];
+      preluateAdauga(toate.map((x) => x.id));
+      renderLista();
+      try {
+        const sb = await getSupabase();
+        for (const x of toate) {
+          const { data, error } = await sb.rpc('preia_comanda', { p_id: x.id, p_preiau: true });
+          if (!error && data && data[0]) { x.preluat_de = data[0].preluat_de; x.preluat_la = data[0].preluat_la; }
+        }
+      } catch (e) { /* fara semnal: ramane preluata pe telefon */ }
+      renderLista();
+    }
+    function btnPreiau(c) {
+      if (c.data !== aziI() || preluata(c)) return null;
+      return el('button', { class: 'btn ca-btn ca-preiau', onclick: (e) => { e.stopPropagation(); preiau(c); } }, ['✋ Am preluat']);
     }
 
     async function deschidePv(c, items) {
@@ -276,7 +324,7 @@ export function buildComenziActive({ driver, car, depot, onFaraComanda, pop, emb
 
       const btnPv = el('button', { class: 'btn btn-primary ca-btn', onclick: (e) => { e.stopPropagation(); deschidePv(c); } }, ['📄 Creează PV']);
       // „Preiau eu” a fost scos (02.10): PV-ul spune cine a facut comanda
-      const actiuni = el('div', { class: 'ca-actiuni' }, [btnPv]);
+      const actiuni = el('div', { class: 'ca-actiuni' }, [btnPreiau(c), btnPv]);
 
       // s32: mai multe locatii pe aceeasi comanda (Primaria) — fiecare locatie cu PV-ul ei
       if (locs.length > 1) {
@@ -298,6 +346,8 @@ export function buildComenziActive({ driver, car, depot, onFaraComanda, pop, emb
             : el('div', { class: 'ca-tip', style: `color:${accent}` }, [tipLabel]),
           el('div', { class: 'ca-client' }, [c.client || '—']),
           el('div', { class: 'ca-linie' }, [`📍 ${locs.length} locații · ${locs.filter((L) => L[0].pv_facut_de).length} cu PV`]),
+          btnPreiau(c) ? el('div', { class: 'ca-actiuni' }, [btnPreiau(c)]) : null,
+          c.preluat_de ? el('div', { class: 'ca-stare' }, [`👤 Preluat de ${c.preluat_de === driver.name ? 'tine' : c.preluat_de}, ${oraDin(c.preluat_la)}`]) : null,
           serv ? el('div', { class: 'ca-linie' }, ['🔁 Servisare: ', serv]) : null,
           c.observatii ? el('div', { class: 'ca-linie ca-obs' }, ['📝 ', c.observatii]) : null,
           ...blocuri,
@@ -328,6 +378,7 @@ export function buildComenziActive({ driver, car, depot, onFaraComanda, pop, emb
     }
 
     function renderLista() {
+      stareFila();
       status.textContent = statusText;
       status.classList.toggle('ca-offline', offline);
       lista.innerHTML = '';

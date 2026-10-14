@@ -26,7 +26,7 @@ import { openHistoryScreen } from '../pv/js/screens-history.js';
 import { buildComenziActive } from '../pv/js/screens-comenzi.js';
 import { openSettingsScreen } from '../pv/js/screens-setup.js';
 
-export const SOFER_VERSION = 's42';
+export const SOFER_VERSION = 's43';
 
 const KEY_ZI = 'ee-sofer-zi'; // ziua deschisa: { zi, coleg, carId, km, trasee, zile, zona, ordine, ruta }
 const KEY_ULTIMA = 'ee-sofer-ultima'; // ultimele alegeri (masina, traseu, zona) — precompletare
@@ -45,6 +45,50 @@ const ZI_DIN_DATA = ['Duminica', 'Luni', 'Marti', 'Miercuri', 'Joi', 'Vineri', '
 
 const stare = { driver: null, car: null, depot: null, drivers: [], cars: [], depots: [], zi: null };
 let ui = null; // legatura cu ecranul cu file, dupa ce e construit
+
+// ---------- s43: alerta sonora pentru comenzile de AZI nepreluate (cerut de Ovidiu, 14.10) ----------
+// La primirea comenzii: sunet imediat, apoi dupa 10 s, 30 s, 1 min, apoi la ALERTA_REPETA,
+// pana cand soferul apasa „Am preluat”. O comanda noua porneste din nou sirul.
+const ALERTA_PASI = [10, 30, 60]; // secunde
+const ALERTA_REPETA = 10; // PROBA: 10 s; dupa proba -> 300 (5 minute)
+const alerta = { ids: new Set(), pas: 0, ceas: null };
+let actx = null;
+function audio() {
+  if (!actx) { const A = window.AudioContext || window.webkitAudioContext; if (!A) return null; try { actx = new A(); } catch (e) { return null; } }
+  if (actx.state === 'suspended') actx.resume().catch(() => {});
+  return actx;
+}
+// Telefonul lasa sunetul doar dupa o atingere a ecranului; prima atingere il deblocheaza
+document.addEventListener('pointerdown', () => audio(), { passive: true });
+async function sunetAlerta() {
+  try { navigator.vibrate && navigator.vibrate([120, 80, 120]); } catch (e) {}
+  const a = audio(); if (!a) return;
+  try { if (a.state !== 'running') await a.resume(); } catch (e) { return; }
+  if (a.state !== 'running') return;
+  const t0 = a.currentTime + 0.03;
+  // trei note blande, urcand (mi - la - do), cu stingere lenta
+  [[659.25, 0], [880, 0.17], [1046.5, 0.34]].forEach(([f, d]) => {
+    const o = a.createOscillator(), g = a.createGain();
+    o.type = 'sine'; o.frequency.value = f;
+    g.gain.setValueAtTime(0.0001, t0 + d);
+    g.gain.exponentialRampToValueAtTime(0.2, t0 + d + 0.03);
+    g.gain.exponentialRampToValueAtTime(0.0001, t0 + d + 0.9);
+    o.connect(g); g.connect(a.destination);
+    o.start(t0 + d); o.stop(t0 + d + 0.95);
+  });
+}
+function alertaProgrameaza() {
+  clearTimeout(alerta.ceas); alerta.ceas = null;
+  if (!alerta.ids.size) return;
+  const sec = alerta.pas < ALERTA_PASI.length ? ALERTA_PASI[alerta.pas] : ALERTA_REPETA;
+  alerta.ceas = setTimeout(() => { alerta.pas++; sunetAlerta(); alertaProgrameaza(); }, sec * 1000);
+}
+function alertaComenzi(nepreluate) {
+  const noi = nepreluate.filter((id) => !alerta.ids.has(id));
+  alerta.ids = new Set(nepreluate);
+  if (!alerta.ids.size) { clearTimeout(alerta.ceas); alerta.ceas = null; alerta.pas = 0; return; }
+  if (noi.length) { alerta.pas = 0; sunetAlerta(); alertaProgrameaza(); }
+}
 
 // ---------- mici ajutoare ----------
 function aziIso() {
@@ -634,9 +678,18 @@ function ecranFile() {
     function construiesteComenzi() {
       const p = panou('comenzi');
       p.innerHTML = '';
-      comenzi = buildComenziActive({ ...ctx(), embedded: true, onFaraComanda: () => { arata('pv'); ecranProceseVerbale(); } });
+      comenzi = buildComenziActive({ ...ctx(), embedded: true, onFaraComanda: () => { arata('pv'); ecranProceseVerbale(); }, onStare: stareComenzi });
       comenzi.classList.add('sofer-embedded');
       p.appendChild(comenzi);
+    }
+
+    // s43: culoarea filei Comenzi + alerta sonora (doar pentru comenzile de azi)
+    function stareComenzi(st) {
+      const b = file.find((f) => f.k === 'comenzi').btn;
+      b.classList.toggle('fila-alerta', st.nepreluate.length > 0);
+      b.classList.toggle('fila-verde', !st.nepreluate.length && st.azi > 0);
+      b.classList.toggle('fila-portocaliu', !st.azi && st.sapt > 0);
+      alertaComenzi(st.nepreluate);
     }
 
     // Rută: cu ruta generata -> cadrul aplicatiei de rute, tinut viu (ruta pornita nu se pierde la

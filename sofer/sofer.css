@@ -35,6 +35,11 @@
 .sofer-fila-icon { font-size: 21px; line-height: 1.1; filter: grayscale(1); opacity: .65; }
 .sofer-fila.on { color: var(--brand-primary); background: #e7f1ff; }
 .sofer-fila.on .sofer-fila-icon { filter: none; opacity: 1; }
+/* s43: starea filei Comenzi — azi nepreluate: fundal verde; azi preluate: chenar verde; restul saptamanii: chenar portocaliu */
+.sofer-fila.fila-alerta { background: #d6f3dc; color: #1e6b2d; box-shadow: inset 0 0 0 2px #2E8B3C; }
+.sofer-fila.fila-alerta .sofer-fila-icon { filter: none; opacity: 1; }
+.sofer-fila.fila-verde { box-shadow: inset 0 0 0 2px #2E8B3C; }
+.sofer-fila.fila-portocaliu { box-shadow: inset 0 0 0 2px #D97706; }
 
 .ca-embed-status { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .ca-embed-status .ca-status { margin: 0; }
