@@ -739,7 +739,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <div class="hd-mij"><div id="titlu-sus"></div><span id="azi-sus" title="Data de azi (calculatorul)"></span></div>
   <button id="btn-mob" class="btn sec" style="padding:5px 10px;font-size:12px" onclick="mobPC(false)" title="Înapoi la varianta de telefon">📱 Telefon</button>
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
-  <span class="ver">v5.94</span>
+  <span class="ver">v5.95</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -2351,7 +2351,7 @@ $("mm-anexa").onchange = () => {
   // v4.92: la SUPLIMENTARE / REDUCERE, alegerea anexei de bază (nu a celei -S / -R) nu mai rescrie data și bucățile scrise în comandă
   const tipC = $("mm-tip").value, nA = anexaNr(a);
   const baza = ["SUPLIMENTARE", "REDUCERE"].includes(tipC) && !(nA && nA.tip === (tipC === "REDUCERE" ? "R" : "S"));
-  if(a.cant && !baza) $("mm-buc").value = (!$("mm-id").value && (tipC === "RIDICARE" || tipC === "EVENIMENT-R")) ? cantLinie(a.id) : Math.abs(+a.cant);   // la ridicare: tot ce e la client pe linie
+  if(a.cant && !baza) $("mm-buc").value = (!$("mm-id").value && (tipC === "RIDICARE" || tipC === "EVENIMENT-R") && !(nA && nA.tip === "R")) ? cantLinie(a.id) : Math.abs(+a.cant);   // la ridicare: tot ce e la client pe linie
   if(a.contract_depozit) $("mm-contract").value = a.contract_depozit;
   if(a.depozit)          $("mm-dep").value = a.depozit;
   if(a.pers_contact)     $("mm-pers").value = a.pers_contact;
@@ -2474,7 +2474,7 @@ function openAnexaScurta(b, tip){
   if(fin) $("ma-cant").value = -acum || "";   // ridicarea finală: tot ce e la client
   MA_SCURT = { tip, lit, acum, linie: baza.id, fin };
   $("ma-info").innerHTML = "Pe linia <b>" + esc(baza.anexa || "") + "</b> · " + esc(baza.jud || "") + " " + esc(baza.loc || "") + " – " + esc(baza.sat || "") + " · " + esc(baza.produs || "") + " " + esc(baza.model || "") +
-    "<br>Acum la client: <b>" + acum + "</b> buc. " + (fin ? "<b>Ridicare finală:</b> pleacă tot de la locație; data = ziua ridicării. După PV, „Confirmă ridicarea” închide locația. " : "") + "Scrie <b>câte bucăți " + (lit === "R" ? "se reduc" : "se adaugă") + "</b>" + (lit === "R" ? " (apare cu minus; merge scris și fără semn)" : "") + ", data și prețul pe bucată. <b>Frecvența și zilele de servisare</b> sunt cele de acum — schimbă-le aici dacă se schimbă. Restul vine din anexa de bază.";
+    "<br>Acum la client: <b>" + acum + "</b> buc. " + (fin ? "<b>Ridicare finală:</b> pleacă tot de la locație; data = ziua ridicării. După PV, „Confirmă ridicarea” închide locația. " : "") + "Scrie <b>câte bucăți " + (lit === "R" ? "se reduc" : "se adaugă") + "</b>" + (lit === "R" ? " (apare cu minus; merge scris și fără semn)" : "") + ", data și prețul pe bucată (același ca pe anexa de bază). Restul vine din anexa de bază.";
   maCampuri(true); maEtichete(lit, fin);
   $("ma-cant").focus();
 }
