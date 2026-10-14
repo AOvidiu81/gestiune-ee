@@ -26,7 +26,7 @@ import { openHistoryScreen } from '../pv/js/screens-history.js';
 import { buildComenziActive } from '../pv/js/screens-comenzi.js';
 import { openSettingsScreen } from '../pv/js/screens-setup.js';
 
-export const SOFER_VERSION = 's43';
+export const SOFER_VERSION = 's44';
 
 const KEY_ZI = 'ee-sofer-zi'; // ziua deschisa: { zi, coleg, carId, km, trasee, zile, zona, ordine, ruta }
 const KEY_ULTIMA = 'ee-sofer-ultima'; // ultimele alegeri (masina, traseu, zona) — precompletare
@@ -50,7 +50,7 @@ let ui = null; // legatura cu ecranul cu file, dupa ce e construit
 // La primirea comenzii: sunet imediat, apoi dupa 10 s, 30 s, 1 min, apoi la ALERTA_REPETA,
 // pana cand soferul apasa „Am preluat”. O comanda noua porneste din nou sirul.
 const ALERTA_PASI = [10, 30, 60]; // secunde
-const ALERTA_REPETA = 10; // PROBA: 10 s; dupa proba -> 300 (5 minute)
+const ALERTA_REPETA = 300; // 5 minute (proba la 10 s confirmata de Ovidiu 14.10)
 const alerta = { ids: new Set(), pas: 0, ceas: null };
 let actx = null;
 function audio() {
