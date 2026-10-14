@@ -26,7 +26,7 @@ import { openHistoryScreen } from '../pv/js/screens-history.js';
 import { buildComenziActive } from '../pv/js/screens-comenzi.js';
 import { openSettingsScreen } from '../pv/js/screens-setup.js';
 
-export const SOFER_VERSION = 's44';
+export const SOFER_VERSION = 's45';
 
 const KEY_ZI = 'ee-sofer-zi'; // ziua deschisa: { zi, coleg, carId, km, trasee, zile, zona, ordine, ruta }
 const KEY_ULTIMA = 'ee-sofer-ultima'; // ultimele alegeri (masina, traseu, zona) — precompletare
@@ -45,6 +45,11 @@ const ZI_DIN_DATA = ['Duminica', 'Luni', 'Marti', 'Miercuri', 'Joi', 'Vineri', '
 
 const stare = { driver: null, car: null, depot: null, drivers: [], cars: [], depots: [], zi: null };
 let ui = null; // legatura cu ecranul cu file, dupa ce e construit
+
+// s45 (14.10): fila Rută (cadrul ../ruta/) nu mai intra anonim in baza — ia de aici tokenul soferului logat
+window.eeSoferToken = async () => {
+  try { const sb = await getSupabase(); const { data } = await sb.auth.getSession(); return data?.session?.access_token || null; } catch (e) { return null; }
+};
 
 // ---------- s43: alerta sonora pentru comenzile de AZI nepreluate (cerut de Ovidiu, 14.10) ----------
 // La primirea comenzii: sunet imediat, apoi dupa 10 s, 30 s, 1 min, apoi la ALERTA_REPETA,

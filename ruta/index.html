@@ -1033,7 +1033,7 @@ let dayStart = {}; // {brand, plate, kmStart, driver1, driver2, startTime}
 let lastRouteRows = [];
 
 // --- Șofer EE: aplicatia ruleaza in fila „Rută” (../sofer/), care trimite datele zilei ---
-const EE_RUTA_VERSION = 'v20'; // aceeasi cu VERSIUNE din sw.js; Șofer EE o arata langa rotita
+const EE_RUTA_VERSION = 'v21'; // aceeasi cu VERSIUNE din sw.js; Șofer EE o arata langa rotita
 const SOFER_MODE = new URLSearchParams(location.search).get('sofer') === '1';
 let multiZile = null;   // mai multe zile bifate (ruta complementara), altfel null
 let multiTrasee = null; // mai multe trasee bifate, altfel null
@@ -1059,7 +1059,17 @@ const traseeSalvate = ()=> multiTrasee ? multiTrasee.join('+') : masinaSel.value
 // --- Supabase ---
 const SUPABASE_URL = 'https://xrveoxmsdvryzyemmkqx.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_P1TSfVqqbyr3L-elKVgopg_1FpIpkv4';
-const sb = (typeof supabase !== 'undefined') ? supabase.createClient(SUPABASE_URL, SUPABASE_KEY, { auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false, storageKey: 'ee-ruta-auth' } }) : null;
+// v21 (14.10): fara acces anonim la baza — ruta foloseste contul soferului logat in Șofer EE (tokenul vine de la
+// fereastra parinte, eeSoferToken); deschisa singura, ia tokenul salvat de /pv/ / /sofer/ (ee-pv-auth) sau de GestiuneEE.
+async function eeToken(){
+  try { if (window.parent !== window && typeof window.parent.eeSoferToken === 'function') { const t = await window.parent.eeSoferToken(); if (t) return t; } } catch (e) {}
+  for (const k of ['ee-pv-auth', 'sb-xrveoxmsdvryzyemmkqx-auth-token']) {
+    try { const s = JSON.parse(localStorage.getItem(k) || 'null'); const t = s && (s.access_token || (s.currentSession && s.currentSession.access_token));
+          if (t && (!s.expires_at || s.expires_at * 1000 > Date.now())) return t; } catch (e) {}
+  }
+  return null;
+}
+const sb = (typeof supabase !== 'undefined') ? supabase.createClient(SUPABASE_URL, SUPABASE_KEY, { accessToken: eeToken }) : null;
 let currentSessionId = null;
 let syncOk = true;
 
