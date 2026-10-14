@@ -742,7 +742,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <div class="hd-mij"><div id="titlu-sus"></div><span id="azi-sus" title="Data de azi (calculatorul)"></span></div>
   <button id="btn-mob" class="btn sec" style="padding:5px 10px;font-size:12px" onclick="mobPC(false)" title="Înapoi la varianta de telefon">📱 Telefon</button>
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
-  <span class="ver">v5.99</span>
+  <span class="ver">v6.00</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -6276,7 +6276,7 @@ function prAdauga(v){
     prDeseneaza(); el.focus(); el.select(); return; }
   PR_ECH.push({ n: 1, p: v.slice(2) }); prDeseneaza();
 }
-// ================= v5.99 ACTUALIZARE ANEXĂ (hotărât de Ovidiu, 14.10) =================
+// ================= v5.99 ACTUALIZARE ANEXĂ (hotărât de Ovidiu, 14.10; v6.00: + frecvență, + pe -S / -R de pe linie) =================
 // Prețul (sau tipul) se schimbă printr-un act adițional, de la o dată. Anexa rămâne aceeași (număr, bucăți, serii, stoc),
 // iar în anexe.actualizari se ține lista: [{ de_la, pret, model, act_nr, act_data, obs, creat_la }]. Facturarea desparte
 // perioada la data actualizării: prețul vechi până în ziua dinainte, cel nou de la dată (actDesparte, în randuriFacturare).
@@ -6306,7 +6306,8 @@ let ACT = null;
 function openAct(id){
   const a = ANX.find(x => x.id === id); if(!a) return;
   const k = CTR.find(x => x.id === a.contract_id) || {};
-  ACT = { a, lista: actLista(a).map(u => Object.assign({}, u)), nou: { de_la: today(), pret: "", model: "", act_nr: "", act_data: today(), obs: "" } };
+  ACT = { a, lista: actLista(a).map(u => Object.assign({}, u)), nou: { de_la: today(), pret: "", frecv: "", model: "", act_nr: "", act_data: today(), obs: "" },
+          linie: anexeLinie(a.id).filter(x => x.id !== a.id).map(x => ({ a: x, bif: true })) };   // v6.00: -S / -R de pe aceeași linie
   $("act-title").textContent = "Actualizare anexă — " + (a.anexa || "");
   $("act-sub").innerHTML = `${esc(a.client || (CLI.find(c => c.id === k.client_id) || {}).nume || "")} · CTR ${esc(k.nr_ctr || "")} · ${esc(Math.abs(+a.cant || 0) + " " + prodN(a.produs, a.cant) + " " + (a.model || ""))} · ` +
     `preț pe anexă <b>${esc(fmtPret(a.pret) + " " + (a.moneda || ""))}</b><br>Anexa rămâne aceeași (bucăți, serii, stoc). Facturarea ia prețul nou de la data aleasă; luna schimbării apare pe două rânduri.`;
@@ -6316,36 +6317,64 @@ function actDeseneaza(){
   const a = ACT.a, n = ACT.nou;
   const modele = (NOM.model || []).filter(x => !x.parinte || x.parinte === a.produs).map(x => x.valoare);
   let h = `<div class="mu-s"><h4>Actualizări existente</h4>` + (ACT.lista.length ? `<table class="mu-tab">` + ACT.lista.map((u, i) =>
-    `<tr><td>din <b>${esc(fmtD(u.de_la))}</b></td><td>${u.pret != null && u.pret !== "" ? "preț <b>" + esc(fmtPret(u.pret) + " " + (a.moneda || "")) + "</b>" : ""}${u.model ? " · tip <b>" + esc(u.model) + "</b>" : ""}</td>` +
+    `<tr><td>din <b>${esc(fmtD(u.de_la))}</b></td><td>${u.pret != null && u.pret !== "" ? "preț <b>" + esc(fmtPret(u.pret) + " " + (a.moneda || "")) + "</b>" : ""}${u.frecv ? " · frecvență <b>" + esc(u.frecv) + "</b>" : ""}${u.model ? " · tip <b>" + esc(u.model) + "</b>" : ""}</td>` +
     `<td>${u.act_nr ? "act ad. " + esc(u.act_nr) + (u.act_data ? " / " + esc(fmtD(u.act_data)) : "") : ""}${u.obs ? " · " + esc(u.obs) : ""}</td>` +
     `<td><button type="button" class="btn sm sec" title="Scoate actualizarea" onclick="ACT.lista.splice(${i},1);actDeseneaza()">✕</button></td></tr>`).join("") + `</table>`
     : `<div class="muted" style="font-size:13px">Nicio actualizare încă.</div>`) + `</div>`;
   h += `<div class="mu-s"><h4>Actualizare nouă</h4><div class="mu-g">
-    <div><label>De la data</label><input type="date" value="${esc(n.de_la)}" onchange="ACT.nou.de_la=this.value"></div>
+    <div><label>De la data</label><input type="date" value="${esc(n.de_la)}" onchange="ACT.nou.de_la=this.value;actDeseneaza()"></div>
     <div><label>Preț nou (${esc(a.moneda || "RON")} / buc / zi)</label><input type="number" step="0.01" min="0" placeholder="${esc(fmtPret(a.pret))}" value="${esc(n.pret)}" oninput="ACT.nou.pret=this.value"></div>
+    <div><label>Frecvență nouă (opțional)</label><select onchange="ACT.nou.frecv=this.value"><option value=""></option>${nomv("frecv_servisare").map(f => `<option value="${esc(f)}"${f === n.frecv ? " selected" : ""}>${esc(f)}</option>`).join("")}</select></div>
     <div><label>Tip nou (opțional)</label><input list="act-dl" value="${esc(n.model)}" oninput="ACT.nou.model=this.value.toUpperCase()"><datalist id="act-dl">${modele.map(m => `<option value="${esc(m)}">`).join("")}</datalist></div>
     <div><label>Act adițional nr.</label><input value="${esc(n.act_nr)}" oninput="ACT.nou.act_nr=this.value"></div>
     <div><label>Data actului</label><input type="date" value="${esc(n.act_data)}" onchange="ACT.nou.act_data=this.value"></div>
     <div><label>Motiv / observații</label><input value="${esc(n.obs)}" placeholder="ex. servisare săptămânală" oninput="ACT.nou.obs=this.value"></div>
-  </div><div class="muted" style="font-size:12px;margin-top:6px">Dacă se schimbă și servisarea (zi / frecvență), o schimbi din Puncte de rută → ⋯ → 📅, de la aceeași dată. Dacă se schimbă produsul fizic (alt model dus la client), e nevoie de o comandă.</div></div>`;
+  </div><div class="muted" style="font-size:12px;margin-top:6px">Frecvența scrisă aici rămâne pe anexă ca istoric (actul adițional); pe rută o schimbi tu din Puncte de rută → ⋯ → 📅, de la aceeași dată. Dacă se schimbă produsul fizic (alt model dus la client), e nevoie de o comandă.</div></div>`;
+  // v6.00 (hotărât de Ovidiu, 14.10): actualizarea trece și pe -S / -R de pe aceeași linie, bifate implicit
+  if(ACT.linie.length){
+    h += `<div class="mu-s"><h4>Se aplică și pe</h4>` + ACT.linie.map((L, i) => {
+      const x = L.a, amp = x.data_livrarii || x.data_emitere, dupa = n.de_la && amp && amp >= n.de_la;
+      return `<label style="display:flex;gap:8px;align-items:center;margin:3px 0${dupa ? ";opacity:.55" : ""}"><input type="checkbox"${L.bif && !dupa ? " checked" : ""}${dupa ? " disabled" : ""} onchange="ACT.linie[${i}].bif=this.checked">` +
+        `<b>${esc(x.anexa || "")}</b> · ${esc(Math.abs(+x.cant || 0) + " " + prodN(x.produs, x.cant))} · ${esc(fmtPret(x.pret) + " " + (x.moneda || ""))} · din ${esc(fmtD(amp))}` +
+        (dupa ? ` <span class="muted">— amplasată după data actualizării, are deja prețul ei</span>` : "") + `</label>`;
+    }).join("") + `<div class="muted" style="font-size:12px">Debifează o anexă dacă rămâne cu prețul vechi. Scoaterea unei actualizări (✕) se face pe fiecare anexă separat.</div></div>`;
+  }
   $("act-corp").innerHTML = h;
 }
 async function actSalveaza(){
   const a = ACT.a, n = ACT.nou, lista = ACT.lista.slice();
-  const areNou = (n.pret !== "" && n.pret != null) || n.model;
+  const areNou = (n.pret !== "" && n.pret != null) || n.model || n.frecv;
   if(areNou){
     if(!n.de_la){ toast("Alege data de la care se aplică", true); return; }
     const amp = a.data_livrarii || a.data_emitere;
     if(amp && n.de_la <= amp){ toast("Data actualizării trebuie să fie după data amplasării (" + fmtD(amp) + "). Pentru o greșeală de preț, corectează anexa cu Edit.", true); return; }
     if(lista.some(u => u.de_la === n.de_la)){ toast("Există deja o actualizare din " + fmtD(n.de_la) + " — scoate-o întâi (✕)", true); return; }
-    lista.push({ de_la: n.de_la, pret: n.pret !== "" ? +n.pret : null, model: n.model || null, act_nr: n.act_nr || null, act_data: n.act_data || null, obs: n.obs || null, creat_la: new Date().toISOString() });
+    lista.push({ de_la: n.de_la, pret: n.pret !== "" ? +n.pret : null, frecv: n.frecv || null, model: n.model || null, act_nr: n.act_nr || null, act_data: n.act_data || null, obs: n.obs || null, creat_la: new Date().toISOString() });
   }
   lista.sort((x, y) => x.de_la < y.de_la ? -1 : 1);
   const vechi = JSON.stringify(actLista(a)), nou = JSON.stringify(lista);
   if(vechi === nou){ toast("Nu s-a schimbat nimic", true); return; }
   const { error } = await db.from("anexe").update({ actualizari: lista }).eq("id", a.id);
   if(error){ toast(error.message, true); return; }
-  closeModal("mod-act"); toast("Actualizarea anexei s-a salvat" + (areNou ? " — din " + fmtD(n.de_la) : ""));
+  // v6.00: aceeași actualizare și pe anexele bifate de pe linie (-S / -R)
+  const puse = [], sarite = [];
+  if(areNou){
+    const u = lista.find(x => x.de_la === n.de_la);
+    for(const L of ACT.linie){
+      const x = L.a, amp = x.data_livrarii || x.data_emitere;
+      if(!L.bif || (amp && amp >= n.de_la)) continue;
+      const lx = actLista(x).map(y => Object.assign({}, y));
+      if(lx.some(y => y.de_la === n.de_la)){ sarite.push(x.anexa); continue; }
+      lx.push(Object.assign({}, u)); lx.sort((p, q) => p.de_la < q.de_la ? -1 : 1);
+      const r = await db.from("anexe").update({ actualizari: lx }).eq("id", x.id);
+      if(r.error){ sarite.push(x.anexa); continue; }
+      puse.push(x.anexa);
+    }
+  }
+  closeModal("mod-act");
+  toast("Actualizarea anexei s-a salvat" + (areNou ? " — din " + fmtD(n.de_la) : "") + (puse.length ? " · și pe " + puse.join(", ") : "") +
+    (sarite.length ? " · NU pe " + sarite.join(", ") + " (au deja actualizare la data asta)" : "") +
+    (areNou && n.frecv ? " · Nu uita: frecvența " + n.frecv + " o schimbi în Puncte de rută → ⋯ → 📅 din " + fmtD(n.de_la) : ""), !!sarite.length);
   await reloadClienti();
 }
 function adminNou(){ RUTE_COADA=[]; RUTE_ACUM=null; A_ID=null; A_COPIE_IDS=null; adminDeschide(null); }
