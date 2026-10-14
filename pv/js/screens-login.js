@@ -89,6 +89,7 @@ function runLoginScreen() {
               btn.textContent = 'Se conecteaza...';
               const signInResult = await signInAsDriver(driver.id);
               if (cancelled) return;
+              if (signInResult.needPin) { cerePin(driver, signInResult); return; }
               if (signInResult.error) {
                 errorBox.textContent = signInResult.error;
                 allButtons.forEach((b) => (b.disabled = false));
@@ -100,6 +101,41 @@ function runLoginScreen() {
             listBox.appendChild(btn);
           }
         })();
+
+        // Ecranul de PIN (4 cifre, pus de administrator din GestiuneEE). Se cere
+        // la fiecare logare; dupa 4 cifre se trimite singur.
+        function cerePin(driver, prim) {
+          listBox.innerHTML = '';
+          errorBox.textContent = prim && (prim.wrong || prim.blocked) ? prim.error : '';
+          const input = el('input', {
+            type: 'password', inputmode: 'numeric', pattern: '[0-9]*', maxlength: '4', autocomplete: 'off',
+            placeholder: '• • • •',
+            style: 'font-size:30px;text-align:center;letter-spacing:14px;padding:10px;width:100%;box-sizing:border-box;border-radius:10px',
+          });
+          let trimite = false;
+          const intra = primaryButton('Intră', async () => {
+            const pin = (input.value || '').replace(/\D/g, '');
+            if (pin.length !== 4) { errorBox.textContent = 'PIN-ul are 4 cifre.'; input.focus(); return; }
+            if (trimite) return;
+            trimite = true; intra.disabled = true; intra.textContent = 'Se conecteaza...'; errorBox.textContent = '';
+            const r = await signInAsDriver(driver.id, pin);
+            if (cancelled) return;
+            trimite = false; intra.disabled = false; intra.textContent = 'Intră';
+            if (r.error) { errorBox.textContent = r.error; input.value = ''; input.focus(); return; }
+            resolve(r.profile);
+          });
+          input.addEventListener('input', () => {
+            input.value = input.value.replace(/\D/g, '').slice(0, 4);
+            if (input.value.length === 4) intra.click();
+          });
+          const inapoi = el('button', { class: 'btn btn-text', style: 'display:block;margin:4px auto 0', onclick: () => render() }, ['← Nu sunt eu']);
+          listBox.appendChild(el('div', { style: 'text-align:center;font-weight:700;font-size:17px' }, [driver.full_name]));
+          listBox.appendChild(el('div', { style: 'text-align:center;color:var(--ink-soft);font-size:13px' }, ['Scrie PIN-ul tău (4 cifre)']));
+          listBox.appendChild(input);
+          listBox.appendChild(intra);
+          listBox.appendChild(inapoi);
+          setTimeout(() => input.focus(), 50);
+        }
 
         return screen;
       });

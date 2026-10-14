@@ -115,7 +115,7 @@ export async function listDriversForLogin() {
  * fi tastat vreuna. Odata stabilita, sesiunea ramane pe telefon (la fel
  * ca inainte), asa ca acest ecran nu mai reapare decat dupa deconectare
  * explicita. */
-export async function signInAsDriver(driverId) {
+export async function signInAsDriver(driverId, pin) {
   let supabase;
   try {
     supabase = await getSupabase();
@@ -131,9 +131,11 @@ export async function signInAsDriver(driverId) {
         Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ action: 'issue_driver_session', driver_id: driverId }),
+      body: JSON.stringify({ action: 'issue_driver_session', driver_id: driverId, pin: pin || '' }),
     });
     payload = await res.json().catch(() => ({}));
+    // PIN (v87): serverul cere PIN-ul / il respinge / blocheaza 15 min dupa 5 greseli
+    if (!res.ok && payload.need_pin) return { error: payload.error, needPin: true, wrong: !!payload.wrong, blocked: !!payload.blocked };
     if (!res.ok) throw new Error(payload.error || 'Cerere esuata');
   } catch (e) {
     return { error: 'Nu am putut incepe sesiunea: ' + e.message };
