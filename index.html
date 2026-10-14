@@ -739,7 +739,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <div class="hd-mij"><div id="titlu-sus"></div><span id="azi-sus" title="Data de azi (calculatorul)"></span></div>
   <button id="btn-mob" class="btn sec" style="padding:5px 10px;font-size:12px" onclick="mobPC(false)" title="Înapoi la varianta de telefon">📱 Telefon</button>
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
-  <span class="ver">v5.89</span>
+  <span class="ver">v5.90</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -1294,7 +1294,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   #mc-ciorne .ch{border:1px dashed var(--bd);border-radius:14px;padding:3px 4px 3px 10px;cursor:pointer;display:inline-flex;gap:6px;align-items:center}
   #mc-ciorne .ch.sel{border-style:solid;border-color:var(--acc)}
   #mc-ciorne .ch b{font-weight:600} #mc-ciorne .x{border:0;background:none;color:var(--mut);cursor:pointer;font-size:13px;padding:0 4px}
-  #mc-conf{position:absolute;inset:0;background:var(--card);padding:18px;display:none;flex-direction:column;overflow:auto;border-radius:inherit}
+  #mc-conf{position:absolute;inset:0;background:var(--card);padding:24px 20px 18px;display:none;flex-direction:column;overflow:auto;border-radius:inherit}
   #mc-conf.on{display:flex}
   #mc-conf table{width:100%;border-collapse:collapse;font-size:13px} #mc-conf td{padding:5px 8px;border-bottom:1px solid var(--bd);vertical-align:top}
   #mc-conf td:first-child{color:var(--mut);width:42%}
@@ -1330,7 +1330,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
       <div style="flex:0"><button class="btn" onclick="mcVerifica()">Salvează</button></div>
     </div>
     <div id="mc-conf">
-      <h3 id="mc-conf-t" style="cursor:default">Creați acest client?</h3>
+      <h3 id="mc-conf-t" style="cursor:default;margin:0 0 14px">Creați acest client?</h3>
       <div id="mc-conf-date"></div>
       <div class="row" style="margin-top:14px;justify-content:flex-end">
         <div style="flex:1"></div>
@@ -3075,6 +3075,8 @@ function mcVerifica(){
   d.nume = d.nume.toUpperCase();
   const prb = mcCuiProbleme();
   $("mc-conf-date").innerHTML = prb.map(x => `<div style="color:${x.r ? "var(--t-err)" : "#d97706"};margin-bottom:6px">⚠ ${esc(x.t)} Poți salva oricum.</div>`).join("") + "<table>" + MC_CAMPURI.map(([, c, l]) => `<tr><td>${esc(l)}</td><td><b>${esc(d[c] || "—")}</b></td></tr>`).join("") + "</table>";
+  { const cf = $("mc-conf"), cap = cf.parentElement.querySelector(".lux-cap");   // v5.90: confirmarea începe sub bara albastră, cu spațiu
+    cf.parentElement.scrollTop = 0; cf.style.top = (cap ? cap.offsetHeight : 0) + "px"; }
   $("mc-conf").classList.add("on");
 }
 async function saveClient(dupa){
