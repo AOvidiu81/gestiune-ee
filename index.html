@@ -220,6 +220,9 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   .fs-sel.INACTIV{background:rgba(107,114,128,.14);border-color:rgba(107,114,128,.4);color:var(--mut)}
   .fs-sel.NU{background:rgba(217,83,79,.12);border-color:rgba(217,83,79,.4);color:#d9534f}
   .fs-sel option{background:var(--card,#fff);color:var(--tx)}
+  .cx-w{position:relative;display:block} .cx-w>input{padding-right:30px}   /* v5.98: ✕ în căsuțele de căutare */
+  .cx-b{position:absolute;right:4px;top:50%;transform:translateY(-50%);border:0;background:none;color:var(--mut);font-size:16px;line-height:1;padding:4px 6px;cursor:pointer}
+  .cx-w>input:placeholder-shown~.cx-b{display:none}
   .zile-bife{display:flex;gap:4px 10px;flex-wrap:wrap;padding-top:6px}
   .zile-bife label{display:flex;align-items:center;gap:3px;margin:0;font-size:13px;text-transform:none;letter-spacing:0;color:var(--tx);cursor:pointer}
   .zile-bife input{width:auto;margin:0}
@@ -739,7 +742,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <div class="hd-mij"><div id="titlu-sus"></div><span id="azi-sus" title="Data de azi (calculatorul)"></span></div>
   <button id="btn-mob" class="btn sec" style="padding:5px 10px;font-size:12px" onclick="mobPC(false)" title="Înapoi la varianta de telefon">📱 Telefon</button>
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
-  <span class="ver">v5.97</span>
+  <span class="ver">v5.98</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -8120,7 +8123,22 @@ window.addEventListener("online", cmdVerifica);
 calendarActiveaza(document);
 // v5.87 (cerut de Ovidiu, 14.10): câmpurile de dată desenate mai târziu (bara „☑ Schimbă la cele bifate”, ⇄ Mută produse,
 // 📅 Schimbă zilele etc.) primesc și ele calendarul nostru (săptămâna de luni), nu pe cel al browserului.
+// v5.98 (cerut de Ovidiu, 14.10): în toate căsuțele de căutare — ✕ care golește textul (lista se reface singură, ca la Comenzi).
+// Toate filtrează deja cât scrii (oninput); ✕ apare doar când e ceva scris (CSS :placeholder-shown).
+const CAUT_IDS = ["c-q","g-cauta","rr-caut","iz-caut","fp-caut","a-cauta","r-client","mb-q"];
+function cautXActiveaza(){
+  CAUT_IDS.forEach(id => {
+    const el = $(id); if(!el || el.dataset.cx) return;
+    el.dataset.cx = "1"; if(!el.placeholder) el.placeholder = " ";
+    const w = document.createElement("span"); w.className = "cx-w"; el.parentNode.insertBefore(w, el); w.appendChild(el);
+    const b = document.createElement("button"); b.type = "button"; b.className = "cx-b"; b.title = "Șterge căutarea"; b.textContent = "✕";
+    b.onclick = () => { el.value = ""; el.dispatchEvent(new Event("input", { bubbles: true })); el.dispatchEvent(new Event("change", { bubbles: true })); const e2 = $(id); if(e2) e2.focus(); };
+    w.appendChild(b);
+  });
+}
+cautXActiveaza();
 new MutationObserver(ms => {
+  cautXActiveaza();
   for(const m of ms) for(const n of m.addedNodes){
     if(n.nodeType === 1 && (n.matches('input[type="date"]') || n.querySelector('input[type="date"]'))){ calendarActiveaza(document); return; }
   }
