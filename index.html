@@ -739,7 +739,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <div class="hd-mij"><div id="titlu-sus"></div><span id="azi-sus" title="Data de azi (calculatorul)"></span></div>
   <button id="btn-mob" class="btn sec" style="padding:5px 10px;font-size:12px" onclick="mobPC(false)" title="Înapoi la varianta de telefon">📱 Telefon</button>
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
-  <span class="ver">v5.91</span>
+  <span class="ver">v5.92</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -2060,6 +2060,7 @@ function ruteStil(r){
   const c = ok ? "#2E8B3C" : "#D97706";
   return `style="background:${c};border-color:${c};color:#fff" data-gps="${ok ? "da" : !p.length ? "fara punct" : "fara coordonate"}"`;
 }
+var MISC_CERERE=0, MISC_TQ=null;   // v5.92
 async function loadMiscari(){
   incarcaPct();
   let q=db.from("miscari").select("*").order("data",{ascending:false}).order("id",{ascending:false}).limit(3000);
@@ -2068,11 +2069,15 @@ async function loadMiscari(){
   if($("f-tip").value) q=q.eq("tip_miscare",$("f-tip").value);
   if($("f-prod").value) q=q.eq("produs",$("f-prod").value);
   if($("f-dep").value) q=q.eq("depozit",$("f-dep").value);
-  const s=$("f-q").value.trim(); if(s) q=q.or(`client.ilike.%${s}%,loc.ilike.%${s}%,sat.ilike.%${s}%,contract.ilike.%${s}%,jud.ilike.%${s}%`);
-  const {data,error}=await q; if(error){toast(error.message,true);return;}
+  const s=$("f-q").value.trim().replace(/[,()]/g," ").trim(); if(s) q=q.or(`client.ilike.%${s}%,loc.ilike.%${s}%,sat.ilike.%${s}%,contract.ilike.%${s}%,jud.ilike.%${s}%`);
+  const nr=++MISC_CERERE;
+  const {data,error}=await q; if(nr!==MISC_CERERE) return;   // v5.92: a venit deja o căutare mai nouă
+  if(error){toast(error.message,true);return;}
   MISC=data; renderMiscari(); incarcaCma();
 }
-$("f-q").addEventListener("keydown",e=>{if(e.key==="Enter")loadMiscari();});
+$("f-q").addEventListener("keydown",e=>{if(e.key==="Enter"){clearTimeout(MISC_TQ);loadMiscari();}});
+// v5.92 (cerut de Ovidiu, 14.10): căutarea din Comenzi filtrează singură cât scrii (după o mică pauză)
+$("f-q").addEventListener("input",()=>{clearTimeout(MISC_TQ);MISC_TQ=setTimeout(loadMiscari,350);});
 // v5.22: stilul de probă al datei în Comenzi (ales de Ovidiu după ce le vede; ținut doar pe acest calculator)
 const DATA_STIL = 1;   // v5.39: ales de Ovidiu (12.10) — „1 pastilă”; butoanele de probă scoase
 const tipLit = t => /AMPLASARE|EVENIMENT-A|SUPLIMENTARE/.test(t)?"A":/RIDICARE|EVENIMENT-R|REDUCERE/.test(t)?"R":/SERVISARE/.test(t)?"S":/Transfer|VANZARE/.test(t)?"T":"X";
