@@ -128,6 +128,13 @@ async function citesteDinCloud() {
       rows.forEach((r) => { if (g.has(r.id)) r.grup_id = g.get(r.id); });
     }
   } catch (e) { /* fara grupare */ }
+  try {
+    const rz = await supabase.rpc('comenzi_active_serv');   // v84: zilele si traseul puse pe comanda (GestiuneEE v5.91)
+    if (!rz.error) {
+      const z = new Map((rz.data || []).map((x) => [x.id, x]));
+      rows.forEach((r) => { const x = z.get(r.id); if (x) { if (x.zi_serv) r.zi_servisare = x.zi_serv; r.traseu = x.traseu || ''; } });
+    }
+  } catch (e) { /* fara zile / traseu din comanda */ }
   await MetaRepo.set(CACHE_KEY, { rows, at: new Date().toISOString() });
   return rows;
 }
@@ -251,7 +258,7 @@ export function buildComenziActive({ driver, car, depot, onFaraComanda, pop, emb
       const produs = `${Math.abs(Number(c.buc) || 0)} buc ${[c.produs, c.model].filter(Boolean).join(' ')}`.trim();
       const locs = locatiile(c);
       const prodX = (x) => `${Math.abs(Number(x.buc) || 0)} buc ${[x.produs, x.model].filter(Boolean).join(' ')}`.trim() + (x.accesorii ? ` · ${accScurt(x.accesorii)}` : '');
-      const serv = [c.frecv_serv, c.zi_servisare ? String(c.zi_servisare).replace(/,/g, ', ') : ''].filter(Boolean).join(', ');
+      const serv = [c.frecv_serv, c.zi_servisare ? String(c.zi_servisare).replace(/,/g, ', ') : '', c.traseu || ''].filter(Boolean).join(', ');
 
       const eu = c.preluat_de && c.preluat_de === driver.name;
       const stare = [];
