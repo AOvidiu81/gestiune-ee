@@ -742,7 +742,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <div class="hd-mij"><div id="titlu-sus"></div><span id="azi-sus" title="Data de azi (calculatorul)"></span></div>
   <button id="btn-mob" class="btn sec" style="padding:5px 10px;font-size:12px" onclick="mobPC(false)" title="Înapoi la varianta de telefon">📱 Telefon</button>
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
-  <span class="ver">v6.07</span>
+  <span class="ver">v6.08</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -1025,7 +1025,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
             <option value="_stoc">Stoc inițial</option>
           </optgroup>
           <optgroup label="Întreținere">
-            <option value="_curat">Date de probă</option>
+            <option value="_curat">Copie de siguranță / date de probă</option>
             <option value="_ghid">Ghid pentru începători</option>
           </optgroup>
         </select>
@@ -1082,7 +1082,12 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   </div>
 
   <div class="card" id="a-card-curat" style="display:none">
-    <h3 style="margin:0 0 6px;color:var(--g)">Golirea datelor de probă</h3>
+    <!-- v6.08: copia de siguranță (un fișier JSON cu toate tabelele, fără PIN-uri; refacerea se face cu Claude, nu din buton) -->
+    <h3 style="margin:0 0 6px;color:var(--g)">Copie de siguranță</h3>
+    <p class="muted" style="margin:0 0 8px">Descarcă pe calculator un fișier cu toate datele din aplicație: clienți, contracte, anexe, serii, comenzi, puncte de rută, rute, vizite, angajați, mașini, depozite, liste, produse. Nu cuprinde parolele / PIN-urile și PDF-urile (acelea sunt deja pe calculator). Păstrează fișierul și pe un stick sau în Google Drive. Fă una cel puțin o dată pe săptămână și înainte de orice ștergere.</p>
+    <div id="cs-stare" style="margin:0 0 10px;font-size:14px"></div>
+    <button class="btn" onclick="copieSiguranta(this)">Descarcă copia de siguranță</button>
+    <h3 style="margin:22px 0 6px;color:var(--g)">Golirea datelor de probă</h3>
     <p class="muted" style="margin:0 0 12px">Șterge tot ce s-a introdus la probe: clienți, contracte, anexe, serii, comenzi, registrul de documente, procese verbale (cu fișierele PDF), puncte de rută (cu GPS), rute, vizite și începuturi de zi. Rămân: angajații, mașinile, depozitele, produsele, listele, stocul și conturile. Doar administratorul. <b>Ștergerea nu se poate anula.</b></p>
     <button class="btn danger" onclick="golesteProba()">Golește datele de probă</button>
     <h3 style="margin:22px 0 6px;color:var(--g)">Șterge un singur client</h3>
@@ -5046,6 +5051,35 @@ function tbBara(et, b, lim){
     `<span><b>${tbMB(b)}</b> din ${tbMB(lim)} · ${pr.toFixed(1).replace(".", ",")}%</span></div>` +
     `<div style="height:8px;border-radius:4px;background:var(--gl);overflow:hidden;margin-top:3px"><div style="height:100%;width:${Math.max(pr, .5)}%;background:${cul}"></div></div></div>`;
 }
+// v6.08: copia de siguranță — un fișier JSON descărcat pe PC; data ultimei copii în copii_siguranta (roșu după 7 zile)
+function csText(d){
+  if(!d) return `<span style="color:#b3261e;font-weight:700">⚠ Nu s-a făcut încă nicio copie de siguranță</span>`;
+  const z = Math.floor((Date.now() - new Date(d)) / 86400000);
+  const cand = new Date(d).toLocaleString("ro-RO", { timeZone: "Europe/Bucharest", day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" }).replace(/\./g, "-");
+  return `<span style="color:${z > 7 ? "#b3261e" : "#2E8B3C"};font-weight:700">${z > 7 ? "⚠" : "✔"} Ultima copie de siguranță: ${esc(cand)} (${z === 0 ? "azi" : z === 1 ? "ieri" : "acum " + z + " zile"})</span>`;
+}
+async function csStare(){
+  const el = $("cs-stare"); if(!el) return;
+  const { data: r, error } = await db.rpc("rezumat_baza");
+  el.innerHTML = (error || !r) ? "" : csText(r.ultima_copie);
+}
+async function copieSiguranta(btn){
+  const vechi = btn ? btn.textContent : "";
+  if(btn){ btn.disabled = true; btn.textContent = "Se pregătește…"; }
+  try {
+    const { data, error } = await db.rpc("copie_siguranta");
+    if(error || !data){ toast("Copia nu s-a putut face: " + (error ? error.message : "răspuns gol"), true); return; }
+    const blob = new Blob([JSON.stringify(data)], { type: "application/json" });
+    const d = new Date(), p = x => String(x).padStart(2, "0");
+    const nume = `copie-EE-${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}-${p(d.getHours())}${p(d.getMinutes())}.json`;
+    const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = nume;
+    document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+    const n = Object.values(data.randuri || {}).reduce((t, v) => t + (+v || 0), 0);
+    const { error: eN } = await db.rpc("noteaza_copie", { p_randuri: n, p_octeti: blob.size });
+    toast(`Copia s-a descărcat (${nume}, ${n} rânduri, ${tbMB(blob.size)}).` + (eN ? " Data copiei nu s-a putut nota." : " Pune-o și pe un stick / Google Drive."), !!eN);
+    csStare(); rezumatBaza();
+  } finally { if(btn){ btn.disabled = false; btn.textContent = vechi; } }
+}
 async function rezumatBaza(){
   const card = $("tb-card"); if(!card) return;
   const { data: r, error } = await db.rpc("rezumat_baza");
@@ -5063,7 +5097,9 @@ async function rezumatBaza(){
     return `<tr><td><b>${et}</b></td><td>${tot} · ${tbMB(nd.b + d.b)}</td><td>${st}</td>` +
       `<td><button class="btn sm sec" onclick="document.querySelector('nav button[data-p=&quot;pv&quot;][data-v=&quot;${v}&quot;]').click()">→ deschide</button></td></tr>`;
   };
-  let h = tbBara("Date (tabele)", r.db_bytes, 500 * 1048576) + tbBara("Fișiere (PDF-uri PV / cereri)", fis, 1024 * 1048576);
+  let h = `<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:0 0 8px;font-size:14px"><div style="flex:1">${csText(r.ultima_copie)}</div>` +
+    `<button class="btn sm" onclick="copieSiguranta(this)">Descarcă copia de siguranță</button></div>`;
+  h += tbBara("Date (tabele)", r.db_bytes, 500 * 1048576) + tbBara("Fișiere (PDF-uri PV / cereri)", fis, 1024 * 1048576);
   h += `<table class="mu-tab" style="width:100%;margin:4px 0 8px">${linie(false, "Procese verbale", "pv")}${linie(true, "Cereri / documente angajați", "cereri")}</table>`;
   if(+r.orfane) h += `<div style="color:#b3261e;font-size:13px;margin:0 0 8px">⚠ ${r.orfane} fișier${+r.orfane === 1 ? "" : "e"} PDF (${tbMB(r.orfane_b)}) în Supabase fără PV în listă — rămase de la o ștergere incompletă.</div>`;
   h += `<details><summary style="cursor:pointer;font-size:13px">Tabelele — rânduri și mărime</summary><table class="mu-tab" style="margin-top:6px">` +
@@ -6207,10 +6243,10 @@ function adminSchimba(){
   if(!eTabel){
     $("a-nota").textContent = (v === "_liste")
       ? "Listele care apar în formularele aplicației: tipuri de mișcare, frecvențe, funcții, mărci. Produsele și modelele au fila lor, Produse. „Efect stoc” se completează doar la tipurile de mișcare."
-      : (v === "_curat") ? "Golirea datelor de probă, ori de câte ori vrei să pornești de la o aplicație goală."
+      : (v === "_curat") ? "Copia de siguranță a datelor și golirea datelor de probă."
       : (v === "_ghid") ? "Pornește sau oprește ghidul cu pașii de urmat."
       : "Valorile de pornire pe depozit și produs (celulele START din Excel). Mișcările înregistrate după data de referință se adună sau se scad din acestea.";
-    if(v === "_curat"){ scNume(); return; }
+    if(v === "_curat"){ scNume(); csStare(); return; }
     if(v === "_ghid"){ ghidAdminDeseneaza(); return; }
     if(v === "_liste") renderNom(); else renderStocInitial();
     return;
