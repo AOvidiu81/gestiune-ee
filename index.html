@@ -2622,7 +2622,7 @@ function largesteFiltrele(rec){
   }
   const q = $("f-q").value.trim();
   if(q && !potrivesteCautarea([rec.client,rec.loc,rec.sat,rec.contract,rec.jud].filter(Boolean).join(" "), q)){
-    $("f-q").value = ""; schimbate.push("căutarea goală");
+    $("f-q").value = ""; fqX(); schimbate.push("căutarea goală");
   }
   return schimbate;
 }
