@@ -140,6 +140,15 @@ async function citesteDinCloud() {
 }
 
 // Accesoriile, prescurtate ca in GestiuneEE (cerut 03.10), ca sa nu lungeasca cardul comenzii
+// v85 (cerut de Ovidiu, 14.10): produsul la singular / plural dupa numar (1 TOALETA · 6 TOALETE), ca in GestiuneEE
+const PL_CUV = { TOALETA: 'TOALETE', ECOLOGICA: 'ECOLOGICE', CONTAINER: 'CONTAINERE', CABINA: 'CABINE', LAVOAR: 'LAVOARE', CUB: 'CUBURI',
+  FOSA: 'FOSE', SEPTICA: 'SEPTICE', GARD: 'GARDURI', PANOU: 'PANOURI', GENERATOR: 'GENERATOARE', REZERVOR: 'REZERVOARE', DUS: 'DUSURI',
+  PISOAR: 'PISOARE', CLEMA: 'CLEME', TALPA: 'TALPI', SANITAR: 'SANITARE', SANITARA: 'SANITARE', MOBILA: 'MOBILE', MOBIL: 'MOBILE', BIROU: 'BIROURI' };
+function prodN(prod, n) {
+  const t = String(prod == null ? '' : prod); if (!t || Math.abs(Number(n)) === 1) return t;
+  return t.split(/(\s+)/).map((w) => { const k = w.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase(), pl = PL_CUV[k];
+    return !pl ? w : (w === w.toLowerCase() ? pl.toLowerCase() : pl); }).join('');
+}
 const ACC_SCURT = { 'LAVOAR INTERIOR': 'L.I.', 'LAVOAR INT.': 'L.I.', 'DOZATOR SAPUN': 'D.S.', 'DISPENSER PROSOP': 'D.P.H.', 'DISPENSER PROSOP HARTIE': 'D.P.H.',
   'AER CONDITIONAT': 'AC', 'RADIATOR INCALZIRE': 'RI', 'BOILER APA CALDA': 'BAC' };
 // Seriile unei comenzi, grupate pe model: "ARMAL EE-1, EE-2; MONDO EE-3"
@@ -255,9 +264,9 @@ export function buildComenziActive({ driver, car, depot, onFaraComanda, pop, emb
           c.pv_facut_de ? el('div', { class: 'ca-stare ca-pv' }, [`✔ PV facut de ${c.pv_facut_de}`]) : null,
         ]);
       }
-      const produs = `${Math.abs(Number(c.buc) || 0)} buc ${[c.produs, c.model].filter(Boolean).join(' ')}`.trim();
+      const produs = `${Math.abs(Number(c.buc) || 0)} buc ${[prodN(c.produs, c.buc), c.model].filter(Boolean).join(' ')}`.trim();
       const locs = locatiile(c);
-      const prodX = (x) => `${Math.abs(Number(x.buc) || 0)} buc ${[x.produs, x.model].filter(Boolean).join(' ')}`.trim() + (x.accesorii ? ` · ${accScurt(x.accesorii)}` : '');
+      const prodX = (x) => `${Math.abs(Number(x.buc) || 0)} buc ${[prodN(x.produs, x.buc), x.model].filter(Boolean).join(' ')}`.trim() + (x.accesorii ? ` · ${accScurt(x.accesorii)}` : '');
       const serv = [c.frecv_serv, c.zi_servisare ? String(c.zi_servisare).replace(/,/g, ', ') : '', c.traseu || ''].filter(Boolean).join(', ');
 
       const eu = c.preluat_de && c.preluat_de === driver.name;
