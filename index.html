@@ -739,7 +739,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <div class="hd-mij"><div id="titlu-sus"></div><span id="azi-sus" title="Data de azi (calculatorul)"></span></div>
   <button id="btn-mob" class="btn sec" style="padding:5px 10px;font-size:12px" onclick="mobPC(false)" title="Înapoi la varianta de telefon">📱 Telefon</button>
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
-  <span class="ver">v5.92</span>
+  <span class="ver">v5.94</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -834,7 +834,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
       <div><label>Tip comandă</label><select id="f-tip"><option value="">Toate</option></select></div>
       <div><label>Produs</label><select id="f-prod"><option value="">Toate</option></select></div>
       <div><label>Depozit</label><select id="f-dep"><option value="">Toate</option></select></div>
-      <div><label>Caută (client / localitate / contract)</label><input id="f-q" placeholder="ex: ACOMIN"></div>
+      <div><label>Caută (client / localitate / contract)</label><div style="position:relative"><input id="f-q" placeholder="ex: ACOMIN" style="padding-right:30px"><button type="button" id="f-q-x" title="Șterge căutarea" onclick="fqSterge()" style="display:none;position:absolute;right:4px;top:50%;transform:translateY(-50%);border:0;background:none;color:var(--mut);font-size:16px;line-height:1;padding:4px 6px;cursor:pointer">✕</button></div></div>
       <div style="flex:0"><button class="btn" onclick="loadMiscari()">Filtrează</button></div>
       <div style="flex:0"><button class="btn" onclick="openMiscare()">+ Comandă nouă</button></div>
       <div style="flex:0"><button class="btn sec" onclick="exportMiscari()">Export Excel</button></div>
@@ -2077,7 +2077,10 @@ async function loadMiscari(){
 }
 $("f-q").addEventListener("keydown",e=>{if(e.key==="Enter"){clearTimeout(MISC_TQ);loadMiscari();}});
 // v5.92 (cerut de Ovidiu, 14.10): căutarea din Comenzi filtrează singură cât scrii (după o mică pauză)
-$("f-q").addEventListener("input",()=>{clearTimeout(MISC_TQ);MISC_TQ=setTimeout(loadMiscari,350);});
+$("f-q").addEventListener("input",()=>{fqX();clearTimeout(MISC_TQ);MISC_TQ=setTimeout(loadMiscari,350);});
+// v5.94 (cerut de Ovidiu, 14.10): ✕ în căsuța de căutare — golește și reîncarcă lista
+function fqX(){ const b=$("f-q-x"); if(b) b.style.display=$("f-q").value?"":"none"; }
+function fqSterge(){ $("f-q").value=""; fqX(); clearTimeout(MISC_TQ); loadMiscari(); $("f-q").focus(); }
 // v5.22: stilul de probă al datei în Comenzi (ales de Ovidiu după ce le vede; ținut doar pe acest calculator)
 const DATA_STIL = 1;   // v5.39: ales de Ovidiu (12.10) — „1 pastilă”; butoanele de probă scoase
 const tipLit = t => /AMPLASARE|EVENIMENT-A|SUPLIMENTARE/.test(t)?"A":/RIDICARE|EVENIMENT-R|REDUCERE/.test(t)?"R":/SERVISARE/.test(t)?"S":/Transfer|VANZARE/.test(t)?"T":"X";
@@ -2348,7 +2351,7 @@ $("mm-anexa").onchange = () => {
   // v4.92: la SUPLIMENTARE / REDUCERE, alegerea anexei de bază (nu a celei -S / -R) nu mai rescrie data și bucățile scrise în comandă
   const tipC = $("mm-tip").value, nA = anexaNr(a);
   const baza = ["SUPLIMENTARE", "REDUCERE"].includes(tipC) && !(nA && nA.tip === (tipC === "REDUCERE" ? "R" : "S"));
-  if(a.cant && !baza) $("mm-buc").value = (!$("mm-id").value && tipC === "RIDICARE") ? cantLinie(a.id) : Math.abs(+a.cant);   // la ridicare: tot ce e la client pe linie
+  if(a.cant && !baza) $("mm-buc").value = (!$("mm-id").value && (tipC === "RIDICARE" || tipC === "EVENIMENT-R")) ? cantLinie(a.id) : Math.abs(+a.cant);   // la ridicare: tot ce e la client pe linie
   if(a.contract_depozit) $("mm-contract").value = a.contract_depozit;
   if(a.depozit)          $("mm-dep").value = a.depozit;
   if(a.pers_contact)     $("mm-pers").value = a.pers_contact;
@@ -2377,7 +2380,7 @@ function anexaEditDinMiscare(){
 function anexaNouaDinMiscare(){
   const k = +$("mm-ctr").value;
   if(!k){ toast("Alege întâi contractul pe care vine anexa", true); return; }
-  const tip = $("mm-tip").value;
+  const tip = $("mm-tip").value === "EVENIMENT-R" ? "RIDICARE" : $("mm-tip").value;   // v5.93: ridicarea de la eveniment = ridicare finală
   if(tip === "SUPLIMENTARE" || tip === "REDUCERE" || tip === "RIDICARE"){   // v5.08: și anexa de ridicare finală
     const b = ANX.find(x => x.id == $("mm-anexa").value);
     if(!b){ toast("Alege întâi anexa liniei (cea pe care se face " + (tip === "SUPLIMENTARE" ? "suplimentarea" : tip === "REDUCERE" ? "reducerea" : "ridicarea") + "), apoi apasă +", true); return; }
