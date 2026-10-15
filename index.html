@@ -742,7 +742,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <div class="hd-mij"><div id="titlu-sus"></div><span id="azi-sus" title="Data de azi (calculatorul)"></span></div>
   <button id="btn-mob" class="btn sec" style="padding:5px 10px;font-size:12px" onclick="mobPC(false)" title="Înapoi la varianta de telefon">📱 Telefon</button>
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
-  <span class="ver">v6.26</span>
+  <span class="ver">v6.27</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -5425,7 +5425,8 @@ async function actSpreRegistru(mid){
   const { data: ex, error } = await db.from("documente").select("tip_document,data_trimitere,observatii").eq("referinta", ref);
   if(error){ toast(error.message, true); return; }
   const dubla = numeAnx && (ex || []).find(d => (d.observatii || "").toUpperCase().startsWith(numeAnx.toUpperCase()));
-  const prima = /\bNR\.?\s*0*1\b/i.test(numeAnx);
+  // v6.27: doar ANEXA NR 1 (fără -S1 / -R1 / .1) e în contract — „ANEXA NR 1-R1” propunea greșit CONTRACT
+  const prima = /\bNR\.?\s*0*1\s*$/i.test(numeAnx);
   const nota = `Din ACT = V pe ${esc(numeAnx || "anexă")}, contract <b>${esc(ref)}</b>. ` +
     `Alege <b>tipul documentului</b>` + (prima ? " (anexa 1 e în contract, am propus CONTRACT)" : "") +
     `, verifică și apasă <b>Salvează</b>; nimic nu s-a salvat încă.` +
@@ -5462,6 +5463,12 @@ async function docSalveaza(){
     observatii: $("gd-obs").value.trim() || null
   };
   const id = $("gd-id").value;
+  // v6.27: același document (aceeași referință + aceeași anexă la începutul observațiilor) deja în registru → întreabă înainte
+  if(!id && ref){ const cap = (rec.observatii || "").split("·")[0].trim().toUpperCase();
+    const { data: ex } = await db.from("documente").select("tip_document,data_trimitere,status_prim,observatii").eq("referinta", ref);
+    const d2 = cap && (ex || []).find(d => (d.observatii || "").split("·")[0].trim().toUpperCase() === cap);
+    if(d2 && !confirm("În registru există deja un rând pentru " + cap + " (contract " + ref + "):\n\n" + [fmtD(d2.data_trimitere), d2.tip_document, d2.status_prim].filter(Boolean).join(" · ") +
+      "\n\nDacă vrei doar să schimbi starea (ex. PRIMIT), apasă Anulează și folosește Editează / „Primit azi” pe rândul existent.\n\nAdaugi totuși un rând nou?")) return; }
   const { error } = id ? await db.from("documente").update(rec).eq("id", id)
                        : await db.from("documente").insert(rec);
   if(error){ toast(error.message, true); return; }
