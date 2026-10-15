@@ -742,7 +742,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <div class="hd-mij"><div id="titlu-sus"></div><span id="azi-sus" title="Data de azi (calculatorul)"></span></div>
   <button id="btn-mob" class="btn sec" style="padding:5px 10px;font-size:12px" onclick="mobPC(false)" title="Înapoi la varianta de telefon">📱 Telefon</button>
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
-  <span class="ver">v6.13</span>
+  <span class="ver">v6.14</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -1804,7 +1804,7 @@ document.querySelectorAll("nav button").forEach(b=>b.onclick=()=>{
   if(b.dataset.p==="stoc") loadStoc();
   if(b.dataset.p==="miscari" && !MISC.length) loadMiscari();
   if(b.dataset.p==="rapoarte"){ if(b.dataset.r) $("r-tip").value = b.dataset.r;
-    if(!VER && b.dataset.r==="facturare"){ const a=new Date(); $("r-an").value=a.getFullYear(); $("r-luna").value=a.getMonth()+1; }   // v6.13 (cerut de Ovidiu, 15.10): Facturare pornește pe luna și anul curent
+    if(!VER){ const a=new Date(); $("r-an").value=a.getFullYear(); $("r-luna").value=a.getMonth()+1; $("r-client").value=""; }   // v6.13/v6.14 (cerut de Ovidiu, 15.10): Facturare și Raport lună pornesc pe luna și anul curent, fără client în filtru
     genereazaRaport(); }
   if(b.dataset.p==="documente" && !DOC.length) loadDoc();
   if(b.dataset.p==="rute") deschideRute();
@@ -4738,7 +4738,7 @@ function verDeschide(id, f){
   if(f === "fac" || f === "rpt"){
     initRapoarte();
     $("r-an").value = m.data.slice(0, 4); $("r-luna").value = +m.data.slice(5, 7);
-    $("r-client").value = m.client || ""; $("r-jud").value = ""; $("r-stare").value = ""; R_MOD = "lucru";
+    $("r-client").value = ""; $("r-jud").value = "";   /* v6.14: fără client în filtru — rândul comenzii e evidențiat */ $("r-stare").value = ""; R_MOD = "lucru";
     const deja = $("p-rapoarte").classList.contains("on") && $("r-tip").value === VER_FILE[f].tip;
     deschideSectiune(VER_FILE[f].h);
     if(deja) genereazaRaport();
