@@ -742,7 +742,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <div class="hd-mij"><div id="titlu-sus"></div><span id="azi-sus" title="Data de azi (calculatorul)"></span></div>
   <button id="btn-mob" class="btn sec" style="padding:5px 10px;font-size:12px" onclick="mobPC(false)" title="Înapoi la varianta de telefon">📱 Telefon</button>
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
-  <span class="ver">v6.17</span>
+  <span class="ver">v6.18</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -936,7 +936,8 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <div class="card noprint"><p class="muted" id="rr-nota" style="margin:0">Toate punctele de rută, cu vizita din săptămâna aleasă (sosire, plecare, cod, locul GPS de pe telefon) și codurile ultimelor 6 săptămâni.</p></div>
   <div class="card">
     <div class="row noprint">
-      <div style="flex:0;min-width:190px"><label>Săptămâna</label><select id="rr-sapt" onchange="rrSaptCul();rrAfiseaza()"></select></div>
+      <div style="flex:0;min-width:90px"><label>An</label><select id="rr-an" onchange="rrSaptOpt();rrAfiseaza()"></select></div>
+      <div style="flex:0;min-width:230px"><label>Săptămâna</label><select id="rr-sapt" onchange="rrSaptCul();rrAfiseaza()"></select></div>
       <div style="flex:0;min-width:120px"><label>Ziua</label><select id="rr-zi" onchange="rrAfiseaza()"></select></div>
       <div style="flex:0;min-width:130px"><label>Traseu</label><select id="rr-traseu" onchange="rrAfiseaza()"></select></div>
       <div style="flex:0;min-width:130px"><label>Mașina</label><select id="rr-masina" onchange="rrAfiseaza()"></select></div>
@@ -5760,7 +5761,7 @@ function exportPV(){
 // Punctele de rută (clients) + vizitele din aplicația de rute (visit_logs, route_sessions),
 // pe săptămâni (week_meta). Vizita se leagă de punct prin cheia lungă a aplicației de rute
 // (CLIENT|JUD|LOC|LOCATIE|ZIUA|STATUS) sau prin client_key. Codurile vechi din Excel: client_weeks.
-let RR = { cl:[], sess:[], vis:[], cw:[], wk:[] }, RR_GATA = false, RR_ROWS = [], RR_WEEKS = [];
+let RR = { cl:[], sess:[], vis:[], cw:[] }, RR_GATA = false, RR_ROWS = [], RR_WEEKS = [];
 const rrKey = r => [r.client, r.jud, r.localitate, r.locatie, r.ziua, r.status].map(v => String(v||"").trim().toUpperCase()).join("|");
 const rrNorm = z => String(z||"").normalize("NFD").replace(/[̀-ͯ]/g,"").trim().toUpperCase();
 const RR_ZILE = ["LUNI","MARTI","MIERCURI","JOI","VINERI","SAMBATA","DUMINICA"];
@@ -5775,9 +5776,28 @@ async function rrToate(tabel){
   }
   return tot;
 }
-function rrSapt(zi){ // zi = "aaaa-ll-zz"
-  const w = RR.wk.find(x => x.start_date <= zi && zi <= x.end_date);
-  return w ? w.week_num : null;
+// v6.18: săptămâni LUNI–DUMINICĂ; W1 = săptămâna în care cade 1 ianuarie. Cod = an*100 + W (ex. 202642), calculat, fără week_meta.
+// Săptămâna care prinde 1 ianuarie are codul anului nou (202701); în anul vechi apare ca ultima (W53).
+function sIso(d){ return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0"); }
+function sLuni1(an){ const d = new Date(an, 0, 1, 12); d.setDate(d.getDate() - (d.getDay() + 6) % 7); return d; }
+function sCod(iso){ const [a, l, z] = String(iso).slice(0, 10).split("-").map(Number), d = new Date(a, l - 1, z, 12);
+  if(d >= sLuni1(a + 1)) return (a + 1) * 100 + 1;
+  return a * 100 + Math.floor(Math.round((d - sLuni1(a)) / 864e5) / 7) + 1; }
+function sStart(cod){ const d = sLuni1(Math.floor(cod / 100)); d.setDate(d.getDate() + 7 * (cod % 100 - 1)); return d; }
+function sInfo(cod){ const s = sStart(cod), e = new Date(s); e.setDate(e.getDate() + 6); return { num: cod, start: sIso(s), end: sIso(e) }; }
+function sMuta(cod, n){ const s = sStart(cod); s.setDate(s.getDate() + 7 * n); return sCod(sIso(s)); }
+function sAn(an){ const L = [], sf = sCod(an + "-12-31"); let c = an * 100 + 1; while(L.length < 60){ L.push(c); if(c === sf) break; c = sMuta(c, 1); } return L; }
+function rrSapt(zi){ return zi ? sCod(zi) : null; } // zi = "aaaa-ll-zz" -> cod săptămână (202642)
+// eticheta săptămânii în anul ales: săptămâna comună cu anul următor apare ca W53 în anul vechi
+function rrEt(cod){ const an = +$("rr-an").value; if(an && Math.floor(cod / 100) !== an){ const i = sAn(an).indexOf(cod); if(i >= 0) return "W" + (i + 1); } return "W" + (cod % 100); }
+function rrSaptOpt(){
+  const an = +$("rr-an").value, azi = sCod(today()), L = sAn(an);
+  const zo = w => { const g = grupaZilei(w.start); return g === "azi" ? "sa" : g; };
+  $("rr-sapt").innerHTML = [...L].reverse().map(c => { const w = sInfo(c), g = zo(w), t = g === "sa" ? " · săpt. asta" : g === "st" ? " · trecută" : g === "sv" ? " · viitoare" : "";
+    const alt = Math.floor(c / 100) !== an ? ` (= W${c % 100} ${Math.floor(c / 100)})` : "";
+    return `<option value="${c}"${g ? ` class="zo-${g}"` : ""}>${rrEt(c)} · ${fmtD(w.start)} – ${fmtD(w.end)}${alt}${t}</option>`; }).join("");
+  $("rr-sapt").value = String(L.includes(azi) ? azi : an < new Date().getFullYear() ? L[L.length - 1] : L[0]);
+  rrSaptCul();
 }
 function rrCod(v){
   const hm = d => zi2(d.getHours()) + zi2(d.getMinutes());
@@ -5798,14 +5818,10 @@ function rrOptiuni(id, valori, toate){
 }
 function rrSaptCul(){ const el = $("rr-sapt"), o = el.options[el.selectedIndex]; el.className = o ? o.className : ""; }
 function rrUmpleFiltre(){
-  const azi = today();
-  const wk = [...RR.wk].sort((a,b) => b.week_num - a.week_num);
-  // v5.38: săptămâna asta / trecută / viitoare colorate ca în Comenzi (după lunea săptămânii)
-  const zo = w => { const g = grupaZilei(w.start_date); return g === "azi" ? "sa" : g; };
-  $("rr-sapt").innerHTML = wk.map(w => { const g = zo(w), t = g === "sa" ? " · săpt. asta" : g === "st" ? " · trecută" : g === "sv" ? " · viitoare" : "";
-    return `<option value="${w.week_num}"${g ? ` class="zo-${g}"` : ""}>W${w.week_num} · ${fmtD(w.start_date)} – ${fmtD(w.end_date)}${t}</option>`; }).join("");
-  const curenta = rrSapt(azi); if(curenta) $("rr-sapt").value = String(curenta);
-  rrSaptCul();
+  // v6.18: An (2026 … anul următor), apoi săptămânile anului, calculate; săptămâna asta / trecută / viitoare colorate ca în Comenzi
+  const an = new Date().getFullYear(), ani = []; for(let a = Math.min(2026, an); a <= an + 1; a++) ani.push(a);
+  $("rr-an").innerHTML = ani.map(a => `<option value="${a}">${a}</option>`).join(""); $("rr-an").value = String(an);
+  rrSaptOpt();
   const zile = [...new Set(RR.cl.map(c => rrNorm(c.ziua)).filter(Boolean))].sort((a,b) => RR_ZILE.indexOf(a) - RR_ZILE.indexOf(b));
   rrOptiuni("rr-zi", zile, "toate");
   rrOptiuni("rr-traseu", [...new Set(RR.cl.map(c => c.masina).filter(Boolean))].sort(), "toate");
@@ -5835,8 +5851,8 @@ setInterval(async () => {
 async function loadRR(forta){
   try{
     if(!RR_GATA || forta){
-      const [cl, sess, vis, cw, wk] = await Promise.all(["clients","route_sessions","visit_logs","client_weeks","week_meta"].map(rrToate));
-      RR = { cl, sess, vis, cw, wk };
+      const [cl, sess, vis, cw] = await Promise.all(["clients","route_sessions","visit_logs","client_weeks"].map(rrToate));
+      RR = { cl, sess, vis, cw };
       if(!RR_GATA) rrUmpleFiltre();
       RR_GATA = true;
     }
@@ -5854,8 +5870,12 @@ function rrAfiseaza(){
   RR.vis.forEach(v => { const s = ses[v.session_id]; if(!s || !s.w) return;
     ((viz[v.client_key || v.client_id] ||= {})[s.w] ||= []).push({ ...v, s }); });
   const cw = {}; RR.cw.forEach(c => ((cw[c.client_key] ||= {})[c.week_num] = c.code));
-  const nS = $("rr-nsapt").value === "toate" ? W : (+$("rr-nsapt").value || 6);
-  RR_WEEKS = []; if(W) for(let w = W - nS + 1; w <= W; w++) if(w >= 1) RR_WEEKS.push(w);
+  RR_WEEKS = [];
+  if(W){
+    if($("rr-nsapt").value === "toate"){ const L = sAn(+$("rr-an").value); RR_WEEKS = L.slice(0, L.indexOf(W) + 1); }
+    else { const n = +$("rr-nsapt").value || 6; for(let i = n - 1; i >= 0; i--) RR_WEEKS.push(sMuta(W, -i)); }
+    if(!RR_WEEKS.length) RR_WEEKS = [W];
+  }
   const folosite = new Set();
   const viziteDe = (chei, w) => chei.flatMap(k => (viz[k] && viz[k][w]) || [])
     .sort((a,b) => String(b.arrive_time||b.updated_at||"").localeCompare(String(a.arrive_time||a.updated_at||"")));
@@ -5896,8 +5916,8 @@ function rrAfiseaza(){
   }
   RR_ROWS = rows;
   const viz_n = rows.filter(r => r.v).length;
-  const wm = RR.wk.find(x => x.week_num === W);
-  $("rr-nota").textContent = (W ? `W${W}` + (wm ? ` (${fmtD(wm.start_date)} – ${fmtD(wm.end_date)})` : "") + " · " : "") +
+  const wm = W ? sInfo(W) : null;
+  $("rr-nota").textContent = (W ? rrEt(W) + (wm ? ` (${fmtD(wm.start)} – ${fmtD(wm.end)})` : "") + " · " : "") +
     `${rows.length} puncte · ${viz_n} vizitate · ${rows.length - viz_n} nevizitate`;
   const OBS = { O:"Omis", LA:"Lipsă acces" };
   const hm = t => { if(!t) return "—"; const d = new Date(t); return zi2(d.getHours()) + ":" + zi2(d.getMinutes()); };
@@ -5909,7 +5929,7 @@ function rrAfiseaza(){
     : ["Client","Localitate / locație","Zi","Produse","Frecv.","Data","COD"];
   $("rr-tbl").innerHTML =
     "<thead><tr>" + cap.map(th).join("") +
-    RR_WEEKS.map(w => `<th${w === W ? ' style="color:var(--acc)" title="Săptămâna aleasă — codul se poate corecta"' : ""}>W${w}</th>`).join("") + "</tr></thead><tbody>" +
+    RR_WEEKS.map(w => `<th${w === W ? ' style="color:var(--acc)" title="Săptămâna aleasă — codul se poate corecta"' : ""}>${rrEt(w)}</th>`).join("") + "</tr></thead><tbody>" +
     rows.map(({ c, v, coduri }, i) => {
       let dur = "—";
       if(v && v.arrive_time && v.leave_time){ const sec = Math.max(0, Math.round((new Date(v.leave_time) - new Date(v.arrive_time)) / 1000)); dur = Math.floor(sec/60) + "m " + zi2(sec%60) + "s"; }
@@ -6003,12 +6023,12 @@ function exportRR(){
       OBS: v ? (v.obs || "") : "", SOFER: v ? [v.s.driver1, v.s.driver2].filter(Boolean).join(" & ") : "",
       MASINA: v ? [v.s.vehicle_brand, v.s.vehicle_plate].filter(Boolean).join(" ") : "",
       GPS: v && v.lat != null ? v.lat + "," + v.lon : "" };
-    RR_WEEKS.forEach((w, i) => o["W" + w] = (coduri[i] && coduri[i].k) || "");
+    RR_WEEKS.forEach((w, i) => o[rrEt(w)] = (coduri[i] && coduri[i].k) || "");
     return o;
   }));
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, "VERIFICARE RUTE SOFERI");
-  XLSX.writeFile(wb, `Verificare_rute_soferi_W${$("rr-sapt").value || ""}_${today()}.xlsx`);
+  XLSX.writeFile(wb, `Verificare_rute_soferi_${$("rr-sapt").value ? $("rr-an").value + "_" + rrEt(+$("rr-sapt").value) : ""}_${today()}.xlsx`);
 }
 
 // ================= ÎNCEPUTUL ZILEI =================

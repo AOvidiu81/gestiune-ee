@@ -26,7 +26,7 @@ import { openHistoryScreen } from '../pv/js/screens-history.js';
 import { buildComenziActive } from '../pv/js/screens-comenzi.js';
 import { openSettingsScreen } from '../pv/js/screens-setup.js';
 
-export const SOFER_VERSION = 's46';
+export const SOFER_VERSION = 's47';
 
 const KEY_ZI = 'ee-sofer-zi'; // ziua deschisa: { zi, coleg, carId, km, trasee, zile, zona, ordine, ruta }
 const KEY_ULTIMA = 'ee-sofer-ultima'; // ultimele alegeri (masina, traseu, zona) — precompletare
@@ -153,11 +153,10 @@ async function incarcaListe() {
   const cuLimita = (p) => Promise.race([Promise.resolve(p).catch(() => null), new Promise((r) => setTimeout(() => r(null), 6000))]);
   try {
     const sb = await getSupabase();
-    const [colegi, clienti, sesiuni, sapt] = await Promise.all([
+    const [colegi, clienti, sesiuni] = await Promise.all([
       cuLimita(listDriversForLogin()),
       cuLimita(sb.from('clients').select('masina')),
       cuLimita(sb.from('route_sessions').select('zona').not('zona', 'is', null).order('created_at', { ascending: false }).limit(300)),
-      cuLimita(sb.from('week_meta').select('week_num,start_date,end_date')),
     ]);
     if (colegi?.drivers?.length) liste.colegi = colegi.drivers.map((d) => d.full_name).filter(Boolean);
     if (clienti?.data?.length) {
@@ -167,28 +166,34 @@ async function incarcaListe() {
       liste.trasee = [...t].sort((a, b) => (a === TRASEU_EV) - (b === TRASEU_EV) || a.length - b.length || a.localeCompare(b));
     }
     if (sesiuni?.data) liste.zone = [...new Set(sesiuni.data.map((r) => String(r.zona || '').trim().toUpperCase()).filter(Boolean))].sort();
-    if (sapt?.data?.length) liste.saptamani = sapt.data.map((w) => ({ num: w.week_num, start: w.start_date, end: w.end_date }));
     scrie(KEY_LISTE, liste);
   } catch (e) { /* fara semnal: ramane ce e tinut minte */ }
   return liste;
 }
 
-// Aceeasi regula ca in aplicatia de rute: saptamana in care cade ziua de azi
-function optiuniOrdine(saptamani) {
+// v6.18: săptămâni LUNI–DUMINICĂ; W1 = săptămâna în care cade 1 ianuarie. Cod = an*100 + W (ex. 202642), calculat, fără week_meta.
+// Săptămâna care prinde 1 ianuarie are codul anului nou (202701); în anul vechi apare ca ultima (W53).
+function sIso(d){ return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0"); }
+function sLuni1(an){ const d = new Date(an, 0, 1, 12); d.setDate(d.getDate() - (d.getDay() + 6) % 7); return d; }
+function sCod(iso){ const [a, l, z] = String(iso).slice(0, 10).split("-").map(Number), d = new Date(a, l - 1, z, 12);
+  if(d >= sLuni1(a + 1)) return (a + 1) * 100 + 1;
+  return a * 100 + Math.floor(Math.round((d - sLuni1(a)) / 864e5) / 7) + 1; }
+function sStart(cod){ const d = sLuni1(Math.floor(cod / 100)); d.setDate(d.getDate() + 7 * (cod % 100 - 1)); return d; }
+function sInfo(cod){ const s = sStart(cod), e = new Date(s); e.setDate(e.getDate() + 6); return { num: cod, start: sIso(s), end: sIso(e) }; }
+function sMuta(cod, n){ const s = sStart(cod); s.setDate(s.getDate() + 7 * n); return sCod(sIso(s)); }
+function sAn(an){ const L = [], sf = sCod(an + "-12-31"); let c = an * 100 + 1; while(L.length < 60){ L.push(c); if(c === sf) break; c = sMuta(c, 1); } return L; }
+// Aceeasi regula ca in aplicatia de rute: saptamana in care cade ziua de azi (s47: calculata, cod 202642)
+function optiuniOrdine() {
   const opt = [
     { v: 'depot', t: '🧭 GPS optimizat (start/retur Depozit)' },
     { v: '', t: '✖ Ordine normală (alfabetic)' },
   ];
-  const azi = aziIso();
-  let cur = saptamani.find((w) => w.start && w.end && azi >= w.start && azi <= w.end);
-  if (!cur) cur = saptamani.filter((w) => w.end && w.end <= azi).sort((a, b) => (a.end < b.end ? 1 : -1))[0];
-  if (!cur) return opt;
+  const cur = sCod(aziIso());
   const scurt = (iso) => { const [, m, d] = iso.split('-'); return `${Number(d)}.${m}`; };
   const nume = ['săptămâna aceasta', 'săptămâna trecută', 'acum 2 săptămâni', 'acum 3 săptămâni', 'acum 4 săptămâni'];
   for (let i = 0; i <= 4; i++) {
-    const w = saptamani.find((x) => x.num === cur.num - i);
-    if (!w || !w.start || !w.end) continue;
-    opt.push({ v: String(w.num), t: `🕐 Cu istoric: ${nume[i]} — W${w.num} (${scurt(w.start)}–${scurt(w.end)})` });
+    const w = sInfo(sMuta(cur, -i));
+    opt.push({ v: String(w.num), t: `🕐 Cu istoric: ${nume[i]} — W${w.num % 100} (${scurt(w.start)}–${scurt(w.end)})` });
   }
   return opt;
 }
@@ -321,8 +326,8 @@ function construiesteZiua({ initial, liste, gata, inapoi, cereColeg }) {
   const zone = el('datalist', { id: 'sofer-zone' }, liste.zone.map((n) => el('option', { value: n })));
 
   const ordine = el('select', { class: 'field-input' });
-  const optOrd = optiuniOrdine(liste.saptamani);
-  if (!optOrd.some((o) => o.v === z.ordine)) optOrd.push({ v: z.ordine, t: `🕐 Cu istoric: W${z.ordine}` });
+  const optOrd = optiuniOrdine();
+  if (!optOrd.some((o) => o.v === z.ordine)) optOrd.push({ v: z.ordine, t: `🕐 Cu istoric: W${Number(z.ordine) % 100}` });
   optOrd.forEach((o) => ordine.appendChild(el('option', { value: o.v }, [o.t])));
   ordine.value = z.ordine;
 

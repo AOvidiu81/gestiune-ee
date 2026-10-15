@@ -785,8 +785,21 @@ const ORIGINAL_HTML = document.documentElement.outerHTML;
 /*__DATA_START__*/
 const DATA = []; // lista veche din Excel a fost scoasa (04.10.2026): punctele vin doar din baza
 /*__DATA_END__*/
+// v6.18: săptămâni LUNI–DUMINICĂ; W1 = săptămâna în care cade 1 ianuarie. Cod = an*100 + W (ex. 202642), calculat, fără week_meta.
+// Săptămâna care prinde 1 ianuarie are codul anului nou (202701); în anul vechi apare ca ultima (W53).
+function sIso(d){ return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0"); }
+function sLuni1(an){ const d = new Date(an, 0, 1, 12); d.setDate(d.getDate() - (d.getDay() + 6) % 7); return d; }
+function sCod(iso){ const [a, l, z] = String(iso).slice(0, 10).split("-").map(Number), d = new Date(a, l - 1, z, 12);
+  if(d >= sLuni1(a + 1)) return (a + 1) * 100 + 1;
+  return a * 100 + Math.floor(Math.round((d - sLuni1(a)) / 864e5) / 7) + 1; }
+function sStart(cod){ const d = sLuni1(Math.floor(cod / 100)); d.setDate(d.getDate() + 7 * (cod % 100 - 1)); return d; }
+function sInfo(cod){ const s = sStart(cod), e = new Date(s); e.setDate(e.getDate() + 6); return { num: cod, start: sIso(s), end: sIso(e) }; }
+function sMuta(cod, n){ const s = sStart(cod); s.setDate(s.getDate() + 7 * n); return sCod(sIso(s)); }
+function sAn(an){ const L = [], sf = sCod(an + "-12-31"); let c = an * 100 + 1; while(L.length < 60){ L.push(c); if(c === sf) break; c = sMuta(c, 1); } return L; }
+// R22: săptămânile se calculează (anul trecut … anul următor), nu se mai citesc din week_meta
+function sGen(){ const a = new Date().getFullYear(), L = []; for(let y = a - 1; y <= a + 1; y++) sAn(y).forEach(c => { if(!L.length || L[L.length - 1].num < c) L.push(sInfo(c)); }); return L; }
 /*__WEEKS_START__*/
-const WEEKS = [{"num": 1, "start": "1900-01-29", "end": "2026-01-04"}, {"num": 2, "start": "2026-01-05", "end": "2026-01-11"}, {"num": 3, "start": "2026-01-12", "end": "2026-01-18"}, {"num": 4, "start": "2026-01-19", "end": "2026-01-25"}, {"num": 5, "start": "2026-01-26", "end": "2026-02-01"}, {"num": 6, "start": "2026-02-02", "end": "2026-02-08"}, {"num": 7, "start": "2026-02-09", "end": "2026-02-15"}, {"num": 8, "start": "2026-02-16", "end": "2026-02-22"}, {"num": 9, "start": "2026-02-23", "end": "2026-03-01"}, {"num": 10, "start": "2026-03-02", "end": "2026-03-08"}, {"num": 11, "start": "2026-03-09", "end": "2026-03-15"}, {"num": 12, "start": "2026-03-16", "end": "2026-03-22"}, {"num": 13, "start": "2026-03-23", "end": "2026-03-29"}, {"num": 14, "start": "2026-03-30", "end": "2026-04-05"}, {"num": 15, "start": "2026-04-06", "end": "2026-04-12"}, {"num": 16, "start": "2026-04-13", "end": "2026-04-19"}, {"num": 17, "start": "2026-04-20", "end": "2026-04-26"}, {"num": 18, "start": "2026-04-27", "end": "2026-05-03"}, {"num": 19, "start": "2026-05-04", "end": "2026-05-10"}, {"num": 20, "start": "2026-05-11", "end": "2026-05-17"}, {"num": 21, "start": "2026-05-18", "end": "2026-05-24"}, {"num": 22, "start": "2026-05-25", "end": "2026-05-31"}, {"num": 23, "start": "2026-06-01", "end": "2026-06-07"}, {"num": 24, "start": "2026-06-08", "end": "2026-06-14"}, {"num": 25, "start": "2026-06-15", "end": "2026-06-21"}, {"num": 26, "start": "2026-06-22", "end": "2026-06-28"}, {"num": 27, "start": "2026-06-29", "end": "2026-07-05"}, {"num": 28, "start": "2026-07-06", "end": "2026-07-12"}, {"num": 29, "start": "2026-07-13", "end": "2026-07-19"}, {"num": 30, "start": "2026-07-20", "end": "2026-07-26"}, {"num": 31, "start": "2026-07-27", "end": "2026-08-02"}, {"num": 32, "start": "2026-08-03", "end": "2026-08-09"}, {"num": 33, "start": "2026-08-10", "end": "2026-08-16"}, {"num": 34, "start": "2026-08-17", "end": "2026-08-23"}, {"num": 35, "start": "2026-08-24", "end": "2026-08-30"}, {"num": 36, "start": "2026-08-31", "end": "2026-09-06"}, {"num": 37, "start": "2026-09-07", "end": "2026-09-13"}, {"num": 38, "start": "2026-09-14", "end": "2026-09-20"}, {"num": 39, "start": "2026-09-21", "end": "2026-09-27"}, {"num": 40, "start": "2026-09-28", "end": "2026-10-04"}, {"num": 41, "start": "2026-10-05", "end": "2026-10-11"}, {"num": 42, "start": "2026-10-12", "end": "2026-10-18"}, {"num": 43, "start": "2026-10-19", "end": "2026-10-25"}, {"num": 44, "start": "2026-10-26", "end": "2026-11-01"}, {"num": 45, "start": "2026-11-02", "end": "2026-11-08"}, {"num": 46, "start": "2026-11-09", "end": "2026-11-15"}, {"num": 47, "start": "2026-11-16", "end": "2026-11-22"}, {"num": 48, "start": "2026-11-23", "end": "2026-11-29"}, {"num": 49, "start": "2026-11-30", "end": "2026-12-06"}, {"num": 50, "start": "2026-12-07", "end": "2026-12-13"}, {"num": 51, "start": "2026-12-14", "end": "2026-12-20"}, {"num": 52, "start": "2026-12-21", "end": "2026-12-27"}, {"num": 53, "start": "2026-12-28", "end": "2027-01-03"}];
+const WEEKS = sGen();
 /*__WEEKS_END__*/
 let DRIVERS = [];
 let VEHICLE_BRANDS = [];
@@ -931,6 +944,11 @@ function parseWorkbookSheet(ws){
     const m = /^W\s*(\d+)$/.exec(normHdr(v));
     if(m) weekCols.push({idx:i, num:parseInt(m[1],10)});
   });
+  // R22: W din Excel -> codul săptămânii (202642), după data de sfârșit (sau de început) din capul coloanei
+  weekCols.forEach(w=>{
+    const e = toISODate(endDateRow[w.idx]), s = toISODate(startDateRow[w.idx]);
+    w.cod = e && e > '2000' ? sCod(e) : (s && s > '2000' ? sCod(s) : null);
+  });
 
   const dayMapJs = {'LUN':'Luni','MAR':'Marti','MIE':'Miercuri','JOI':'Joi','VIN':'Vineri'};
   const records = [];
@@ -962,7 +980,7 @@ function parseWorkbookSheet(ws){
     const weekData = {};
     weekCols.forEach(w=>{
       const v = row[w.idx];
-      if(v!=null && String(v).trim()!=='') weekData[String(w.num)] = String(v).trim();
+      if(w.cod && v!=null && String(v).trim()!=='') weekData[String(w.cod)] = String(v).trim();
     });
     records.push({
       status: statusRaw ? String(statusRaw).trim() : '',
@@ -971,7 +989,7 @@ function parseWorkbookSheet(ws){
     });
   }
 
-  const weeks = weekCols.map(w=>({num:w.num, col:w.idx, start:toISODate(startDateRow[w.idx]), end:toISODate(endDateRow[w.idx])}));
+  const weeks = []; weekCols.forEach(w=>{ if(w.cod && !weeks.some(x=>x.num === w.cod)) weeks.push({...sInfo(w.cod), col:w.idx}); });
   const cartelaDebug = {
     columnFound: colCartela >= 0,
     headerTextRaw: colCartela >= 0 ? JSON.stringify(headerRow[colCartela]) : null,
@@ -1033,7 +1051,7 @@ let dayStart = {}; // {brand, plate, kmStart, driver1, driver2, startTime}
 let lastRouteRows = [];
 
 // --- Șofer EE: aplicatia ruleaza in fila „Rută” (../sofer/), care trimite datele zilei ---
-const EE_RUTA_VERSION = 'v21'; // aceeasi cu VERSIUNE din sw.js; Șofer EE o arata langa rotita
+const EE_RUTA_VERSION = 'v22'; // aceeasi cu VERSIUNE din sw.js; Șofer EE o arata langa rotita
 const SOFER_MODE = new URLSearchParams(location.search).get('sofer') === '1';
 let multiZile = null;   // mai multe zile bifate (ruta complementara), altfel null
 let multiTrasee = null; // mai multe trasee bifate, altfel null
@@ -1914,7 +1932,6 @@ async function loadClientsFromSupabase(){
     const clientRows = await fetchAllRows('clients');
     if(!clientRows || clientRows.length === 0) return false; // keep local fallback if empty
 
-    const weekMetaRows = await fetchAllRows('week_meta');
     const cwRows = await fetchAllRows('client_weeks');
 
     const newData = clientRows.map(clientRowFromDb);
@@ -1929,8 +1946,6 @@ async function loadClientsFromSupabase(){
     DATA.length = 0; DATA.push(...newData);
     assignIds(DATA);
     rebuildDataById();
-    WEEKS.length = 0;
-    (weekMetaRows||[]).forEach(w=> WEEKS.push({num: w.week_num, start: w.start_date, end: w.end_date}));
     return true;
   }catch(err){
     console.error('Eroare la încărcarea clienților din Supabase:', err);
@@ -2016,7 +2031,6 @@ excelFileInput.addEventListener('change', async (e)=>{
     DATA.length = 0; DATA.push(...records);
     assignIds(DATA);
     rebuildDataById();
-    WEEKS.length = 0; WEEKS.push(...weeks);
     populateHistorySel();
     routeMode = 'depot';
     historyWeekNum = null;
@@ -2539,17 +2553,13 @@ function populateHistorySel(){
   sortModeSel.querySelectorAll('option[data-history]').forEach(o=>o.remove());
   const curNum = currentWeekNum();
   if(curNum === null) return;
-  const weekByNum = {};
-  WEEKS.forEach(w=> weekByNum[w.num] = w);
   const labels = ['Săptămâna aceasta', 'Săptămâna trecută', 'Acum 2 săptămâni', 'Acum 3 săptămâni', 'Acum 4 săptămâni'];
   for(let offset=0; offset<=4; offset++){
-    const num = curNum - offset;
-    const w = weekByNum[num];
-    if(!w || !w.start || !w.end) continue;
+    const w = sInfo(sMuta(curNum, -offset)), num = w.num;
     const opt = document.createElement('option');
     opt.value = String(num);
     opt.dataset.history = '1';
-    opt.textContent = `🕐 Istoric: ${labels[offset]} — W${num} (${fmtDateRo(w.start)}–${fmtDateRo(w.end)})`;
+    opt.textContent = `🕐 Istoric: ${labels[offset]} — W${num % 100} (${fmtDateRo(w.start)}–${fmtDateRo(w.end)})`;
     sortModeSel.appendChild(opt);
   }
 }
@@ -2623,13 +2633,12 @@ function weekHistoryRowHtml(r){
   if(curWeek === null) return '';
   const boxes = [];
   for(let i=1; i<=7; i++){
-    const wn = curWeek - i;
-    if(wn < 1) break;
+    const wn = sMuta(curWeek, -i);
     const raw = r.weekData ? r.weekData[String(wn)] : undefined;
     const colorClass = classifyWeekCell(raw);
     const textClass = weekTextColorClass(raw);
     const detail = raw ? raw : 'Fără vizită';
-    boxes.push(`<span class="week-box ${colorClass} ${textClass}" data-detail="${escapeHtml(detail)}">W${wn}</span>`);
+    boxes.push(`<span class="week-box ${colorClass} ${textClass}" data-detail="${escapeHtml(detail)}">W${wn % 100}</span>`);
   }
   if(!boxes.length) return '';
   return `<div class="week-history-row">${boxes.join('')}</div>`;
@@ -3111,11 +3120,11 @@ function render(){
     const notDoneTRemaining = notDoneT.filter(item=>!isNear(item));
     const withoutTimeRemaining = notDoneWithoutTime.filter(item=>!isNear(item));
 
-    const w = WEEKS.find(w=>w.num === historyWeekNum);
+    const w = sInfo(historyWeekNum);
     const interval = w ? `${fmtDateRo(w.start)}–${fmtDateRo(w.end)}` : '';
     routeSummary.style.display = 'flex';
     routeSummary.innerHTML = `
-      <div><b>W${historyWeekNum}</b> (${interval}) — ${withTime.length} vizite înregistrate, ${withoutTime.length} fără vizită
+      <div><b>W${historyWeekNum % 100}</b> (${interval}) — ${withTime.length} vizite înregistrate, ${withoutTime.length} fără vizită
         <div class="route-note">Ordine reală după ora înregistrată în acea săptămână (istoric).</div>
       </div>
     `;
@@ -3126,7 +3135,7 @@ function render(){
     notDoneTRemaining.forEach(item=>{ html += cardHtml(item.r, orderNum++, item.info); });
     doneT.forEach(item=>{ html += cardHtml(item.r, orderNum++, item.info); });
     if(withoutTimeRemaining.length || doneWithoutTime.length){
-      html += `<div class="group-title">Fără vizită înregistrată în W${historyWeekNum}</div>`;
+      html += `<div class="group-title">Fără vizită înregistrată în W${historyWeekNum % 100}</div>`;
       withoutTimeRemaining.forEach(item=>{ html += cardHtml(item.r, null, item.info); });
       doneWithoutTime.forEach(item=>{ html += cardHtml(item.r, null, item.info); });
     }
