@@ -742,7 +742,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <div class="hd-mij"><div id="titlu-sus"></div><span id="azi-sus" title="Data de azi (calculatorul)"></span></div>
   <button id="btn-mob" class="btn sec" style="padding:5px 10px;font-size:12px" onclick="mobPC(false)" title="Înapoi la varianta de telefon">📱 Telefon</button>
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
-  <span class="ver">v6.25</span>
+  <span class="ver">v6.26</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -2116,8 +2116,20 @@ async function incarcaPct(){
 }
 // v6.25 (cerut de Ovidiu, 15.10): comanda din exterior (fără anexă) — punctele C… de la aceeași locație și același client
 const extNorm = v => faraDiac(String(v || "")).trim().toUpperCase().replace(/\s+/g, " ");
+// v6.26 (cerut de Ovidiu, 15.10): comanda din exterior pe mai multe locații — miscari.locatii = [{jud, localitate, locatie, buc, lat, lon, cod}]
+const extCheie = (jud, loc, sat) => [jud, loc, sat].map(extNorm).join("|");
+const extCamp = p => { const u = faraDiac(p || "").toUpperCase(); return /TOALET/.test(u) ? "toalete" : /CONTAINER|CAB/.test(u) ? "containere" : /GARD/.test(u) ? "garduri" : null; };
+const extLocuri = m => (Array.isArray(m && m.locatii) && m.locatii.length)
+  ? m.locatii.map(l => ({ jud: l.jud || m.jud, loc: l.localitate, sat: l.locatie, buc: Math.abs(+l.buc || 0), cod: l.cod || "" }))
+  : [{ jud: m.jud, loc: m.loc, sat: m.sat, buc: Math.abs(+m.buc || 0), cod: "" }];
 const extLaLoc = (p, m) => !m.anexa_id && /^C\d+/.test(String(p.client_key || "")) && extNorm(p.client) === extNorm(m.client) &&
-  extNorm(p.jud) === extNorm(m.jud) && extNorm(p.localitate) === extNorm(m.loc) && extNorm(p.locatie) === extNorm(m.sat);
+  extLocuri(m).some(l => extCheie(p.jud, p.localitate, p.locatie) === extCheie(l.jud, l.loc, l.sat));
+// totalul la o locație = comenzile fără anexă ale clientului (cu locațiile lor), până la comanda m inclusiv (fără ea, cu faraM)
+function extTotal(ce, key, camp, m, faraM){
+  const pana = x => (x.data || "") < (m.data || "") || ((x.data || "") === (m.data || "") && x.id <= m.id);
+  return Math.max(0, (ce || []).filter(x => extCamp(x.produs) === camp && pana(x) && !(faraM && x.id === m.id))
+    .reduce((t, x) => t + (NEG.test(x.tip_miscare || "") ? -1 : 1) * extLocuri(x).filter(l => extCheie(l.jud, l.loc, l.sat) === key).reduce((s2, l) => s2 + l.buc, 0), 0));
+}
 function ruteStil(r){
   const baza = r.anexa_id ? "A" + r.anexa_id : "C" + r.id;
   const p = PCT.filter(x => x.client_key === baza || String(x.client_key || "").startsWith(baza + "-") || extLaLoc(x, r) ||
@@ -3707,10 +3719,10 @@ async function serLocatii(ids){
   return Object.values(g).sort((a,b)=>a.key.localeCompare(b.key,undefined,{numeric:true}));
 }
 function butonSeriiPunct(r){
-  { const c=/^C(\d+)(?:-[A-Z]{2})?$/.exec(String(r.client_key||""));   // v6.21: punct din comandă fără anexă (contract din alt depozit, livrat de la tine)
-    if(c){ const key="C"+c[1], n=prodPunct(r), la=SER.filter(x=>x.punct===key && x.stare==="LA CLIENT").length;
+  { const c=/^C(\d+)(-\d+)?(?:-[A-Z]{2})?$/.exec(String(r.client_key||""));   // v6.21: punct din comandă fără anexă (contract din alt depozit, livrat de la tine)
+    if(c){ const key="C"+c[1]+(c[2]||""), n=prodPunct(r), la=SER.filter(x=>x.punct===key && x.stare==="LA CLIENT").length;
       const cul = !la ? "" : (la===n ? "background:#2E8B3C;border-color:#2E8B3C;color:#fff" : "background:#D97706;border-color:#D97706;color:#fff");
-      return ` <button class="btn sm sec" style="${cul}" title="Model + serie pe fiecare produs livrat de la tine pe această comandă (contract din alt depozit, fără anexă). Se văd și la șofer, pe toate zilele punctului." onclick="openSeriiCmd(${c[1]})">🔢 ${la}/${n}</button>`; } }
+      return ` <button class="btn sm sec" style="${cul}" title="Model + serie pe fiecare produs livrat de la tine pe această comandă (contract din alt depozit, fără anexă). Se văd și la șofer, pe toate zilele punctului." onclick="openSeriiCmd(${c[1]}${c[2] ? `,'${key}'` : ""})">🔢 ${la}/${n}</button>`; } }
   const l=punctLoc(r.client_key); if(!l || !ANX.some(x=>x.id===l.anexa)) return "";
   const muta = k => "";   // v5.86: ⇄ și 📅 au trecut în meniul ⋯ de pe rând
   const key = l.loc || "A" + l.anexa;
@@ -3744,28 +3756,31 @@ function butonSerii(a){
 }
 // v6.21 (cerut de Ovidiu, 15.10): seriile pe comanda fără anexă (contract MURES / ARAD…, livrat din depozitul lui):
 // serii.punct = „C<id comandă>”, anexa_id / contract_id / client_id goale, miscare_amplasare_id = comanda.
-async function openSeriiCmd(mid){
+async function openSeriiCmd(mid, cheie){
   let m = MISC.find(x => x.id === mid);
   if(!m){ const { data } = await db.from("miscari").select("*").eq("id", mid).maybeSingle(); m = data; }
   if(!m){ toast("Comanda #" + mid + " nu mai există", true); return; }
+  if(!cheie && Array.isArray(m.locatii) && m.locatii.length > 1){ toast("Comanda are " + m.locatii.length + " locații — seriile se pun din Puncte de rută, cu 🔢 pe fiecare locație", true); return; }
   const { data: proaspete, error: eS } = await db.from("serii").select("*").order("id");
   if(eS){ toast("Seriile nu s-au putut citi: " + eS.message, true); return; }
   SER = proaspete || [];
   // v6.25: seriile stau pe punctul locației (cel mai vechi cod C… al aceluiași client la aceeași adresă) —
   // așa suplimentarea din exterior își pune seria lângă cea de la amplasare (C66), nu pe un C67 separat
-  let key = "C" + mid;
-  { const { data: toate } = await db.from("clients").select("client_key,client,jud,localitate,locatie").like("client_key", "C%").limit(5000);
+  let key = cheie || "C" + mid;
+  if(!cheie){ const { data: toate } = await db.from("clients").select("client_key,client,jud,localitate,locatie").like("client_key", "C%").limit(5000);
     const b0 = (toate || []).filter(p => p.client_key === key || p.client_key.startsWith(key + "-") || extLaLoc(p, m))
-      .map(p => +((/^C(\d+)/.exec(p.client_key) || [])[1] || 0)).filter(Boolean).sort((x, y) => x - y)[0];
-    if(b0) key = "C" + b0; }
-  const { data: pct } = await db.from("clients").select("client_key,locatie,status,toalete,containere,garduri").or(`client_key.eq.${key},client_key.like.${key}-*`).limit(50);
+      .map(p => peBaza(p.client_key)).sort((x, y) => peNrBaza(x) - peNrBaza(y))[0];   // v6.26: și locațiile numerotate (C72-02)
+    if(b0) key = b0; }
+  const { data: pct0 } = await db.from("clients").select("client_key,jud,localitate,locatie,status,toalete,containere,garduri").or(`client_key.eq.${key},client_key.like.${key}-*`).limit(50);
+  const pct = (pct0 || []).filter(p => peBaza(p.client_key) === key), p0 = pct[0] || null;
   const act = (pct || []).filter(p => p.status !== "INACTIV"), n = act.length ? Math.max(...act.map(prodPunct)) : Math.abs(+m.buc || 0);
   SR_CMD = m; SR_DATA = null; SR_STERSE = []; SR_PUNCT = key;
-  SR_AN = { id: null, contract_id: null, produs: m.produs || "", model: m.model || "", model_fizic: m.model_fizic || "", jud: m.jud || null, loc: m.loc || null, sat: m.sat || null, data_livrarii: m.data, anexa: "" };
-  SR_LOCS = [{ key, nume: m.sat || m.loc || "", n, activ: true }];
+  const aj = p0 ? p0.jud : m.jud, al = p0 ? p0.localitate : m.loc, as = p0 ? p0.locatie : m.sat;
+  SR_AN = { id: null, contract_id: null, produs: m.produs || "", model: m.model || "", model_fizic: m.model_fizic || "", jud: aj || null, loc: al || null, sat: as || null, data_livrarii: m.data, anexa: "" };
+  SR_LOCS = [{ key, nume: as || al || "", n, activ: true }];
   SR_ROWS = SER.filter(x => x.punct === key).map(x => Object.assign({}, x)).map(serNormTip);
   $("ms-title").textContent = "Seriile comenzii · " + key + " · " + (m.client || "");
-  $("ms-sub").textContent = [`contract ${m.contract || ""} (fără anexă), livrat din ${m.depozit || ""}`, [m.jud, m.loc, m.sat].filter(Boolean).join(", "), "produse pe punct: " + n, "se văd și la șofer, pe toate zilele punctului"].filter(Boolean).join(" · ");
+  $("ms-sub").textContent = [`contract ${m.contract || ""} (fără anexă), livrat din ${m.depozit || ""}`, [aj, al, as].filter(Boolean).join(", "), "produse pe punct: " + n, "se văd și la șofer, pe toate zilele punctului"].filter(Boolean).join(" · ");
   for(let i = SR_ROWS.filter(r => r.stare === "LA CLIENT").length; i < n; i++) SR_ROWS.push(serRandNou());
   serDeseneaza(); $("mod-s").classList.add("on");
 }
@@ -6996,6 +7011,7 @@ function ruteProgrameaza(rec, x){
 let PL = null, PL_SARI = false;
 const PL_COD = /^A(\d+)-(\d+)-([A-Z]{2})$/;
 async function plPorneste(m){
+  $("pl-title").textContent = "Puncte pe locații"; peArata(true);
   const a = ANX.find(x => x.id === m.anexa_id) || {}, loc = anexeLocatie(a);
   const baza = "A" + (loc.length ? Math.min(...loc) : m.anexa_id);
   const { data: gasite, error } = await db.from("clients").select("*").like("client_key", baza + "-%").limit(5000);
@@ -7022,6 +7038,7 @@ async function plPorneste(m){
 }
 function plOLocatie(){ closeModal("mod-pl"); PL_SARI = true; spreRute(PL.m.id); }
 function plMaiMulte(){
+  if(PL && PL.ext){ peMulte(); return; }
   if(!PL.zile.length){ toast("Bifează întâi zilele de servisare pe comandă", true); return; }
   if(!PL.rows.length) PL.rows.push({ nr: "01", localitate: PL.a.loc || PL.m.loc || "", locatie: "", buc: "", lat: "", lon: "" });
   $("pl-alege").style.display = "none"; $("pl-multe").style.display = ""; plDeseneaza();
@@ -7059,9 +7076,10 @@ function plTotal(){
     ` <span class="muted">· ${PL.rows.length} locații × ${PL.zile.length} zile = ${PL.rows.length * PL.zile.length} puncte</span>`;
 }
 function plUrmNr(){ const n = Math.max(0, ...PL.rows.map(r => +r.nr || 0)) + 1; return String(n).padStart(2, "0"); }
-function plRandNou(){ plCiteste(); PL.rows.push({ nr: plUrmNr(), localitate: PL.a.loc || PL.m.loc || "", locatie: "", buc: "", lat: "", lon: "" }); plDeseneaza(); }
+function plRandNou(){ if(PL && PL.ext){ peRandNou(); return; } plCiteste(); PL.rows.push({ nr: plUrmNr(), localitate: PL.a.loc || PL.m.loc || "", locatie: "", buc: "", lat: "", lon: "" }); plDeseneaza(); }
 function plScoate(i){ plCiteste(); PL.rows.splice(i, 1); plDeseneaza(); }
 function plLipeste(){
+  if(PL && PL.ext){ peLipeste(); return; }
   plCiteste();
   const txt = $("pl-lipire").value; if(!txt.trim()){ toast("Lipește întâi rândurile din Excel", true); return; }
   // un rând gol (fără locație, bucăți, GPS) se înlocuiește
@@ -7083,6 +7101,7 @@ function plLipeste(){
   $("pl-lipire").value = ""; plDeseneaza(); toast(n + " locații puse în tabel — verifică-le");
 }
 async function plCreeaza(){
+  if(PL && PL.ext){ await peCreeaza(); return; }
   plCiteste();
   const m = PL.m, noi = [], sarite = [], gresite = [];
   const deLa = (m.data && m.data > today()) ? m.data : null;
@@ -7117,6 +7136,199 @@ async function plCreeaza(){
   if($("a-tabel") && $("a-tabel").value === "clients" && A_TBL === "clients") await adminIncarca();
   if(VER && VER.f === "rt"){ VER.form = false; verRtArata(); }
 }
+// ================= v6.26: COMANDĂ DIN EXTERIOR PE MAI MULTE LOCAȚII (cerut de Ovidiu, 15.10) =================
+// Contract pe depozit secundar, fără anexă, livrat de la el sau din depozitul exterior, dar cu punctele pe ruta lui.
+// Un rând pe locație: locațiile clientului (din punctele C… și din comenzile lui) + locații noi. „+ acum” / „− acum” = câte bucăți
+// din comanda asta merg / pleacă de acolo. Se salvează pe comandă (miscari.locatii); totalul pe locație se calculează din comenzi.
+// Locație nouă → puncte C<id comandă>-NN-<zi>. Anexa nu intră (exteriorul nu are anexă, nici Facturare / Raport lună).
+function peArata(plus){
+  const d = $("pl-lipire") && $("pl-lipire").closest("details"); if(d) d.style.display = plus ? "" : "none";
+  const b = document.querySelector('#pl-multe button[onclick="plRandNou()"]'); if(b) b.style.display = plus ? "" : "none";
+}
+const peBaza = k => String(k || "").replace(/-[A-Z]{2}$/, "");
+const peNrBaza = b => { const r = /^C(\d+)(?:-(\d+))?$/.exec(b || ""); return r ? +r[1] * 1000 + (+r[2] || 0) : 1e12; };
+async function pePorneste(m){
+  const camp = extCamp(m.produs), minus = NEG.test(m.tip_miscare || "");
+  const [r1, r2] = await Promise.all([
+    db.from("miscari").select("id,data,tip_miscare,buc,produs,client,jud,loc,sat,locatii").is("anexa_id", null).eq("client", m.client || "").limit(5000),
+    db.from("clients").select("*").like("client_key", "C%").limit(5000)]);
+  if(r1.error || r2.error){ toast("Nu am putut citi comenzile / punctele clientului: " + (r1.error || r2.error).message, true); return; }
+  const ce = r1.data || [], pcl = (r2.data || []).filter(p => extNorm(p.client) === extNorm(m.client));
+  const loc = new Map();
+  const adauga = (jud, l, s) => { const k = extCheie(jud, l, s); if(!loc.has(k)) loc.set(k, { key: k, jud: jud || "", localitate: l || "", locatie: s || "", puncte: [], cod: "" }); return loc.get(k); };
+  pcl.forEach(p => adauga(p.jud, p.localitate, p.locatie).puncte.push(p));
+  ce.forEach(x => extLocuri(x).forEach(l => { const r = adauga(l.jud, l.loc, l.sat); if(!r.cod && l.cod) r.cod = l.cod; }));
+  const peM = Array.isArray(m.locatii) ? m.locatii : [];
+  const kM = extCheie(m.jud, m.loc, m.sat);
+  const rows = [];
+  [...loc.values()].forEach(r => {
+    r.inainte = extTotal(ce, r.key, camp, m, true);
+    const din = peM.find(l => extCheie(l.jud || m.jud, l.localitate, l.locatie) === r.key);
+    r.acum = din ? String(Math.abs(+din.buc || 0)) : "";
+    if(r.puncte.length){ const b = r.puncte.map(p => peBaza(p.client_key)).sort((x, y) => peNrBaza(x) - peNrBaza(y))[0]; r.cod = r.cod || b;
+      const g = r.puncte.find(p => p.lat != null && +p.lat) || r.puncte[0]; r.lat = g.lat ?? ""; r.lon = g.lon ?? ""; }
+    else { r.lat = din ? (din.lat ?? "") : ""; r.lon = din ? (din.lon ?? "") : ""; }
+    if(r.puncte.length || r.inainte > 0){ r.exista = true; rows.push(r); }
+    else if(!minus && (din || (!peM.length && r.key === kM))){ r.exista = false; rows.push(r); }
+  });
+  rows.sort((x, y) => (y.exista - x.exista) || (peNrBaza(x.cod) - peNrBaza(y.cod)) || x.key.localeCompare(y.key));
+  const zile = String(m.zi_serv || "").split(",").map(z => faraDiac(z).trim().toUpperCase()).filter(z => ZI_ABR[z]);
+  PL = { ext: true, m, a: {}, camp, minus, total: Math.abs(+m.buc || 0), zile, rows, masini: {}, ce };
+  zile.forEach(z => { PL.masini[z] = m.traseu || "Traseu I"; });
+  const cuStoc = rows.filter(r => r.exista && r.inainte > 0);
+  // la scădere, cu o singură locație la client: ca până acum (adresa comenzii)
+  if(minus && cuStoc.length <= 1 && !peM.length){ PL_SARI = true; await spreRute(m.id); return; }
+  $("pl-title").textContent = "Puncte pe locații — comandă din exterior";
+  $("pl-cap").innerHTML = `<b>${esc(m.client || "")}</b> · ${esc(m.tip_miscare)} ${fmtD(m.data)} · contract ${esc(m.contract || "")}, livrat din ${esc(m.depozit || "")} · ` +
+    `<b>${minus ? "−" : "+"}${PL.total}</b> ${esc(m.produs || "")} ${esc(m.model || "")} · ${esc(m.frecv_serv || "")} · ` +
+    (zile.length ? zile.map(z => ZI_RUTE[z]).join(", ") : (minus ? "" : "<span style='color:var(--t-err)'>comanda nu are zile de servisare bifate</span>")) +
+    `<br><span class="muted">Fără anexă: nu intră în Facturare / Raport lună. Totalul de pe fiecare locație se calculează din comenzi.</span>`;
+  peArata(!minus);
+  const direct = minus || peM.length;
+  $("pl-alege").style.display = direct ? "none" : ""; $("pl-multe").style.display = direct ? "" : "none";
+  if(direct) peDeseneaza();
+  $("mod-pl").classList.add("on");
+}
+function peMulte(){
+  if(!PL.minus && !PL.zile.length){ toast("Bifează întâi zilele de servisare pe comandă", true); return; }
+  if(!PL.rows.length) PL.rows.push({ key: "", jud: PL.m.jud || "", localitate: PL.m.loc || "", locatie: PL.m.sat || "", acum: "", lat: "", lon: "", puncte: [], inainte: 0, exista: false });
+  $("pl-alege").style.display = "none"; $("pl-multe").style.display = ""; peDeseneaza();
+}
+function peCiteste(){
+  PL.comun = { jud: $("pl-jud").value.trim().toUpperCase(), pers: $("pl-pers").value.trim().toUpperCase(), telefon: $("pl-tel").value.trim(), frecventa: $("pl-frecv").value.trim(), accesorii: $("pl-acc").value.trim() };
+  PL.zile.forEach(z => { const el = $("pl-m-" + z); if(el) PL.masini[z] = el.value; });
+  document.querySelectorAll("#pl-tbl tr[data-i]").forEach(tr => {
+    const r = PL.rows[+tr.dataset.i]; if(!r) return;
+    ["localitate","locatie","acum","lat","lon"].forEach(c => { const el = tr.querySelector(`[data-c="${c}"]`); if(el) r[c] = el.value.trim(); });
+  });
+}
+function peCoduri(){   // codurile locațiilor noi: C<id comandă>-01, -02 … (după cele deja folosite de comandă)
+  const pre = "C" + PL.m.id + "-";
+  let n = Math.max(0, ...PL.rows.filter(r => r.exista && String(r.cod || "").startsWith(pre)).map(r => +r.cod.slice(pre.length) || 0));
+  PL.rows.forEach(r => { if(!r.exista || (!r.puncte.length && !r.cod)){ if(!r.cod || !String(r.cod).startsWith(pre)) r.cod = pre + String(++n).padStart(2, "0"); else n = Math.max(n, +r.cod.slice(pre.length) || 0); } });
+}
+function peDeseneaza(){
+  const m = PL.m, c = PL.comun || { jud: m.jud || "", pers: m.pers_resp || "", telefon: m.telefon || "", frecventa: String(m.frecv_serv || "").replace(/\s*\/\s*/g, "/"), accesorii: m.accesorii || "" };
+  $("pl-comun").innerHTML = `<div><label>Județ (locații noi)</label><input id="pl-jud" value="${esc(c.jud)}"></div>` +
+    `<div><label>Reprezentant șantier</label><input id="pl-pers" value="${esc(c.pers || "")}"></div>` +
+    `<div><label>Telefon</label><input id="pl-tel" value="${esc(c.telefon)}"></div>` +
+    `<div><label>Frecvență</label><input id="pl-frecv" list="dl-plf" value="${esc(c.frecventa)}"><datalist id="dl-plf">${nomv("frecv_servisare").map(o => `<option value="${esc(o)}">`).join("")}</datalist></div>` +
+    `<div><label>Accesorii</label><input id="pl-acc" value="${esc(c.accesorii)}"></div>`;
+  const opt = ["Traseu I","Traseu II","Traseu III","Traseu-EV"];
+  $("pl-zile").innerHTML = PL.minus ? '<span class="muted">La scădere nu se fac puncte noi.</span>' :
+    PL.zile.map(z => `<div><label>${esc(ZI_RUTE[z])}</label><select id="pl-m-${z}">${opt.map(o => `<option${o === PL.masini[z] ? " selected" : ""}>${o}</option>`).join("")}</select></div>`).join("") + '<span class="muted" style="align-self:end">(pentru punctele noi; cele existente își păstrează mașina)</span>';
+  peCoduri();
+  const inp = (r, cc, w) => r.exista && cc !== "acum" && !(!r.puncte.length && (cc === "lat" || cc === "lon")) ? `<span>${esc(r[cc] ?? "")}</span>` : `<input data-c="${cc}" value="${esc(r[cc] ?? "")}" style="width:${w}" oninput="peTotal()">`;
+  const sg = PL.minus ? "−" : "+";
+  $("pl-tbl").innerHTML = `<tr><th>Cod</th><th>Localitate</th><th>Strada, nr [ locație ]</th><th>Acum la client</th><th>${sg} acum</th><th>După</th><th>Latitudine</th><th>Longitudine</th><th></th></tr>` +
+    PL.rows.map((r, i) => `<tr data-i="${i}"><td><b>${esc(r.cod || "")}</b>${r.exista ? "" : '<br><span class="muted" style="font-size:11px">nouă</span>'}</td><td>${inp(r, "localitate", "140px")}</td><td>${inp(r, "locatie", "260px")}</td>` +
+      `<td style="text-align:center">${r.exista ? r.inainte : "—"}</td><td>${inp(r, "acum", "55px")}</td><td style="text-align:center" data-dupa="${i}"></td>` +
+      `<td>${inp(r, "lat", "100px")}</td><td>${inp(r, "lon", "100px")}</td>` +
+      `<td>${r.exista ? `<span class="muted" title="${esc(r.puncte.map(p => p.client_key + (p.status === "INACTIV" ? " (inactiv)" : "")).join(", "))}">${r.puncte.length} pct</span>` : `<button class="btn sm sec" title="Scoate rândul" onclick="peScoate(${i})">✕</button>`}</td></tr>`).join("");
+  peTotal();
+}
+function peTotal(){
+  if(!PL || !PL.ext) return; peCiteste();
+  const sg = PL.minus ? -1 : 1;
+  PL.rows.forEach((r, i) => { const el = document.querySelector(`[data-dupa="${i}"]`); if(el){ const d = (r.exista ? r.inainte : 0) + sg * (+r.acum || 0);
+    el.innerHTML = d < 0 ? `<span style="color:var(--t-err)">${d}</span>` : `<b>${d}</b>`; } });
+  const t = PL.rows.reduce((s2, r) => s2 + (+r.acum || 0), 0), ok = t === PL.total;
+  $("pl-total").innerHTML = `<span style="color:${ok ? "var(--t-ok)" : "#d97706"};font-weight:600">Total ${PL.minus ? "scos" : "pus"} acum: ${t} din ${PL.total}${ok ? " ✓" : ""}</span>` +
+    ` <span class="muted">· ${PL.rows.filter(r => +r.acum).length} locații cu bucăți din această comandă</span>`;
+}
+function peRandNou(){ peCiteste(); PL.rows.push({ key: "", jud: "", localitate: PL.m.loc || "", locatie: "", acum: "", lat: "", lon: "", puncte: [], inainte: 0, exista: false }); peDeseneaza(); }
+function peScoate(i){ peCiteste(); PL.rows.splice(i, 1); peDeseneaza(); }
+function peLipeste(){
+  peCiteste();
+  const txt = $("pl-lipire").value; if(!txt.trim()){ toast("Lipește întâi rândurile din Excel", true); return; }
+  PL.rows = PL.rows.filter(r => r.exista || r.locatie || r.acum || r.lat || r.lon);
+  let n = 0;
+  txt.split(/\r?\n/).forEach(l => {
+    const cel = l.split(l.includes("\t") ? "\t" : /\s{2,}/).map(x => x.trim()).filter(x => x !== ""); if(!cel.length) return;
+    const nr = x => /^-?\d+([.,]\d+)?$/.test(x);
+    const gps = cel.filter(x => /^-?\d+[.,]\d{3,}$/.test(x)).map(x => x.replace(",", "."));
+    const buc = cel.find(x => /^\d+$/.test(x));
+    const text = cel.filter(x => !nr(x) && !/^\d+\s*\/\s*\S+/.test(x));
+    let jud = "", locl = "", strada = "";
+    if(text.length && /^[A-Za-z]{2}$/.test(text[0])) jud = text.shift().toUpperCase();
+    if(text.length >= 2){ locl = text.shift(); strada = text.join(" "); } else strada = text.join(" ");
+    if(jud && !$("pl-jud").value.trim()) $("pl-jud").value = jud;
+    PL.rows.push({ key: "", jud, localitate: (locl || PL.m.loc || "").toUpperCase(), locatie: strada, acum: buc || "", lat: gps[0] || "", lon: gps[1] || "", puncte: [], inainte: 0, exista: false });
+    n++;
+  });
+  $("pl-lipire").value = ""; peDeseneaza(); toast(n + " locații puse în tabel — verifică-le");
+}
+async function peCreeaza(){
+  peCiteste(); peCoduri();
+  const m = PL.m, camp = PL.camp, sg = PL.minus ? -1 : 1, deLa = (m.data && m.data > today()) ? m.data : null;
+  const frecv = PL.comun.frecventa || null, gresite = [], locatii = [], noi = [], upd = [], vazut = new Set();
+  for(const r of PL.rows){
+    const acum = Math.abs(+r.acum || 0);
+    if(!r.exista){
+      if(!acum) continue;
+      if(!r.locatie && !r.lat){ gresite.push((r.cod || "rând nou") + " (fără locație)"); continue; }
+      const jud = (r.jud || PL.comun.jud || m.jud || "").toUpperCase();
+      const k = extCheie(jud, r.localitate, r.locatie);
+      if(vazut.has(k) || PL.rows.some(q => q.exista && q.key === k)){ gresite.push((r.cod || "") + " (locația există deja în tabel)"); continue; }
+      vazut.add(k);
+      const lat = r.lat === "" ? null : Number(String(r.lat).replace(",", ".")), lon = r.lon === "" ? null : Number(String(r.lon).replace(",", "."));
+      if((lat !== null && isNaN(lat)) || (lon !== null && isNaN(lon))){ gresite.push(r.cod + " (GPS greșit)"); continue; }
+      if(!PL.zile.length){ gresite.push("comanda nu are zile de servisare bifate"); break; }
+      locatii.push({ jud, localitate: (r.localitate || "").toUpperCase(), locatie: r.locatie || "", buc: acum, lat, lon, cod: r.cod });
+      for(const z of PL.zile){
+        const rec = { client_key: r.cod + "-" + ZI_ABR[z], client: (m.client || "").toUpperCase(), jud: jud || null, localitate: (r.localitate || "").toUpperCase() || null,
+          locatie: r.locatie || null, ziua: ZI_RUTE[z], masina: PL.masini[z] || null, frecventa: frecv, pers_resp: PL.comun.pers || null, telefon: PL.comun.telefon || null,
+          toalete: 0, containere: 0, garduri: 0, accesorii: PL.comun.accesorii || null, lat, lon, cartela: false, status: "ACTIV" };
+        rec[camp] = acum; ruteProgrameaza(rec, { ids: [], deLa }); noi.push(rec);
+      }
+      continue;
+    }
+    const dupa = r.inainte + sg * acum;
+    if(dupa < 0){ gresite.push(r.cod + " (scoți " + acum + ", dar sunt doar " + r.inainte + ")"); continue; }
+    if(acum) locatii.push({ jud: r.jud || null, localitate: r.localitate || "", locatie: r.locatie || "", buc: acum, lat: r.lat === "" ? null : +r.lat, lon: r.lon === "" ? null : +r.lon, cod: r.cod });
+    // punctele locației primesc totalul (doar dacă se schimbă)
+    for(const g of r.puncte){
+      const rec = { ...g }; delete rec.id;
+      const era = +g[camp] || 0; rec[camp] = dupa;
+      rec.status = prodPunct(rec) > 0 ? "ACTIV" : "INACTIV";
+      if(era === dupa && rec.status === g.status) continue;
+      ruteProgrameaza(rec, { id: g.id, orig: g, deLa, ids: g.anexe_ids || [] });
+      upd.push({ id: g.id, cheie: g.client_key, era, dupa, f: { [camp]: rec[camp], status: rec.status, schimbare: rec.schimbare ?? null, anexe_ids: rec.anexe_ids || [] } });
+    }
+    // zile noi de servisare la o locație existentă (doar la adăugare)
+    if(!PL.minus && acum && dupa > 0){
+      const g0 = r.puncte.find(p => p.lat != null && +p.lat) || r.puncte[0];
+      for(const z of PL.zile){
+        if(r.puncte.some(p => p.ziua === ZI_RUTE[z])) continue;
+        const rec = { client_key: (r.cod || ("C" + m.id)) + "-" + ZI_ABR[z], client: (g0 ? g0.client : m.client || "").toUpperCase(), jud: r.jud || null, localitate: r.localitate || null,
+          locatie: r.locatie || null, ziua: ZI_RUTE[z], masina: PL.masini[z] || null, frecventa: frecv, pers_resp: (g0 && g0.pers_resp) || PL.comun.pers || null, telefon: (g0 && g0.telefon) || PL.comun.telefon || null,
+          toalete: g0 ? +g0.toalete || 0 : 0, containere: g0 ? +g0.containere || 0 : 0, garduri: g0 ? +g0.garduri || 0 : 0, accesorii: (g0 && g0.accesorii) || PL.comun.accesorii || null,
+          lat: g0 ? g0.lat : (r.lat === "" ? null : +String(r.lat).replace(",", ".")), lon: g0 ? g0.lon : (r.lon === "" ? null : +String(r.lon).replace(",", ".")), cartela: g0 ? !!g0.cartela : false, status: "ACTIV" };
+        rec[camp] = dupa; ruteProgrameaza(rec, { ids: [], deLa }); noi.push(rec);
+      }
+    }
+  }
+  if(gresite.length){ toast("De corectat: " + gresite.join(", "), true); return; }
+  const t = locatii.reduce((s2, l) => s2 + l.buc, 0);
+  if(!t){ toast("Scrie la „" + (PL.minus ? "−" : "+") + " acum” câte bucăți sunt pe fiecare locație", true); return; }
+  if(!confirm("Comanda #" + m.id + " (" + m.tip_miscare + ") pe " + locatii.length + " locații:\n" +
+    locatii.map(l => "  " + l.cod + " · " + [l.localitate, l.locatie].filter(Boolean).join(" – ") + " · " + (PL.minus ? "−" : "+") + l.buc).join("\n") +
+    (noi.length ? "\n\nPuncte de rută noi: " + noi.length + "\n" + noi.slice(0, 10).map(x => "  " + x.client_key + " · " + x[camp] + " buc").join("\n") + (noi.length > 10 ? "\n  … și încă " + (noi.length - 10) : "") : "") +
+    (upd.length ? "\n\nPuncte existente care se schimbă: " + upd.length + "\n" + upd.slice(0, 10).map(u => "  " + u.cheie + " · " + u.era + " → " + u.dupa + (u.f.status === "INACTIV" ? " (INACTIV)" : "")).join("\n") : "") +
+    (t !== PL.total ? "\n\n⚠ Totalul pe locații (" + t + ") nu se potrivește cu bucățile comenzii (" + PL.total + ")." : "") +
+    (deLa ? "\n\nComanda e din " + fmtD(deLa) + ": schimbarea intră pe rută din acea zi." : "") +
+    "\n\nAnexa: nu e cazul (comandă din exterior, fără anexă).\n\nContinui?")) return;
+  const { error: e1 } = await db.from("miscari").update({ locatii }).eq("id", m.id);
+  if(e1){ toast("Locațiile nu s-au salvat pe comandă: " + e1.message, true); return; }
+  m.locatii = locatii; { const x = MISC.find(q => q.id === m.id); if(x) x.locatii = locatii; }
+  if(noi.length){ const { error } = await db.from("clients").insert(noi); if(error){ toast("Punctele noi nu s-au creat: " + error.message, true); return; } }
+  for(const u of upd){ const { error } = await db.from("clients").update(u.f).eq("id", u.id); if(error){ toast(u.cheie + ": " + error.message, true); return; } }
+  closeModal("mod-pl"); PL = null;
+  toast(locatii.length + " locații salvate pe comandă · " + noi.length + " puncte noi · " + upd.length + " puncte actualizate");
+  await incarcaPct(); if(MISC.length) renderMiscari();
+  if($("a-tabel") && $("a-tabel").value === "clients" && A_TBL === "clients") await adminIncarca();
+  if(VER && VER.f === "rt"){ VER.form = false; verRtArata(); }
+}
 // Un punct pe locație și zi (decizia lui Ovidiu, 04.10 + 05.10): suplimentarea / reducerea se trece pe
 // punctele care există deja la aceeași locație (cantitatea totală), iar zilele noi primesc punct nou,
 // tot cu cantitatea totală. Comandă cu dată viitoare → schimbarea intră pe rută din data comenzii.
@@ -7125,6 +7337,11 @@ async function spreRute(id){
   if(livrExterior(m)){ toast("Comanda e livrată din depozitul " + m.depozit + " — nu se face punct de rută la tine (rămân Facturare și Raport lună)", true); if(VER && VER.f === "rt") VER.form = false; return; }
   // v5.17: la amplasare / suplimentare cu mai multe bucăți se întreabă întâi câte locații are (o singură dată:
   // dacă există deja puncte pe locații A..-NN-.. se deschide direct tabelul; dacă există puncte simple, merge ca înainte)
+  // v6.26: comanda din exterior (fără anexă) — mai multe locații: fereastra cu „+ acum” / „− acum” pe fiecare locație
+  if(!PL_SARI && !m.anexa_id && extCamp(m.produs) && ["AMPLASARE","SUPLIMENTARE","EVENIMENT-A","REDUCERE","RIDICARE","EVENIMENT-R"].includes(m.tip_miscare) &&
+     ((Array.isArray(m.locatii) && m.locatii.length) || Math.abs(+m.buc || 0) > 1 || NEG.test(m.tip_miscare))){
+    RUTE_MID = id; await pePorneste(m); return;
+  }
   if(!PL_SARI && m.anexa_id && ["AMPLASARE","SUPLIMENTARE","EVENIMENT-A"].includes(m.tip_miscare) && Math.abs(+m.buc || 0) > 1){
     const a0 = ANX.find(x => x.id === m.anexa_id) || {}, l0 = anexeLocatie(a0), b0 = "A" + (l0.length ? Math.min(...l0) : m.anexa_id);
     const simple = PCT.some(p => p.client_key === b0 || /^-[A-Z]{2}$/.test(String(p.client_key || "").slice(b0.length)) && String(p.client_key).startsWith(b0));
@@ -7161,12 +7378,9 @@ async function spreRute(id){
   // același fel de produs, până la data comenzii) — ca la anexe: a doua apăsare pe „→ Rute” nu mai adaugă nimic.
   let totExt = null;
   if(!m.anexa_id && camp){
-    const { data: ce, error: eE } = await db.from("miscari").select("id,data,tip_miscare,buc,produs,client,jud,loc,sat").is("anexa_id", null).eq("client", m.client || "").limit(5000);
+    const { data: ce, error: eE } = await db.from("miscari").select("id,data,tip_miscare,buc,produs,client,jud,loc,sat,locatii").is("anexa_id", null).eq("client", m.client || "").limit(5000);
     if(eE){ toast("Nu am putut citi comenzile locației: " + eE.message, true); return; }
-    const campDeE = p => { const u = faraDiac(p || "").toUpperCase(); return /TOALET/.test(u) ? "toalete" : /CONTAINER|CAB/.test(u) ? "containere" : /GARD/.test(u) ? "garduri" : null; };
-    const pana = x => (x.data || "") < (m.data || "") || ((x.data || "") === (m.data || "") && x.id <= m.id);
-    totExt = Math.max(0, (ce || []).filter(x => campDeE(x.produs) === camp && pana(x) && [["jud","jud"],["loc","loc"],["sat","sat"]].every(([a, b]) => extNorm(x[a]) === extNorm(m[b])))
-      .reduce((t, x) => t + (NEG.test(x.tip_miscare || "") ? -1 : 1) * Math.abs(+x.buc || 0), 0));
+    totExt = extTotal(ce, extCheie(m.jud, m.loc, m.sat), camp, m);   // v6.26: și comenzile pe mai multe locații
   }
   const activ = pct.filter(g => viitor(g).status !== "INACTIV");
   const coada = [];
@@ -7264,7 +7478,9 @@ function textComandaDin(d){
   const L = [];
   L.push((d.tip || "") + "    " + dz(d.data));
   // v5.13: comanda pe toată anexa — toate produsele; mai multe locații = lista locațiilor (varianta B, Primăria)
-  const toate = [{ buc: d.buc, produs: d.produs, model: d.model, acc: d.acc, jud: d.jud, loc: d.loc, sat: d.sat, pers: d.pers, tel: d.tel }].concat(d.extra || []);
+  const toate = (Array.isArray(d.locatii) && d.locatii.length)   // v6.26: comanda din exterior pe mai multe locații
+    ? d.locatii.map(l => ({ buc: l.buc, produs: d.produs, model: d.model, acc: d.acc, jud: l.jud || d.jud, loc: l.localitate, sat: l.locatie, pers: d.pers, tel: d.tel }))
+    : [{ buc: d.buc, produs: d.produs, model: d.model, acc: d.acc, jud: d.jud, loc: d.loc, sat: d.sat, pers: d.pers, tel: d.tel }].concat(d.extra || []);
   const lk = x => [x.jud, x.loc, x.sat].map(v => String(v || "").trim().toUpperCase()).join("|");
   const locuri = [...new Set(toate.map(lk))];
   const semn = /RIDICARE|EVENIMENT-R|REDUCERE/.test(d.tip || "") ? "-" : "";   // v5.96 (cerut de Ovidiu, 14.10): la ridicare bucățile cu minus
@@ -7329,7 +7545,8 @@ function textComanda(){
     anexa_id: +$("mm-anexa").value || null, contract_id: +$("mm-ctr").value || null,
     buc: $("mm-buc").value, produs: $("mm-prod").value, model: [$("mm-model").value, $("mm-mf").value].filter(Boolean).join(" "), acc: accCitite("mm-acc"), ser: mmSeriiText(),
     jud: $("mm-jud").value, loc: $("mm-loc").value, sat: $("mm-sat").value, dep: $("mm-dep").value, cdep: $("mm-contract").value,
-    pers: $("mm-pers").value, tel: $("mm-tel").value, frecv: $("mm-frecv").value, zile: $("mm-zi").value, traseu: $("mm-traseu").value, obs: $("mm-obs").value, extra: mmDocExtra() });
+    pers: $("mm-pers").value, tel: $("mm-tel").value, frecv: $("mm-frecv").value, zile: $("mm-zi").value, traseu: $("mm-traseu").value, obs: $("mm-obs").value, extra: mmDocExtra(),
+    locatii: (() => { const x = !$("mm-anexa").value && MISC.find(q => q.id === +$("mm-id").value); return x && Array.isArray(x.locatii) ? x.locatii : null; })() });
 }
 function serAlegeSalvata(m){
   if(m.tip_miscare!=="REDUCERE" || !m.anexa_id) return null;
@@ -7341,6 +7558,7 @@ function textComandaSalvata(m){
   return textComandaDin({ tip: m.tip_miscare, data: m.data, client: m.client, anexa_id: m.anexa_id, contract_id: m.contract_id,
     buc: m.buc, produs: m.produs, model: [m.model, m.model_fizic].filter(Boolean).join(" "), acc: m.accesorii, ser: ser.length ? { lista: ser, alege: 0 } : serAlegeSalvata(m),
     jud: m.jud, loc: m.loc, sat: m.sat, dep: m.depozit, cdep: m.contract, pers: m.pers_resp, tel: m.telefon, frecv: m.frecv_serv, zile: m.zi_serv, traseu: m.traseu, obs: m.observatii,
+    locatii: !m.anexa_id && Array.isArray(m.locatii) ? m.locatii : null,
     extra: m.grup_id === m.id ? (MISC || []).filter(x => x.grup_id === m.id && x.id !== m.id).sort((x, y) => x.id - y.id).map(x => ({ buc: x.buc, produs: x.produs, model: [x.model, x.model_fizic].filter(Boolean).join(" "), acc: x.accesorii, anexa: (ANX.find(z => z.id === x.anexa_id) || {}).anexa || "", jud: x.jud, loc: x.loc, sat: x.sat, pers: x.pers_resp, tel: x.telefon })) : [] });   // v5.13
 }
 function deschideComanda(){
