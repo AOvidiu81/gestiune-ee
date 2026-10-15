@@ -742,7 +742,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <div class="hd-mij"><div id="titlu-sus"></div><span id="azi-sus" title="Data de azi (calculatorul)"></span></div>
   <button id="btn-mob" class="btn sec" style="padding:5px 10px;font-size:12px" onclick="mobPC(false)" title="Înapoi la varianta de telefon">📱 Telefon</button>
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
-  <span class="ver">v6.11</span>
+  <span class="ver">v6.12</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -1900,7 +1900,7 @@ function fillAll(){
   fill("mm-frecv",nomv("frecv_servisare"),""); fill("ma-frecv",nomv("frecv_servisare"),"");
   fill("mc-idtip",nomv("id_tip")); fill("mc-atr",nomv("atr"),"");
   fill("mk-stare",nomv("stare")); fill("ma-forma",nomv("forma")); fill("ma-um",nomv("um")); fill("ma-moneda",nomv("moneda"));
-  const y=new Date().getFullYear(); const yrs=[]; for(let i=y;i>=2023;i--) yrs.push(i); fill("f-an",yrs,"Toți"); $("f-an").value=y;
+  const y=new Date().getFullYear(); const yrs=[]; for(let i=y;i>=2023;i--) yrs.push(i); fill("f-an",yrs,"Toți"); $("f-an").value="";   /* v6.12 (cerut de Ovidiu, 15.10): Comenzi pornesc pe „Toți” anii */
   $("f-luna").innerHTML='<option value="">Toate</option>'+LUNI.map((l,i)=>`<option value="${i+1}">${l}</option>`).join("");
   $("dl-clienti").innerHTML=CLI.map(c=>`<option value="${esc(c.nume)}">`).join("");
   fill("n-tip",Object.keys(NOM).filter(t=>!["produs","model","model_fizic","stoc_ascuns","accesoriu"].includes(t)).sort()); renderNom(); renderStocInitial(); renderClienti(); initRapoarte();
