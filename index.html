@@ -742,7 +742,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <div class="hd-mij"><div id="titlu-sus"></div><span id="azi-sus" title="Data de azi (calculatorul)"></span></div>
   <button id="btn-mob" class="btn sec" style="padding:5px 10px;font-size:12px" onclick="mobPC(false)" title="Înapoi la varianta de telefon">📱 Telefon</button>
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
-  <span class="ver">v6.08</span>
+  <span class="ver">v6.09</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -1376,6 +1376,9 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   #cat-pop .cp-b{display:flex;gap:6px;justify-content:flex-end;margin-top:10px}
   #mod-k .mk-g{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px}
   @media(max-width:600px){ #mod-k .mk-g{grid-template-columns:1fr} }
+  #mod-k .mk-sec{margin-bottom:10px}
+  #mod-k .mk-aa-r{display:grid;grid-template-columns:auto 80px auto 130px auto 130px auto;gap:6px;align-items:center;margin-bottom:6px;font-size:13px}
+  @media(max-width:600px){ #mod-k .mk-aa-r{grid-template-columns:auto 1fr auto 1fr} }
   #mod-k .nedet{display:flex;align-items:center;gap:8px;height:38px;font-size:13px;text-transform:none;letter-spacing:0;cursor:pointer}
   /* v4.79: fereastra contractului — la fel ca a clientului (se mută, se redimensionează, ciorne, verificare la Salvează) */
   #mod-k .box{resize:both;overflow:auto;width:760px;max-width:98vw;max-height:96vh;min-width:380px;min-height:260px;position:relative}
@@ -1399,12 +1402,17 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
     <div id="mk-ciorne"></div>
     <div class="mk-g">
       <div><label>Nr. contract</label><input id="mk-nr" placeholder="ex: 1551 HD"></div>
-      <div><label>Data emitere</label><input type="date" id="mk-de" oninput="mkPer()" onchange="mkPer()"></div>
+      <div></div>
     </div>
     <div class="mk-g">
-      <div><label>Data expirare</label><input type="date" id="mk-dx" oninput="mkPer()" onchange="mkPer()"></div>
-      <div><label>Expirare nedeterminată</label><label class="nedet"><input type="checkbox" id="mk-nedet" onchange="mkNedet(true)"> Nedeterminat (fără dată de expirare)</label><input type="hidden" id="mk-xt"></div>
+      <div><label>Data emitere</label><input type="date" id="mk-de" oninput="mkPer()" onchange="mkPer()"></div>
+      <div><label>Data expirare <span class="muted">(din contract)</span></label><input type="date" id="mk-dx" oninput="mkPer()" onchange="mkPer()"><input type="hidden" id="mk-xt"></div>
     </div>
+    <div class="mk-sec"><label>Prelungire prin act adițional</label>
+      <div id="mk-aa"></div>
+      <button type="button" class="btn sm sec" onclick="mkAAadauga()">+ Act adițional</button>
+    </div>
+    <div class="mk-sec"><label class="nedet"><input type="checkbox" id="mk-tacit" onchange="mkPer()"> Prelungire tacită — nedeterminat, conform contract</label></div>
     <div class="mk-g">
       <div><label>Stare</label><select id="mk-stare"></select></div>
       <div><label>Perioada contract <span class="muted">(estimativ)</span></label><div id="mk-per" class="mk-per">—</div></div>
@@ -2979,7 +2987,7 @@ function renderClienti(){
     const ks=ctrPt(c);
     return `<div class="card"><details ${q?"open":""}><summary><span class="c-nr" title="Numărul contractului">${ks.length?ks.map(k=>"CTR "+esc(k.nr_ctr||"?")).join(", "):"—"}</span>${esc(c.nume)} <span class="muted">${esc(c.id_tip||"")} ${esc(c.atr||"")} ${esc(c.cui||"")}</span>${c.activ===false?` <span class="badge" title="Închis la ultima ridicare">INACTIV</span> <button class="btn sm sec noprint" onclick="event.preventDefault();clientReactiveaza(${c.id})">Reactivează</button>`:""} <button class="btn sm sec noprint" onclick="event.preventDefault();openClient(${c.id})">Edit</button></summary>`+
       ks.map(k=>{ const an=ANX.filter(a=>a.contract_id===k.id);
-        return `<div style="margin:8px 0 4px;padding-left:8px;border-left:3px solid var(--gl)"><b>CTR ${esc(k.nr_ctr)}</b> <span class="muted">${fmtD(k.data_emitere)} → ${k.data_expirare?fmtD(k.data_expirare):esc(k.expirare_text||"")} · ${esc(k.stare)}</span> <button class="btn sm sec noprint" onclick="openContract(${k.id})">Edit</button> <button class="btn sm noprint" onclick="openAnexa(null,${k.id})">+ Anexă</button>
+        return `<div style="margin:8px 0 4px;padding-left:8px;border-left:3px solid var(--gl)"><b>CTR ${esc(k.nr_ctr)}</b> <span class="muted">${fmtD(k.data_emitere)} → ${esc(ctrExpText(k))} · ${esc(k.stare)}</span> <button class="btn sm sec noprint" onclick="openContract(${k.id})">Edit</button> <button class="btn sm noprint" onclick="openAnexa(null,${k.id})">+ Anexă</button>
         <div class="tw" style="max-height:none;margin-top:4px"><table><tr><th>Anexa</th><th>Emitere</th><th>Expirare</th><th>Jud</th><th>Loc.</th><th>Locație</th><th>Forma</th><th>Produs</th><th>Tip</th><th>Cant</th><th>Preț</th><th>Status</th><th>Depozit</th><th class="noprint" title="ACT pe comenzile acestei anexe">ACT</th><th class="noprint"></th></tr>`+
         an.map(a=>`<tr${VER&&VER.f==="act"&&VER.m.anexa_id===a.id?' class="r-ver"':''}><td>${esc(a.anexa)}</td><td>${fmtD(a.data_emitere)}</td><td>${a.data_expirare?fmtD(a.data_expirare):esc(a.expirare_text)}</td><td>${esc(a.jud)}</td><td>${esc(a.loc)}</td><td>${esc(a.sat)}</td><td>${esc(a.forma)}</td><td>${esc(prodN(a.produs, a.cant))}</td><td>${esc([a.model, a.model_fizic].filter(Boolean).join(" "))}</td><td>${a.cant}</td><td>${fmtPret(a.pret)} ${esc(a.moneda)}${actLista(a).map(u => `<div class="muted" style="font-size:11px;white-space:nowrap">→ ${u.pret != null ? esc(fmtPret(u.pret) + " " + (a.moneda || "")) : ""}${u.model ? " " + esc(u.model) : ""} din ${esc(fmtD(u.de_la))}${u.act_nr ? " (AA " + esc(u.act_nr) + ")" : ""}</div>`).join("")}</td><td>${esc(a.status)}</td><td>${esc(a.depozit)}</td><td class="noprint">${flaguriAnexa(a.id,"act")}</td><td class="noprint"><button class="btn sm sec" onclick="openAnexa(${a.id})">Edit</button> ${butonSerii(a)} ${a.tip_anexa === "R" ? "" : `<button class="btn sm sec" title="Act adițional: preț / tip nou de la o dată (facturarea desparte luna)" onclick="openAct(${a.id})">Actualizare${actLista(a).length ? " (" + actLista(a).length + ")" : ""}</button>`}</td></tr>`).join("")+`</table></div></div>`; }).join("")+`</details></div>`;
   }).join("")||'<p class="muted">Niciun client.</p>';
@@ -3217,34 +3225,68 @@ async function reloadClienti(){ const [c,k,a,sr]=await Promise.all([db.from("cli
 function openContract(id,clientId){
   const k=id?CTR.find(x=>x.id===id):null; $("mk-title").textContent=k?"Editare contract":"Contract nou"; $("mk-id").value=k?k.id:""; $("mk-client").value=k?k.client_id:clientId;
   $("mk-nr").value=k?k.nr_ctr:""; $("mk-de").value=k?(k.data_emitere||""):today(); $("mk-dx").value=k?(k.data_expirare||""):""; $("mk-xt").value=k?(k.expirare_text||""):""; $("mk-stare").value=k?k.stare:"ACTIV";
-  mkNedet(false);
+  MK_AA = k ? ctrAA(k).map(x => ({ ...x })) : []; $("mk-tacit").checked = !!(k && k.prelungire_tacita); mkAADeseneaza();
   const cl = CLI.find(x => x.id === +$("mk-client").value); $("mk-cl").textContent = cl ? "Client: " + cl.nume : "";
   MK_CIORNA = null; $("mk-conf").classList.remove("on"); $("mk-ciorne").innerHTML = "";
   $("mod-k").classList.add("on");
   if(!k) mkCiorne();
 }
-// v4.81: „Nedeterminat” = bifă; scrie NEDETERMINAT în expirare_text și golește / blochează data de expirare.
-function mkNedet(dinBifa){
-  const b = $("mk-nedet");
-  if(dinBifa) $("mk-xt").value = b.checked ? "NEDETERMINAT" : "";
-  else b.checked = /NEDETERMINAT/i.test($("mk-xt").value || "");
-  if(b.checked) $("mk-dx").value = "";
-  $("mk-dx").disabled = b.checked;
+// v6.09 (cerut de Ovidiu, 15.10): toate contractele încep pe perioadă determinată (emitere → expirare), apoi se
+// prelungesc ori prin acte adiționale (pot fi mai multe — primăriile etc. nu acceptă tacit), ori tacit (nedeterminat,
+// conform contract). Cu prelungirea tacită nu mai e nevoie de alertă de expirare. Anexele nu se schimbă.
+function ctrAA(k){ return Array.isArray(k && k.acte_aditionale) ? k.acte_aditionale : []; }
+// Data până la care merge contractul pe hârtie: ultima prelungire prin AA sau expirarea din contract.
+function ctrUltimaData(k){
+  const d = ctrAA(k).map(x => x && x.pana_la).filter(Boolean).concat(k && k.data_expirare ? [k.data_expirare] : []).sort();
+  return d.length ? d[d.length - 1] : null;
+}
+// Data după care se dă alerta; null = prelungire tacită (sau fără dată).
+function ctrExp(k){ return !k || k.prelungire_tacita ? null : ctrUltimaData(k); }
+function ctrExpText(k){
+  if(!k) return "";
+  const u = ctrUltimaData(k), aa = ctrAA(k).filter(x => x && x.pana_la).slice().sort((a, b) => a.pana_la.localeCompare(b.pana_la));
+  const ult = aa.length ? aa[aa.length - 1] : null;
+  const t = u ? fmtD(u) + (ult && ult.pana_la === u ? " (AA " + (ult.nr || "?") + ")" : "") : (k.prelungire_tacita ? "" : (k.expirare_text || ""));
+  return k.prelungire_tacita ? (t ? t + " → " : "") + "NEDETERMINAT (tacit)" : t;
+}
+let MK_AA = [];
+function mkAACiteste(){
+  MK_AA = [...document.querySelectorAll("#mk-aa .mk-aa-r")].map(x => ({ nr: x.querySelector(".aa-nr").value.trim(),
+    data: x.querySelector(".aa-data").value || "", pana_la: x.querySelector(".aa-pana").value || "" }));
+  return MK_AA;
+}
+function mkAADeseneaza(){
+  $("mk-aa").innerHTML = MK_AA.map((x, i) => `<div class="mk-aa-r"><span>AA nr.</span><input class="aa-nr" value="${esc(x.nr || "")}" placeholder="ex: 1">` +
+    `<span>din</span><input type="date" class="aa-data" value="${esc(x.data || "")}">` +
+    `<span>prelungit până la</span><input type="date" class="aa-pana" value="${esc(x.pana_la || "")}" oninput="mkPer()" onchange="mkPer()">` +
+    `<button type="button" class="btn sm sec" title="Scoate acest act adițional" onclick="mkAAScoate(${i})">✕</button></div>`).join("") ||
+    '<div class="muted" style="font-size:12px;margin-bottom:6px">Niciun act adițional de prelungire.</div>';
+  calendarActiveaza($("mk-aa"));
   mkPer();
 }
+function mkAAadauga(){ mkAACiteste(); MK_AA.push({ nr: "", data: today(), pana_la: "" }); mkAADeseneaza(); }
+function mkAAScoate(i){ mkAACiteste(); MK_AA.splice(i, 1); mkAADeseneaza(); }
 // v5.69 (cerut de Ovidiu, 13.10): perioada estimată (ani, luni, zile) de la emitere până la expirare, sub ochi, cât scrie
 function mkPer(){
   const el = $("mk-per"); if(!el) return;
-  if($("mk-nedet").checked){ el.innerHTML = 'Nedeterminată <span class="muted">(fără dată de expirare)</span>'; return; }
-  const de = $("mk-de").value, dx = $("mk-dx").value;
-  if(!de || !dx){ el.innerHTML = '<span class="muted">— alege ambele date</span>'; return; }
-  const t = perioadaCtr(de, dx);
-  el.innerHTML = /^⚠/.test(t) ? `<span style="color:var(--red)">${esc(t)}</span>` : esc(t || "—");
+  const de = $("mk-de").value, dx = $("mk-dx").value, tacit = $("mk-tacit").checked;
+  const aa = mkAACiteste().filter(x => x.pana_la);
+  if(!de || !dx){ el.innerHTML = '<span class="muted">— alege data emiterii și data expirării</span>'; return; }
+  const sf = ctrUltimaData({ data_expirare: dx, acte_aditionale: aa });
+  const t = perioadaCtr(de, sf);
+  let h = /^⚠/.test(t) ? `<span style="color:var(--red)">${esc(t)}</span>` : esc(fmtD(de) + " → " + fmtD(sf) + " · " + (t || "—"));
+  if(aa.length) h += ` <span class="muted">(cu ${aa.length === 1 ? "1 act adițional" : aa.length + " acte adiționale"})</span>`;
+  const gr = aa.find(x => x.pana_la <= dx);
+  if(gr) h += `<br><span style="color:var(--red)">⚠ AA ${esc(gr.nr || "?")}: „prelungit până la” trebuie să fie după data expirării din contract</span>`;
+  if(tacit) h += '<br>apoi <b>nedeterminat</b> <span class="muted">(prelungire tacită — fără alertă de expirare)</span>';
+  el.innerHTML = h;
 }
 // v4.79 (cerut de Ovidiu, 08.10): ciornele contractelor nesalvate (tabel `ciorne`, tip 'contract'), arătate doar la clientul lor.
 let MK_CIORNA = null, MK_CIORNE = [];
-const MK_CAMPURI = [["mk-nr","nr_ctr","Nr. contract"],["mk-de","data_emitere","Data emitere"],["mk-dx","data_expirare","Data expirare"],["mk-xt","expirare_text","Expirare (text)"],["mk-stare","stare","Stare"]];
-const mkDate = () => Object.fromEntries(MK_CAMPURI.map(([el, c]) => [c, ($(el).value || "").trim()]));
+const MK_CAMPURI = [["mk-nr","nr_ctr","Nr. contract"],["mk-de","data_emitere","Data emitere"],["mk-dx","data_expirare","Data expirare"],["mk-stare","stare","Stare"]];
+const mkDate = () => Object.assign(Object.fromEntries(MK_CAMPURI.map(([el, c]) => [c, ($(el).value || "").trim()])), {
+  acte_aditionale: mkAACiteste().filter(x => x.nr || x.pana_la).sort((a, b) => (a.pana_la || "").localeCompare(b.pana_la || "")),
+  prelungire_tacita: $("mk-tacit").checked });
 async function mkCiorne(){
   const cid = +$("mk-client").value;
   const { data, error } = await db.from("ciorne").select("*").eq("tip", "contract").order("id");
@@ -3260,7 +3302,7 @@ function mkCiornaIa(id){
   const x = MK_CIORNE.find(y => y.id === id); if(!x) return;
   const d = x.date || {}; MK_CAMPURI.forEach(([el, c]) => { $(el).value = d[c] || ""; });
   if(!d.stare) $("mk-stare").value = "ACTIV";
-  mkNedet(false);
+  MK_AA = Array.isArray(d.acte_aditionale) ? d.acte_aditionale.map(y => ({ ...y })) : []; $("mk-tacit").checked = !!d.prelungire_tacita; mkAADeseneaza();
   MK_CIORNA = id; mkCiorneDeseneaza();
 }
 async function mkCiornaSterge(id){
@@ -3273,7 +3315,7 @@ async function mkCiornaSterge(id){
 }
 async function mkAnuleaza(){
   const d = mkDate();
-  if(!$("mk-id").value && (d.nr_ctr || d.data_expirare || d.expirare_text)){
+  if(!$("mk-id").value && (d.nr_ctr || d.data_expirare || d.acte_aditionale.length)){
     d.client_id = +$("mk-client").value || null;
     const q = MK_CIORNA ? db.from("ciorne").update({ date: d, updated_at: new Date().toISOString() }).eq("id", MK_CIORNA)
                         : db.from("ciorne").insert({ tip: "contract", date: d });
@@ -3286,7 +3328,7 @@ async function mkAnuleaza(){
 }
 function mkGoleste(){
   if(!confirm("Ștergeți informațiile din acest card?")) return;
-  $("mk-nr").value = ""; $("mk-de").value = today(); $("mk-dx").value = ""; $("mk-xt").value = ""; $("mk-stare").value = "ACTIV"; mkNedet(false);
+  $("mk-nr").value = ""; $("mk-de").value = today(); $("mk-dx").value = ""; $("mk-xt").value = ""; $("mk-stare").value = "ACTIV"; $("mk-tacit").checked = false; MK_AA = []; mkAADeseneaza();
   MK_CIORNA = null; mkCiorneDeseneaza();
 }
 // v5.20 (cerut de Ovidiu, 11.10): perioada dintre emitere și expirare, doar informativ (ambele zile incluse).
@@ -3313,17 +3355,27 @@ function perioadaCtr(de, dx){
 function mkVerifica(){
   const d = mkDate();
   if(!d.nr_ctr){ toast("Nr. contract obligatoriu", true); $("mk-nr").focus(); return; }
+  if(!d.data_emitere || !d.data_expirare){ toast("Data emiterii și data expirării sunt obligatorii (contractul începe pe perioadă determinată)", true); $(d.data_emitere ? "mk-dx" : "mk-de").focus(); return; }
+  if(d.data_expirare < d.data_emitere){ toast("Data expirării e înaintea datei de emitere", true); $("mk-dx").focus(); return; }
+  const aaGol = d.acte_aditionale.find(x => !x.pana_la);
+  if(aaGol){ toast("Actul adițional " + (aaGol.nr || "") + ": lipsește data „prelungit până la”", true); return; }
+  const aaInapoi = d.acte_aditionale.find(x => x.pana_la <= d.data_expirare);
+  if(aaInapoi){ toast("Actul adițional " + (aaInapoi.nr || "") + ": „prelungit până la” trebuie să fie după data expirării din contract", true); return; }
   const nou = !$("mk-id").value, cl = CLI.find(x => x.id === +$("mk-client").value);
   $("mk-conf-t").textContent = nou ? "Creați acest contract?" : "Salvați modificările contractului?";
   $("mk-conf-ok").textContent = nou ? "Creează contract nou" : "Salvează modificările";
   const v = c => /^data_/.test(c) ? fmtD(d[c]) : d[c];
   $("mk-conf-date").innerHTML = "<table>" + `<tr><td>Client</td><td><b>${esc(cl ? cl.nume : "—")}</b></td></tr>` +
     MK_CAMPURI.map(([, c, l]) => `<tr><td>${esc(l)}</td><td><b>${esc(v(c) || "—")}</b></td></tr>` +
-      (c === "data_expirare" ? `<tr><td>Perioada contract <span class="muted">(informativ)</span></td><td>${esc(perioadaCtr(d.data_emitere, d.data_expirare) || "—")}</td></tr>` : "")).join("") + "</table>";
+      (c === "data_expirare" ? d.acte_aditionale.map(x => `<tr><td>Act adițional nr. ${esc(x.nr || "?")}${x.data ? " din " + esc(fmtD(x.data)) : ""}</td><td><b>prelungit până la ${esc(fmtD(x.pana_la))}</b></td></tr>`).join("") +
+        `<tr><td>Prelungire tacită</td><td><b>${d.prelungire_tacita ? "DA — apoi nedeterminat" : "nu"}</b></td></tr>` +
+        `<tr><td>Perioada contract <span class="muted">(informativ)</span></td><td>${esc(perioadaCtr(d.data_emitere, ctrUltimaData(d)) || "—")}</td></tr>` : "")).join("") + "</table>";
   $("mk-conf").classList.add("on");
 }
 async function saveContract(dupa){
-  const rec={client_id:+$("mk-client").value,nr_ctr:$("mk-nr").value.trim(),data_emitere:$("mk-de").value||null,data_expirare:$("mk-dx").value||null,expirare_text:$("mk-xt").value||null,stare:$("mk-stare").value};
+  const rec={client_id:+$("mk-client").value,nr_ctr:$("mk-nr").value.trim(),data_emitere:$("mk-de").value||null,data_expirare:$("mk-dx").value||null,stare:$("mk-stare").value};
+  const dk = mkDate(); rec.acte_aditionale = dk.acte_aditionale; rec.prelungire_tacita = dk.prelungire_tacita;
+  rec.expirare_text = dk.prelungire_tacita ? "NEDETERMINAT (tacit)" : null;
   if(!rec.nr_ctr){toast("Nr. contract obligatoriu",true);return;}
   $("mk-conf").classList.remove("on");
   const id=$("mk-id").value; let noulId = id ? +id : null;
@@ -3768,7 +3820,7 @@ async function serSalveaza(){
   toast(nesterse?"Salvat, dar "+nesterse+" bucăți nu s-au șters (doar administratorul poate șterge)":"Serii salvate", !!nesterse);
 }
 function exportClienti(){
-  const rows=[]; CLI.forEach(c=>CTR.filter(k=>k.client_id===c.id).forEach(k=>{ const an=ANX.filter(a=>a.contract_id===k.id); (an.length?an:[{}]).forEach(a=>rows.push({STARE:k.stare,"NR. CTR.":k.nr_ctr,"DATA EMITERE CTR":fmtD(k.data_emitere),"DATA EXPIRARE CTR":k.data_expirare?fmtD(k.data_expirare):k.expirare_text,"NUME CLIENT":c.nume,ID:c.id_tip,"ATR.":c.atr,NUMAR:c.cui,"ANEXA NR:":a.anexa,"DATA EMITERE ANEXA":fmtD(a.data_emitere),"DATA EXPIRARE ANEXA":a.data_expirare?fmtD(a.data_expirare):a.expirare_text,JUDET:a.jud,"LOCALITATE / COMUNA":a.loc,"SAT / LOCATIE / STRADA":a.sat,FORMA:a.forma,PRODUS:a.produs,TIP:a.model,UM:a.um,"CANT.":a.cant,PRET:a.pret,MONEDA:a.moneda,STATUS:a.status,SCADENT:a.scadent})); }));
+  const rows=[]; CLI.forEach(c=>CTR.filter(k=>k.client_id===c.id).forEach(k=>{ const an=ANX.filter(a=>a.contract_id===k.id); (an.length?an:[{}]).forEach(a=>rows.push({STARE:k.stare,"NR. CTR.":k.nr_ctr,"DATA EMITERE CTR":fmtD(k.data_emitere),"DATA EXPIRARE CTR":ctrExpText(k),"NUME CLIENT":c.nume,ID:c.id_tip,"ATR.":c.atr,NUMAR:c.cui,"ANEXA NR:":a.anexa,"DATA EMITERE ANEXA":fmtD(a.data_emitere),"DATA EXPIRARE ANEXA":a.data_expirare?fmtD(a.data_expirare):a.expirare_text,JUDET:a.jud,"LOCALITATE / COMUNA":a.loc,"SAT / LOCATIE / STRADA":a.sat,FORMA:a.forma,PRODUS:a.produs,TIP:a.model,UM:a.um,"CANT.":a.cant,PRET:a.pret,MONEDA:a.moneda,STATUS:a.status,SCADENT:a.scadent})); }));
   const ws=XLSX.utils.json_to_sheet(rows); const wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,ws,"FACTURARE"); XLSX.writeFile(wb,`Contracte_${today()}.xlsx`);
 }
 
@@ -4259,7 +4311,7 @@ function randuriRaport(){
     const ridicata = String(a.status || "").toUpperCase().includes("RIDICARE");
     if(ex && ex < p1 && ridicata) continue;   // se terminase și s-a ridicat
     const depasit = !!(ex && ex < pN && !ridicata);
-    const exC = dtz(c.data_expirare), ctrDepasit = !!(exC && exC < pN && !ridicata);
+    const exC = dtz(ctrExp(c)), ctrDepasit = !!(exC && exC < pN && !ridicata);
     // Luna ridicării (decizia lui Ovidiu, 03.10): se facturează de la prima zi a lunii (sau de la emitere) până în
     // ziua ridicării inclusiv; din luna următoare anexa nu mai apare. Fără dată de ridicare rămâne ca în Excel: 0 zile.
     const rid = ridicata ? dtz(a.data_ridicarii) : null;
@@ -4344,7 +4396,7 @@ function randuriFacturare(){
         bucati.length = 0; noi.forEach(x => bucati.push(x));
       }
     }
-    const exC = dtz(g.c.data_expirare);
+    const exC = dtz(ctrExp(g.c));
     for(const b of bucati){
       if(b.start && b.start > pN) continue;   // nu începuse încă
       if(b.end && b.end < p1) continue;       // ridicată într-o lună dinainte
@@ -4408,7 +4460,7 @@ async function raportFacturare(){
     db.from("facturare_stare").select("anexa_id,stare").eq("an", anF).eq("luna", lunaF) ]);
   const FS = {}; (fsR.data || []).forEach(z => FS[z.anexa_id] = z.stare);
   R_AID = r.map(x => x.a.id);
-  R_AVERT = r.map(x => ({ anx: x.depasit ? x.a.data_expirare : null, ctr: x.ctrDepasit ? x.c.data_expirare : null }));
+  R_AVERT = r.map(x => ({ anx: x.depasit ? x.a.data_expirare : null, ctr: x.ctrDepasit ? ctrExp(x.c) : null }));
   R_MIS = misF; R_EXTRA_T = "FAC"; R_EXTRA = r.map(x => flaguriAnexa(x.a.id, "fac", misF));
   R_ANTET = ["STARE","NR. CTR","EMITERE CTR","EXPIRARE CTR","NUME CLIENT","ID","ATR.","NUMAR","ANEXA NR",
              "EMITERE ANEXA","DATA AMPLASARII","JUD","LOCALITATE","SAT / LOCATIE / STRADA","FORMA","PRODUS",
@@ -4420,7 +4472,7 @@ async function raportFacturare(){
     const st = FS[x.a.id] || "ACTIV";
     const fara = (st === "ACTIV" || st === "FACTURAT") ? Math.round(x.zile * pret * cant * 100) / 100 : 0;
     return [ st, x.c.nr_ctr || "", dRO(dtz(x.c.data_emitere)),
-             x.c.data_expirare ? dRO(dtz(x.c.data_expirare)) : (x.c.expirare_text || ""),
+             ctrExp(x.c) ? dRO(dtz(ctrExp(x.c))) : ctrExpText(x.c),
              x.k.nume || "", x.k.id_tip || "", x.k.atr || "", x.k.cui || "", x.a.anexa || "",
              dRO(dtz(x.a.data_emitere)),
              dRO(dtz(x.a.data_livrarii || x.a.data_emitere)),
@@ -4933,18 +4985,18 @@ async function loadAtentie(){
   add("ctr_expirate", "Contracte expirate, încă marcate ACTIV",
       "Au trecut de data de expirare, dar în aplicație figurează active. Ori se prelungesc, ori se trec pe INACTIV.",
       ["Nr. contract", "Client", "A expirat la", "De câte zile"],
-      CTR.filter(c => c.data_expirare && c.data_expirare < azi && (c.stare || "") === "ACTIV")
-         .sort((a, b) => a.data_expirare.localeCompare(b.data_expirare))
-         .map(c => ({ id: "c" + c.id, ctx: c.data_expirare + "/" + (c.stare || ""),
-                      v: [c.nr_ctr || "", numeClient(c), fmtD(c.data_expirare), ziDiff(azi, c.data_expirare)] })));
+      CTR.filter(c => ctrExp(c) && ctrExp(c) < azi && (c.stare || "") === "ACTIV")
+         .sort((a, b) => ctrExp(a).localeCompare(ctrExp(b)))
+         .map(c => ({ id: "c" + c.id, ctx: ctrExp(c) + "/" + (c.stare || ""),
+                      v: [c.nr_ctr || "", numeClient(c), fmtD(ctrExp(c)), ziDiff(azi, ctrExp(c))] })));
 
   add("ctr_curand", "Contracte care expiră în curând",
       "Intră în fereastra aleasă mai sus. Bun moment pentru act adițional.",
       ["Nr. contract", "Client", "Expiră la", "Peste câte zile"],
-      CTR.filter(c => c.data_expirare && c.data_expirare >= azi && c.data_expirare <= orizont)
-         .sort((a, b) => a.data_expirare.localeCompare(b.data_expirare))
-         .map(c => ({ id: "c" + c.id, ctx: c.data_expirare,
-                      v: [c.nr_ctr || "", numeClient(c), fmtD(c.data_expirare), ziDiff(c.data_expirare, azi)] })));
+      CTR.filter(c => ctrExp(c) && ctrExp(c) >= azi && ctrExp(c) <= orizont)
+         .sort((a, b) => ctrExp(a).localeCompare(ctrExp(b)))
+         .map(c => ({ id: "c" + c.id, ctx: ctrExp(c),
+                      v: [c.nr_ctr || "", numeClient(c), fmtD(ctrExp(c)), ziDiff(ctrExp(c), azi)] })));
 
   add("ctr_fara_data", "Contracte fără dată de expirare",
       "Nu au nici dată, nici mențiune de tipul „nedeterminat”. Nu pot fi urmărite automat.",
