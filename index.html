@@ -742,7 +742,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <div class="hd-mij"><div id="titlu-sus"></div><span id="azi-sus" title="Data de azi (calculatorul)"></span></div>
   <button id="btn-mob" class="btn sec" style="padding:5px 10px;font-size:12px" onclick="mobPC(false)" title="Înapoi la varianta de telefon">📱 Telefon</button>
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
-  <span class="ver">v6.15</span>
+  <span class="ver">v6.16</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -6663,6 +6663,14 @@ async function adminSalveaza(){
   const q = A_ID ? db.from(A_TBL).update(rec).eq("id",A_ID) : db.from(A_TBL).insert(rec);
   const {error}=await q;
   if(error){ toast(error.message,true); return; }
+  // v6.16 (cerut de Ovidiu, 15.10): la mai multe servisări pe săptămână, punctele următoare din coadă (aceeași locație)
+  // primesc coordonatele GPS puse acum, dacă nu le au; cele noi și locația, localitatea, reprezentantul și telefonul.
+  if(A_TBL==="clients" && RUTE_ACUM && RUTE_COADA.length){
+    RUTE_COADA.forEach(x => {
+      if(rec.lat != null && rec.lon != null && (x.rec.lat == null || x.rec.lat === "" || x.rec.lon == null || x.rec.lon === "")){ x.rec.lat = rec.lat; x.rec.lon = rec.lon; }
+      if(!x.id) ["localitate","locatie","pers_resp","telefon"].forEach(c => { if(rec[c]) x.rec[c] = rec[c]; });
+    });
+  }
   // Principal poate fi unul singur: cine tocmai a fost pus principal ii scoate pe ceilalti.
   // Se merge pe „cod”, care e obligatoriu si unic, ca sa nu depindem de id-ul intors.
   if(A_TBL==="depozite" && rec.tip==="principal" && rec.cod){
