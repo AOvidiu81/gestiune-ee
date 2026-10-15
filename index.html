@@ -742,7 +742,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <div class="hd-mij"><div id="titlu-sus"></div><span id="azi-sus" title="Data de azi (calculatorul)"></span></div>
   <button id="btn-mob" class="btn sec" style="padding:5px 10px;font-size:12px" onclick="mobPC(false)" title="Înapoi la varianta de telefon">📱 Telefon</button>
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
-  <span class="ver">v6.16</span>
+  <span class="ver">v6.17</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -5810,7 +5810,7 @@ function rrUmpleFiltre(){
   rrOptiuni("rr-zi", zile, "toate");
   rrOptiuni("rr-traseu", [...new Set(RR.cl.map(c => c.masina).filter(Boolean))].sort(), "toate");
   rrOptiuni("rr-masina", [...new Set(RR.sess.map(s => s.vehicle_plate).filter(Boolean))].sort(), "toate");
-  rrOptiuni("rr-sofer", [...new Set(RR.sess.flatMap(s => [s.driver1, s.driver2]).filter(Boolean))].sort(), "toți");
+  rrOptiuni("rr-sofer", [...new Set([...(SOF || []).map(x => x.nume), ...RR.sess.flatMap(s => [s.driver1, s.driver2])].filter(Boolean))].sort(), "toți");   // v6.17: toți șoferii activi, și cei fără rută încă
   rrOptiuni("rr-status", [...new Set(RR.cl.map(c => c.status).filter(Boolean))].sort(), "toate");
   if([...$("rr-status").options].some(o => o.value === "ACTIV")) $("rr-status").value = "ACTIV";
 }
