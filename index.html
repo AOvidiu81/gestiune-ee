@@ -7145,7 +7145,7 @@ async function spreRute(id){
   // v6.25: la exterior, suplimentarea / reducerea / ridicarea merg pe punctele deja existente la locație (cel mai vechi cod C…)
   if(!m.anexa_id){ const b0 = pct.map(p => (/^C(\d+)/.exec(p.client_key) || [])[1]).filter(Boolean).map(Number).sort((x, y) => x - y)[0];
     if(b0 && b0 !== m.id){ baza = "C" + b0;
-      toast("Comandă din exterior: cantitatea se adună / scade din ce e acum pe punctul " + baza + " — nu apăsa „→ Rute” de două ori pe aceeași comandă."); } }
+      toast("Comandă din exterior: punctul locației este " + baza + " — cantitatea = toate comenzile de la această adresă până la data comenzii"); } }
   // punctul așa cum va fi după schimbarea deja programată, dacă are una
   // (v4.65: doar schimbările programate până la data comenzii, în ordine)
   const panaLa = (m.data && m.data > today()) ? m.data : today();
@@ -7157,6 +7157,17 @@ async function spreRute(id){
   const prod = faraDiac(m.produs).toUpperCase();
   const camp = /TOALET/.test(prod) ? "toalete" : /CONTAINER|CAB/.test(prod) ? "containere" : /GARD/.test(prod) ? "garduri" : null;
   const faraCol = camp ? "" : ` — <b>${esc(m.produs || "")} nu are coloană aici, corectează de mână</b>`;
+  // v6.25 (cerut de Ovidiu, 15.10): la exterior totalul se calculează din comenzile locației (același client, aceeași adresă,
+  // același fel de produs, până la data comenzii) — ca la anexe: a doua apăsare pe „→ Rute” nu mai adaugă nimic.
+  let totExt = null;
+  if(!m.anexa_id && camp){
+    const { data: ce, error: eE } = await db.from("miscari").select("id,data,tip_miscare,buc,produs,client,jud,loc,sat").is("anexa_id", null).eq("client", m.client || "").limit(5000);
+    if(eE){ toast("Nu am putut citi comenzile locației: " + eE.message, true); return; }
+    const campDeE = p => { const u = faraDiac(p || "").toUpperCase(); return /TOALET/.test(u) ? "toalete" : /CONTAINER|CAB/.test(u) ? "containere" : /GARD/.test(u) ? "garduri" : null; };
+    const pana = x => (x.data || "") < (m.data || "") || ((x.data || "") === (m.data || "") && x.id <= m.id);
+    totExt = Math.max(0, (ce || []).filter(x => campDeE(x.produs) === camp && pana(x) && [["jud","jud"],["loc","loc"],["sat","sat"]].every(([a, b]) => extNorm(x[a]) === extNorm(m[b])))
+      .reduce((t, x) => t + (NEG.test(x.tip_miscare || "") ? -1 : 1) * Math.abs(+x.buc || 0), 0));
+  }
   const activ = pct.filter(g => viitor(g).status !== "INACTIV");
   const coada = [];
   if(minus){
@@ -7167,7 +7178,7 @@ async function spreRute(id){
     const eR = (anexaNr(a) || {}).tip === "R" || (m.tip_miscare === "RIDICARE" && !!m.anexa_id);   // v5.05: și ridicarea
     const ridS = (m.tip_miscare === "RIDICARE" && m.anexa_id && camp) ? await ridLoc(loc, m.data, m) : 0;
     if(ridS == null){ toast("Nu am putut citi ridicările locației", true); return; }
-    const totR = (eR && camp) ? Math.max(0, -ridS + ANX.filter(x => loc.includes(x.id) && campDeR(x.produs) === camp && (!x.data_livrarii || !m.data || x.data_livrarii <= m.data))
+    const totR = totExt != null ? totExt : (eR && camp) ? Math.max(0, -ridS + ANX.filter(x => loc.includes(x.id) && campDeR(x.produs) === camp && (!x.data_livrarii || !m.data || x.data_livrarii <= m.data))
       .reduce((t, x) => { const y = anexaNr(x), c = Math.abs(+x.cant || 0); return t + (y && y.tip === "R" ? -c : c); }, 0)) : null;
     (activ.length ? activ : pct).forEach(g => {
       const rec = viitor(g);
@@ -7187,7 +7198,7 @@ async function spreRute(id){
     // așa „→ Rute” apăsat de două ori pe aceeași comandă nu mai dublează cantitatea.
     const campDe = p => { const u = faraDiac(p || "").toUpperCase(); return /TOALET/.test(u) ? "toalete" : /CONTAINER|CAB/.test(u) ? "containere" : /GARD/.test(u) ? "garduri" : null; };
     const totLoc = (m.anexa_id && camp) ? ANX.filter(x => loc.includes(x.id) && campDe(x.produs) === camp && (!x.data_livrarii || !m.data || x.data_livrarii <= m.data))
-      .reduce((t, x) => { const c = Math.abs(+x.cant || 0); return t + (x.tip_anexa === "R" ? -c : c); }, 0) : null;
+      .reduce((t, x) => { const c = Math.abs(+x.cant || 0); return t + (x.tip_anexa === "R" ? -c : c); }, 0) : totExt;
     // 1. punctele care există deja la locație: primesc cantitatea totală
     activ.forEach(g => {
       const rec = viitor(g);
