@@ -742,7 +742,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <div class="hd-mij"><div id="titlu-sus"></div><span id="azi-sus" title="Data de azi (calculatorul)"></span></div>
   <button id="btn-mob" class="btn sec" style="padding:5px 10px;font-size:12px" onclick="mobPC(false)" title="Înapoi la varianta de telefon">📱 Telefon</button>
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
-  <span class="ver">v6.23</span>
+  <span class="ver">v6.24</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -6497,7 +6497,7 @@ function renderAdmin(){
       const vr = A_TBL==="clients" && VER && VER.f==="rt" && (VER.chei||[]).includes(r.client_key);
       return `<tr${inactiv?' style="opacity:.45"':''}${vr?' class="r-ver"':''}>`+(pbOn()?`<td><input type="checkbox" style="width:auto;height:auto" ${PB_SEL.has(String(r.id))?"checked":""} onchange="pbBifa('${String(r.id).replace(/'/g,"")}',this.checked)"></td>`:"")+
         d.lista.map(([c])=>`<td>${A_TBL==="clients" && c==="status" && r.schimbare ? statusIstoric(r) : esc(adminCelula(r,c))}</td>`).join("")+
-        (A_TBL==="clients" ? `<td>${/^A\d+(-\d+)?(-[A-Z]{2})?$/.test(r.client_key||"") ? pvAnexa(parseInt(r.client_key.slice(1))) + flaguriAnexa(parseInt(r.client_key.slice(1)),"rt") : ""}</td>` : "")+
+        (A_TBL==="clients" ? `<td>${/^A\d+(-\d+)?(-[A-Z]{2})?$/.test(r.client_key||"") ? pvAnexa(parseInt(r.client_key.slice(1))) + flaguriAnexa(parseInt(r.client_key.slice(1)),"rt") : rtComandaPunct(r)}</td>` : "")+
         // v5.17 (cerut de Ovidiu, 09.10): Editează = creion; la puncte de rută și butonul GPS → Google Maps
         `<td class="actions" style="white-space:nowrap"><button class="btn sm sec" title="Editează" onclick="adminEdit('${String(r.id).replace(/'/g,"")}')">✎</button>` +
         (A_TBL==="clients" ? butonSeriiPunct(r) + ` <button class="btn sm sec" title="Mai multe: copiază, mută produse, schimbă zilele, hartă${(r.lat!=null && r.lon!=null && +r.lat && +r.lon) ? "" : " — fără GPS"}" onclick="ptMeniu(event,'${String(r.id).replace(/'/g,"")}')">⋯</button>` : "") + `</td></tr>`;
@@ -6864,7 +6864,10 @@ async function incarcaCma(){
   const { data, error } = await db.from("miscari").select("id,data,tip_miscare,buc,anexa_id,rpt,rt,fac,pv,act,waap")
     .not("anexa_id", "is", null).order("data").limit(5000);
   if(error) return;
-  CMA = data || [];
+  // v6.24: și comenzile fără anexă (puncte C<id> — contract din alt depozit, livrat de la tine), pentru RT în Puncte de rută
+  const r2 = await db.from("miscari").select("id,data,tip_miscare,buc,anexa_id,rpt,rt,fac,pv,act,waap,contract,depozit")
+    .is("anexa_id", null).order("data", { ascending: false }).limit(3000);
+  CMA = (data || []).concat(r2.error ? [] : (r2.data || []));
   renderClienti();
   if(A_TBL === "clients" && A_ROWS.length) renderAdmin();
 }
@@ -6874,6 +6877,13 @@ function flagBtn(m, f){
     `title="${esc(fmtD(m.data) + " · " + (m.tip_miscare || "") + " · " + (m.buc || 0) + " buc — apasă: - → V → L → X")}">${esc(v)}</span>`;
 }
 // 📄 pentru fiecare comandă a anexei: deschide PV-ul legat de ea (în Puncte de rută, lângă RT).
+// v6.24: RT pe punctul C<id> (comandă fără anexă) — pătratul comenzii însăși
+function rtComandaPunct(r){
+  const c = /^C(\d+)(?:-[A-Z]{2})?$/.exec(String(r.client_key || "")); if(!c) return "";
+  const m = CMA.find(x => x.id === +c[1]); if(!m) return '<span class="muted">—</span>';
+  const pv = `<span style="cursor:pointer;margin-right:4px" title="Deschide PV-ul comenzii din ${esc(fmtD(m.data))} · ${esc(m.tip_miscare || "")}" onclick="event.stopPropagation();pvDinComanda(${m.id})">📄</span>`;
+  return flaguriNuConteaza(m).has("rt") ? pv + '<span class="muted" title="Livrat din alt depozit — RT nu contează">—</span>' : pv + `<span class="fl-grup">${flagBtn(m, "rt")}</span>`;
+}
 function pvAnexa(anexaId){
   return CMA.filter(m => m.anexa_id === anexaId).map(m =>
     `<span style="cursor:pointer;margin-right:4px" title="Deschide PV-ul comenzii din ${esc(fmtD(m.data))} · ${esc(m.tip_miscare || "")}" onclick="event.stopPropagation();pvDinComanda(${m.id})">📄</span>`).join("");
