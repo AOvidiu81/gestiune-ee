@@ -742,7 +742,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <div class="hd-mij"><div id="titlu-sus"></div><span id="azi-sus" title="Data de azi (calculatorul)"></span></div>
   <button id="btn-mob" class="btn sec" style="padding:5px 10px;font-size:12px" onclick="mobPC(false)" title="Înapoi la varianta de telefon">📱 Telefon</button>
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
-  <span class="ver">v6.10</span>
+  <span class="ver">v6.11</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -4296,7 +4296,7 @@ let R_RANDURI = [], R_ANTET = [], R_NUME = "Raport", R_NUM = new Set();
 // Coloana de verificare (Rpt / FAC) de la capatul tabelului: doar pe ecran, nu intra in Excel.
 let R_EXTRA = [], R_EXTRA_T = "", R_MIS = [], R_CEL = [];   // v5.04: R_CEL[j][col] = "up" | "down" (Raport lună)
 // Facturare: starea fiecărui rând pe luna aleasă (ACTIV / INACTIV / NU FACTURAM) și avertizările.
-let R_AID = [], R_AVERT = [], R_RIDS = [];   // R_RIDS (v4.83): pe fiecare rând din Raport lună, anexele și comenzile lui
+let R_AID = [], R_AVERT = [], R_RIDS = [], R_ROSU = [];   // R_ROSU (v6.11): rândurile din Facturare cu RIDICARE în luna aleasă   // R_RIDS (v4.83): pe fiecare rând din Raport lună, anexele și comenzile lui
 
 const zileInLuna = (an, luna) => new Date(an, luna, 0).getDate();
 const dtz = s => s ? new Date(s + "T00:00:00") : null;
@@ -4493,6 +4493,16 @@ async function raportFacturare(){
              "TIP","UM","CANT.","PRET","MONEDA","STATUS","INCEPUT LUNA","SFARSIT LUNA","NR Z.",
              "VALOARE FARA TVA","VALOARE CU TVA","SCADENT"];
   R_NUM = new Set([18, 19, 24, 25, 26]); R_FMT2 = new Set([19, 25, 26]);   // v5.74: PRET și valorile cu 2 zecimale (0.50, 3.68)
+  // v6.11 (cerut de Ovidiu, 15.10): STATUS apare doar în luna lui — AMPLASARE (și celelalte) în luna amplasării,
+  // RIDICARE în luna ridicării; în celelalte luni căsuța rămâne goală. La RIDICARE clientul și nr. contractului cu roșu.
+  const fp1 = new Date(anF, lunaF - 1, 1), fpN = new Date(anF, lunaF, 0);
+  const stLuna = a => {
+    const st = a.status || "", rid = st.toUpperCase().includes("RIDICARE");
+    if(rid && !a.data_ridicarii) return st;   // ridicare fără dată: rămâne la vedere
+    const d = dtz(rid ? a.data_ridicarii : (a.data_livrarii || a.data_emitere));
+    return d && d >= fp1 && d <= fpN ? st : "";
+  };
+  R_ROSU = r.map(x => stLuna(x.a).toUpperCase().includes("RIDICARE"));
   R_RANDURI = r.map(x => {
     const cant = x.cant, pret = +x.a.pret || 0;
     const st = FS[x.a.id] || "ACTIV";
@@ -4503,7 +4513,7 @@ async function raportFacturare(){
              dRO(dtz(x.a.data_emitere)),
              dRO(dtz(x.a.data_livrarii || x.a.data_emitere)),
              x.a.jud || "", x.a.loc || "", x.a.sat || "", x.a.forma || "", prodN(x.a.produs || "", cant),
-             modelAcc(x.a), x.a.um || "", cant, pret, x.a.moneda || "", x.a.status || "",
+             modelAcc(x.a), x.a.um || "", cant, pret, x.a.moneda || "", stLuna(x.a),
              dRO(x.de), dRO(x.la), x.zile, fara, Math.round(fara * (1 + tva) * 100) / 100,
              x.a.scadent === null || x.a.scadent === undefined ? "" : x.a.scadent ];
   });
@@ -4523,6 +4533,7 @@ async function raportFacturare(){
     "STARE LUNA se alege pe fiecare rând, doar pentru luna aceasta: FACTURAT păstrează valoarea și marchează factura făcută; INACTIV și NU FACTURAM trec rândul cu valoare 0.";
   if(R_MOD === "gata"){
     const idx = [1, 4, 5, 6, 7, 8, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 22, 23, 25, 26, 27];
+    R_ROSU = R_ROSU.filter((v, j) => R_RANDURI[j][0] === "ACTIV" || R_RANDURI[j][0] === "FACTURAT");
     R_RANDURI = R_RANDURI.filter(f => f[0] === "ACTIV" || f[0] === "FACTURAT").map(f => idx.map(i => f[i]));
     R_ANTET = ["NR CTR","NUME CLIENT","ID","ATR.","NUMAR","ANEXA NR","JUD.","LOCALITATE","SAT / LOCATIE / STRADA","FORMA","PRODUS","TIP","UM","CANT.","PRET","MONEDA","INCEPUT LUNA","SFARSIT LUNA","VALOARE FARA TVA","VALOARE CU TVA","SCADENT"];
     R_NUM = new Set([13, 14, 18, 19]); R_FMT2 = new Set([14, 18, 19]);
@@ -4695,6 +4706,8 @@ function deseneazaRaport(){
               ["ACTIV","FACTURAT","INACTIV","NU FACTURAM"].map(o => `<option${o === v ? " selected" : ""}>${o}</option>`).join("") + "</select>";
         if(fact && i === 3 && av.ctr)  t += ` <span class="warn-pill" title="Contractul a expirat la ${esc(fmtD(av.ctr))} — e nevoie de act adițional">⚠ act adițional</span>`;
         if(fact && i === 10 && av.anx) t += ` <span class="warn-pill" title="Anexa a expirat la ${esc(fmtD(av.anx))}; echipamentul nu e trecut pe RIDICARE, deci se facturează mai departe">⚠ act adițional</span>`;
+        if(R_ROSU[j] && ((fact && (i === 1 || i === 4)) || (R_NUME === "Facturare_de_trimis" && (i === 0 || i === 1))))
+          t = `<span style="color:var(--red);font-weight:700">${t}</span>`;
         const rl = R_NUME === "Raport_luna" && R_CEL[j] ? R_CEL[j][i] : "";
         return `<td${rl ? ` class="rl-${rl}"` : ""}${R_NUM.has(i) ? ' style="text-align:right"' : ''}>${rl ? `<span class="rl-b">${t}</span>` : t}</td>`;
       }).join("") + (R_EXTRA_T ? `<td class="noprint">${R_EXTRA[j] || ""}</td>` : "") + "</tr>"; }).join("") + "</tbody>";
