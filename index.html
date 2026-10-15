@@ -742,7 +742,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <div class="hd-mij"><div id="titlu-sus"></div><span id="azi-sus" title="Data de azi (calculatorul)"></span></div>
   <button id="btn-mob" class="btn sec" style="padding:5px 10px;font-size:12px" onclick="mobPC(false)" title="Înapoi la varianta de telefon">📱 Telefon</button>
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
-  <span class="ver">v6.18</span>
+  <span class="ver">v6.19</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -1400,7 +1400,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   #mk-ciorne .ch{border:1px dashed var(--bd);border-radius:14px;padding:3px 4px 3px 10px;cursor:pointer;display:inline-flex;gap:6px;align-items:center}
   #mk-ciorne .ch.sel{border-style:solid;border-color:var(--acc)}
   #mk-ciorne .ch b{font-weight:600} #mk-ciorne .x{border:0;background:none;color:var(--mut);cursor:pointer;font-size:13px;padding:0 4px}
-  #mk-conf{position:absolute;inset:0;background:var(--card);padding:18px;display:none;flex-direction:column;overflow:auto;border-radius:inherit}
+  #mk-conf{position:absolute;inset:0;background:var(--card);padding:24px 20px 18px;display:none;flex-direction:column;overflow:auto;border-radius:inherit}
   #mk-conf.on{display:flex}
   #mk-conf table{width:100%;border-collapse:collapse;font-size:13px} #mk-conf td{padding:5px 8px;border-bottom:1px solid var(--bd);vertical-align:top}
   #mk-conf td:first-child{color:var(--mut);width:42%}
@@ -1548,7 +1548,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   .ghid .gh-jos{margin-top:4px;font-size:11px;color:var(--mut)}
   .ghid.mutat{position:fixed;z-index:3000;width:340px;max-width:calc(100vw - 16px);margin:0;box-shadow:0 6px 24px rgba(0,0,0,.35);background:var(--card)}
   .ghid.mutat::before{content:"";position:absolute;inset:0;background:rgba(217,119,6,.10);border-radius:inherit;pointer-events:none}
-  #ma-conf{position:absolute;inset:0;background:var(--card);padding:18px;display:none;flex-direction:column;overflow:auto;border-radius:inherit}
+  #ma-conf{position:absolute;inset:0;background:var(--card);padding:24px 20px 18px;display:none;flex-direction:column;overflow:auto;border-radius:inherit}
   #ma-conf.on{display:flex}
   #ma-conf table{width:100%;border-collapse:collapse;font-size:13px} #ma-conf td{padding:5px 8px;border-bottom:1px solid var(--bd);vertical-align:top}
   #ma-conf td:first-child{color:var(--mut);width:42%}
@@ -3155,10 +3155,12 @@ function mcVerifica(){
   d.nume = d.nume.toUpperCase();
   const prb = mcCuiProbleme();
   $("mc-conf-date").innerHTML = prb.map(x => `<div style="color:${x.r ? "var(--t-err)" : "#d97706"};margin-bottom:6px">⚠ ${esc(x.t)} Poți salva oricum.</div>`).join("") + "<table>" + MC_CAMPURI.map(([, c, l]) => `<tr><td>${esc(l)}</td><td><b>${esc(d[c] || "—")}</b></td></tr>`).join("") + "</table>";
-  { const cf = $("mc-conf"), cap = cf.parentElement.querySelector(".lux-cap");   // v5.90: confirmarea începe sub bara albastră, cu spațiu
-    cf.parentElement.scrollTop = 0; cf.style.top = (cap ? cap.offsetHeight : 0) + "px"; }
+  confSubBara("mc-conf");
   $("mc-conf").classList.add("on");
 }
+// v5.90 / v6.19: fereastra de confirmare (client, contract, anexă) începe sub bara albastră, cu spațiu — altfel primul rând stă sub bară
+function confSubBara(id){ const cf = $(id), cap = cf.parentElement.querySelector(".lux-cap");
+  cf.parentElement.scrollTop = 0; cf.style.top = (cap ? cap.offsetHeight : 0) + "px"; }
 async function saveClient(dupa){
   const rec={nume:$("mc-nume").value.trim().toUpperCase(),id_tip:$("mc-idtip").value,atr:$("mc-atr").value||null,cui:$("mc-cui").value||null,pers_resp:$("mc-pers").value||null,telefon:$("mc-tel").value||null,email:$("mc-email").value||null,observatii:$("mc-obs").value||null,reprezentant_functie:$("mc-func").value.trim()||null};
   if(!rec.nume){toast("Numele este obligatoriu",true);return;}
@@ -3399,6 +3401,7 @@ function mkVerifica(){
       (c === "data_expirare" ? d.acte_aditionale.map(x => `<tr><td>Act adițional nr. ${esc(x.nr || "?")}${x.data ? " din " + esc(fmtD(x.data)) : ""}</td><td><b>prelungit până la ${esc(fmtD(x.pana_la))}</b></td></tr>`).join("") +
         `<tr><td>Prelungire tacită</td><td><b>${d.prelungire_tacita ? "Nedeterminat, începând cu " + esc(fmtD(d.prelungire_tacita_din)) : "nu"}</b></td></tr>` +
         `<tr><td>Perioada contract <span class="muted">(informativ)</span></td><td>${esc(perioadaCtr(d.data_emitere, ctrUltimaData(d)) || "—")}</td></tr>` : "")).join("") + "</table>";
+  confSubBara("mk-conf");
   $("mk-conf").classList.add("on");
 }
 async function saveContract(dupa){
@@ -3567,6 +3570,7 @@ function maVerifica(){
   r.splice(9, 0, ["Accesorii", d.accesorii]);
   $("ma-conf-date").innerHTML = `<p class="muted" style="margin:0 0 8px">${esc($("ma-ctx").textContent)}</p><table>` +
     r.filter(([, x]) => !MA_SCURT || x).map(([l, x]) => `<tr><td>${esc(l)}</td><td><b>${esc(x || "—")}</b></td></tr>`).join("") + "</table>" + maConfRanduri();
+  confSubBara("ma-conf");
   $("ma-conf").classList.add("on");
 }
 // v5.11: la o anexă cu mai multe produse, confirmarea le arată pe toate
