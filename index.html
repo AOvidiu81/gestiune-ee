@@ -742,7 +742,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <div class="hd-mij"><div id="titlu-sus"></div><span id="azi-sus" title="Data de azi (calculatorul)"></span></div>
   <button id="btn-mob" class="btn sec" style="padding:5px 10px;font-size:12px" onclick="mobPC(false)" title="Înapoi la varianta de telefon">📱 Telefon</button>
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
-  <span class="ver">v6.24</span>
+  <span class="ver">v6.25</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -2110,13 +2110,17 @@ async function schAnuleaza(){
 }
 async function incarcaPct(){
   await aplicaSchimbariRute();
-  const { data, error } = await db.from("clients").select("client_key,lat,lon,anexe_ids,schimbare,masina,status,toalete,containere,garduri,ziua").limit(5000);
+  const { data, error } = await db.from("clients").select("client_key,lat,lon,anexe_ids,schimbare,masina,status,toalete,containere,garduri,ziua,client,jud,localitate,locatie").limit(5000);
   if(error) return;
   PCT = data || []; if(MISC.length) renderMiscari();
 }
+// v6.25 (cerut de Ovidiu, 15.10): comanda din exterior (fără anexă) — punctele C… de la aceeași locație și același client
+const extNorm = v => faraDiac(String(v || "")).trim().toUpperCase().replace(/\s+/g, " ");
+const extLaLoc = (p, m) => !m.anexa_id && /^C\d+/.test(String(p.client_key || "")) && extNorm(p.client) === extNorm(m.client) &&
+  extNorm(p.jud) === extNorm(m.jud) && extNorm(p.localitate) === extNorm(m.loc) && extNorm(p.locatie) === extNorm(m.sat);
 function ruteStil(r){
   const baza = r.anexa_id ? "A" + r.anexa_id : "C" + r.id;
-  const p = PCT.filter(x => x.client_key === baza || String(x.client_key || "").startsWith(baza + "-") ||
+  const p = PCT.filter(x => x.client_key === baza || String(x.client_key || "").startsWith(baza + "-") || extLaLoc(x, r) ||
     (r.anexa_id && [...(x.anexe_ids || []), ...schLista(x.schimbare).flatMap(e => e.anexe_ids || [])].map(Number).includes(r.anexa_id)));   // v4.64: și anexele din schimbarea programată
   const ok = p.length && p.every(x => x.lat != null && x.lon != null && +x.lat && +x.lon);
   const c = ok ? "#2E8B3C" : "#D97706";
@@ -4861,7 +4865,7 @@ function rtChei(m){
   const a = ANX.find(x => x.id === m.anexa_id), loc = a ? anexeLocatie(a) : [];
   const idCheie = k => { const r = /^A(\d+)(-\d+)?(-[A-Z]{2})?$/.exec(k || ""); return r ? +r[1] : null; };
   return PCT.filter(p => m.anexa_id ? (loc.includes(idCheie(p.client_key)) || (p.anexe_ids || []).some(i => loc.includes(+i)))
-                                    : (p.client_key === "C" + m.id || String(p.client_key || "").startsWith("C" + m.id + "-")))
+                                    : (p.client_key === "C" + m.id || String(p.client_key || "").startsWith("C" + m.id + "-") || extLaLoc(p, m)))
             .map(p => p.client_key);
 }
 // v5.05: câte bucăți s-au ridicat de la locație (comenzile de RIDICARE pe anexele locației, până la data dată, inclusiv comanda m)
@@ -7126,12 +7130,16 @@ async function spreRute(id){
   const loc = m.anexa_id ? anexeLocatie(a) : [];
   // v4.69 (cerut de Ovidiu, 06.10): codul punctului = prima anexă a locației + ziua, la orice frecvență (A173-LU, A173-JO),
   // nu anexa comenzii — așa o locație are același cod pe toate zilele și după suplimentări / reduceri.
-  const baza = m.anexa_id ? "A" + (loc.length ? Math.min(...loc) : m.anexa_id) : "C" + m.id;
-  const { data: gasite, error } = await db.from("clients").select("*").like("client_key", (m.anexa_id ? "A" : baza) + "%").limit(5000);
+  let baza = m.anexa_id ? "A" + (loc.length ? Math.min(...loc) : m.anexa_id) : "C" + m.id;
+  const { data: gasite, error } = await db.from("clients").select("*").like("client_key", (m.anexa_id ? "A" : "C") + "%").limit(5000);
   if(error){ toast(error.message, true); return; }
   const idCheie = p => { const k = /^A(\d+)(-\d+)?(-[A-Z]{2})?$/.exec((p && p.client_key) || ""); return k ? +k[1] : null; };
   const alLoc = p => loc.includes(idCheie(p)) || (p.anexe_ids || []).some(i => loc.includes(+i));
-  const pct = (gasite || []).filter(p => m.anexa_id ? alLoc(p) : (p.client_key === baza || p.client_key.startsWith(baza + "-")));
+  const pct = (gasite || []).filter(p => m.anexa_id ? alLoc(p) : (p.client_key === baza || p.client_key.startsWith(baza + "-") || extLaLoc(p, m)));
+  // v6.25: la exterior, suplimentarea / reducerea / ridicarea merg pe punctele deja existente la locație (cel mai vechi cod C…)
+  if(!m.anexa_id){ const b0 = pct.map(p => (/^C(\d+)/.exec(p.client_key) || [])[1]).filter(Boolean).map(Number).sort((x, y) => x - y)[0];
+    if(b0 && b0 !== m.id){ baza = "C" + b0;
+      toast("Comandă din exterior: cantitatea se adună / scade din ce e acum pe punctul " + baza + " — nu apăsa „→ Rute” de două ori pe aceeași comandă."); } }
   // punctul așa cum va fi după schimbarea deja programată, dacă are una
   // (v4.65: doar schimbările programate până la data comenzii, în ordine)
   const panaLa = (m.data && m.data > today()) ? m.data : today();
