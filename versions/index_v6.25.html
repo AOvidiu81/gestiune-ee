@@ -3751,7 +3751,13 @@ async function openSeriiCmd(mid){
   const { data: proaspete, error: eS } = await db.from("serii").select("*").order("id");
   if(eS){ toast("Seriile nu s-au putut citi: " + eS.message, true); return; }
   SER = proaspete || [];
-  const key = "C" + mid;
+  // v6.25: seriile stau pe punctul locației (cel mai vechi cod C… al aceluiași client la aceeași adresă) —
+  // așa suplimentarea din exterior își pune seria lângă cea de la amplasare (C66), nu pe un C67 separat
+  let key = "C" + mid;
+  { const { data: toate } = await db.from("clients").select("client_key,client,jud,localitate,locatie").like("client_key", "C%").limit(5000);
+    const b0 = (toate || []).filter(p => p.client_key === key || p.client_key.startsWith(key + "-") || extLaLoc(p, m))
+      .map(p => +((/^C(\d+)/.exec(p.client_key) || [])[1] || 0)).filter(Boolean).sort((x, y) => x - y)[0];
+    if(b0) key = "C" + b0; }
   const { data: pct } = await db.from("clients").select("client_key,locatie,status,toalete,containere,garduri").or(`client_key.eq.${key},client_key.like.${key}-*`).limit(50);
   const act = (pct || []).filter(p => p.status !== "INACTIV"), n = act.length ? Math.max(...act.map(prodPunct)) : Math.abs(+m.buc || 0);
   SR_CMD = m; SR_DATA = null; SR_STERSE = []; SR_PUNCT = key;
