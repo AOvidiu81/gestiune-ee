@@ -36,7 +36,7 @@ const LOCAL_DRIVER_KEY = 'synced-driver';
 let clientPromise = null;
 export function getSupabase() {
   if (!clientPromise) {
-    clientPromise = import('https://esm.sh/@supabase/supabase-js@2')
+    clientPromise = import('https://esm.sh/@supabase/supabase-js@2.117.0')   // fixat 15.10: @2 = 2.118.0 era stricat pe esm.sh (auth-js 404)
       .then(({ createClient }) =>
         createClient(SUPABASE_URL, SUPABASE_ANON_KEY, { auth: { persistSession: true, autoRefreshToken: true, storageKey: 'ee-pv-auth' } })
       )
