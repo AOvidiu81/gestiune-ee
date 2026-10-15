@@ -742,7 +742,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <div class="hd-mij"><div id="titlu-sus"></div><span id="azi-sus" title="Data de azi (calculatorul)"></span></div>
   <button id="btn-mob" class="btn sec" style="padding:5px 10px;font-size:12px" onclick="mobPC(false)" title="Înapoi la varianta de telefon">📱 Telefon</button>
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
-  <span class="ver">v6.22</span>
+  <span class="ver">v6.23</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -3073,7 +3073,10 @@ async function mcAnaf(){
   MC_ANAF = d;
   const b = d.bilant, rau = d.inactiv || d.radiat;
   const sediu = [d.judet && "Jud. " + d.judet, d.localitate, d.strada].filter(Boolean).join(", ") || d.adresa;
-  const obs = "Sediu: " + sediu + (d.nr_reg_com ? "; Reg. Com.: " + d.nr_reg_com : "");
+  // v6.23 (cerut de Ovidiu, 15.10): la Observații intră tot ce s-a găsit la ANAF — starea (ex. TRANSFER(SOSIRE) din data …),
+  // forma, CAEN, TVA, sediul, Reg. Com. și telefonul de la ANAF (chiar dacă la Telefon rămâne cel din contract)
+  const stareTxt = [d.stare, d.forma, d.caen ? "CAEN " + d.caen : "", d.platitor_tva ? "plătitor de TVA" : "neplătitor de TVA"].filter(Boolean).join(" · ");
+  const obs = "ANAF " + fmtD(today()) + ": " + stareTxt + "; Sediu: " + sediu + (d.nr_reg_com ? "; Reg. Com.: " + d.nr_reg_com : "") + (d.telefon ? "; Telefon ANAF: " + d.telefon : "");
   const atrNou = d.platitor_tva ? "RO" : "";
   const rand = (id, bif, et, val) => `<label style="display:flex;gap:6px;align-items:flex-start;margin:3px 0;font-weight:normal"><input type="checkbox" id="${id}"${bif ? " checked" : ""} style="width:auto;margin-top:3px"><span>${et}: <b>${esc(val || "—")}</b></span></label>`;
   P.innerHTML = `<div class="anaf-box">
