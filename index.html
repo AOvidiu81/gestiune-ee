@@ -742,7 +742,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <div class="hd-mij"><div id="titlu-sus"></div><span id="azi-sus" title="Data de azi (calculatorul)"></span></div>
   <button id="btn-mob" class="btn sec" style="padding:5px 10px;font-size:12px" onclick="mobPC(false)" title="Înapoi la varianta de telefon">📱 Telefon</button>
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
-  <span class="ver">v6.27</span>
+  <span class="ver">v6.28</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -6897,7 +6897,7 @@ async function incarcaCma(){
     .not("anexa_id", "is", null).order("data").limit(5000);
   if(error) return;
   // v6.24: și comenzile fără anexă (puncte C<id> — contract din alt depozit, livrat de la tine), pentru RT în Puncte de rută
-  const r2 = await db.from("miscari").select("id,data,tip_miscare,buc,anexa_id,rpt,rt,fac,pv,act,waap,contract,depozit")
+  const r2 = await db.from("miscari").select("id,data,tip_miscare,buc,anexa_id,rpt,rt,fac,pv,act,waap,contract,depozit,locatii")
     .is("anexa_id", null).order("data", { ascending: false }).limit(3000);
   CMA = (data || []).concat(r2.error ? [] : (r2.data || []));
   renderClienti();
@@ -6911,10 +6911,16 @@ function flagBtn(m, f){
 // 📄 pentru fiecare comandă a anexei: deschide PV-ul legat de ea (în Puncte de rută, lângă RT).
 // v6.24: RT pe punctul C<id> (comandă fără anexă) — pătratul comenzii însăși
 function rtComandaPunct(r){
-  const c = /^C(\d+)(?:-[A-Z]{2})?$/.exec(String(r.client_key || "")); if(!c) return "";
-  const m = CMA.find(x => x.id === +c[1]); if(!m) return '<span class="muted">—</span>';
-  const pv = `<span style="cursor:pointer;margin-right:4px" title="Deschide PV-ul comenzii din ${esc(fmtD(m.data))} · ${esc(m.tip_miscare || "")}" onclick="event.stopPropagation();pvDinComanda(${m.id})">📄</span>`;
-  return flaguriNuConteaza(m).has("rt") ? pv + '<span class="muted" title="Livrat din alt depozit — RT nu contează">—</span>' : pv + `<span class="fl-grup">${flagBtn(m, "rt")}</span>`;
+  // v6.28: și punctele pe locații numerotate (C71-01-JO), plus comenzile pe mai multe locații care au pus bucăți pe această locație
+  const c = /^C(\d+)(-\d+)?(?:-[A-Z]{2})?$/.exec(String(r.client_key || "")); if(!c) return "";
+  const baza = "C" + c[1] + (c[2] || "");
+  const ms = CMA.filter(x => x.id === +c[1] || (!x.anexa_id && Array.isArray(x.locatii) && x.locatii.some(l => l.cod === baza)))
+    .filter((x, i, a) => a.findIndex(y => y.id === x.id) === i).sort((x, y) => x.id - y.id);
+  if(!ms.length) return '<span class="muted">—</span>';
+  return ms.map(m => {
+    const pv = `<span style="cursor:pointer;margin-right:4px" title="Deschide PV-ul comenzii #${m.id} din ${esc(fmtD(m.data))} · ${esc(m.tip_miscare || "")}" onclick="event.stopPropagation();pvDinComanda(${m.id})">📄</span>`;
+    return flaguriNuConteaza(m).has("rt") ? pv + '<span class="muted" title="Livrat din alt depozit — RT nu contează">—</span>' : pv + `<span class="fl-grup">${flagBtn(m, "rt")}</span>`;
+  }).join(" ");
 }
 function pvAnexa(anexaId){
   return CMA.filter(m => m.anexa_id === anexaId).map(m =>
