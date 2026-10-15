@@ -742,7 +742,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <div class="hd-mij"><div id="titlu-sus"></div><span id="azi-sus" title="Data de azi (calculatorul)"></span></div>
   <button id="btn-mob" class="btn sec" style="padding:5px 10px;font-size:12px" onclick="mobPC(false)" title="Înapoi la varianta de telefon">📱 Telefon</button>
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
-  <span class="ver">v6.20</span>
+  <span class="ver">v6.21</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -2748,6 +2748,9 @@ async function saveMiscare(genereaza){
 const SER_RID=/^(RIDICARE|REDUCERE|EVENIMENT-R)$/;
 let MM_SER=new Set();
 function mmSeriiDeschide(){
+  if(mmExterior()){ const id=+$("mm-id").value||null;   // v6.21: comanda din exterior — seriile stau pe comandă
+    if(!id){ toast("Salvează întâi comanda, apoi trece seriile (🔢 aici sau din Puncte de rută)", true); return; }
+    openSeriiCmd(id); return; }
   const an=+$("mm-anexa").value||null;
   if(!an){ toast("Alege întâi anexa (locația)", true); return; }
   openSerii(an, $("mm-data").value||null);
@@ -3674,7 +3677,7 @@ async function deleteAnexa(){
   if(!confirm(ids.length > 1 ? "Ștergi anexa cu toate cele " + ids.length + " produse de pe ea?" : "Ștergi anexa?")) return;
   const {error}=await db.from("anexe").delete().in("id",ids); if(error){toast(error.message,true);return;} closeModal("mod-a"); await reloadClienti(); }
 // ── Serii pe bucată (etapa 1): un rând pe fiecare produs amplasat, trecut de mână pe anexă ──
-let SER=[], SR_AN=null, SR_ROWS=[], SR_STERSE=[], SR_DATA=null, SR_PUNCT=null, SR_LOCS=[];
+let SER=[], SR_AN=null, SR_ROWS=[], SR_STERSE=[], SR_DATA=null, SR_PUNCT=null, SR_LOCS=[], SR_CMD=null;
 // v5.41 (cerut de Ovidiu, 12.10): seriile pe LOCAȚIA punctului de rută — A181-05 = A181-05-MA + A181-05-VI (toate zilele ei).
 // serii.punct = codul locației; clienții cu o singură locație (A164, A164-LU) rămân ca înainte (seriile pe anexă).
 function punctLoc(key){ const m=/^A(\d+)(-\d+)?(?:-[A-Z]{2})?$/.exec(String(key||"")); return m ? { anexa:+m[1], loc:m[2] ? "A"+m[1]+m[2] : null } : null; }
@@ -3697,6 +3700,10 @@ async function serLocatii(ids){
   return Object.values(g).sort((a,b)=>a.key.localeCompare(b.key,undefined,{numeric:true}));
 }
 function butonSeriiPunct(r){
+  { const c=/^C(\d+)(?:-[A-Z]{2})?$/.exec(String(r.client_key||""));   // v6.21: punct din comandă fără anexă (contract din alt depozit, livrat de la tine)
+    if(c){ const key="C"+c[1], n=prodPunct(r), la=SER.filter(x=>x.punct===key && x.stare==="LA CLIENT").length;
+      const cul = !la ? "" : (la===n ? "background:#2E8B3C;border-color:#2E8B3C;color:#fff" : "background:#D97706;border-color:#D97706;color:#fff");
+      return ` <button class="btn sm sec" style="${cul}" title="Model + serie pe fiecare produs livrat de la tine pe această comandă (contract din alt depozit, fără anexă). Se văd și la șofer, pe toate zilele punctului." onclick="openSeriiCmd(${c[1]})">🔢 ${la}/${n}</button>`; } }
   const l=punctLoc(r.client_key); if(!l || !ANX.some(x=>x.id===l.anexa)) return "";
   const muta = k => "";   // v5.86: ⇄ și 📅 au trecut în meniul ⋯ de pe rând
   const key = l.loc || "A" + l.anexa;
@@ -3728,8 +3735,30 @@ function butonSerii(a){
   const cul = !ale.length ? "" : (la === totB ? "background:#2E8B3C;border-color:#2E8B3C;color:#fff" : "background:#D97706;border-color:#D97706;color:#fff");
   return `<button class="btn sm sec" style="${cul}" title="Seriile locației: tip + model + serie pe fiecare bucată (la client / bucăți la client după toate anexele locației)" onclick="openSerii(${a.id})">${txt}</button>`;
 }
+// v6.21 (cerut de Ovidiu, 15.10): seriile pe comanda fără anexă (contract MURES / ARAD…, livrat din depozitul lui):
+// serii.punct = „C<id comandă>”, anexa_id / contract_id / client_id goale, miscare_amplasare_id = comanda.
+async function openSeriiCmd(mid){
+  let m = MISC.find(x => x.id === mid);
+  if(!m){ const { data } = await db.from("miscari").select("*").eq("id", mid).maybeSingle(); m = data; }
+  if(!m){ toast("Comanda #" + mid + " nu mai există", true); return; }
+  const { data: proaspete, error: eS } = await db.from("serii").select("*").order("id");
+  if(eS){ toast("Seriile nu s-au putut citi: " + eS.message, true); return; }
+  SER = proaspete || [];
+  const key = "C" + mid;
+  const { data: pct } = await db.from("clients").select("client_key,locatie,status,toalete,containere,garduri").or(`client_key.eq.${key},client_key.like.${key}-*`).limit(50);
+  const act = (pct || []).filter(p => p.status !== "INACTIV"), n = act.length ? Math.max(...act.map(prodPunct)) : Math.abs(+m.buc || 0);
+  SR_CMD = m; SR_DATA = null; SR_STERSE = []; SR_PUNCT = key;
+  SR_AN = { id: null, contract_id: null, produs: m.produs || "", model: m.model || "", model_fizic: m.model_fizic || "", jud: m.jud || null, loc: m.loc || null, sat: m.sat || null, data_livrarii: m.data, anexa: "" };
+  SR_LOCS = [{ key, nume: m.sat || m.loc || "", n, activ: true }];
+  SR_ROWS = SER.filter(x => x.punct === key).map(x => Object.assign({}, x)).map(serNormTip);
+  $("ms-title").textContent = "Seriile comenzii · " + key + " · " + (m.client || "");
+  $("ms-sub").textContent = [`contract ${m.contract || ""} (fără anexă), livrat din ${m.depozit || ""}`, [m.jud, m.loc, m.sat].filter(Boolean).join(", "), "produse pe punct: " + n, "se văd și la șofer, pe toate zilele punctului"].filter(Boolean).join(" · ");
+  for(let i = SR_ROWS.filter(r => r.stare === "LA CLIENT").length; i < n; i++) SR_ROWS.push(serRandNou());
+  serDeseneaza(); $("mod-s").classList.add("on");
+}
 async function openSerii(anexaId, dataNoua, punct){
   const a0=ANX.find(x=>x.id===anexaId); if(!a0) return;
+  SR_CMD=null;
   const a=ANX.find(x=>x.id===serBaza(anexaId))||a0;   // v4.98: fereastra e a locației
   SR_DATA=dataNoua||null;
   // Seriile se citesc din bază la fiecare deschidere: lista ținută în pagină poate fi veche (altă filă, telefon,
@@ -3837,6 +3866,7 @@ async function serSalveaza(){
   const totS=SR_PUNCT ? (LP?LP.n:0) : cantLocatie(a.id);
   if(laClient>totS && !confirm((SR_PUNCT?"Pe locația "+SR_PUNCT+" sunt "+totS+" produse (după punctul de rută)":"La client sunt "+totS+" bucăți (după anexe)")+", dar ai "+laClient+" serii la client. Salvezi oricum?")) return;
   const baza=r=>({anexa_id:r.anexa_id||a.id,contract_id:a.contract_id,client_id:k?k.client_id:null,jud:a.jud||null,loc:a.loc||null,sat:a.sat||null,
+    ...(SR_CMD ? { miscare_amplasare_id: r.miscare_amplasare_id || SR_CMD.id } : {}),
     produs:r.produs,tip:r.tip||null,model:r.model||null,serie:(r.serie||"").trim()||null,stare:r.stare||"LA CLIENT",
     data_amplasarii:r.data_amplasarii||null,data_ridicarii:r.data_ridicarii||null,observatii:(r.observatii||"").trim()||null,punct:r.punct||null});
   const noi=SR_ROWS.filter(r=>!r.id).map(baza);
@@ -3849,7 +3879,7 @@ async function serSalveaza(){
   if(SR_STERSE.length){ const {data,error}=await db.from("serii").delete().in("id",SR_STERSE).select("id"); if(error){toast(error.message,true);return;} nesterse=SR_STERSE.length-(data||[]).length; }
   closeModal("mod-s"); await reloadClienti();
   if(A_TBL==="clients" && A_ROWS.length) renderAdmin();   // v5.41: butonul 🔢 din Puncte de rută
-  if(SR_ROWS.some(r=>r.stare==="RIDICATA")) inchVerifica(a.id);
+  if(a.id && SR_ROWS.some(r=>r.stare==="RIDICATA")) inchVerifica(a.id);
   toast(nesterse?"Salvat, dar "+nesterse+" bucăți nu s-au șters (doar administratorul poate șterge)":"Serii salvate", !!nesterse);
 }
 function exportClienti(){
