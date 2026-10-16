@@ -7,7 +7,7 @@
 //
 // Pornire: login (tinut minte) -> in fiecare dimineata „Alege un coleg” ->
 // pagina „Ziua de azi” (masina + km obligatorii; traseu, zi, zona, ordine) ->
-// „Generează ruta” sau „Fără rută azi” -> cele 3 file.
+// „Generează ruta” sau „Azi la depozit” (s49) -> cele 3 file.
 //   Rută    = aplicatia de rute (../ruta/?sofer=1) intr-un cadru; primeste datele
 //             din „Ziua de azi” si sare peste ecranul ei de start
 //   PV-uri  = tipurile de PV + Cereri + Istoric (doar soferul principal + masina)
@@ -26,7 +26,7 @@ import { openHistoryScreen } from '../pv/js/screens-history.js';
 import { buildComenziActive } from '../pv/js/screens-comenzi.js';
 import { openSettingsScreen } from '../pv/js/screens-setup.js';
 
-export const SOFER_VERSION = 's48';
+export const SOFER_VERSION = 's49';
 
 const KEY_ZI = 'ee-sofer-zi'; // ziua deschisa: { zi, coleg, carId, km, trasee, zile, zona, ordine, ruta }
 const KEY_ULTIMA = 'ee-sofer-ultima'; // ultimele alegeri (masina, traseu, zona) — precompletare
@@ -113,7 +113,9 @@ function scrie(k, v) {
   try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {}
 }
 const eticheta = (c) => `${c.marca} - ${c.numar}`;
-const ctx = () => ({ driver: stare.driver, car: stare.car, depot: stare.depot });
+// s49: ziua la depozit fara masina — PV-urile facute de acolo au „DEPOZIT” in loc de masina
+const FARA_MASINA = { id: null, marca: 'DEPOZIT', numar: 'DEPOZIT' };
+const ctx = () => ({ driver: stare.driver, car: stare.car || (stare.zi?.depozit ? FARA_MASINA : null), depot: stare.depot });
 const numeEchipa = (coleg) => [stare.driver?.name, coleg].filter(Boolean).join(' + ');
 
 // Acelasi criteriu ca in screens-home.js: depozitul alocat soferului din
@@ -343,6 +345,17 @@ function construiesteZiua({ initial, liste, gata, inapoi, cereColeg }) {
     });
   }
 
+  // s49: „Azi la depozit” (in locul lui „Fără rută azi”) — fara masina si km; prezenta cu GPS la depozit
+  async function laDepozit() {
+    eroare.textContent = '';
+    const r = await marcheazaSosirea(liste, z.coleg);
+    if (!r) return;
+    gata({
+      zi: aziIso(), coleg: z.coleg, carId: null, km: '', trasee: [], zile: zile.valori(), zona: '', ordine: ordine.value, ruta: false,
+      depozit: true, depozitId: r.depozit.id, depozitNume: r.depozit.nume,
+    });
+  }
+
   const camp = (t, nod, nota) => el('div', { class: 'field' }, [el('label', { class: 'field-label' }, [t]), nod, nota ? el('div', { class: 'sofer-nota' }, [nota]) : null]);
   const card = sectionCard(`Ziua de azi · ${dataScurta()}`, [
     echipa,
@@ -355,7 +368,7 @@ function construiesteZiua({ initial, liste, gata, inapoi, cereColeg }) {
     eroare,
     primaryButton('🗺️ Generează ruta', () => aduna(true)),
     el('div', { style: 'height:10px' }),
-    z.ruta ? null : outlineButton('Fără rută azi', () => aduna(false)),
+    z.ruta ? null : outlineButton('🏭 Azi la depozit (fără mașină)', () => laDepozit()),
     inapoi ? null : el('div', { style: 'height:10px' }),
     inapoi ? null : el('button', { class: 'btn btn-text btn-block', onclick: () => altSofer() }, ['← Nu sunt eu (alege alt șofer)']),
   ]);
@@ -389,8 +402,8 @@ function salveazaZiua(z, { faraInceput } = {}) {
   stare.car = masinaDupaId(z.carId);
   scrie(KEY_ZI, z);
   scrie(KEY_START, { zi: z.zi, sofer: nume, oraStart });
-  scrie(KEY_ULTIMA, { carId: z.carId, trasee: z.trasee, zona: z.zona });
-  if (!faraInceput) noteazaInceput(z);
+  if (z.carId) scrie(KEY_ULTIMA, { carId: z.carId, trasee: z.trasee, zona: z.zona });
+  if (!faraInceput && !z.depozit) noteazaInceput(z); // s49: ziua la depozit merge in prezenta_depozit, nu in inceput_zi
 }
 
 // Inceputul zilei -> GestiuneEE (tabelul inceput_zi, un rand pe zi si sofer), si pentru „Fără rută azi”.
@@ -435,6 +448,7 @@ async function deschideZiua() {
     replaceRoot(() => construiesteZiua({ initial: valoriDePornire(), liste, gata: resolve, cereColeg: true }));
   });
   salveazaZiua(z);
+  if (z.ruta) inchideLaRuta([stare.driver.name, z.coleg]);
 }
 
 // Din aplicatie: aceeasi pagina, cu valorile de azi (creionul din ruta, numele din bara, „Generează ruta”)
@@ -447,6 +461,7 @@ async function editeazaZiua() {
     const z = await pushScreen(({ pop }) => construiesteZiua({ initial: stare.zi, liste, gata: (v) => pop(v), inapoi: () => pop(null) }));
     if (!z) return;
     salveazaZiua(z);
+    if (z.ruta) inchideLaRuta([stare.driver.name, z.coleg]);
     ui?.peZiNoua();
   } finally { editareDeschisa = false; }
 }
@@ -583,6 +598,183 @@ export function hartaSerii(serii, anexe) {
   serii.forEach((x) => { if (x.punct) (peLoc[x.punct] = peLoc[x.punct] || []).push(serieText(x, dupaId[x.anexa_id])); });
   Object.keys(peLoc).forEach((k) => { harta[k] = peLoc[k].join('; '); });
   return harta;
+}
+
+// ---------- s49: „Azi la depozit” — prezenta la depozit (tabelul prezenta_depozit), cerut de Ovidiu 16.10 ----------
+// Fara masina si km. Se aleg doar colegii disponibili (nu pe ruta azi, nu deja la depozit). Sosirea si plecarea
+// se inregistreaza doar cu telefonul la depozit (GPS fata de depozite.lat/lon, raza depozite.raza_m).
+// Fiecare om are randul lui: pleaca oricand, de pe orice telefon. Corecturile le face administratorul in GestiuneEE.
+const oraScurta = (t) => { if (!t) return ''; const d = new Date(t); return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`; };
+const durataOre = (a, b) => { const m = Math.max(0, Math.round((new Date(b || Date.now()) - new Date(a)) / 60000)); return `${Math.floor(m / 60)}:${String(m % 60).padStart(2, '0')}`; };
+const idServer = (id) => { const n = parseInt(String(id == null ? '' : id).replace('synced-', ''), 10); return Number.isFinite(n) ? n : null; };
+async function mesaj(titlu, text) {
+  await openModal({ title: titlu, bodyNode: el('div', { class: 'modal-message' }, [text]), actions: [{ label: 'OK', value: true, primary: true }] });
+}
+// fereastra „Se verifică locația…” cat timp ruleaza `fn`
+async function cuAsteptare(text, fn) {
+  openModal({ title: '📍 ' + text, bodyNode: el('div', { class: 'modal-message' }, ['Ține telefonul la depozit, câteva secunde.']) });
+  const inchide = document.body.lastElementChild.__close;
+  try { return await fn(); } finally { inchide?.(undefined); }
+}
+export function distantaM(a, b) {
+  const R = 6371000, rad = (x) => (x * Math.PI) / 180;
+  const dLat = rad(b.lat - a.lat), dLon = rad(b.lon - a.lon);
+  const h = Math.sin(dLat / 2) ** 2 + Math.cos(rad(a.lat)) * Math.cos(rad(b.lat)) * Math.sin(dLon / 2) ** 2;
+  return Math.round(2 * R * Math.asin(Math.sqrt(h)));
+}
+function pozitieAcum() {
+  return new Promise((res) => {
+    if (!navigator.geolocation) { res({ err: 'Telefonul nu poate da locația.' }); return; }
+    navigator.geolocation.getCurrentPosition(
+      (p) => res({ lat: p.coords.latitude, lon: p.coords.longitude, acc: p.coords.accuracy || 0 }),
+      (e) => res({ err: e && e.code === 1
+        ? 'Locația e blocată pentru aplicație. Permite locația pentru Șofer EE (Setări telefon → Aplicații → Chrome → Permisiuni → Locație) și încearcă din nou.'
+        : 'Nu s-a putut afla locația. Pornește Locația (GPS) din telefon și încearcă din nou.' }),
+      { enableHighAccuracy: true, timeout: 20000, maximumAge: 0 },
+    );
+  });
+}
+// „Ești la depozit?”: { lat, lon, dist } sau { err }. Depozit fara coordonate: doar se noteaza locatia.
+export function verificaLaDepozit(p, dep) {
+  if (dep.lat == null || dep.lon == null) return { lat: p.lat, lon: p.lon, dist: null };
+  const dist = distantaM(p, { lat: Number(dep.lat), lon: Number(dep.lon) });
+  const raza = Number(dep.raza_m) || 300;
+  if (dist > raza + Math.min(Number(p.acc) || 0, 100)) {
+    const t = dist >= 1000 ? `${(dist / 1000).toFixed(1).replace('.', ',')} km` : `${dist} m`;
+    return { err: `Ești la ${t} de depozitul ${dep.nume}. Prezența se face doar de la depozit.` };
+  }
+  return { lat: p.lat, lon: p.lon, dist };
+}
+async function laDepozitAcum(dep) {
+  const p = await pozitieAcum();
+  return p.err ? p : verificaLaDepozit(p, dep);
+}
+
+// Cine e azi pe ruta / deja la depozit. Intoarce { depozite, toate, deschise, ocupat: { nume: motiv } }
+export function ocupatiAzi(zi, inceput, sesiuni, prezente) {
+  const ocupat = {};
+  const sesAzi = sesiuni.filter((s) => s.session_date === zi || (s.created_at && sIso(new Date(s.created_at)) === zi));
+  inceput.filter((r) => r.cu_ruta).forEach((r) => [r.sofer1, r.sofer2].forEach((n) => {
+    if (!n) return;
+    const ale = sesAzi.filter((s) => s.driver1 === n || s.driver2 === n);
+    if (!ale.length || ale.some((s) => s.status !== 'finalizata')) ocupat[n] = 'pe rută azi';
+  }));
+  sesAzi.filter((s) => s.status !== 'finalizata').forEach((s) => [s.driver1, s.driver2].forEach((n) => { if (n) ocupat[n] = 'pe rută azi'; }));
+  prezente.filter((r) => !r.ora_plecare).forEach((r) => { ocupat[r.angajat] = `la depozit din ${oraScurta(r.ora_sosire)}${r.depozit ? ' · ' + r.depozit : ''}`; });
+  return ocupat;
+}
+async function stareaZilei() {
+  const sb = await getSupabase();
+  const zi = aziIso();
+  const [d, p, iz, rs] = await Promise.all([
+    sb.from('depozite').select('id,cod,nume,tip,lat,lon,raza_m').eq('activ', true).order('ordine'),
+    sb.from('prezenta_depozit').select('*').eq('zi', zi).order('ora_sosire'),
+    sb.from('inceput_zi').select('sofer1,sofer2,cu_ruta').eq('zi', zi),
+    sb.from('route_sessions').select('driver1,driver2,status,session_date,created_at').gte('created_at', new Date(Date.now() - 36 * 3600e3).toISOString()),
+  ]);
+  const err = d.error || p.error || iz.error || rs.error;
+  if (err) throw err;
+  const toate = p.data || [];
+  return { depozite: d.data || [], toate, deschise: toate.filter((r) => !r.ora_plecare), ocupat: ocupatiAzi(zi, iz.data || [], rs.data || [], toate) };
+}
+
+// Fereastra „Azi la depozit”: depozitul + bife pe oamenii disponibili -> GPS -> un rand pe fiecare om bifat.
+// Intoarce { depozit } sau null (renuntare).
+async function marcheazaSosirea(liste, colegImplicit) {
+  const eu = stare.driver.name;
+  let st;
+  try { st = await stareaZilei(); } catch (e) {
+    await mesaj('Fără internet', 'Prezența la depozit are nevoie de internet. Încearcă din nou când ai semnal.');
+    return null;
+  }
+  if (!st.depozite.length) { await mesaj('Lipsește depozitul', 'Nu e niciun depozit activ în GestiuneEE.'); return null; }
+  const euDeja = st.deschise.find((r) => r.angajat === eu);
+  const depImplicit = st.depozite.find((d) => euDeja && d.id === euDeja.depozit_id)
+    || st.depozite.find((d) => d.id === idServer(stare.depot?.id)) || st.depozite.find((d) => d.tip === 'principal') || st.depozite[0];
+  const sel = el('select', { class: 'field-input' }, st.depozite.map((d) => el('option', { value: String(d.id) }, [`🏭 ${d.nume}`])));
+  sel.value = String(depImplicit.id);
+  const nume = [eu, ...(liste.colegi || []).filter((n) => n && n !== eu)];
+  const alesi = new Set();
+  const lista = el('div', { class: 'sofer-colegi' });
+  nume.forEach((n) => {
+    // eu nu sunt blocat de „pe rută” (am ales acum depozitul), doar daca sunt deja trecut la depozit
+    const motiv = n === eu && st.ocupat[n] === 'pe rută azi' ? null : st.ocupat[n];
+    const b = el('button', { class: 'sofer-coleg' + (motiv ? ' sofer-coleg-ocupat' : ''), disabled: !!motiv }, [
+      `${n === eu ? '🙋' : '👤'} ${n}${n === eu ? ' (eu)' : ''}`,
+      motiv ? el('span', { class: 'sofer-coleg-motiv' }, [motiv]) : null,
+    ]);
+    if (!motiv && (n === eu || n === colegImplicit)) alesi.add(n);
+    b.classList.toggle('on', alesi.has(n));
+    if (!motiv) b.addEventListener('click', () => { if (alesi.has(n)) alesi.delete(n); else alesi.add(n); b.classList.toggle('on', alesi.has(n)); });
+    lista.appendChild(b);
+  });
+  const eroare = el('div', { class: 'field-error' }, ['']);
+  const corp = el('div', {}, [
+    el('div', { class: 'field' }, [el('label', { class: 'field-label' }, ['Depozitul']), sel]),
+    el('div', { class: 'sofer-nota', style: 'margin:0 0 10px' }, ['Bifează cine e acum la depozit. Cei plecați pe rută sau trecuți deja nu se pot alege. Se verifică locația telefonului.']),
+    lista, eroare,
+  ]);
+  for (;;) {
+    const ok = await openModal({ title: '🏭 Azi la depozit', bodyNode: corp, actions: [{ label: 'Renunță', value: false }, { label: 'Înregistrează sosirea', value: true, primary: true }] });
+    if (!ok) return null;
+    const dep = st.depozite.find((d) => String(d.id) === sel.value);
+    if (!alesi.size) {
+      if (euDeja) return { depozit: st.depozite.find((d) => d.id === euDeja.depozit_id) || dep };
+      eroare.textContent = 'Bifează cel puțin un om.';
+      continue;
+    }
+    const loc = await cuAsteptare('Se verifică locația…', () => laDepozitAcum(dep));
+    if (loc.err) { eroare.textContent = loc.err; continue; }
+    const acum = new Date().toISOString();
+    const randuri = [...alesi].map((n) => ({
+      zi: aziIso(), angajat: n, depozit_id: dep.id, depozit: dep.nume, ora_sosire: acum,
+      sosire_lat: loc.lat, sosire_lon: loc.lon, sosire_dist_m: loc.dist, marcat_de: eu,
+    }));
+    try {
+      const sb = await getSupabase();
+      const { error } = await sb.from('prezenta_depozit').insert(randuri);
+      if (error) throw error;
+    } catch (e) {
+      eroare.textContent = /duplicate|unique/i.test(String(e?.message || e))
+        ? 'Unul dintre cei bifați a fost trecut între timp de un coleg. Apasă Renunță și deschide din nou.'
+        : 'Nu s-a putut salva (internet?). Încearcă din nou.';
+      continue;
+    }
+    return { depozit: dep };
+  }
+}
+
+// „Pleacă” pe randul unui om: confirmare + GPS la depozit
+async function inregistreazaPlecarea(r, dep) {
+  const ok = await openModal({
+    title: 'Plecare de la depozit',
+    bodyNode: el('div', { class: 'modal-message' }, [`${r.angajat} pleacă acum de la depozit? (sosit la ${oraScurta(r.ora_sosire)})`]),
+    actions: [{ label: 'Renunță', value: false }, { label: 'Pleacă', value: true, primary: true }],
+  });
+  if (!ok) return false;
+  const loc = dep ? await cuAsteptare('Se verifică locația…', () => laDepozitAcum(dep)) : { err: 'Depozitul nu mai e în listă.' };
+  if (loc.err) { await mesaj('Plecarea nu s-a înregistrat', `${loc.err} Dacă a plecat deja, anunță administratorul — el trece ora în GestiuneEE.`); return false; }
+  try {
+    const sb = await getSupabase();
+    const acum = new Date().toISOString();
+    const { error } = await sb.from('prezenta_depozit').update({
+      ora_plecare: acum, plecare_lat: loc.lat, plecare_lon: loc.lon, plecare_dist_m: loc.dist, inchis_de: stare.driver.name, updated_at: acum,
+    }).eq('id', r.id).is('ora_plecare', null);
+    if (error) throw error;
+  } catch (e) { await mesaj('Plecarea nu s-a înregistrat', 'Nu s-a putut salva (internet?). Încearcă din nou.'); return false; }
+  return true;
+}
+
+// Plecare pe ruta („Generează ruta”): se inchide prezenta la depozit a echipei, fara GPS
+async function inchideLaRuta(nume) {
+  const n = nume.filter(Boolean);
+  if (!n.length) return;
+  try {
+    const sb = await getSupabase();
+    const acum = new Date().toISOString();
+    await sb.from('prezenta_depozit').update({ ora_plecare: acum, plecare_motiv: 'PE RUTA', inchis_de: stare.driver.name, updated_at: acum })
+      .eq('zi', aziIso()).in('angajat', n).is('ora_plecare', null);
+  } catch (e) { /* fara semnal: ramane deschisa, o inchide administratorul */ }
 }
 
 // ---------- ecranul principal, cu cele 3 file ----------
@@ -736,8 +928,55 @@ function ecranFile() {
       } catch (e) { /* fara semnal: ruta ramane cu seriile de data trecuta */ }
       finally { seriiInLucru = false; }
     }
+    function eticheteFila(dep) {
+      const b = file.find((f) => f.k === 'ruta').btn;
+      b.firstChild.textContent = dep ? '🏭' : '🗺️';
+      b.lastChild.textContent = dep ? 'Depozit' : 'Rută';
+    }
+    // s49: ziua la depozit — cine e azi la depozit, „Pleacă” pe fiecare om
+    async function construiesteDepozit(p) {
+      p.innerHTML = '';
+      const lista = el('div', {}, [el('div', { class: 'sofer-intrebare' }, ['Se încarcă…'])]);
+      p.appendChild(el('div', { class: 'screen-scroll' }, [
+        sectionCard(`🏭 La depozit · ${stare.zi.depozitNume || ''}`, [
+          lista,
+          el('div', { style: 'height:12px' }),
+          outlineButton('➕ Au mai venit colegi', async () => { const r = await marcheazaSosirea(await incarcaListe(), ''); if (r) construiesteDepozit(p); }),
+          el('div', { style: 'height:10px' }),
+          primaryButton('🗺️ Plec pe rută (Generează ruta)', () => editeazaZiua()),
+          el('div', { style: 'height:6px' }),
+          el('button', { class: 'btn btn-text btn-block', onclick: () => construiesteDepozit(p) }, ['↻ Reîncarcă']),
+        ]),
+      ]));
+      let st;
+      try { st = await stareaZilei(); } catch (e) {
+        lista.innerHTML = '';
+        lista.appendChild(el('div', { class: 'sofer-intrebare' }, ['Fără internet — lista nu se poate încărca. Apasă „Reîncarcă” când ai semnal.']));
+        return;
+      }
+      const ale = st.toate.filter((r) => r.depozit_id === stare.zi.depozitId);
+      lista.innerHTML = '';
+      if (!ale.length) lista.appendChild(el('div', { class: 'sofer-intrebare' }, ['Nimeni nu e trecut azi la acest depozit.']));
+      ale.forEach((r) => {
+        const txt = r.ora_plecare
+          ? `plecat · ${oraScurta(r.ora_sosire)} – ${oraScurta(r.ora_plecare)} (${durataOre(r.ora_sosire, r.ora_plecare)} h)${r.plecare_motiv === 'PE RUTA' ? ' · pe rută' : ''}`
+          : `prezent de la ${oraScurta(r.ora_sosire)} (${durataOre(r.ora_sosire)} h)`;
+        const dep = st.depozite.find((d) => d.id === r.depozit_id);
+        lista.appendChild(el('div', { class: 'sofer-dep-rand' + (r.ora_plecare ? ' plecat' : '') }, [
+          el('div', { class: 'sofer-dep-txt' }, [el('div', { class: 'sofer-dep-nume' }, [r.angajat]), el('div', { class: 'sofer-dep-ore' }, [txt])]),
+          r.ora_plecare ? null : el('button', { class: 'btn btn-outline sofer-dep-pleaca', onclick: async () => { if (await inregistreazaPlecarea(r, dep)) construiesteDepozit(p); } }, ['Pleacă']),
+        ]));
+      });
+    }
     function construiesteRuta() {
       const p = panou('ruta');
+      if (stare.zi.depozit && !stare.zi.ruta) {
+        cadru = null; cadruGata = false; stareRuta.style.display = 'none';
+        eticheteFila(true);
+        construiesteDepozit(p);
+        return;
+      }
+      eticheteFila(false);
       if (stare.zi.ruta) {
         if (cadru) { trimiteLaRuta(); return; }
         p.innerHTML = '';
@@ -756,9 +995,16 @@ function ecranFile() {
       stareRuta.style.display = 'none';
       p.innerHTML = '';
       p.appendChild(el('div', { class: 'screen-scroll' }, [
-        sectionCard('Fără rută azi', [
-          el('div', { class: 'sofer-intrebare' }, ['Nu ai generat nicio rută pentru azi. O poți genera oricând de aici.']),
+        sectionCard('Fără rută acum', [
+          el('div', { class: 'sofer-intrebare' }, ['Nu ai nicio rută pornită acum. O poți genera oricând de aici.']),
           primaryButton('🗺️ Generează ruta', () => editeazaZiua()),
+          el('div', { style: 'height:10px' }),
+          outlineButton('🏭 Sunt la depozit', async () => {
+            const r = await marcheazaSosirea(await incarcaListe(), stare.zi.coleg);
+            if (!r) return;
+            salveazaZiua({ ...stare.zi, depozit: true, depozitId: r.depozit.id, depozitNume: r.depozit.nume }, { faraInceput: true });
+            afiseazaSus(); construiesteRuta();
+          }),
         ]),
       ]));
     }
@@ -778,7 +1024,7 @@ function ecranFile() {
 
     function afiseazaSus() {
       numeBtn.textContent = `👤 ${numeEchipa(stare.zi.coleg)}`;
-      masinaBtn.textContent = `🚚 ${stare.car ? eticheta(stare.car) : 'alege mașina'} · ${stare.zi.km} km ▾`;
+      masinaBtn.textContent = stare.zi.depozit && !stare.car ? `🏭 La depozit · fără mașină ▾` : `🚚 ${stare.car ? eticheta(stare.car) : 'alege mașina'} · ${stare.zi.km} km ▾`;
     }
 
     window.addEventListener('message', (e) => {
@@ -797,7 +1043,7 @@ function ecranFile() {
       peMasinaNoua() { afiseazaSus(); construiesteComenzi(); }, // masina schimbata pe drum: ruta stie deja
       peZiNoua(sariLaRuta = true) {
         afiseazaSus(); construiesteComenzi(); construiesteRuta();
-        if (sariLaRuta && stare.zi.ruta) arata('ruta');
+        if (sariLaRuta && (stare.zi.ruta || stare.zi.depozit)) arata('ruta');
       },
       reincarca() { if (curenta === 'comenzi') comenzi?.reload?.(); },
       async schimbaMasinaPeRuta(m) {
@@ -815,7 +1061,7 @@ function ecranFile() {
     construiesteRuta();
     screen.append(top, panouri, bara);
     const ultima = citeste(KEY_FILA);
-    arata(FILE.includes(ultima) ? ultima : (stare.zi.ruta ? 'ruta' : 'comenzi'));
+    arata(FILE.includes(ultima) ? ultima : (stare.zi.ruta || stare.zi.depozit ? 'ruta' : 'comenzi'));
     return screen;
   });
 }
@@ -853,7 +1099,7 @@ async function boot() {
   // Ziua deschisa azi se tine minte; zi noua (sau masina disparuta) -> „Alege un coleg” + „Ziua de azi”
   const z = citeste(KEY_ZI);
   // Alt sofer pe acelasi telefon (deconectare + alt nume) -> ziua se deschide din nou, cu „Alege un coleg”
-  if (z && z.zi === aziIso() && z.sofer === stare.driver.name && masinaDupaId(z.carId)) {
+  if (z && z.zi === aziIso() && z.sofer === stare.driver.name && (masinaDupaId(z.carId) || z.depozit)) {
     stare.zi = z;
     stare.car = masinaDupaId(z.carId);
   } else {

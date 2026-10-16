@@ -742,7 +742,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <div class="hd-mij"><div id="titlu-sus"></div><span id="azi-sus" title="Data de azi (calculatorul)"></span></div>
   <button id="btn-mob" class="btn sec" style="padding:5px 10px;font-size:12px" onclick="mobPC(false)" title="Înapoi la varianta de telefon">📱 Telefon</button>
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
-  <span class="ver">v6.29</span>
+  <span class="ver">v6.30</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -969,6 +969,12 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
       <div style="flex:0"><label>&nbsp;</label><button class="btn sec" onclick="exportIZ()">Export Excel</button></div>
     </div>
     <div class="tw" style="margin-top:10px"><table id="iz-tbl"></table></div>
+  </div>
+  <div class="card">
+    <h3 style="margin:0 0 6px">🏭 Prezență la depozit</h3>
+    <p class="muted" style="margin:0 0 8px">Din Șofer EE, „Azi la depozit”: sosirea și plecarea fiecărui om, înregistrate doar cu telefonul la depozit (GPS). <b>Portocaliu</b> = nu a închis ziua după 8 ore. ✎ = corectezi orele; „+ Prezență manuală” = pentru cine a uitat. Luna, Șoferul și Caută de sus se aplică și aici.</p>
+    <div class="row noprint"><div style="flex:0"><button class="btn sec" onclick="pdDeschide(null)">+ Prezență manuală</button></div></div>
+    <div class="tw" style="margin-top:10px"><table id="pd-tbl"></table></div>
   </div>
 </section>
 
@@ -1483,6 +1489,28 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
       <div style="flex:1"></div>
       <div style="flex:0"><button class="btn sec" onclick="closeModal('mod-mu')">Anulează</button></div>
       <div style="flex:0"><button class="btn" onclick="muSalveaza()">Salvează mutarea</button></div>
+    </div>
+  </div>
+</div>
+<div class="modal" id="mod-pd">
+  <div class="box" style="max-width:560px">
+    <h3 id="pd-title" class="lux-cap cap-mut">Prezență la depozit</h3>
+    <p class="muted" id="pd-sub" style="margin:0 0 10px"></p>
+    <div class="row">
+      <div><label>Angajat</label><select id="pd-ang"></select></div>
+      <div><label>Depozit</label><select id="pd-dep"></select></div>
+    </div>
+    <div class="row">
+      <div><label>Data</label><input type="date" id="pd-zi"></div>
+      <div><label>Ora sosirii</label><input type="time" id="pd-sos"></div>
+      <div><label>Ora plecării</label><input type="time" id="pd-ple"></div>
+    </div>
+    <div class="row"><div><label>Observații</label><input id="pd-obs" placeholder="ex. a uitat să-și facă prezența"></div></div>
+    <div class="row" style="margin-top:14px;justify-content:flex-end">
+      <div style="flex:0"><button class="btn sec" id="pd-sterge" onclick="pdSterge()">Șterge</button></div>
+      <div style="flex:1"></div>
+      <div style="flex:0"><button class="btn sec" onclick="closeModal('mod-pd')">Anulează</button></div>
+      <div style="flex:0"><button class="btn" onclick="pdSalveaza()">Salvează</button></div>
     </div>
   </div>
 </div>
@@ -5203,7 +5231,7 @@ function alegeAtentie(cheie){ AT_SEL = cheie; renderPlaci(); }
 // Funcția rezumat_baza() din bază merge doar pentru administrator.
 const TB_NUME = { clients: "Puncte de rută", visit_logs: "Vizite (rute)", client_weeks: "Istoric săptămâni (rute)", route_sessions: "Sesiuni rută",
   week_meta: "Note săptămâni (rute)", miscari: "Comenzi", anexe: "Anexe", contracte: "Contracte", clienti: "Clienți", serii: "Serii",
-  pv_records: "PV-uri / cereri (înregistrări)", documente: "Registru documente", inceput_zi: "Începutul zilei", atentie_note: "Note De urmărit",
+  pv_records: "PV-uri / cereri (înregistrări)", documente: "Registru documente", inceput_zi: "Începutul zilei", prezenta_depozit: "Prezență la depozit", atentie_note: "Note De urmărit",
   ciorne: "Ciorne", profiles: "Conturi", nomenclatoare: "Nomenclatoare", products: "Produse (PV)", stoc_initial: "Stoc inițial",
   depozite: "Depozite", masini: "Mașini", soferi: "Șoferi", company_info: "Date firmă", facturare_stare: "Stare facturare" };
 const tbMB = b => { b = +b || 0; return b < 1048576 ? (b / 1024).toFixed(0) + " KB" : (b / 1048576).toFixed(1).replace(".", ",") + " MB"; };
@@ -6133,9 +6161,9 @@ function izRand(r){
 async function loadIZ(forta){
   try{
     if(!IZ_GATA || forta){
-      [IZ, IZ_SES] = await Promise.all(["inceput_zi","route_sessions"].map(rrToate));
+      [IZ, IZ_SES, PD] = await Promise.all(["inceput_zi","route_sessions","prezenta_depozit"].map(rrToate));
       if(!IZ_GATA) $("iz-luna").value = izZiLocala(new Date()).slice(0, 7);
-      const sel = $("iz-sofer"), v = sel.value, nume = [...new Set(IZ.flatMap(r => [r.sofer1, r.sofer2]).filter(Boolean))].sort();
+      const sel = $("iz-sofer"), v = sel.value, nume = [...new Set([...IZ.flatMap(r => [r.sofer1, r.sofer2]), ...PD.map(r => r.angajat)].filter(Boolean))].sort();
       sel.innerHTML = '<option value="">toți</option>' + nume.map(n => `<option>${esc(n)}</option>`).join("");
       if(nume.includes(v)) sel.value = v;
       IZ_GATA = true;
@@ -6158,14 +6186,97 @@ function izAfiseaza(){
       `<td>${esc(x.trasee)}</td><td>${esc(x.zile)}</td><td>${esc(x.r.zona || "")}</td><td>${x.ruta}</td>` +
       `<td style="text-align:right">${x.kmFinal}</td><td>${x.sfarsit}</td><td style="text-align:right">${x.km}</td><td>${x.durata}</td></tr>`).join("")
       : `<tr><td colspan="${cap.length}" class="muted">Nicio zi înregistrată pentru filtrele alese.</td></tr>`) + "</tbody>";
+  pdAfiseaza();
+}
+
+// ================= PREZENȚA LA DEPOZIT (v6.30, cerut de Ovidiu 16.10) =================
+// prezenta_depozit = un rând pe om și sosire, scris de Șofer EE la „Azi la depozit” (sosire / plecare doar cu GPS-ul la depozit;
+// la „Generează ruta” se închide singur, plecare_motiv = PE RUTA). Aici: portocaliu dacă nu a închis după 8 ore; ✎ corectează orele.
+let PD = [], PD_ROWS = [], PD_ID = null;
+const PD_ORE = 8;
+const pdMin = r => { if(!r.ora_plecare) return null; const m = Math.round((new Date(r.ora_plecare) - new Date(r.ora_sosire)) / 60000); return m >= 0 ? m : null; };
+const pdUitat = r => !r.ora_plecare && (Date.now() - new Date(r.ora_sosire)) > PD_ORE * 3600e3;
+const pdGps = d => d == null ? "—" : (d >= 1000 ? (d / 1000).toFixed(1).replace(".", ",") + " km" : d + " m");
+const pdOre = m => m == null ? "" : Math.floor(m / 60) + ":" + zi2(m % 60);
+function pdPlecare(r){
+  if(!r.ora_plecare) return pdUitat(r) ? "<b>neînchisă</b>" : '<span class="muted">prezent</span>';
+  return izOra(r.ora_plecare) + (r.plecare_motiv === "PE RUTA" ? ' <span class="muted">(pe rută)</span>' : r.plecare_motiv === "CORECTAT" ? ' <span class="muted">(trecută de admin)</span>' : "");
+}
+function pdAfiseaza(){
+  const luna = $("iz-luna").value, sf = $("iz-sofer").value, q = $("iz-caut").value.trim().toLowerCase();
+  PD_ROWS = PD.filter(r => (!luna || String(r.zi).startsWith(luna)) && (!sf || r.angajat === sf)
+      && (!q || [r.angajat, r.depozit, r.marcat_de, r.inchis_de, r.observatii].join(" ").toLowerCase().includes(q)))
+    .sort((a, b) => String(b.zi).localeCompare(String(a.zi)) || String(a.ora_sosire).localeCompare(String(b.ora_sosire)));
+  const cap = ["Data","Angajat","Depozit","Sosire","Plecare","Ore","GPS sosire","GPS plecare","Marcat de","Închis de","Observații",""];
+  $("pd-tbl").innerHTML = "<thead><tr>" + cap.map(c => `<th>${c}</th>`).join("") + "</tr></thead><tbody>" +
+    (PD_ROWS.length ? PD_ROWS.map(r => `<tr${pdUitat(r) ? ' style="background:rgba(217,119,6,.22)" title="Nu a închis ziua după ' + PD_ORE + ' ore — apasă ✎ și trece ora plecării"' : ""}>` +
+      `<td style="white-space:nowrap">${izData(r.zi)}</td><td>${esc(r.angajat)}</td><td>${esc(r.depozit || "")}</td><td><b>${izOra(r.ora_sosire)}</b></td>` +
+      `<td>${pdPlecare(r)}</td><td style="text-align:right">${pdOre(pdMin(r))}</td>` +
+      `<td style="text-align:right">${pdGps(r.sosire_dist_m)}</td><td style="text-align:right">${r.ora_plecare ? pdGps(r.plecare_dist_m) : ""}</td>` +
+      `<td>${esc(r.marcat_de || "")}</td><td>${esc(r.inchis_de || "")}</td>` +
+      `<td>${esc(r.observatii || "")}${r.corectat_de ? `${r.observatii ? "<br>" : ""}<span class="muted">✎ ${esc(r.corectat_de)}, ${dRO(new Date(r.corectat_la))} ${izOra(r.corectat_la)}</span>` : ""}</td>` +
+      `<td><button class="btn sm sec" title="Corectează orele" onclick="pdDeschide(${r.id})">✎</button></td></tr>`).join("")
+      : `<tr><td colspan="${cap.length}" class="muted">Nicio prezență la depozit pentru filtrele alese.</td></tr>`) + "</tbody>";
+}
+function pdDeschide(id){
+  const r = id == null ? null : PD.find(x => x.id === id);
+  PD_ID = r ? r.id : null;
+  $("pd-title").textContent = r ? "Corectează prezența" : "Prezență manuală";
+  $("pd-sub").textContent = r ? `Trecut din telefon de ${r.marcat_de || "—"}` + (r.corectat_de ? ` · corectat de ${r.corectat_de}, ${dRO(new Date(r.corectat_la))} ${izOra(r.corectat_la)}` : "")
+    : "Pentru cine a uitat să-și facă prezența la depozit.";
+  const nume = [...new Set([...SOF.filter(s => s.activ !== false).map(s => s.nume), ...PD.map(x => x.angajat)].filter(Boolean))].sort();
+  $("pd-ang").innerHTML = nume.map(n => `<option>${esc(n)}</option>`).join("");
+  $("pd-ang").value = r ? r.angajat : (nume[0] || "");
+  $("pd-ang").disabled = !!r;
+  $("pd-dep").innerHTML = DEP.map(d => `<option value="${d.id}">${esc(d.nume)}</option>`).join("");
+  $("pd-dep").value = String(r && r.depozit_id ? r.depozit_id : (depPrincipalId() || ""));
+  $("pd-zi").value = r ? r.zi : izZiLocala(new Date());
+  $("pd-sos").value = r ? izOra(r.ora_sosire) : "";
+  $("pd-ple").value = r ? izOra(r.ora_plecare) : "";
+  $("pd-obs").value = r ? (r.observatii || "") : "";
+  $("pd-sterge").style.display = r ? "" : "none";
+  $("mod-pd").classList.add("on");
+}
+async function pdSalveaza(){
+  const zi = $("pd-zi").value, sos = $("pd-sos").value, ple = $("pd-ple").value;
+  if(!zi || !sos){ toast("Completează data și ora sosirii", true); return; }
+  const tSos = new Date(zi + "T" + sos), tPle = ple ? new Date(zi + "T" + ple) : null;
+  if(tPle && tPle < tSos){ toast("Ora plecării e înainte de ora sosirii", true); return; }
+  const dep = DEP.find(d => String(d.id) === $("pd-dep").value);
+  const eu = UTILIZATOR ? (UTILIZATOR.full_name || UTILIZATOR.username) : "";
+  const acum = new Date().toISOString();
+  const rec = { zi, depozit_id: dep ? dep.id : null, depozit: dep ? dep.nume : null, ora_sosire: tSos.toISOString(),
+    ora_plecare: tPle ? tPle.toISOString() : null, observatii: $("pd-obs").value.trim() || null, corectat_de: eu, corectat_la: acum, updated_at: acum };
+  const vechi = PD_ID != null ? PD.find(x => x.id === PD_ID) : null;
+  if(tPle && (!vechi || !vechi.ora_plecare)){ rec.inchis_de = eu; rec.plecare_motiv = "CORECTAT"; }
+  if(!tPle){ rec.inchis_de = null; rec.plecare_motiv = null; }
+  try{
+    const r = vechi ? await db.from("prezenta_depozit").update(rec).eq("id", PD_ID)
+                    : await db.from("prezenta_depozit").insert({ ...rec, angajat: $("pd-ang").value, marcat_de: eu });
+    if(r.error) throw r.error;
+    closeModal("mod-pd"); toast("Prezența a fost salvată"); loadIZ(true);
+  }catch(e){ toast("Nu s-a salvat: " + (/duplicate|unique/i.test(e.message || "") ? "omul are deja o prezență deschisă în ziua aceea" : e.message), true); }
+}
+async function pdSterge(){
+  const r = PD.find(x => x.id === PD_ID); if(!r) return;
+  if(!confirm(`Ștergi prezența lui ${r.angajat} din ${fmtD(r.zi)}?`)) return;
+  try{
+    const { error } = await db.from("prezenta_depozit").delete().eq("id", r.id);
+    if(error) throw error;
+    closeModal("mod-pd"); toast("Șters"); loadIZ(true);
+  }catch(e){ toast("Nu s-a șters: " + e.message, true); }
 }
 function exportIZ(){
-  if(!IZ_ROWS.length){ toast("Nu e nimic de exportat", true); return; }
+  if(!IZ_ROWS.length && !PD_ROWS.length){ toast("Nu e nimic de exportat", true); return; }
   const ws = XLSX.utils.json_to_sheet(IZ_ROWS.map(x => ({ DATA: x.r.zi, ZI: x.data.slice(0, 3), ORA: x.ora, SOFER_1: x.r.sofer1, SOFER_2: x.r.sofer2 || "",
     MASINA: x.masina, MASINA_SCHIMBATA: x.alte, KM_START: x.r.km_start ?? "", TRASEU: x.trasee, ZIUA: x.zile, ZONA: x.r.zona || "", RUTA: x.ruta,
     KM_FINAL: x.kmFinal, SFARSIT_RUTA: x.sfarsit, KM_PARCURSI: x.km, DURATA: x.durata })));
   const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, "INCEPUTUL ZILEI");
+  if(IZ_ROWS.length) XLSX.utils.book_append_sheet(wb, ws, "INCEPUTUL ZILEI");
+  if(PD_ROWS.length) XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(PD_ROWS.map(r => ({ DATA: r.zi, ANGAJAT: r.angajat, DEPOZIT: r.depozit || "",
+    SOSIRE: izOra(r.ora_sosire), PLECARE: izOra(r.ora_plecare), MOTIV_PLECARE: r.plecare_motiv || (r.ora_plecare ? "" : "NEINCHISA"), ORE: pdOre(pdMin(r)),
+    GPS_SOSIRE_M: r.sosire_dist_m ?? "", GPS_PLECARE_M: r.plecare_dist_m ?? "", MARCAT_DE: r.marcat_de || "", INCHIS_DE: r.inchis_de || "",
+    CORECTAT_DE: r.corectat_de || "", OBSERVATII: r.observatii || "" }))), "PREZENTA DEPOZIT");
   XLSX.writeFile(wb, `Inceputul_zilei_${$("iz-luna").value || "tot"}.xlsx`);
 }
 
@@ -6365,6 +6476,9 @@ const A_DEF = {
       {c:"reprezentant_telefon",e:"Telefon",t:"text"},
       {c:"reprezentant_email",e:"E-mail",t:"text"},
       {c:"reprezentant_cod_acces",e:"Cod acces",t:"text"},
+      {c:"lat",e:"GPS latitudine (prezența la depozit)",t:"num"},
+      {c:"lon",e:"GPS longitudine",t:"num"},
+      {c:"raza_m",e:"Raza prezenței (metri, implicit 300)",t:"num"},
       {c:"ordine",e:"Ordine",t:"num"},
       {c:"activ",e:"Activ",t:"bool"}
     ]

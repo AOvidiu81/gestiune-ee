@@ -86,3 +86,14 @@
 .sofer-coada:empty { display: none; }
 .sofer-puncte { color: var(--brand-primary); background: #e7f1ff; border: 1px solid #c7d3e4; border-radius: 999px; padding: 2px 9px; }
 .sofer-puncte:empty { display: none; }
+
+/* s49 — „Azi la depozit” */
+.sofer-coleg-ocupat { opacity: .5; cursor: default; }
+.sofer-coleg-motiv { display: block; font-size: 12px; font-weight: 600; color: var(--ink-soft); margin-top: 2px; }
+.sofer-dep-rand { display: flex; align-items: center; gap: 10px; padding: 11px 0; border-bottom: 1px solid #e3e9f2; }
+.sofer-dep-rand:last-child { border-bottom: 0; }
+.sofer-dep-txt { flex: 1; min-width: 0; }
+.sofer-dep-nume { font-weight: 800; font-size: 15px; }
+.sofer-dep-ore { font-size: 13px; color: var(--ink-soft); margin-top: 2px; }
+.sofer-dep-rand.plecat .sofer-dep-nume { color: var(--ink-soft); }
+.sofer-dep-pleaca { width: auto; padding: 8px 16px; flex-shrink: 0; }
