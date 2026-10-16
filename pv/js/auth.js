@@ -447,6 +447,13 @@ export async function syncMasterData(profile) {
   }
 
   try {
+    // v89: coordonatele depozitelor (GestiuneEE → Depozite: lat / lon / raza) — la verificarea GPS de la poza PV-ului,
+    // in raza depozitului eticheta e „DEPOZIT HUNEDOARA”, nu strada data de OpenStreetMap. Tinute si fara semnal.
+    const { data: dg, error: eg } = await supabase.from('depozite').select('id,nume,adresa,lat,lon,raza_m').eq('activ', true);
+    if (!eg && dg) localStorage.setItem('ee-depozite-gps', JSON.stringify(dg.filter((d) => d.lat != null && d.lon != null)));
+  } catch (e) { /* fara semnal: raman cele de data trecuta */ }
+
+  try {
     // Depozitele (principal + secundare/colaboratoare) sunt gestionate
     // centralizat din panoul de admin (tab "Depozite") si sincronizate aici
     // in DepotRepo local, la fel ca masinile mai sus — ca ecranul de acasa

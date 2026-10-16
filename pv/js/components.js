@@ -849,6 +849,17 @@ function distanceMeters(lat1, lon1, lat2, lon2) {
 // utilizator) — pastram momentul ultimei cereri la nivel de modul, ca
 // pragul sa fie respectat chiar daca ecranul GPS e deschis/inchis repede.
 let lastNominatimRequestAt = 0;
+// v89: in raza unui depozit (GestiuneEE → Depozite: lat / lon / raza) eticheta e „DEPOZIT <NUME>, <adresa>”
+// — OpenStreetMap dadea strada cea mai apropiata (ex. „Strada Hunedoarei”). Lista vine din syncMasterData (auth.js).
+export function depozitLaPozitie(lat, lon, acc) {
+  let lista = [];
+  try { lista = JSON.parse(localStorage.getItem('ee-depozite-gps') || '[]') || []; } catch (e) {}
+  for (const d of lista) {
+    const dist = distanceMeters(lat, lon, Number(d.lat), Number(d.lon));
+    if (dist <= (Number(d.raza_m) || 50) + Math.min(Number(acc) || 0, 50)) return d;
+  }
+  return null;
+}
 async function reverseGeocodeLabel(lat, lon) {
   const now = Date.now();
   if (now - lastNominatimRequestAt < 1100) return null; // prea devreme, incercam la urmatorul update de pozitie
@@ -912,6 +923,14 @@ export async function gpsAccuracyGate() {
 
     async function updateLocationLine(position) {
       const { latitude, longitude } = position.coords;
+      const dep = depozitLaPozitie(latitude, longitude, position.coords.accuracy);
+      if (dep) {
+        lastGeocodedLabel = ['DEPOZIT ' + String(dep.nume || '').toUpperCase(), dep.adresa].filter(Boolean).join(', ');
+        lastGeocodedAt = { lat: latitude, lon: longitude };
+        locationLine.textContent = lastGeocodedLabel;
+        locationLine.style.display = '';
+        return;
+      }
       if (geocoding) return;
       if (lastGeocodedAt && distanceMeters(lastGeocodedAt.lat, lastGeocodedAt.lon, latitude, longitude) < 25) return;
       geocoding = true;
