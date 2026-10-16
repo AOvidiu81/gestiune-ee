@@ -742,7 +742,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <div class="hd-mij"><div id="titlu-sus"></div><span id="azi-sus" title="Data de azi (calculatorul)"></span></div>
   <button id="btn-mob" class="btn sec" style="padding:5px 10px;font-size:12px" onclick="mobPC(false)" title="Înapoi la varianta de telefon">📱 Telefon</button>
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
-  <span class="ver">v6.31</span>
+  <span class="ver">v6.32</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -763,7 +763,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <button data-p="rute">Monitorizare rute</button>
   <button data-p="raportrute">Verificare rute șoferi</button>
   <button data-p="inceput" data-h="inceputul-zilei" style="display:none">Începutul zilei</button><!-- v5.36: unit în Raport foi parcurs -->
-  <button data-p="foi" data-h="foi-parcurs">Raport foi parcurs</button>
+  <button data-p="foi" data-h="foi-parcurs">Pontaj angajați</button><!-- v6.32: fost „Raport foi parcurs”; file: Foi de parcurs / Prezență depozit -->
   <button data-p="admin">Administrare</button>
   <button data-p="verificare">Verificare <span id="v-badge" class="badge" style="display:none">0</span></button>
   <button data-p="pv" data-v="pv">Procese verbale</button>
@@ -974,23 +974,24 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
 
 <!-- ================= RAPORT FOI PARCURS ================= -->
 <section class="page" id="p-foi">
-  <div class="card noprint"><p class="muted" style="margin:0"><b>Început zi</b> = ora la care șoferul și-a deschis ziua în Șofer EE; zilele în care a lucrat <b>fără rută</b> apar și ele, ca rânduri separate (v5.36: aici e și fosta filă „Începutul zilei”). Câte un rând pentru fiecare rută pornită de șoferi: mașina, șoferii, km, orele și vizitele. Datele vin singure de pe telefon, la „Salvează” de la finalizarea rutei. „PDF” face aici, pe loc, același raport zilnic pe care îl face șoferul pe telefon (nu e salvat în bază). Buton portocaliu = încă negenerat; verde = a fost deja generat (se ține minte în bază, se vede de pe orice calculator).</p></div>
+  <div class="subtab noprint" id="fp-sub"><button class="on" onclick="fpSub('foi')">Foi de parcurs</button><button onclick="fpSub('depozit')">Prezență depozit</button></div>
+  <div class="card noprint fp-doar-foi"><p class="muted" style="margin:0"><b>Început zi</b> = ora la care șoferul și-a deschis ziua în Șofer EE; zilele în care a lucrat <b>fără rută</b> apar și ele, ca rânduri separate (v5.36: aici e și fosta filă „Începutul zilei”). Câte un rând pentru fiecare rută pornită de șoferi: mașina, șoferii, km, orele și vizitele. Datele vin singure de pe telefon, la „Salvează” de la finalizarea rutei. „PDF” face aici, pe loc, același raport zilnic pe care îl face șoferul pe telefon (nu e salvat în bază). Buton portocaliu = încă negenerat; verde = a fost deja generat (se ține minte în bază, se vede de pe orice calculator).</p></div>
   <div class="card">
     <div class="row noprint">
       <div style="flex:0;min-width:160px"><label>Luna</label><input type="month" id="fp-luna" onchange="fpAfiseaza()"></div>
       <div style="flex:0;min-width:180px"><label>Șofer</label><select id="fp-sofer" onchange="fpAfiseaza()"></select></div>
-      <div style="flex:0;min-width:150px"><label>Mașina</label><select id="fp-masina" onchange="fpAfiseaza()"></select></div>
-      <div style="flex:0;min-width:130px"><label>Stare</label><select id="fp-stare" onchange="fpAfiseaza()"><option value="">toate</option><option value="finalizata">finalizate</option><option value="activa">în lucru</option><option value="fara">fără rută</option></select></div>
+      <div class="fp-doar-foi" style="flex:0;min-width:150px"><label>Mașina</label><select id="fp-masina" onchange="fpAfiseaza()"></select></div>
+      <div class="fp-doar-foi" style="flex:0;min-width:130px"><label>Stare</label><select id="fp-stare" onchange="fpAfiseaza()"><option value="">toate</option><option value="finalizata">finalizate</option><option value="activa">în lucru</option><option value="fara">fără rută</option></select></div>
       <div style="min-width:160px"><label>Caută</label><input id="fp-caut" placeholder="zonă, șofer, mașină…" oninput="fpAfiseaza()"></div>
       <div style="flex:0"><label>&nbsp;</label><button class="btn sec" onclick="loadFP(true)">Reîncarcă</button></div>
       <div style="flex:0"><label>&nbsp;</label><button class="btn sec" onclick="exportFP()">Export Excel</button></div>
+      <div class="fp-doar-dep" style="flex:0"><label>&nbsp;</label><button class="btn sec" onclick="pdDeschide(null)">+ Prezență manuală</button></div>
     </div>
-    <div class="tw" style="margin-top:10px"><table id="fp-tbl"></table></div>
+    <div class="tw fp-doar-foi" style="margin-top:10px"><table id="fp-tbl"></table></div>
   </div>
-  <div class="card">
+  <div class="card fp-doar-dep">
     <h3 style="margin:0 0 6px">🏭 Prezență la depozit</h3>
-    <p class="muted" style="margin:0 0 8px">Din Șofer EE, „Azi la depozit”: sosirea și plecarea fiecărui om, înregistrate doar cu telefonul la depozit (GPS). <b>Portocaliu</b> = nu a închis ziua după 8 ore. ✎ = corectezi orele; „+ Prezență manuală” = pentru cine a uitat. Luna, Șoferul și Caută de sus se aplică și aici (Mașina și Stare, nu).</p>
-    <div class="row noprint"><div style="flex:0"><button class="btn sec" onclick="pdDeschide(null)">+ Prezență manuală</button></div></div>
+    <p class="muted" style="margin:0 0 8px">Din Șofer EE, „Azi la depozit”: sosirea și plecarea fiecărui om, înregistrate doar cu telefonul la depozit (GPS). <b>Portocaliu</b> = nu a închis ziua după 8 ore. ✎ = corectezi orele; „+ Prezență manuală” = pentru cine a uitat. Filtrele de sus (Luna, Șofer, Caută) se aplică și aici.</p>
     <div class="tw" style="margin-top:10px"><table id="pd-tbl"></table></div>
   </div>
 </section>
@@ -6322,7 +6323,17 @@ function fpInceput(zi, sofer){
     .filter(Boolean).sort((a, b) => new Date(a) - new Date(b));
   return t[0] || "";
 }
+// v6.32: „Pontaj angajați” = două file, ca la Stoc: Foi de parcurs (rutele cu mașina) / Prezență depozit
+let FP_SUB = "foi"; try{ if(localStorage.getItem("ee-fp-sub") === "depozit") FP_SUB = "depozit"; }catch(e){}
+function fpSub(p){
+  if(p) FP_SUB = p;
+  try{ localStorage.setItem("ee-fp-sub", FP_SUB); }catch(e){}
+  document.querySelectorAll("#fp-sub button").forEach(b => b.classList.toggle("on", b.getAttribute("onclick").includes("'" + FP_SUB + "'")));
+  document.querySelectorAll("#p-foi .fp-doar-foi").forEach(x => x.style.display = FP_SUB === "foi" ? "" : "none");
+  document.querySelectorAll("#p-foi .fp-doar-dep").forEach(x => x.style.display = FP_SUB === "depozit" ? "" : "none");
+}
 async function loadFP(forta){
+  fpSub();
   try{
     if(!FP_GATA || forta){
       const [ses, vis, cl, iz, pd] = await Promise.all(["route_sessions","visit_logs","clients","inceput_zi","prezenta_depozit"].map(rrToate));
@@ -6337,7 +6348,7 @@ async function loadFP(forta){
       FP_GATA = true;
     }
     fpAfiseaza();
-  }catch(e){ toast("Raport foi parcurs: " + e.message, true); }
+  }catch(e){ toast("Pontaj angajați: " + e.message, true); }
 }
 // v5.36: o zi deschisă în Șofer EE fără nicio rută (același șofer 1, aceeași zi) = rând „fără rută”
 function fpFaraRuta(){
@@ -6414,14 +6425,20 @@ async function fpPdf(i){
   }catch(e){ toast("PDF: " + e.message, true); }
 }
 function exportFP(){
-  if(!FP_ROWS.length && !PD_ROWS.length){ toast("Nu e nimic de exportat", true); return; }
+  if(FP_SUB === "depozit"){   // v6.32: exportul filei deschise
+    if(!PD_ROWS.length){ toast("Nu e nimic de exportat", true); return; }
+    const w = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(w, pdFoaie(), "PREZENTA DEPOZIT");
+    XLSX.writeFile(w, `Prezenta_depozit_${$("fp-luna").value || "tot"}.xlsx`);
+    return;
+  }
+  if(!FP_ROWS.length){ toast("Nu e nimic de exportat", true); return; }
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(FP_ROWS.map(x => ({ DATA: x.zi, ZONA: x.s.zona || "", TRASEU: x.traseu, SOFER_1: x.s.driver1 || "", SOFER_2: x.s.driver2 || "",
     MASINA: x.masina, INCEPUT_ZI: x.inceput || "", KM_START: x.s.km_start ?? "", KM_STOP: x.s.km_end ?? "", TOTAL_KM: x.km, ORA_START: x.oraStart, ORA_STOP: x.oraStop, TOTAL_ORE: x.ore,
     VIZITE: x.viz.length, LIPSA_ACCES: x.la, OMIS: x.om, STARE: x.fara ? "fără rută" : x.s.status === "finalizata" ? "finalizată" : "în lucru" }))), "FOI PARCURS");
   XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(FP_ROWS.flatMap(x => fpLiniiVizite(x).map(r => ({ DATA: x.zi, SOFERI: x.soferi, MASINA: x.masina,
     NR: r.nr, CLIENT: r.client, LOCALITATE: r.loc, TOALETE: r.toalete, FRECVENTA: r.frecv, SOSIRE: r.sosire, PLECARE: r.plecare, DURATA: r.dur, OBSERVATIE: r.obs, COD: r.cod })))), "VIZITE");
-  if(PD_ROWS.length) XLSX.utils.book_append_sheet(wb, pdFoaie(), "PREZENTA DEPOZIT");
   XLSX.writeFile(wb, `Foi_parcurs_${$("fp-luna").value || "tot"}.xlsx`);
 }
 
