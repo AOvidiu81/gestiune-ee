@@ -26,7 +26,7 @@ import { openHistoryScreen } from '../pv/js/screens-history.js';
 import { buildComenziActive } from '../pv/js/screens-comenzi.js';
 import { openSettingsScreen } from '../pv/js/screens-setup.js';
 
-export const SOFER_VERSION = 's49';
+export const SOFER_VERSION = 's50';
 
 const KEY_ZI = 'ee-sofer-zi'; // ziua deschisa: { zi, coleg, carId, km, trasee, zile, zona, ordine, ruta }
 const KEY_ULTIMA = 'ee-sofer-ultima'; // ultimele alegeri (masina, traseu, zona) — precompletare
@@ -634,10 +634,14 @@ function pozitieAcum() {
     );
   });
 }
+// s50 (cerut de Ovidiu 16.10): PE PROBE — locatia se noteaza (cu distanta fata de depozit), dar NU blocheaza.
+// Dupa probe: PROBA_LOCATIE = false si raza 20 m (depozite.raza_m) — atunci se face doar de la depozit.
+const PROBA_LOCATIE = true;
 // „Ești la depozit?”: { lat, lon, dist } sau { err }. Depozit fara coordonate: doar se noteaza locatia.
-export function verificaLaDepozit(p, dep) {
+export function verificaLaDepozit(p, dep, proba = PROBA_LOCATIE) {
   if (dep.lat == null || dep.lon == null) return { lat: p.lat, lon: p.lon, dist: null };
   const dist = distantaM(p, { lat: Number(dep.lat), lon: Number(dep.lon) });
+  if (proba) return { lat: p.lat, lon: p.lon, dist };
   const raza = Number(dep.raza_m) || 300;
   if (dist > raza + Math.min(Number(p.acc) || 0, 100)) {
     const t = dist >= 1000 ? `${(dist / 1000).toFixed(1).replace('.', ',')} km` : `${dist} m`;
