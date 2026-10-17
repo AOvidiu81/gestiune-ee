@@ -6059,8 +6059,30 @@ async function loadRR(forta){
       if(!RR_GATA) rrUmpleFiltre();
       RR_GATA = true;
     }
+    rrAplicaCerut();
     rrAfiseaza();
   }catch(e){ toast("Verificare rute șoferi: " + e.message, true); }
+}
+// v6.34 (cerut de Ovidiu, 17.10): „🔍 Vezi ruta” din Monitorizare rute → Verificare rute cu săptămâna, ziua și traseul rutei.
+// Ziua / traseul se pun doar dacă ruta a avut unul singur (la „Joi+Vineri” sau „TOATE” rămâne „toate”). Mașina, șoferul, vizita, căutarea se golesc.
+let RR_CERUT = null;
+window.addEventListener("message", e => {
+  if(e.origin !== location.origin || !e.data || e.data.tip !== "ee-vezi-ruta") return;
+  RR_CERUT = e.data;
+  const b = document.querySelector('button[data-p="raportrute"]'); if(b) b.click();
+});
+function rrAplicaCerut(){
+  const d = RR_CERUT; if(!d) return; RR_CERUT = null;
+  const pune = (id, v) => { $(id).value = [...$(id).options].some(o => o.value === v) ? v : ""; };
+  const unul = x => { const l = String(x || "").split("+").map(t => t.trim()).filter(Boolean); return l.length === 1 && l[0].toUpperCase() !== "TOATE" ? l[0] : ""; };
+  if(d.zi){
+    const w = sCod(d.zi), an = String(+d.zi.slice(0, 4));
+    if([...$("rr-an").options].some(o => o.value === an)){ $("rr-an").value = an; rrSaptOpt(); }
+    if(![...$("rr-sapt").options].some(o => o.value === String(w)) && [...$("rr-an").options].some(o => o.value === String(Math.floor(w / 100)))){ $("rr-an").value = String(Math.floor(w / 100)); rrSaptOpt(); }
+    pune("rr-sapt", String(w)); rrSaptCul();
+  }
+  pune("rr-zi", rrNorm(unul(d.ziua))); pune("rr-traseu", unul(d.traseu));
+  ["rr-masina", "rr-sofer", "rr-viz"].forEach(id => { $(id).value = ""; }); $("rr-caut").value = "";
 }
 function rrAfiseaza(){
   if(!RR_GATA) return;
