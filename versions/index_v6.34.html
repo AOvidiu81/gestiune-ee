@@ -6165,9 +6165,11 @@ function rrAfiseaza(){
         "Șofer": esc(sofer), "Mașina": v ? esc([v.s.vehicle_brand, v.s.vehicle_plate].filter(Boolean).join(" ")) : "",
         "GPS telefon": v ? gps : ""
       };
-      // v6.34 (cerut de Ovidiu, 17.10): sosire fără plecare = în lucru (portocaliu 30%), cu plecare = finalizat (verde 30%)
-      const rrCls = !v ? "muted" : v.leave_time ? "rr-gata" : v.arrive_time ? "rr-lucru" : "";
-      return `<tr${rrCls ? ` class="${rrCls}"` : ""}${v ? ` title="${v.leave_time ? "Finalizat" : "În lucru — sosit, încă neplecat"}"` : ""}>` + cap.map(h => `<td>${cel[h]}</td>`).join("") +
+      // v6.34 (cerut de Ovidiu, 17.10): sosire fără plecare = în lucru (portocaliu 30%), cu plecare = finalizat (verde 30%) —
+      // doar pentru ruta de AZI (vizita făcută azi); zilele trecute rămân fără culoare.
+      const rrAzi = v && v.s && v.s.session_date === ziLocala(new Date());
+      const rrCls = !v ? "muted" : !rrAzi ? "" : v.leave_time ? "rr-gata" : v.arrive_time ? "rr-lucru" : "";
+      return `<tr${rrCls ? ` class="${rrCls}"` : ""}${rrAzi ? ` title="${v.leave_time ? "Finalizat (ruta de azi)" : "În lucru — sosit, încă neplecat (ruta de azi)"}"` : ""}>` + cap.map(h => `<td>${cel[h]}</td>`).join("") +
         coduri.map((x, j) => {
           const stil = x.m ? "color:var(--amb)" : "";
           const tit = x.m ? ' title="Cod salvat / corectat manual"' : "";
