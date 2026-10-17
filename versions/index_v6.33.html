@@ -6117,8 +6117,18 @@ function rrAfiseaza(){
   RR_ROWS = rows;
   const viz_n = rows.filter(r => r.v).length;
   const wm = W ? sInfo(W) : null;
-  $("rr-nota").textContent = (W ? rrEt(W) + (wm ? ` (${fmtD(wm.start)} – ${fmtD(wm.end)})` : "") + " · " : "") +
-    `${rows.length} puncte · ${viz_n} vizitate · ${rows.length - viz_n} nevizitate`;
+  // v6.33 (cerut de Ovidiu, 17.10): sumarul cu ziua aleasă + data ei din săptămână, traseul și numărul de produse, despărțite cu „ | ”
+  const ZI_OFS = { LUNI: 0, MARTI: 1, MIERCURI: 2, JOI: 3, VINERI: 4, SAMBATA: 5, DUMINICA: 6 };
+  const ziData = (W && zi && ZI_OFS[zi] != null) ? (() => { const d = sStart(W); d.setDate(d.getDate() + ZI_OFS[zi]); return zi2(d.getDate()) + "." + zi2(d.getMonth() + 1) + "." + d.getFullYear(); })() : null;
+  const nT = rows.reduce((t, r) => t + (+r.c.toalete || 0), 0), nC = rows.reduce((t, r) => t + (+r.c.containere || 0), 0), nG = rows.reduce((t, r) => t + (+r.c.garduri || 0), 0);
+  const felP = [nT ? nT + " T" : "", nC ? nC + " C" : "", nG ? nG + " G" : ""].filter(Boolean);
+  $("rr-nota").textContent = [
+    W ? rrEt(W) + (wm ? ` (${fmtD(wm.start)} – ${fmtD(wm.end)})` : "") : "",
+    zi ? zi + (ziData ? " - " + ziData : "") : "",
+    tr || "",
+    `${rows.length} puncte`, `${viz_n} vizitate`, `${rows.length - viz_n} nevizitate`,
+    `${nT + nC + nG} produse` + (felP.length > 1 ? ` (${felP.join(" · ")})` : "")
+  ].filter(Boolean).join(" | ");
   const OBS = { O:"Omis", LA:"Lipsă acces" };
   const hm = t => { if(!t) return "—"; const d = new Date(t); return zi2(d.getHours()) + ":" + zi2(d.getMinutes()); };
   const produse = c => [c.toalete ? c.toalete + " T" + accToaleta(c) : "", c.containere ? c.containere + " C" : "", c.garduri ? c.garduri + " G" : "", c.echipamente || ""].filter(Boolean).join(" · ");
