@@ -1281,6 +1281,14 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
         <h4>Serii pe punct <span class="hint">bifează ce se ridică cu această comandă</span></h4>
         <div id="mm-serii"></div>
       </div>
+      <div class="sect" id="mm-desp-sect" style="display:none">
+        <h4>Despăgubire <span class="hint">opțional — rând separat în Facturare, valoare pe bucată, fără zile</span></h4>
+        <div class="grid3">
+          <div><label>&nbsp;</label><label style="display:flex;align-items:center;gap:6px;margin:0"><input type="checkbox" id="mm-desp-f" style="width:auto" onchange="mmDespArata()"> Se facturează</label></div>
+          <div><label>Valoare / buc (fără TVA)</label><input id="mm-desp-pret" type="number" step="0.01" min="0" oninput="mmDespArata()"></div>
+          <div><label>Total</label><div id="mm-desp-tot" class="muted" style="padding-top:8px">—</div></div>
+        </div>
+      </div>
 
       <div class="sect">
         <h4>Servisare</h4>
@@ -2025,7 +2033,7 @@ const today=()=>new Date().toISOString().slice(0,10);
 let CAS = [];
 async function loadCasate(){
   const [m, s] = await Promise.all([
-    db.from("miscari").select("id,data,tip_miscare,buc,produs,model,model_fizic,client,jud,loc,sat,anexa_id,observatii").in("tip_miscare", ["DAUNA", "FURT"]).order("data", { ascending: false }),
+    db.from("miscari").select("id,data,tip_miscare,buc,produs,model,model_fizic,client,jud,loc,sat,anexa_id,observatii,desp_factureaza,desp_pret").in("tip_miscare", ["DAUNA", "FURT"]).order("data", { ascending: false }),
     db.from("serii").select("*").in("stare", ["DAUNA", "FURT"])]);
   if(m.error || s.error){ toast((m.error || s.error).message, true); return; }
   const cmd = m.data || [], ser = s.data || [], rows = [];
@@ -2033,7 +2041,8 @@ async function loadCasate(){
   const serTxt = y => [y.tip, y.model].filter(Boolean).join(" ") + " " + (y.serie || "fără serie");
   cmd.forEach(x => { const l = ser.filter(y => y.miscare_ridicare_id === x.id);
     rows.push({ data: x.data, motiv: x.tip_miscare, client: x.client || "", jud: x.jud || "", loc: x.loc || "", sat: x.sat || "", produs: x.produs || "",
-      model: [x.model, x.model_fizic].filter(Boolean).join(" "), buc: Math.abs(+x.buc || 0), serii: l.map(serTxt).join(", ").trim(), anexa: anx(x.anexa_id).anexa || "", cmd: x.id, obs: x.observatii || "" }); });
+      model: [x.model, x.model_fizic].filter(Boolean).join(" "), buc: Math.abs(+x.buc || 0), serii: l.map(serTxt).join(", ").trim(), anexa: anx(x.anexa_id).anexa || "", cmd: x.id, obs: x.observatii || "",
+      desp: x.desp_factureaza ? Math.round(Math.abs(+x.buc || 0) * (+x.desp_pret || 0) * 100) / 100 : null }); });
   ser.filter(y => !cmd.some(x => x.id === y.miscare_ridicare_id)).forEach(y => {
     const a = anx(y.anexa_id), c = (CTR || []).find(q => q.id === (a.contract_id || y.contract_id)) || {}, k = (CLI || []).find(q => q.id === (c.client_id || y.client_id)) || {};
     const p = y.punct ? (PCT || []).find(q => String(q.client_key || "").startsWith(y.punct)) : null;
@@ -2049,14 +2058,14 @@ function casFiltrate(){
 }
 function renderCasate(){
   const l = casFiltrate();
-  $("cp-tbl").innerHTML = "<tr><th>Data</th><th>Motiv</th><th>Client</th><th>Jud.</th><th>Localitate</th><th>Sat / locație</th><th>Produs</th><th>Model</th><th>Buc</th><th>Serii</th><th>Anexă / punct</th><th>Comanda</th><th>Observații</th></tr>" +
+  $("cp-tbl").innerHTML = "<tr><th>Data</th><th>Motiv</th><th>Client</th><th>Jud.</th><th>Localitate</th><th>Sat / locație</th><th>Produs</th><th>Model</th><th>Buc</th><th>Serii</th><th>Anexă / punct</th><th>Comanda</th><th>Despăgubire</th><th>Observații</th></tr>" +
     (l.length ? l.map(r => `<tr><td>${fmtD(r.data)}</td><td><span class="ser-st st-dauna" style="padding:1px 6px;border-radius:4px">${esc(r.motiv)}</span></td><td>${esc(r.client)}</td><td>${esc(r.jud)}</td><td>${esc(r.loc)}</td><td>${esc(r.sat)}</td>` +
-      `<td>${esc(r.produs)}</td><td>${esc(r.model)}</td><td>${r.buc}</td><td>${esc(r.serii)}</td><td>${esc(r.anexa)}</td><td>${r.cmd ? "#" + r.cmd : "—"}</td><td>${esc(r.obs)}</td></tr>`).join("")
-      : '<tr><td colspan="13" class="muted">Niciun produs casat / pierdut.</td></tr>');
+      `<td>${esc(r.produs)}</td><td>${esc(r.model)}</td><td>${r.buc}</td><td>${esc(r.serii)}</td><td>${esc(r.anexa)}</td><td>${r.cmd ? "#" + r.cmd : "—"}</td><td style="text-align:right">${r.desp != null ? r.desp.toFixed(2) : "—"}</td><td>${esc(r.obs)}</td></tr>`).join("")
+      : '<tr><td colspan="14" class="muted">Niciun produs casat / pierdut.</td></tr>');
 }
 function exportCasate(){
   const ws = XLSX.utils.json_to_sheet(casFiltrate().map(r => ({ DATA: fmtD(r.data), MOTIV: r.motiv, CLIENT: r.client, JUD: r.jud, LOCALITATE: r.loc, "SAT / LOCATIE": r.sat, PRODUS: r.produs,
-    MODEL: r.model, BUC: r.buc, SERII: r.serii, "ANEXA / PUNCT": r.anexa, COMANDA: r.cmd || "", OBSERVATII: r.obs })));
+    MODEL: r.model, BUC: r.buc, SERII: r.serii, "ANEXA / PUNCT": r.anexa, COMANDA: r.cmd || "", DESPAGUBIRE: r.desp != null ? r.desp : "", OBSERVATII: r.obs })));
   const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, "CASATE"); XLSX.writeFile(wb, `Casate_pierdute_${today()}.xlsx`);
 }
 
@@ -2661,6 +2670,7 @@ function openMiscare(id){
   $("mm-contract").value=r?(r.contract||""):""; $("mm-dep").value=r?(r.depozit||""):"";
   $("mm-pers").value=r?(r.pers_resp||""):""; $("mm-tel").value=r?(r.telefon||""):""; $("mm-frecv").value=r?(r.frecv_serv||""):""; $("mm-zi").value=r?(r.zi_serv||""):""; $("mm-traseu").value=r?(r.traseu||""):""; $("mm-obs").value=r?(r.observatii||""):"";
   document.querySelectorAll("#mm-flags .flag").forEach(f=>setFlag(f,r?(r[f.dataset.f]||"-"):(f.dataset.f==="waap"?"V":"-")));
+  $("mm-desp-f").checked = !!(r && r.desp_factureaza); $("mm-desp-pret").value = r && r.desp_pret != null ? (+r.desp_pret).toFixed(2) : ""; mmDespArata();   // v6.33
   fillAnexeForClient();
   if(r && r.contract_id){ $("mm-ctr").value = r.contract_id; fillAnexeForContract(); cautaSincronizeaza("mm-ctr"); }
   if(r && r.anexa_id){ mmAnexaAlege(r.anexa_id); }
@@ -2802,6 +2812,10 @@ async function saveMiscare(genereaza){
     pers_resp:$("mm-pers").value||null,telefon:$("mm-tel").value||null,frecv_serv:$("mm-frecv").value||null,zi_serv:$("mm-zi").value||null,traseu:$("mm-traseu").value||null,observatii:$("mm-obs").value||null,
     contract_id:+$("mm-ctr").value||null, anexa_id:+$("mm-anexa").value||null};
   if(mmExterior()){ rec.client_id = null; rec.contract_id = null; rec.anexa_id = null; }   // v4.78: clientul exterior nu e în baza lui
+  // v6.33 (cerut de Ovidiu, 17.10): despăgubirea la DAUNA / FURT — opțională, rând separat în Facturare (valoare / buc, fără zile)
+  rec.desp_factureaza = TIP_PIERD.test(tip) && $("mm-desp-f").checked;
+  rec.desp_pret = rec.desp_factureaza ? Math.round((+$("mm-desp-pret").value || 0) * 100) / 100 : null;
+  if(rec.desp_factureaza && !rec.desp_pret){ toast("Scrie valoarea despăgubirii pe bucată (sau debifează „Se facturează”)", true); return false; }
   mmPvX();
   document.querySelectorAll("#mm-flags .flag").forEach(f=>rec[f.dataset.f]=f.textContent);
   // „Salvează” simplu lasă textul negenerat (portocaliu); „Salvează și generează” pune ora.
@@ -2939,6 +2953,14 @@ $("mm-tip").addEventListener("change", ()=>mmSerii(true));
 $("mm-buc").addEventListener("change", ()=>mmSerii(false));
 { const vechi=$("mm-anexa").onchange; $("mm-anexa").onchange=function(){ if(vechi) vechi.apply(this,arguments); mmSerii(true); mmCarduriSel(); if(mmExterior()) mmModClient(); mmDoc(true); }; }
 $("mm-tip").addEventListener("change", () => mmDoc(false));   // v5.13
+function mmDespArata(){   // v6.33
+  $("mm-desp-sect").style.display = TIP_PIERD.test($("mm-tip").value) ? "" : "none";
+  const on = $("mm-desp-f").checked, p = +$("mm-desp-pret").value || 0, b = Math.abs(+$("mm-buc").value || 0);
+  $("mm-desp-pret").disabled = !on;
+  $("mm-desp-tot").textContent = on ? b + " buc × " + p.toFixed(2) + " = " + (b * p).toFixed(2) + " (fără TVA)" : "nu se facturează";
+}
+$("mm-tip").addEventListener("change", mmDespArata);
+$("mm-buc").addEventListener("input", mmDespArata);
 $("mm-buc").addEventListener("input", () => mmDoc(false));
 $("mm-contract").addEventListener("change", mmModClient);
 // ── Închiderea la ultima ridicare (etapa 3): fereastră cu bife, nimic automat ──
@@ -4612,7 +4634,7 @@ function factUnRand(out){
 }
 
 // Facturare: „În lucru” = tabelul întreg; „Gata de trimis” = varianta scurtă, pentru sediu (hotărât de Ovidiu, 04.10).
-let R_MOD = "lucru", R_FMT2 = new Set();
+let R_MOD = "lucru", R_FMT2 = new Set(), R_DESP = new Set();
 function setModFact(m){ R_MOD = m; genereazaRaport(); }
 function modFactButoane(){
   const fact = $("r-tip").value === "facturare";
@@ -4622,7 +4644,7 @@ function modFactButoane(){
   st("r-mod-lucru", R_MOD === "lucru", "#D97706"); st("r-mod-gata", R_MOD === "gata", "#2E8B3C");
 }
 async function genereazaRaport(){
-  modFactButoane(); R_FMT2 = new Set();
+  modFactButoane(); R_FMT2 = new Set(); R_DESP = new Set();
   if(!ANX.length){ return; }
   if($("r-tip").value === "facturare") await raportFacturare(); else await raportLuna();
 }
@@ -4666,6 +4688,24 @@ async function raportFacturare(){
              dRO(x.de), dRO(x.la), x.zile, fara, Math.round(fara * (1 + tva) * 100) / 100,
              x.a.scadent === null || x.a.scadent === undefined ? "" : x.a.scadent ];
   });
+  // v6.33 (cerut de Ovidiu, 17.10): despăgubirea la DAUNA / FURT — rând separat, doar dacă e bifată pe comandă (în luna comenzii);
+  // valoare pe bucată, fără zile. Se scoate debifând „Se facturează” pe comandă.
+  R_DESP = new Set();
+  { const fcD = ($("r-client").value || "").trim().toLowerCase(), fjD = $("r-jud").value;
+    misF.filter(m => TIP_PIERD.test(m.tip_miscare || "") && m.desp_factureaza && m.contract_id).forEach(m => {
+      const c = CTR.find(x => x.id === m.contract_id); if(!c) return;
+      const k = CLI.find(x => x.id === c.client_id) || {};
+      if(fcD && !(k.nume || "").toLowerCase().includes(fcD)) return;
+      if(fjD && m.jud !== fjD) return;
+      const a = ANX.find(x => x.id === m.anexa_id) || {}, cant = Math.abs(+m.buc || 0), pret = +m.desp_pret || 0, fara = Math.round(cant * pret * 100) / 100;
+      R_DESP.add(R_RANDURI.length);
+      R_RANDURI.push([ "ACTIV", c.nr_ctr || "", dRO(dtz(c.data_emitere)), ctrExp(c) ? dRO(dtz(ctrExp(c))) : ctrExpText(c),
+        k.nume || "", k.id_tip || "", k.atr || "", k.cui || "", a.anexa || "", dRO(dtz(a.data_emitere)), dRO(dtz(m.data)),
+        m.jud || "", m.loc || "", m.sat || "", "DESPAGUBIRE " + m.tip_miscare, prodN(m.produs || "", cant), [m.model, m.model_fizic].filter(Boolean).join(" "),
+        a.um || "BUC", cant, pret, a.moneda || "RON", m.tip_miscare, dRO(dtz(m.data)), "", "", fara, Math.round(fara * (1 + tva) * 100) / 100,
+        a.scadent === null || a.scadent === undefined ? "" : a.scadent ]);
+      R_AID.push(null); R_AVERT.push({}); R_EXTRA.push(""); R_ROSU.push(false);
+    }); }
   R_NUME = "Facturare";
   R_ANTET[0] = "STARE LUNA";
   const pe = {};
@@ -4852,7 +4892,8 @@ function deseneazaRaport(){
       const cls2 = [cls, vr ? "r-ver" : ""].filter(Boolean).join(" ");
       return `<tr${cls2 ? ` class="${cls2}"` : ""}>` + f.map((v, i) => {
         let t = esc(v === null || v === undefined ? "" : (R_FMT2.has(i) && typeof v === "number" ? v.toFixed(2) : v));
-        if(fact && i === 0)
+        if(fact && i === 0 && R_DESP.has(j)) t = `<span class="muted" title="Despăgubire DAUNA / FURT — se scoate debifând „Se facturează” pe comandă">DESPĂGUBIRE</span>`;   // v6.33
+        else if(fact && i === 0)
           t = `<select class="fs-sel ${esc(String(v).split(" ")[0])}" onchange="setStareFact(${R_AID[j]}, this.value)">` +
               ["ACTIV","FACTURAT","INACTIV","NU FACTURAM"].map(o => `<option${o === v ? " selected" : ""}>${o}</option>`).join("") + "</select>";
         if(fact && i === 3 && av.ctr)  t += ` <span class="warn-pill" title="Contractul a expirat la ${esc(fmtD(av.ctr))} — e nevoie de act adițional">⚠ act adițional</span>`;
