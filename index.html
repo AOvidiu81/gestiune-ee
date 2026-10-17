@@ -742,7 +742,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <div class="hd-mij"><div id="titlu-sus"></div><span id="azi-sus" title="Data de azi (calculatorul)"></span></div>
   <button id="btn-mob" class="btn sec" style="padding:5px 10px;font-size:12px" onclick="mobPC(false)" title="Înapoi la varianta de telefon">📱 Telefon</button>
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
-  <span class="ver">v6.32</span>
+  <span class="ver">v6.33</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -809,7 +809,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
 
 <!-- ================= PRODUSE ================= -->
 <section class="page" id="p-produse">
-  <div class="subtab noprint"><button onclick="subStoc('stoc')">Stoc</button><button class="on" onclick="subStoc('produse')">Produse</button></div>
+  <div class="subtab noprint"><button onclick="subStoc('stoc')">Stoc</button><button class="on" onclick="subStoc('produse')">Produse</button><button onclick="subStoc('casate')">Casate / pierdute</button></div>
   <div class="card noprint">
     <p class="muted" style="margin:0"><b>Categoria</b> e produsul generic (TOALETA, LAVOAR…) și e cea numărată în Stoc. Alegi o categorie ca să-i vezi <b>tipurile</b> (ce se închiriază și se facturează: CLASIC, HANDY…), <b>modelele</b> (bucata propriu-zisă: ARMAL, MONDO… — la fiecare model bifezi la ce tipuri se aplică; fără nicio bifă apare la toate) și <b>accesoriile</b> (doar informative, se bifează pe comandă). Bifa <b>„Are serie”</b> spune dacă la categoria respectivă se trec serii pe bucată (la gard sau cordon nu). Bifele „în stoc la” aleg în ce depozite apare categoria în tabelul de stoc; la Comenzi și Anexe categoria rămâne oricum de ales. Ordinea (↑ ↓) e ordinea coloanelor din Stoc. <b>Redenumirea într-o categorie care există deja le unește</b> (ex. TOALETE → TOALETA): comenzile, anexele și stocul inițial trec pe numele ales.</p>
   </div>
@@ -818,7 +818,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
 
 <!-- ================= STOC ================= -->
 <section class="page" id="p-stoc">
-  <div class="subtab noprint"><button class="on" onclick="subStoc('stoc')">Stoc</button><button onclick="subStoc('produse')">Produse</button></div>
+  <div class="subtab noprint"><button class="on" onclick="subStoc('stoc')">Stoc</button><button onclick="subStoc('produse')">Produse</button><button onclick="subStoc('casate')">Casate / pierdute</button></div>
   <div class="card noprint">
     <div class="row">
       <div><label>Depozit</label><select id="st-dep"><option value="">Toate</option></select></div>
@@ -834,6 +834,20 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
       <div class="tw" style="margin-top:8px"><table id="stoc-tbl"></table></div>
     </details>
   </div>
+</section>
+
+<!-- ================= CASATE / PIERDUTE (v6.33) ================= -->
+<section class="page" id="p-casate">
+  <div class="subtab noprint"><button onclick="subStoc('stoc')">Stoc</button><button onclick="subStoc('produse')">Produse</button><button class="on" onclick="subStoc('casate')">Casate / pierdute</button></div>
+  <div class="card noprint">
+    <div class="row">
+      <div><label>Caută</label><input id="cp-q" placeholder="client, serie, localitate…" oninput="renderCasate()"></div>
+      <div style="flex:0"><button class="btn" onclick="loadCasate()">Reîncarcă</button></div>
+      <div style="flex:0"><button class="btn sec" onclick="exportCasate()">Export Excel</button></div>
+    </div>
+    <p class="muted" style="margin:8px 0 0">Produsele care nu se mai întorc în depozit (daună totală, furt): comenzile <b>DAUNA</b> / <b>FURT</b> și bucățile trecute pe DAUNA / FURT în fereastra Serii. Ies din ÎNCHIRIATE și nu intră în DEPOZIT; chiria se oprește prin anexa -R a clientului.</p>
+  </div>
+  <div class="card"><div class="tw"><table id="cp-tbl"></table></div></div>
 </section>
 
 <!-- ================= MISCARI ================= -->
@@ -1071,7 +1085,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
       <div><label>Listă</label><select id="n-tip" onchange="renderNom()"></select></div>
       <div><label>Valoare nouă</label><input id="n-val"></div>
       <div id="n-parinte-wrap" style="display:none"><label>Al cărui produs</label><select id="n-parinte"></select></div>
-      <div id="n-efect-wrap" style="display:none"><label>Efect stoc</label><select id="n-efect"><option value="inchiriere">inchiriere (+/- închiriate)</option><option value="depozit_in">depozit_in (+ depozit)</option><option value="depozit_out">depozit_out (- depozit)</option><option value="niciun">niciun efect</option></select></div>
+      <div id="n-efect-wrap" style="display:none"><label>Efect stoc</label><select id="n-efect"><option value="inchiriere">inchiriere (+/- închiriate)</option><option value="depozit_in">depozit_in (+ depozit)</option><option value="depozit_out">depozit_out (- depozit)</option><option value="pierdere">pierdere (- închiriate, nu intră în depozit)</option><option value="niciun">niciun efect</option></select></div>
       <div style="flex:0"><label>&nbsp;</label><button class="btn" onclick="addNom()">Adaugă</button></div>
     </div>
     <div class="tw" style="margin-top:10px;max-height:60vh"><table id="n-tbl"></table></div>
@@ -1988,7 +2002,7 @@ const escJs=x=>String(x).replace(/\\/g,"\\\\").replace(/'/g,"\\'").replace(/"/g,
 function subStoc(p){
   document.querySelectorAll(".page").forEach(x=>x.classList.remove("on")); $("p-"+p).classList.add("on");
   document.querySelectorAll(".subtab button").forEach(b=>b.classList.toggle("on", b.getAttribute("onclick").includes("'"+p+"'")));
-  if(p==="produse") renderProduse(); else loadStoc();
+  if(p==="produse") renderProduse(); else if(p==="casate") loadCasate(); else loadStoc();
 }
 async function comutaProdDep(cb,dep,p){
   cb.disabled=true; const val=cheieAsc(dep,p); let error;
@@ -2007,6 +2021,44 @@ function exportStoc(){
   const wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,ws,"STOC"); XLSX.writeFile(wb,`Stoc_${today()}.xlsx`);
 }
 const today=()=>new Date().toISOString().slice(0,10);
+// v6.33 (cerut de Ovidiu, 17.10): inventarul produselor casate / pierdute — comenzile DAUNA / FURT + seriile cu aceste stări
+let CAS = [];
+async function loadCasate(){
+  const [m, s] = await Promise.all([
+    db.from("miscari").select("id,data,tip_miscare,buc,produs,model,model_fizic,client,jud,loc,sat,anexa_id,observatii").in("tip_miscare", ["DAUNA", "FURT"]).order("data", { ascending: false }),
+    db.from("serii").select("*").in("stare", ["DAUNA", "FURT"])]);
+  if(m.error || s.error){ toast((m.error || s.error).message, true); return; }
+  const cmd = m.data || [], ser = s.data || [], rows = [];
+  const anx = id => (ANX || []).find(a => a.id === id) || {};
+  const serTxt = y => [y.tip, y.model].filter(Boolean).join(" ") + " " + (y.serie || "fără serie");
+  cmd.forEach(x => { const l = ser.filter(y => y.miscare_ridicare_id === x.id);
+    rows.push({ data: x.data, motiv: x.tip_miscare, client: x.client || "", jud: x.jud || "", loc: x.loc || "", sat: x.sat || "", produs: x.produs || "",
+      model: [x.model, x.model_fizic].filter(Boolean).join(" "), buc: Math.abs(+x.buc || 0), serii: l.map(serTxt).join(", ").trim(), anexa: anx(x.anexa_id).anexa || "", cmd: x.id, obs: x.observatii || "" }); });
+  ser.filter(y => !cmd.some(x => x.id === y.miscare_ridicare_id)).forEach(y => {
+    const a = anx(y.anexa_id), c = (CTR || []).find(q => q.id === (a.contract_id || y.contract_id)) || {}, k = (CLI || []).find(q => q.id === (c.client_id || y.client_id)) || {};
+    const p = y.punct ? (PCT || []).find(q => String(q.client_key || "").startsWith(y.punct)) : null;
+    rows.push({ data: y.data_ridicarii, motiv: y.stare, client: k.nume || (p && p.client) || "", jud: y.jud || a.jud || "", loc: y.loc || a.loc || "", sat: y.sat || a.sat || "",
+      produs: y.produs || "", model: [y.tip, y.model].filter(Boolean).join(" "), buc: 1, serii: y.serie || "fără serie", anexa: a.anexa || y.punct || "", cmd: null,
+      obs: [(y.observatii || ""), "trecută din Serii, fără comandă"].filter(Boolean).join(" · ") }); });
+  rows.sort((a, b) => String(b.data || "").localeCompare(String(a.data || "")));
+  CAS = rows; renderCasate();
+}
+function casFiltrate(){
+  const q = ($("cp-q").value || "").trim();
+  return q ? CAS.filter(r => potrivesteCautarea([r.client, r.jud, r.loc, r.sat, r.produs, r.model, r.serii, r.anexa, r.motiv, r.obs].join(" "), q)) : CAS;
+}
+function renderCasate(){
+  const l = casFiltrate();
+  $("cp-tbl").innerHTML = "<tr><th>Data</th><th>Motiv</th><th>Client</th><th>Jud.</th><th>Localitate</th><th>Sat / locație</th><th>Produs</th><th>Model</th><th>Buc</th><th>Serii</th><th>Anexă / punct</th><th>Comanda</th><th>Observații</th></tr>" +
+    (l.length ? l.map(r => `<tr><td>${fmtD(r.data)}</td><td><span class="ser-st st-dauna" style="padding:1px 6px;border-radius:4px">${esc(r.motiv)}</span></td><td>${esc(r.client)}</td><td>${esc(r.jud)}</td><td>${esc(r.loc)}</td><td>${esc(r.sat)}</td>` +
+      `<td>${esc(r.produs)}</td><td>${esc(r.model)}</td><td>${r.buc}</td><td>${esc(r.serii)}</td><td>${esc(r.anexa)}</td><td>${r.cmd ? "#" + r.cmd : "—"}</td><td>${esc(r.obs)}</td></tr>`).join("")
+      : '<tr><td colspan="13" class="muted">Niciun produs casat / pierdut.</td></tr>');
+}
+function exportCasate(){
+  const ws = XLSX.utils.json_to_sheet(casFiltrate().map(r => ({ DATA: fmtD(r.data), MOTIV: r.motiv, CLIENT: r.client, JUD: r.jud, LOCALITATE: r.loc, "SAT / LOCATIE": r.sat, PRODUS: r.produs,
+    MODEL: r.model, BUC: r.buc, SERII: r.serii, "ANEXA / PUNCT": r.anexa, COMANDA: r.cmd || "", OBSERVATII: r.obs })));
+  const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, "CASATE"); XLSX.writeFile(wb, `Casate_pierdute_${today()}.xlsx`);
+}
 
 // ---- Tema inchisa / deschisa ----------------------------------------------
 // Alegerea sta in memoria browserului, deci fiecare om o are pe calculatorul lui.
@@ -2190,7 +2242,9 @@ function fqX(){ const b=$("f-q-x"); if(b) b.style.display=$("f-q").value?"":"non
 function fqSterge(){ $("f-q").value=""; fqX(); clearTimeout(MISC_TQ); loadMiscari(); $("f-q").focus(); }
 // v5.22: stilul de probă al datei în Comenzi (ales de Ovidiu după ce le vede; ținut doar pe acest calculator)
 const DATA_STIL = 1;   // v5.39: ales de Ovidiu (12.10) — „1 pastilă”; butoanele de probă scoase
-const tipLit = t => /AMPLASARE|EVENIMENT-A|SUPLIMENTARE/.test(t)?"A":/RIDICARE|EVENIMENT-R|REDUCERE/.test(t)?"R":/SERVISARE/.test(t)?"S":/Transfer|VANZARE/.test(t)?"T":"X";
+// v6.33 (cerut de Ovidiu, 17.10): DAUNA / FURT — produsul iese din chirie, dar nu se întoarce în depozit (ca o reducere fără PV)
+const TIP_PIERD = /^(DAUNA|FURT)$/;
+const tipLit = t => /AMPLASARE|EVENIMENT-A|SUPLIMENTARE/.test(t)?"A":/RIDICARE|EVENIMENT-R|REDUCERE|DAUNA|FURT/.test(t)?"R":/SERVISARE/.test(t)?"S":/Transfer|VANZARE/.test(t)?"T":"X";
 const tipTxt = t => `<span class="tc tc-${tipLit(t)}">${esc(t)}</span>`;
 // v5.22: titlul ferestrei — „Gestiune - Euro Ecologic - Depozit <principal>” (depozitul vine din Administrare → Depozite)
 // v5.23: „Duminică, 11 Oct. 2026 · 11.10.2026” sus, se schimbă singură la miezul nopții
@@ -2211,7 +2265,7 @@ function aziSus(){
 setTimeout(aziSus, 0); setInterval(aziSus, 60000);
 function puneTitlul(){ const d = depPrincipal(); document.title = "Gestiune - Euro Ecologic" + (d ? " - Depozit " + String(d).toUpperCase() : "");
   const t = $("titlu-sus"); if(t) t.textContent = document.title; }   // v5.58: titlul și în bara de sus, deasupra datei
-function pill(t){ const c=/AMPLASARE|EVENIMENT-A|SUPLIMENTARE/.test(t)?"A":/RIDICARE|EVENIMENT-R|REDUCERE/.test(t)?"R":/SERVISARE/.test(t)?"S":/Transfer|VANZARE/.test(t)?"T":"X"; return `<span class="pill p-${c}">${esc(t)}</span>`; }
+function pill(t){ const c=/AMPLASARE|EVENIMENT-A|SUPLIMENTARE/.test(t)?"A":/RIDICARE|EVENIMENT-R|REDUCERE|DAUNA|FURT/.test(t)?"R":/SERVISARE/.test(t)?"S":/Transfer|VANZARE/.test(t)?"T":"X"; return `<span class="pill p-${c}">${esc(t)}</span>`; }
 // Apăsarea pe capul coloanei întoarce ordinea. Se sortează lista încărcată, deci
 // exportul Excel iese în aceeași ordine ca ce se vede pe ecran.
 function sorteazaComenzi(camp){
@@ -2456,7 +2510,7 @@ $("mm-anexa").onchange = () => {
   if(a.produs) $("mm-prod").value = a.produs;
   umpleModele("mm-prod","mm-model", a.model || "", a.accesorii || ""); umpleMF("mm-prod","mm-model", a.model_fizic || "");
   // v4.92: la SUPLIMENTARE / REDUCERE, alegerea anexei de bază (nu a celei -S / -R) nu mai rescrie data și bucățile scrise în comandă
-  const tipC = $("mm-tip").value, nA = anexaNr(a);
+  const tipC = TIP_PIERD.test($("mm-tip").value) ? "REDUCERE" : $("mm-tip").value, nA = anexaNr(a);   // v6.33: dauna / furtul = ca reducerea
   const baza = ["SUPLIMENTARE", "REDUCERE"].includes(tipC) && !(nA && nA.tip === (tipC === "REDUCERE" ? "R" : "S"));
   if(a.cant && !baza) $("mm-buc").value = (!$("mm-id").value && (tipC === "RIDICARE" || tipC === "EVENIMENT-R") && !(nA && nA.tip === "R")) ? cantLinie(a.id) : Math.abs(+a.cant);   // la ridicare: tot ce e la client pe linie
   if(a.contract_depozit) $("mm-contract").value = a.contract_depozit;
@@ -2487,7 +2541,7 @@ function anexaEditDinMiscare(){
 function anexaNouaDinMiscare(){
   const k = +$("mm-ctr").value;
   if(!k){ toast("Alege întâi contractul pe care vine anexa", true); return; }
-  const tip = $("mm-tip").value === "EVENIMENT-R" ? "RIDICARE" : $("mm-tip").value;   // v5.93: ridicarea de la eveniment = ridicare finală
+  const tip = $("mm-tip").value === "EVENIMENT-R" ? "RIDICARE" : TIP_PIERD.test($("mm-tip").value) ? "REDUCERE" : $("mm-tip").value;   // v6.33: la DAUNA / FURT „+” face anexa -R   // v5.93: ridicarea de la eveniment = ridicare finală
   if(tip === "SUPLIMENTARE" || tip === "REDUCERE" || tip === "RIDICARE"){   // v5.08: și anexa de ridicare finală
     const b = ANX.find(x => x.id == $("mm-anexa").value);
     if(!b){ toast("Alege întâi anexa liniei (cea pe care se face " + (tip === "SUPLIMENTARE" ? "suplimentarea" : tip === "REDUCERE" ? "reducerea" : "ridicarea") + "), apoi apasă +", true); return; }
@@ -2733,7 +2787,7 @@ function largesteFiltrele(rec){
   }
   return schimbate;
 }
-const NEG=/RIDICARE|EVENIMENT-R|REDUCERE|TransferOUT|VANZARE/;
+const NEG=/RIDICARE|EVENIMENT-R|REDUCERE|TransferOUT|VANZARE|DAUNA|FURT/;
 // `genereaza` = true vine de la butonul „Salvează și generează”: salveaza la fel,
 // apoi deschide si textul de copiat pe WhatsApp.
 async function saveMiscare(genereaza){
@@ -2759,8 +2813,8 @@ async function saveMiscare(genereaza){
   const efect=ef?(ef.efect_stoc||"niciun"):"niciun";
   if(efect!=="niciun"){
     const lipsa=[];
-    if(!rec.depozit) lipsa.push("Depozit");
-    if(efect==="inchiriere" && !rec.contract) lipsa.push("Contract (gestiune)");
+    if(!rec.depozit && efect!=="pierdere") lipsa.push("Depozit");   // v6.33: la DAUNA / FURT nu intră nimic în depozit
+    if((efect==="inchiriere"||efect==="pierdere") && !rec.contract) lipsa.push("Contract (gestiune)");
     if(lipsa.length && !confirm("Lipsește "+lipsa.join(" și ")+".\n\nComanda se salvează, dar nu va intra în stoc.\n\nContinui?")) return false;
     const sr=subReferinta(rec);
     if(sr && !confirm("Comanda e din "+fmtD(rec.data)+", mai veche decât data de referință a stocului ("
@@ -2790,7 +2844,7 @@ async function saveMiscare(genereaza){
 // ── Serii în comanda de ridicare / reducere (etapa 2) ──
 // Bucățile bifate se leagă de comandă prin serii.miscare_ridicare_id; rămân „LA CLIENT”
 // până la „Confirmă ridicarea” (după ce Ovidiu a citit PV-ul).
-const SER_RID=/^(RIDICARE|REDUCERE|EVENIMENT-R)$/;
+const SER_RID=/^(RIDICARE|REDUCERE|EVENIMENT-R|DAUNA|FURT)$/;
 let MM_SER=new Set();
 function mmSeriiDeschide(){
   if(mmExterior()){ const id=+$("mm-id").value||null;   // v6.21: comanda din exterior — seriile stau pe comandă
@@ -2835,19 +2889,19 @@ function mmSerii(reset){
   if(reset){
     const legate=id?l.filter(x=>x.miscare_ridicare_id===id):[];
     const dinPv=MM_PV?l.filter(x=>x.stare==="LA CLIENT" && MM_PV.serii.some(s=>serN(s)===serN(x.serie))):[];   // v5.00: ce a trecut șoferul în PV
-    MM_SER=new Set((legate.length?legate:(dinPv.length?dinPv:($("mm-tip").value==="REDUCERE"?[]:l))).map(x=>x.id));
+    MM_SER=new Set((legate.length?legate:(dinPv.length?dinPv:(/^(REDUCERE|DAUNA|FURT)$/.test($("mm-tip").value)?[]:l))).map(x=>x.id));
   }
   if(!l.length){ $("mm-serii").innerHTML='<div class="muted">Nicio serie trecută pe această anexă. Se trec din „Contracte și anexe clienți”, butonul Serii.</div>'; return; }
   const buc=Math.abs(+$("mm-buc").value||0), bif=l.filter(x=>MM_SER.has(x.id));
   const deConf=bif.filter(x=>x.stare==="LA CLIENT").length;
   $("mm-serii").innerHTML='<div style="display:flex;gap:8px 18px;flex-wrap:wrap">'+l.map(x=>{
-    const rid=x.stare==="RIDICATA";
-    const nota=rid?` <span class="muted">· ridicată ${fmtD(x.data_ridicarii)}</span>`:(x.miscare_ridicare_id && x.miscare_ridicare_id!==id?' <span class="muted">· pe altă comandă</span>':"");
+    const rid=x.stare!=="LA CLIENT";   // v6.33: și DAUNA / FURT
+    const nota=rid?` <span class="muted">· ${x.stare==="RIDICATA"?"ridicată":esc(String(x.stare).toLowerCase())} ${fmtD(x.data_ridicarii)}</span>`:(x.miscare_ridicare_id && x.miscare_ridicare_id!==id?' <span class="muted">· pe altă comandă</span>':"");
     return `<label style="display:flex;align-items:center;gap:6px;margin:0"><input type="checkbox" style="width:auto" ${MM_SER.has(x.id)?"checked":""} ${rid?"disabled":""} onchange="mmSeriiBifa(${x.id},this.checked)"> <b>${esc(x.serie||"fără serie")}</b> ${esc(x.model||x.produs||"")}${nota}</label>`;
   }).join("")+'</div>'+
-  `<div class="muted" style="margin-top:8px">Bifate ${bif.length} din ${l.length} pe punct · comanda are ${buc} buc${bif.length!==buc?(!bif.length && $("mm-tip").value==="REDUCERE"?" — le alege șoferul în PV":" — nu se potrivesc"):""}</div>`+
+  `<div class="muted" style="margin-top:8px">Bifate ${bif.length} din ${l.length} pe punct · comanda are ${buc} buc${bif.length!==buc?(!bif.length && $("mm-tip").value==="REDUCERE"?" — le alege șoferul în PV":!bif.length && TIP_PIERD.test($("mm-tip").value)?" — bifează bucățile pierdute":" — nu se potrivesc"):""}</div>`+
   mmPvHtml(l)+
-  (id && deConf ? `<div style="margin-top:8px"><button type="button" class="btn sm" onclick="mmSeriiConfirma()">Confirmă ridicarea (${deConf})</button> <span class="muted">după ce ai verificat PV-ul: bucățile bifate trec în „ridicată”</span></div>` : "");
+  (id && deConf ? `<div style="margin-top:8px"><button type="button" class="btn sm" onclick="mmSeriiConfirma()">${TIP_PIERD.test($("mm-tip").value) ? "Confirmă " + ($("mm-tip").value === "FURT" ? "furtul" : "dauna") : "Confirmă ridicarea"} (${deConf})</button> <span class="muted">${TIP_PIERD.test($("mm-tip").value) ? "bucățile bifate trec în „" + $("mm-tip").value.toLowerCase() + "” (nu se întorc în depozit)" : "după ce ai verificat PV-ul: bucățile bifate trec în „ridicată”"}</span></div>` : "");
 }
 function mmPvHtml(l){
   if(!MM_PV) return "";
@@ -2874,10 +2928,11 @@ async function mmSeriiConfirma(){
   const id=+$("mm-id").value||null, l=mmSeriiLista(); if(!id||!l) return;
   const de=l.filter(x=>MM_SER.has(x.id) && x.stare==="LA CLIENT"); if(!de.length) return;
   const zi=$("mm-data").value||today();
-  if(!confirm("Confirmi ridicarea, cu data "+fmtD(zi)+", pentru:\n\n"+de.map(x=>"• "+(x.serie||"fără serie")+" "+(x.model||x.produs||"")).join("\n")+"\n\nBucățile trec din „la client” în „ridicată”.")) return;
-  const {error}=await db.from("serii").update({stare:"RIDICATA",data_ridicarii:zi,miscare_ridicare_id:id,updated_at:new Date().toISOString()}).in("id",de.map(x=>x.id));
+  const st=TIP_PIERD.test($("mm-tip").value)?$("mm-tip").value:"RIDICATA", ce=st==="RIDICATA"?"ridicarea":st==="FURT"?"furtul":"dauna";   // v6.33
+  if(!confirm("Confirmi "+ce+", cu data "+fmtD(zi)+", pentru:\n\n"+de.map(x=>"• "+(x.serie||"fără serie")+" "+(x.model||x.produs||"")).join("\n")+"\n\nBucățile trec din „la client” în „"+st.toLowerCase()+"”.")) return;
+  const {error}=await db.from("serii").update({stare:st,data_ridicarii:zi,miscare_ridicare_id:id,updated_at:new Date().toISOString()}).in("id",de.map(x=>x.id));
   if(error){toast(error.message,true);return;}
-  await reloadSerii(); mmSerii(false); toast("Ridicare confirmată: "+de.length+" buc");
+  await reloadSerii(); mmSerii(false); toast((st==="RIDICATA"?"Ridicare confirmată: ":"Confirmat "+st+": ")+de.length+" buc");
   inchVerifica(de[0].anexa_id);
 }
 $("mm-tip").addEventListener("change", ()=>mmSerii(true));
@@ -3869,7 +3924,7 @@ function serSet(i,camp,v){
   const r=SR_ROWS[i]; if(!r) return; r[camp]=v;
   if(camp==="produs"){ if(!modeleDe(v).includes(r.tip)) r.tip=""; }
   if(camp==="produs"||camp==="tip"){ if(!modeleFiziceDe(r.produs||"",r.tip||"").includes(r.model)) r.model=""; serDeseneaza(); }
-  if(camp==="stare"){ if(v==="RIDICATA" && !r.data_ridicarii) r.data_ridicarii=today(); if(v==="LA CLIENT") r.data_ridicarii=null; serDeseneaza(); }
+  if(camp==="stare"){ if(v!=="LA CLIENT" && !r.data_ridicarii) r.data_ridicarii=today();   /* v6.33: și la DAUNA / FURT = data evenimentului */ if(v==="LA CLIENT") r.data_ridicarii=null; serDeseneaza(); }
 }
 function serScoate(i){
   const r=SR_ROWS[i]; if(!r) return;
@@ -3888,7 +3943,7 @@ function serDeseneaza(){
       <td><select style="${st}" onchange="serSet(${i},'tip',this.value)"><option value=""></option>${opt(modeleDe(r.produs||""),r.tip||"")}</select></td>
       <td><select style="${st}" onchange="serSet(${i},'model',this.value)"><option value=""></option>${opt(modeleFiziceDe(r.produs||"",r.tip||""),r.model||"")}</select></td>
       <td><input class="ser-serie" style="${st}" value="${esc(r.serie||"")}" placeholder="12345 → EE-12345 · gol = fără serie" oninput="serSet(${i},'serie',this.value)" onchange="this.value=serFormat(this.value);serSet(${i},'serie',this.value)" title="Scrie doar cifrele (12345) — devine EE-12345. Bucata fără plăcuță: lasă gol (sau scrie FARA) — apare „fără serie”; scrie motivul la Observații."></td>
-      <td><select class="ser-st ${/DAUN|FURT/.test(r.stare||"")?"st-dauna":r.stare==="RIDICATA"?"st-rid":"st-client"}" style="width:100%" onchange="serSet(${i},'stare',this.value)">${opt(["LA CLIENT","RIDICATA"],r.stare||"LA CLIENT")}</select></td>
+      <td><select class="ser-st ${/DAUN|FURT/.test(r.stare||"")?"st-dauna":r.stare==="RIDICATA"?"st-rid":"st-client"}" style="width:100%" onchange="serSet(${i},'stare',this.value)">${opt(["LA CLIENT","RIDICATA","DAUNA","FURT"],r.stare||"LA CLIENT")}</select></td>
       <td><input type="date" style="min-width:104px" value="${r.data_amplasarii||""}" onchange="serSet(${i},'data_amplasarii',this.value||null)"></td>
       <td><input type="date" style="min-width:104px" value="${r.data_ridicarii||""}" onchange="serSet(${i},'data_ridicarii',this.value||null)"></td>
       <td><input style="${st}" value="${esc(r.observatii||"")}" oninput="serSet(${i},'observatii',this.value)"></td>
@@ -3936,7 +3991,7 @@ async function serSalveaza(){
   if(SR_STERSE.length){ const {data,error}=await db.from("serii").delete().in("id",SR_STERSE).select("id"); if(error){toast(error.message,true);return;} nesterse=SR_STERSE.length-(data||[]).length; }
   closeModal("mod-s"); await reloadClienti();
   if(A_TBL==="clients" && A_ROWS.length) renderAdmin();   // v5.41: butonul 🔢 din Puncte de rută
-  if(a.id && SR_ROWS.some(r=>r.stare==="RIDICATA")) inchVerifica(a.id);
+  if(a.id && SR_ROWS.some(r=>r.stare!=="LA CLIENT")) inchVerifica(a.id);
   toast(nesterse?"Salvat, dar "+nesterse+" bucăți nu s-au șters (doar administratorul poate șterge)":"Serii salvate", !!nesterse);
 }
 function exportClienti(){
@@ -3953,7 +4008,7 @@ function renderNom(){
   const optProduse = ales => '<option value="">— la orice produs —</option>' +
     nomv("produs").map(x => `<option${x===ales?" selected":""}>${esc(x)}</option>`).join("");
   if(tip==="model") $("n-parinte").innerHTML = optProduse("");
-  $("n-tbl").innerHTML=`<tr><th>Valoare</th>${tip==="tip_miscare"?"<th>Efect stoc</th>":""}${tip==="model"?"<th>Al cărui produs</th>":""}<th></th></tr>`+rows.map(r=>`<tr><td>${esc(r.valoare)}</td>${tip==="tip_miscare"?`<td><select onchange="setEfect(${r.id},this.value)"><option ${r.efect_stoc==="inchiriere"?"selected":""}>inchiriere</option><option ${r.efect_stoc==="depozit_in"?"selected":""}>depozit_in</option><option ${r.efect_stoc==="depozit_out"?"selected":""}>depozit_out</option><option ${!r.efect_stoc||r.efect_stoc==="niciun"?"selected":""}>niciun</option></select></td>`:""}${tip==="model"?`<td><select onchange="setParinte(${r.id},this.value)">${optProduse(r.parinte)}</select></td>`:""}<td><button class="btn sm danger" onclick="delNom(${r.id})">✕</button></td></tr>`).join("");
+  $("n-tbl").innerHTML=`<tr><th>Valoare</th>${tip==="tip_miscare"?"<th>Efect stoc</th>":""}${tip==="model"?"<th>Al cărui produs</th>":""}<th></th></tr>`+rows.map(r=>`<tr><td>${esc(r.valoare)}</td>${tip==="tip_miscare"?`<td><select onchange="setEfect(${r.id},this.value)"><option ${r.efect_stoc==="inchiriere"?"selected":""}>inchiriere</option><option ${r.efect_stoc==="depozit_in"?"selected":""}>depozit_in</option><option ${r.efect_stoc==="depozit_out"?"selected":""}>depozit_out</option><option ${r.efect_stoc==="pierdere"?"selected":""}>pierdere</option><option ${!r.efect_stoc||r.efect_stoc==="niciun"?"selected":""}>niciun</option></select></td>`:""}${tip==="model"?`<td><select onchange="setParinte(${r.id},this.value)">${optProduse(r.parinte)}</select></td>`:""}<td><button class="btn sm danger" onclick="delNom(${r.id})">✕</button></td></tr>`).join("");
 }
 async function addNom(){ const tip=$("n-tip").value, v=$("n-val").value.trim(); if(!v) return; const rec={tip,valoare:v,ordine:(NOM[tip]||[]).length}; if(tip==="tip_miscare") rec.efect_stoc=$("n-efect").value;
   if(tip==="model") rec.parinte=$("n-parinte").value||null; const {error}=await db.from("nomenclatoare").insert(rec); if(error){toast(error.message,true);return;} $("n-val").value=""; await reloadNom(); }
@@ -4928,7 +4983,7 @@ async function ridLoc(loc, data, m){
   return l.filter(x => !cuAnexa(x)).reduce((t, x) => t + Math.abs(+x.buc || 0), 0);
 }
 function verRtLipsa(m){
-  if(!["AMPLASARE", "SUPLIMENTARE", "REDUCERE", "RIDICARE"].includes(m.tip_miscare) || !m.anexa_id) return null;
+  if(!["AMPLASARE", "SUPLIMENTARE", "REDUCERE", "RIDICARE", "DAUNA", "FURT"].includes(m.tip_miscare) || !m.anexa_id) return null;
   if(m.tip_miscare === "RIDICARE" && VER.ridSum == null) return null;
   const u = faraDiac(m.produs || "").toUpperCase();
   const camp = /TOALET/.test(u) ? "toalete" : /CONTAINER|CAB/.test(u) ? "containere" : /GARD/.test(u) ? "garduri" : null;
@@ -7488,7 +7543,7 @@ async function spreRute(id){
   // v5.17: la amplasare / suplimentare cu mai multe bucăți se întreabă întâi câte locații are (o singură dată:
   // dacă există deja puncte pe locații A..-NN-.. se deschide direct tabelul; dacă există puncte simple, merge ca înainte)
   // v6.26: comanda din exterior (fără anexă) — mai multe locații: fereastra cu „+ acum” / „− acum” pe fiecare locație
-  if(!PL_SARI && !m.anexa_id && extCamp(m.produs) && ["AMPLASARE","SUPLIMENTARE","EVENIMENT-A","REDUCERE","RIDICARE","EVENIMENT-R"].includes(m.tip_miscare) &&
+  if(!PL_SARI && !m.anexa_id && extCamp(m.produs) && ["AMPLASARE","SUPLIMENTARE","EVENIMENT-A","REDUCERE","RIDICARE","EVENIMENT-R","DAUNA","FURT"].includes(m.tip_miscare) &&
      ((Array.isArray(m.locatii) && m.locatii.length) || Math.abs(+m.buc || 0) > 1 || NEG.test(m.tip_miscare))){
     RUTE_MID = id; await pePorneste(m); return;
   }
@@ -7633,7 +7688,7 @@ function textComandaDin(d){
     : [{ buc: d.buc, produs: d.produs, model: d.model, acc: d.acc, jud: d.jud, loc: d.loc, sat: d.sat, pers: d.pers, tel: d.tel }].concat(d.extra || []);
   const lk = x => [x.jud, x.loc, x.sat].map(v => String(v || "").trim().toUpperCase()).join("|");
   const locuri = [...new Set(toate.map(lk))];
-  const semn = /RIDICARE|EVENIMENT-R|REDUCERE/.test(d.tip || "") ? "-" : "";   // v5.96 (cerut de Ovidiu, 14.10): la ridicare bucățile cu minus
+  const semn = /RIDICARE|EVENIMENT-R|REDUCERE|DAUNA|FURT/.test(d.tip || "") ? "-" : "";   // v5.96 (cerut de Ovidiu, 14.10): la ridicare bucățile cu minus
   const linieP = x => " " + semn + (Math.abs(+x.buc) || 0) + "    " + prodN(x.produs || "", x.buc) + (x.model ? "    " + x.model : "");
   if(locuri.length > 1){
     const sum = {}; toate.forEach(x => { const k = (x.produs || "") + "|" + (x.model || ""); sum[k] = sum[k] || { produs: x.produs, model: x.model, buc: 0 }; sum[k].buc += Math.abs(+x.buc) || 0; });
@@ -7680,7 +7735,7 @@ function textComandaDin(d){
   L.push("");
   // v4.95: tipul de PV pe care îl face șoferul; suplimentarea / reducerea / evenimentul în paranteză
   const pvTip = { SUPLIMENTARE: "AMPLASARE", "EVENIMENT-A": "AMPLASARE", REDUCERE: "RIDICARE", "EVENIMENT-R": "RIDICARE" }[d.tip] || d.tip || "";
-  L.push("ROG PV DE - " + pvTip + (pvTip !== (d.tip || "") ? " (" + d.tip + ")" : ""));
+  if(!TIP_PIERD.test(d.tip || "")) L.push("ROG PV DE - " + pvTip + (pvTip !== (d.tip || "") ? " (" + d.tip + ")" : ""));
   L.push("Multumesc.");
   // v5.01: seriile jos de tot, după modelul lui Ovidiu („MODEL SI SERIE PRODUS” / „ARMAL Seria: 1”)
   if(d.ser && d.ser.lista && d.ser.lista.length){
@@ -8914,7 +8969,7 @@ async function mobSalveaza(trimite){
   if(d && d.tip === "secundar"){ rec.client_id = null; rec.contract_id = null; rec.anexa_id = null; }   // clientul exterior, ca pe PC
   const ef = (NOM.tip_miscare || []).find(t => t.valoare === tip), efect = ef ? (ef.efect_stoc || "niciun") : "niciun";
   if(efect !== "niciun"){
-    const lipsa = []; if(!rec.depozit) lipsa.push("Depozit"); if(efect === "inchiriere" && !rec.contract) lipsa.push("Contract (gestiune)");
+    const lipsa = []; if(!rec.depozit && efect !== "pierdere") lipsa.push("Depozit"); if((efect === "inchiriere" || efect === "pierdere") && !rec.contract) lipsa.push("Contract (gestiune)");
     if(lipsa.length && !confirm("Lipsește " + lipsa.join(" și ") + ".\n\nComanda se salvează, dar nu va intra în stoc.\n\nContinui?")) return;
   }
   const q = MB_EDIT ? db.from("miscari").update(rec).eq("id", MB_EDIT) : db.from("miscari").insert(rec);   // v5.31: editare de pe telefon
