@@ -1866,7 +1866,7 @@ document.querySelectorAll("nav button").forEach(b=>b.onclick=()=>{
   if(b.dataset.p==="admin"){ if(b.dataset.a) $("a-tabel").value = b.dataset.a; else if($("a-tabel").value === "clients") $("a-tabel").value = "soferi"; adminSchimba(); }   // v5.35: Puncte de rută doar în fila lor
   if(b.dataset.p==="verificare") loadVerif();
   if(b.dataset.p==="pv"){ pvMod(b.dataset.v || "pv"); loadPV(); }
-  if(b.dataset.p==="raportrute") loadRR(true);   // v5.18: la fiecare deschidere, datele proaspete din bază
+  if(b.dataset.p==="raportrute"){ if(!RR_CERUT) RR_SID = null; loadRR(true); }   // v6.34: din meniu = toate rutele   // v5.18: la fiecare deschidere, datele proaspete din bază
   if(b.dataset.p==="inceput") loadIZ();
   if(b.dataset.p==="foi") loadFP();
   try{ history.replaceState(null,"","#"+(b.dataset.h||b.dataset.p)); }catch(e){}
@@ -6065,14 +6065,15 @@ async function loadRR(forta){
 }
 // v6.34 (cerut de Ovidiu, 17.10): „🔍 Vezi ruta” din Monitorizare rute → Verificare rute cu săptămâna, ziua și traseul rutei.
 // Ziua / traseul se pun doar dacă ruta a avut unul singur (la „Joi+Vineri” sau „TOATE” rămâne „toate”). Mașina, șoferul, vizita, căutarea se golesc.
-let RR_CERUT = null;
+let RR_CERUT = null, RR_SID = null;   // RR_SID = ruta aleasă din „Vezi ruta” (doar vizitele ei)
+function rrToateRutele(){ RR_SID = null; rrAfiseaza(); }
 window.addEventListener("message", e => {
   if(e.origin !== location.origin || !e.data || e.data.tip !== "ee-vezi-ruta") return;
   RR_CERUT = e.data;
   const b = document.querySelector('button[data-p="raportrute"]'); if(b) b.click();
 });
 function rrAplicaCerut(){
-  const d = RR_CERUT; if(!d) return; RR_CERUT = null;
+  const d = RR_CERUT; if(!d) return; RR_CERUT = null; RR_SID = d.sid || null;
   const pune = (id, v) => { $(id).value = [...$(id).options].some(o => o.value === v) ? v : ""; };
   const unul = x => { const l = String(x || "").split("+").map(t => t.trim()).filter(Boolean); return l.length === 1 && l[0].toUpperCase() !== "TOATE" ? l[0] : ""; };
   if(d.zi){
@@ -6104,7 +6105,8 @@ function rrAfiseaza(){
   const folosite = new Set();
   const viziteDe = (chei, w) => chei.flatMap(k => (viz[k] && viz[k][w]) || [])
     .sort((a,b) => String(b.arrive_time||b.updated_at||"").localeCompare(String(a.arrive_time||a.updated_at||"")));
-  const potrivesteVizita = v => (!ms || v.s.vehicle_plate === ms) && (!sf || v.s.driver1 === sf || v.s.driver2 === sf);
+  const sid = (RR_SID && RR.sess.some(x => x.id === RR_SID && rrSapt(x.session_date) === W)) ? RR_SID : null;   // v6.34: doar ruta aleasă
+  const potrivesteVizita = v => (!sid || v.s.id === sid) && (!ms || v.s.vehicle_plate === ms) && (!sf || v.s.driver1 === sf || v.s.driver2 === sf);
   const rows = [];
   RR.cl.forEach(c => {
     const chei = [c.client_key, rrKey(c)].filter(Boolean);
@@ -6156,11 +6158,11 @@ function rrAfiseaza(){
   ].filter(Boolean).join(" | ");
   // v6.34 (cerut de Ovidiu, 17.10): sub sumar, rutele șoferilor din săptămâna aleasă pe ziua / traseul ales:
   // ȘOFERI | TRASEU | MAȘINA | ZI - dd.mm.yyyy - ordinea aleasă de șofer | stare
-  if(W && (zi || tr)){
+  if(W && (zi || tr || sid)){
     const ZI_N = ["DUMINICA", "LUNI", "MARTI", "MIERCURI", "JOI", "VINERI", "SAMBATA"];
     const parti = x => String(x || "").split("+").map(t => t.trim()).filter(Boolean);
     const ord = v => v === "depot" ? "GPS optimizat" : v ? "Istoric W" + v : "Ordine normală";
-    const rute = RR.sess.filter(x => rrSapt(x.session_date) === W &&
+    const rute = RR.sess.filter(x => x.id === sid || rrSapt(x.session_date) === W &&
         (!zi || parti(x.last_ziua).some(t => rrNorm(t) === zi || rrNorm(t) === "TOATE")) &&
         (!tr || parti(x.last_masina).some(t => t === tr || rrNorm(t) === "TOATE")))
       .sort((a, b) => String(a.session_date).localeCompare(String(b.session_date)) || String(a.created_at || "").localeCompare(String(b.created_at || "")));
@@ -6170,7 +6172,9 @@ function rrAfiseaza(){
           [x.vehicle_brand, x.vehicle_plate].filter(Boolean).join(" ") || "—",
           ZI_N[d.getDay()] + " - " + zi2(d.getDate()) + "." + zi2(d.getMonth() + 1) + "." + d.getFullYear() + " - " + ord(x.last_sort_mode),
           x.status === "finalizata" ? "finalizată" : "în lucru"].join(" | "); });
-      p.innerHTML = esc(p.textContent) + linii.map(l => `<br><b style="font-weight:600">🚚 ${esc(l)}</b>`).join("");
+      p.innerHTML = esc(p.textContent) + (sid ? ` <button class="btn sm sec" style="margin-left:8px" onclick="rrToateRutele()" title="Arată vizitele tuturor rutelor din săptămână">✕ Toate rutele</button>` : "") +
+        linii.map((l, i) => { const ales = sid && rute[i].id === sid;
+          return `<br><b style="font-weight:600${sid && !ales ? ";opacity:.45" : ""}${ales ? ";background:rgba(46,139,60,.18);padding:1px 6px;border-radius:4px" : ""}">🚚 ${esc(l)}${ales ? " ◀ ruta aleasă — tabelul arată doar vizitele ei" : ""}</b>`; }).join("");
     }
   }
   const OBS = { O:"Omis", LA:"Lipsă acces" };
