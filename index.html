@@ -6154,6 +6154,25 @@ function rrAfiseaza(){
     `${rows.length} puncte`, `${viz_n} vizitate`, `${rows.length - viz_n} nevizitate`,
     `${nT + nC + nG} produse` + (felP.length > 1 ? ` (${felP.join(" · ")})` : "")
   ].filter(Boolean).join(" | ");
+  // v6.34 (cerut de Ovidiu, 17.10): sub sumar, rutele șoferilor din săptămâna aleasă pe ziua / traseul ales:
+  // ȘOFERI | TRASEU | MAȘINA | ZI - dd.mm.yyyy - ordinea aleasă de șofer | stare
+  if(W && (zi || tr)){
+    const ZI_N = ["DUMINICA", "LUNI", "MARTI", "MIERCURI", "JOI", "VINERI", "SAMBATA"];
+    const parti = x => String(x || "").split("+").map(t => t.trim()).filter(Boolean);
+    const ord = v => v === "depot" ? "GPS optimizat" : v ? "Istoric W" + v : "Ordine normală";
+    const rute = RR.sess.filter(x => rrSapt(x.session_date) === W &&
+        (!zi || parti(x.last_ziua).some(t => rrNorm(t) === zi || rrNorm(t) === "TOATE")) &&
+        (!tr || parti(x.last_masina).some(t => t === tr || rrNorm(t) === "TOATE")))
+      .sort((a, b) => String(a.session_date).localeCompare(String(b.session_date)) || String(a.created_at || "").localeCompare(String(b.created_at || "")));
+    if(rute.length){
+      const p = $("rr-nota"), linii = rute.map(x => { const d = new Date(x.session_date + "T00:00:00");
+        return [[x.driver1, x.driver2].filter(Boolean).join(" & ") || "fără șofer", parti(x.last_masina).join(" + ") || "—",
+          [x.vehicle_brand, x.vehicle_plate].filter(Boolean).join(" ") || "—",
+          ZI_N[d.getDay()] + " - " + zi2(d.getDate()) + "." + zi2(d.getMonth() + 1) + "." + d.getFullYear() + " - " + ord(x.last_sort_mode),
+          x.status === "finalizata" ? "finalizată" : "în lucru"].join(" | "); });
+      p.innerHTML = esc(p.textContent) + linii.map(l => `<br><b style="font-weight:600">🚚 ${esc(l)}</b>`).join("");
+    }
+  }
   const OBS = { O:"Omis", LA:"Lipsă acces" };
   const hm = t => { if(!t) return "—"; const d = new Date(t); return zi2(d.getHours()) + ":" + zi2(d.getMinutes()); };
   const produse = c => [c.toalete ? c.toalete + " T" + accToaleta(c) : "", c.containere ? c.containere + " C" : "", c.garduri ? c.garduri + " G" : "", c.echipamente || ""].filter(Boolean).join(" · ");
