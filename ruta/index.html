@@ -1051,7 +1051,7 @@ let dayStart = {}; // {brand, plate, kmStart, driver1, driver2, startTime}
 let lastRouteRows = [];
 
 // --- Șofer EE: aplicatia ruleaza in fila „Rută” (../sofer/), care trimite datele zilei ---
-const EE_RUTA_VERSION = 'v25'; // aceeasi cu VERSIUNE din sw.js; Șofer EE o arata langa rotita
+const EE_RUTA_VERSION = 'v26'; // aceeasi cu VERSIUNE din sw.js; Șofer EE o arata langa rotita
 const SOFER_MODE = new URLSearchParams(location.search).get('sofer') === '1';
 let multiZile = null;   // mai multe zile bifate (ruta complementara), altfel null
 let multiTrasee = null; // mai multe trasee bifate, altfel null
@@ -1255,7 +1255,7 @@ function enqueueSync(key, desc, payload){
 
 async function runQueueItem(item){
   if(item.type === 'visit'){
-    const { error } = await sb.from('visit_logs').upsert({
+    const rand = {
       session_id: item.sessionId,
       client_id: item.clientId,
       client_key: item.clientKey || null,
@@ -1264,10 +1264,14 @@ async function runQueueItem(item){
       arrive_time: item.arrive,
       leave_time: item.leave,
       obs: item.obs,
-      lat: item.lat,
-      lon: item.lon,
       updated_at: new Date().toISOString(),
-    }, {onConflict: 'session_id,client_id'});
+    };
+    // v26: GPS-ul se trimite doar când există — o actualizare fără GPS (ex. „Am plecat” după reîncărcare) nu-l mai șterge
+    [['lat','lat'],['lon','lon'],['gps_acc','gpsAcc'],['gps_la','gpsLa'],['gps_citiri','gpsCitiri'],
+     ['plecare_lat','plecLat'],['plecare_lon','plecLon'],['plecare_acc','plecAcc']].forEach(function(p){
+      if(item[p[1]] !== null && item[p[1]] !== undefined) rand[p[0]] = item[p[1]];
+    });
+    const { error } = await sb.from('visit_logs').upsert(rand, {onConflict: 'session_id,client_id'});
     if(error) throw error;
   } else if(item.type === 'finalize'){
     const { error } = await sb.from('route_sessions').update({
@@ -1321,6 +1325,104 @@ function getCurrentPositionAsync(){
       {enableHighAccuracy:true, timeout:8000, maximumAge:20000}
     );
   });
+}
+
+/* ===== v26 (cerut de Ovidiu, 18.10) — verificarea GPS a vizitelor =====
+   „Am ajuns” cere GPS: fără o citire, sosirea nu se înregistrează. Primul punct se salvează imediat; GPS-ul rămâne
+   pornit cât durează vizita și se păstrează citirea cea mai precisă (lat / lon / gps_acc în visit_logs). Se oprește la
+   precizie ≤ 10 m, după 5 minute sau la „Am plecat” (încă o citire, păstrată separat în plecare_*). Salturile bruște
+   (viteză imposibilă) și citirile foarte slabe (> 150 m) se ignoră. Ecranul rămâne aprins cât e o vizită în lucru. */
+const GPS_BUN_M = 10, GPS_MAX_MS = 5 * 60000, GPS_MAX_ACC = 150, GPS_VITEZA_MAX = 40;   // m/s
+const gpsUrm = {};          // key -> { start, best, ultim, citiri, ultSync }
+const gpsCaut = new Set();  // „Am ajuns” apăsat, se așteaptă prima citire
+let gpsWatchV = null, eeWake = null;
+function gpsDinPozitie(p){ return { lat: p.coords.latitude, lon: p.coords.longitude, acc: p.coords.accuracy || 9999, t: p.timestamp || Date.now() }; }
+function gpsFix(timeout, maxAge){
+  return new Promise(function(res){
+    if(!navigator.geolocation){ res({ err: 'Telefonul nu are GPS disponibil' }); return; }
+    navigator.geolocation.getCurrentPosition(
+      function(p){ res(gpsDinPozitie(p)); },
+      function(e){ res({ err: e && e.code === 1 ? 'Locația (GPS) e oprită sau aplicația nu are voie s-o folosească' : 'Nu am semnal GPS' }); },
+      { enableHighAccuracy: true, timeout: timeout, maximumAge: maxAge });
+  });
+}
+function gpsDistM(a, b){ return haversine(a.lat, a.lon, b.lat, b.lon) * 1000; }
+function gpsSalt(a, b){   // b vine după a: deplasare cu viteză imposibilă = salt de semnal
+  if(!a || !b) return false;
+  const d = gpsDistM(a, b), dt = Math.max(1, Math.abs(b.t - a.t) / 1000);
+  return d > 50 && d / dt > GPS_VITEZA_MAX;
+}
+function gpsAplicaBest(key){
+  const u = gpsUrm[key], v = visitLog[key]; if(!u || !v || !u.best) return;
+  v.lat = u.best.lat; v.lon = u.best.lon; v.gpsAcc = Math.round(u.best.acc * 10) / 10;
+  v.gpsLa = new Date(u.best.t); v.gpsCitiri = u.citiri;
+}
+function gpsCitire(fix){
+  Object.keys(gpsUrm).forEach(function(key){
+    const u = gpsUrm[key];
+    if(!fix || fix.acc > GPS_MAX_ACC || gpsSalt(u.ultim, fix)) return;
+    u.ultim = fix; u.citiri++;
+    if(!u.best || fix.acc < u.best.acc){
+      u.best = fix; gpsAplicaBest(key);
+      if(Date.now() - u.ultSync > 15000){ u.ultSync = Date.now(); syncVisit(key, dataById[key], visitLog[key]); }
+    }
+    if(u.best.acc <= GPS_BUN_M || Date.now() - u.start >= GPS_MAX_MS) gpsOpreste(key, true);
+  });
+}
+function gpsPorneste(key, fix){
+  gpsUrm[key] = { start: Date.now(), best: fix, ultim: fix, citiri: 1, ultSync: Date.now() };
+  gpsAplicaBest(key);
+  if(fix.acc <= GPS_BUN_M){ delete gpsUrm[key]; return; }
+  if(gpsWatchV === null && navigator.geolocation){
+    gpsWatchV = navigator.geolocation.watchPosition(function(p){ gpsCitire(gpsDinPozitie(p)); }, function(){},
+      { enableHighAccuracy: true, maximumAge: 0, timeout: 30000 });
+  }
+  const st = gpsUrm[key].start;
+  setTimeout(function(){ if(gpsUrm[key] && gpsUrm[key].start === st) gpsOpreste(key, true); }, GPS_MAX_MS + 1000);
+}
+function gpsOpreste(key, sync){
+  const u = gpsUrm[key];
+  if(u){ gpsAplicaBest(key); delete gpsUrm[key]; if(sync && visitLog[key]) syncVisit(key, dataById[key], visitLog[key]); }
+  if(!Object.keys(gpsUrm).length && gpsWatchV !== null){ try{ navigator.geolocation.clearWatch(gpsWatchV); }catch(e){} gpsWatchV = null; }
+}
+// La „Am plecat”: încă o citire. Se păstrează separat (plecare_*) și devine punctul vizitei doar dacă e mai precisă și
+// la cel mult 200 m de cel mai bun punct (dacă șoferul apasă din mers, după ce a plecat, nu strică locația).
+async function gpsLaPlecare(key){
+  const f = await gpsFix(8000, 0), v = visitLog[key];
+  if(!v){ gpsOpreste(key, false); return; }
+  if(!f.err){
+    v.plecLat = f.lat; v.plecLon = f.lon; v.plecAcc = Math.round(f.acc * 10) / 10;
+    const u = gpsUrm[key], best = u ? u.best : (v.lat != null && v.lon != null ? { lat: v.lat, lon: v.lon, acc: v.gpsAcc ?? 9999 } : null);
+    if(f.acc <= GPS_MAX_ACC && (!best || (f.acc < best.acc && gpsDistM(best, f) <= 200))){
+      if(u){ u.best = f; u.citiri++; } else { v.lat = f.lat; v.lon = f.lon; v.gpsAcc = Math.round(f.acc * 10) / 10; v.gpsLa = new Date(f.t); }
+    }
+  }
+  gpsOpreste(key, false);
+  syncVisit(key, dataById[key], v);
+}
+// Ecranul rămâne aprins cât e o vizită în lucru (PWA pierde GPS-ul cu ecranul stins)
+async function eeEcranAprins(){
+  const deschise = Object.keys(visitLog).some(function(k){ const v = visitLog[k]; return v && v.arrive && !v.leave && !v.obs; }) || gpsCaut.size > 0;
+  try{
+    if(deschise && !eeWake && navigator.wakeLock && document.visibilityState === 'visible'){
+      eeWake = await navigator.wakeLock.request('screen');
+      eeWake.addEventListener('release', function(){ eeWake = null; });
+    } else if(!deschise && eeWake){ const w = eeWake; eeWake = null; await w.release(); }
+  }catch(e){ eeWake = null; }
+}
+document.addEventListener('visibilitychange', eeEcranAprins);
+setInterval(eeEcranAprins, 15000);
+// Alt client cu vizita deschisă pe aceeași locație (aceeași adresă sau la < 150 m)
+function deschiseAici(key){
+  const r = dataById[key], v = visitLog[key] || {};
+  const loc = function(x){ return [x.jud, x.localitate, x.locatie].map(function(s){ return String(s || '').trim().toUpperCase(); }).join('|'); };
+  const aproape = function(a, b){ return a && b && a.lat != null && a.lon != null && b.lat != null && b.lon != null && +a.lat && +b.lat && gpsDistM(a, b) <= 150; };
+  return Object.keys(visitLog).filter(function(k){
+    if(k === key) return false;
+    const w = visitLog[k], r2 = dataById[k];
+    if(!w || !w.arrive || w.leave || w.obs || !r2 || !r) return false;
+    return loc(r2) === loc(r) || aproape(r2, r) || aproape(w, v);
+  }).map(function(k){ return dataById[k].client; });
 }
 
 async function findOrCreateSession(){
@@ -1413,6 +1515,8 @@ async function resumeSession(session){
         arrive: v.arrive_time ? new Date(v.arrive_time) : null,
         leave: v.leave_time ? new Date(v.leave_time) : null,
         obs: v.obs || null,
+        lat: v.lat ?? null, lon: v.lon ?? null, gpsAcc: v.gps_acc ?? null,   // v26
+        gpsLa: v.gps_la || null, gpsCitiri: v.gps_citiri ?? null,
       };
     });
     reapplyPendingQueueToVisitLog();
@@ -1495,6 +1599,12 @@ async function syncVisit(clientId, r, patch){
     obs: patch.obs || null,
     lat: patch.lat ?? null,
     lon: patch.lon ?? null,
+    gpsAcc: patch.gpsAcc ?? null,
+    gpsLa: patch.gpsLa ? new Date(patch.gpsLa).toISOString() : null,
+    gpsCitiri: patch.gpsCitiri ?? null,
+    plecLat: patch.plecLat ?? null,
+    plecLon: patch.plecLon ?? null,
+    plecAcc: patch.plecAcc ?? null,
   };
   setSyncStatus('syncing');
   try{
@@ -1681,28 +1791,39 @@ listEl.addEventListener('click', (e)=>{
       }
     }
   } else if(arriveBtn){
+    // v26: „Am ajuns” cere GPS — ora sosirii = momentul apăsării; fără citire GPS sosirea nu se înregistrează
     const key = arriveBtn.dataset.key;
     const r = dataById[key];
-    visitLog[key] = visitLog[key] || {};
-    visitLog[key].arrive = new Date();
-    syncVisit(key, r, visitLog[key]);
-    if(navigator.geolocation){
-      navigator.geolocation.getCurrentPosition(
-        (pos)=>{
-          visitLog[key].lat = pos.coords.latitude;
-          visitLog[key].lon = pos.coords.longitude;
-          syncVisit(key, r, visitLog[key]);
-        },
-        ()=>{}, {timeout:5000}
-      );
-    }
-    render();
+    if(gpsCaut.has(key)) return;
+    const acum = new Date();
+    gpsCaut.add(key); eeEcranAprins();
+    arriveBtn.textContent = '📡 Caut GPS…';
+    (async function(){
+      const f = await gpsFix(25000, 5000);
+      gpsCaut.delete(key);
+      if(f.err || f.acc > 1000){
+        render(); eeEcranAprins();
+        alert((f.err || 'Semnal GPS prea slab') + '.\n\nPornește Locația (GPS) pe telefon și apasă din nou „Am ajuns”. Dacă ești în cabină sau într-o clădire, ieși afară o clipă.\n\nFără GPS sosirea nu se înregistrează.');
+        return;
+      }
+      visitLog[key] = visitLog[key] || {};
+      visitLog[key].arrive = acum;
+      gpsPorneste(key, f);
+      syncVisit(key, r, visitLog[key]);
+      eeEcranAprins();
+      render();
+    })();
   } else if(leaveBtn){
     const key = leaveBtn.dataset.key;
     const r = dataById[key];
     if(visitLog[key]){
+      // v26: avertizare când mai e un client deschis pe aceeași locație
+      const alti = deschiseAici(key);
+      if(alti.length && !confirm('Mai ai un client deschis pe această locație: ' + alti.join(', ') + '.\n\nOK = plec doar de la ' + (r ? r.client : 'acest client') + ' (celălalt rămâne deschis).\nAnulează = mă întorc.')) return;
       visitLog[key].leave = new Date();
       syncVisit(key, r, visitLog[key]);
+      gpsLaPlecare(key);
+      eeEcranAprins();
       delete cardOverrides[key];
       finalizeCardVisually(key, 700);
     }
@@ -1724,7 +1845,9 @@ listEl.addEventListener('click', (e)=>{
       visitLog[key].obs = 'O';
     }
     delete visitLog[key]._obsOpen;
+    gpsOpreste(key, false);   // v26
     syncVisit(key, r, visitLog[key]);
+    eeEcranAprins();
     delete cardOverrides[key];
     finalizeCardVisually(key, 700);
   } else if(obsCancel){
@@ -1733,6 +1856,7 @@ listEl.addEventListener('click', (e)=>{
     render();
   } else if(resetBtn){
     const key = resetBtn.dataset.key;
+    gpsOpreste(key, false);   // v26
     delete visitLog[key];
     deleteVisitSync(key);
     render();
@@ -2933,7 +3057,7 @@ function visitRowHtml(r){
 
   if(!v || (!v.arrive && !v.obs)){
     return `<div class="visit-row">
-      <div class="visit-btn arrive" data-key="${escapeHtml(key)}">✅ Am ajuns</div>
+      <div class="visit-btn arrive" data-key="${escapeHtml(key)}">${gpsCaut.has(key) ? '📡 Caut GPS…' : '✅ Am ajuns'}</div>
       <div class="visit-btn obs" data-key="${escapeHtml(key)}">📝 Obs</div>
     </div>`;
   }
@@ -2967,7 +3091,7 @@ function visitRowHtml(r){
   }
 
   return `<div class="visit-row">
-    <div class="visit-info">✅ Sosit la <b>${arriveStr}</b></div>
+    <div class="visit-info">✅ Sosit la <b>${arriveStr}</b>${v.gpsAcc != null ? ` <span style="opacity:.75;font-size:.85em" title="Precizia GPS a vizitei (cea mai bună citire)">📡 ±${Math.round(v.gpsAcc)} m</span>` : ''}</div>
     <div class="visit-btn leave" data-key="${escapeHtml(key)}">🚪 Am plecat</div>
     <div class="visit-btn obs" data-key="${escapeHtml(key)}">📝 Obs</div>
     <div class="visit-reset" data-key="${escapeHtml(key)}">✖</div>

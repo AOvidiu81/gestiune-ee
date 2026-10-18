@@ -745,7 +745,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <div class="hd-mij"><div id="titlu-sus"></div><span id="azi-sus" title="Data de azi (calculatorul)"></span></div>
   <button id="btn-mob" class="btn sec" style="padding:5px 10px;font-size:12px" onclick="mobPC(false)" title="Înapoi la varianta de telefon">📱 Telefon</button>
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
-  <span class="ver">v6.37</span>
+  <span class="ver">v6.38</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -1076,6 +1076,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
       <div style="flex:0;min-width:100px"><label>GPS</label><select id="pf-gps" onchange="renderAdmin()"><option value="">toate</option><option value="da">cu GPS</option><option value="nu">fără GPS</option></select></div>
       <div style="flex:0;min-width:110px"><label>Cartelă</label><select id="pf-cartela" onchange="renderAdmin()" title="Clienții la care șoferii cer semnătura pe cartela (cartonul A4) la fiecare servisare"><option value="">toate</option><option value="da">📇 cu cartelă</option><option value="nu">fără cartelă</option></select></div>
       <div style="flex:0"><label>&nbsp;</label><button class="btn sec" onclick="pfGoleste()">✕ Golește filtrele</button></div>
+      <div style="flex:0"><label>&nbsp;</label><button class="btn sec" onclick="gvDeschide()" title="Compară coordonatele locațiilor cu punctele GPS ale șoferilor din vizite și propune corecturi (le aprobi tu)">📍 Verificare GPS</button></div>
       <div style="flex:0"><label>&nbsp;</label><button class="btn sec" id="pb-btn" onclick="pbComuta()" title="Bifezi punctele (ex. jumătate de traseu) și le schimbi ziua și/sau mașina dintr-o dată, de la o dată aleasă">☑ Schimbă la cele bifate</button></div>
     </div>
     <div class="kpi" id="pf-kpi" style="margin:12px 0 0"></div>
@@ -1719,6 +1720,16 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
     <div style="flex:0"><button class="btn sec" onclick="cmdInchide()">Închide</button></div>
     <div style="flex:0"><button class="btn" onclick="copiazaComanda()">Copiază textul</button></div>
   </div>
+</div></div>
+
+<div class="modal" id="mod-gv"><div class="box" style="max-width:1250px">
+  <h3 class="lux-cap cap-mut">📍 Verificare GPS locații</h3>
+  <div id="gv-cap" class="muted" style="margin-bottom:10px;line-height:1.5"></div>
+  <div class="row" style="justify-content:flex-start;gap:10px;margin-bottom:8px">
+    <div style="flex:0;min-width:180px"><label>Arată</label><select id="gv-fil" onchange="gvDeseneaza()"><option value="rez">de rezolvat</option><option value="toate">toate locațiile cu vizite</option></select></div>
+  </div>
+  <div class="tw"><table id="gv-tbl"></table></div>
+  <div class="row" style="justify-content:flex-end;margin-top:12px"><div style="flex:0"><button class="btn sec" onclick="closeModal('mod-gv')">Închide</button></div></div>
 </div></div>
 
 <div class="modal" id="mod-pl"><div class="box" style="max-width:1100px">
@@ -6029,6 +6040,17 @@ function rrDist(a1, o1, a2, o2){
   const d = Math.sin(r(a2-a1)/2)**2 + Math.cos(r(a1))*Math.cos(r(a2))*Math.sin(r(o2-o1)/2)**2;
   return Math.round(2 * R * Math.asin(Math.sqrt(d)));
 }
+// v6.38 (cerut de Ovidiu, 18.10): starea GPS a vizitei față de locație — raza locației = clients.raza_m (gol = 100 m)
+function gpsStareViz(v, c){
+  if(!v || v.lat == null || v.lon == null) return { k:"nv", t:"neverificabil", tip:"vizita n-are GPS" };
+  if(!c || !(+c.lat) || !(+c.lon)) return { k:"nv", t:"neverificabil", tip:"punctul de rută n-are coordonate" };
+  const d = rrDist(v.lat, v.lon, c.lat, c.lon), r = +c.raza_m || 100;
+  if(d <= r) return { k:"ok", t:"pe locație", d, tip:`în raza locației (${r} m)` };
+  if(d <= Math.max(300, 3 * r)) return { k:"ap", t:"aproape", d, tip:`în afara razei de ${r} m, dar aproape` };
+  return { k:"dep", t:"departe", d, tip:`departe de pin (raza ${r} m)` };
+}
+const GPS_CUL = { ok:"#2E8B3C", ap:"#D97706", dep:"#C0392B", nv:"#8a8f98" };
+const gpsDistTxt = d => d < 1000 ? d + " m" : (d / 1000).toFixed(1) + " km";
 function rrOptiuni(id, valori, toate){
   $(id).innerHTML = `<option value="">${toate}</option>` + valori.map(v => `<option value="${esc(v)}">${esc(v)}</option>`).join("");
 }
@@ -6205,10 +6227,14 @@ function rrAfiseaza(){
       let dur = "—";
       if(v && v.arrive_time && v.leave_time){ const sec = Math.max(0, Math.round((new Date(v.leave_time) - new Date(v.arrive_time)) / 1000)); dur = Math.floor(sec/60) + "m " + zi2(sec%60) + "s"; }
       let gps = "—";
-      if(v && v.lat != null && v.lon != null){
+      if(v && !v.obs){   // v6.38: stare + distanță + precizia telefonului
+        const g = gpsStareViz(v, c);
+        gps = (v.lat != null && v.lon != null ? `<a href="https://www.google.com/maps?q=${v.lat},${v.lon}" target="_blank" rel="noopener">hartă</a> ` : "") +
+              `<span style="color:${GPS_CUL[g.k]};font-weight:600;white-space:nowrap" title="${esc(g.tip)}">${g.t}${g.d != null ? " · " + gpsDistTxt(g.d) : ""}</span>` +
+              (v.gps_acc != null ? ` <span class="muted" title="Precizia GPS a telefonului la vizită (cea mai bună citire)">±${Math.round(v.gps_acc)} m</span>` : "");
+      } else if(v && v.lat != null && v.lon != null){
         const d = rrDist(v.lat, v.lon, c.lat, c.lon);
-        gps = `<a href="https://www.google.com/maps?q=${v.lat},${v.lon}" target="_blank" rel="noopener">hartă</a>` +
-              (d != null ? ` <span class="muted" title="Distanța față de pinul punctului de rută">${d < 1000 ? d + " m" : (d/1000).toFixed(1) + " km"}</span>` : "");
+        gps = `<a href="https://www.google.com/maps?q=${v.lat},${v.lon}" target="_blank" rel="noopener">hartă</a>` + (d != null ? ` <span class="muted">${gpsDistTxt(d)}</span>` : "");
       }
       const sofer = v ? [v.s.driver1, v.s.driver2].filter(Boolean).join(" & ") : "";
       const cel = {
@@ -6297,7 +6323,9 @@ function exportRR(){
       DATA: v ? v.s.session_date : "", SOSIRE: v ? hm(v.arrive_time) : "", PLECARE: v ? hm(v.leave_time) : "", COD: v ? rrCod(v) : "",
       OBS: v ? (v.obs || "") : "", SOFER: v ? [v.s.driver1, v.s.driver2].filter(Boolean).join(" & ") : "",
       MASINA: v ? [v.s.vehicle_brand, v.s.vehicle_plate].filter(Boolean).join(" ") : "",
-      GPS: v && v.lat != null ? v.lat + "," + v.lon : "" };
+      GPS: v && v.lat != null ? v.lat + "," + v.lon : "",
+      GPS_STARE: v && !v.obs ? (g => g.t + (g.d != null ? " " + gpsDistTxt(g.d) : ""))(gpsStareViz(v, c)) : "",
+      GPS_PRECIZIE_M: v && v.gps_acc != null ? Math.round(v.gps_acc) : "" };
     RR_WEEKS.forEach((w, i) => o[rrEt(w)] = (coduri[i] && coduri[i].k) || "");
     return o;
   }));
@@ -6708,6 +6736,8 @@ const A_DEF = {
       {c:"accesorii",e:"Accesorii",t:"text"},
       {c:"lat",e:"Latitudine",t:"num"},
       {c:"lon",e:"Longitudine",t:"num"},
+      {c:"raza_m",e:"Rază locație (m) — gol = 100",t:"num"},
+      {c:"gps_stare",e:"Stare coordonată",t:"sel",op:["","CONFIRMAT","DE VERIFICAT"]},
       {c:"cartela",e:"Cartelă",t:"bool"},
       {c:"status",e:"Status",t:"sel",op:["ACTIV","INACTIV"]},
       {c:"observatii",e:"Observații",t:"ta"}
@@ -6718,7 +6748,7 @@ const A_DEF = {
       ["Locația de amplasare", [["cj",["jud","localitate"]],["c1",["locatie"]],["c2",["pers_resp","telefon"]]]],
       ["Produse", [["c4",["toalete","containere","garduri","accesorii"]]]],
       ["Punct de rută", [["c4",["client_key","ziua","masina","frecventa"]]]],
-      ["Coordonate GPS", [["c2",["lat","lon"]]]],
+      ["Coordonate GPS", [["c4",["lat","lon","raza_m","gps_stare"]]]],
       ["Stare", [["c2",["cartela","status"]]]],
       ["Observații", [["c1",["observatii"]]]]
     ]
@@ -6840,7 +6870,7 @@ function renderAdmin(){
       const inactiv = (r.activ===false || r.active===false);
       const vr = A_TBL==="clients" && VER && VER.f==="rt" && (VER.chei||[]).includes(r.client_key);
       return `<tr${inactiv?' style="opacity:.45"':''}${vr?' class="r-ver"':''}>`+(pbOn()?`<td><input type="checkbox" style="width:auto;height:auto" ${PB_SEL.has(String(r.id))?"checked":""} onchange="pbBifa('${String(r.id).replace(/'/g,"")}',this.checked)"></td>`:"")+
-        d.lista.map(([c])=>`<td>${A_TBL==="clients" && c==="status" && r.schimbare ? statusIstoric(r) : esc(adminCelula(r,c))}${A_TBL==="clients" && c==="client" && r.cartela===true ? ' <span title="Necesită cartelă — clientul semnează cartonul A4 la fiecare servisare" style="cursor:help">📇</span>' : ""}</td>`).join("")+
+        d.lista.map(([c])=>`<td>${A_TBL==="clients" && c==="status" && r.schimbare ? statusIstoric(r) : esc(adminCelula(r,c))}${A_TBL==="clients" && c==="client" && r.cartela===true ? ' <span title="Necesită cartelă — clientul semnează cartonul A4 la fiecare servisare" style="cursor:help">📇</span>' : ""}${A_TBL==="clients" && c==="client" && r.gps_stare ? (r.gps_stare==="CONFIRMAT" ? ' <span title="Coordonata GPS confirmată din vizite" style="cursor:help;color:#2E8B3C">📍✓</span>' : ' <span title="Coordonata GPS de verificat (vizitele sunt împrăștiate)" style="cursor:help;color:#D97706">📍?</span>') : ""}</td>`).join("")+
         (A_TBL==="clients" ? `<td>${/^A\d+(-\d+)?(-[A-Z]{2})?$/.test(r.client_key||"") ? pvAnexa(parseInt(r.client_key.slice(1))) + flaguriAnexa(parseInt(r.client_key.slice(1)),"rt") : rtComandaPunct(r)}</td>` : "")+
         // v5.17 (cerut de Ovidiu, 09.10): Editează = creion; la puncte de rută și butonul GPS → Google Maps
         `<td class="actions" style="white-space:nowrap"><button class="btn sm sec" title="Editează" onclick="adminEdit('${String(r.id).replace(/'/g,"")}')">✎</button>` +
@@ -7360,6 +7390,91 @@ async function plPorneste(m){
   $("pl-alege").style.display = multe ? "none" : ""; $("pl-multe").style.display = multe ? "" : "none";
   if(multe) plDeseneaza();
   $("mod-pl").classList.add("on");
+}
+// v6.38 (cerut de Ovidiu, 18.10): verificarea coordonatelor locațiilor din vizitele șoferilor.
+// Se folosesc doar vizitele precise (gps_acc ≤ 20 m, ultimele 10 pe locație). Locația = codul punctului fără ziua (A201-03, C75).
+// ≥ 3 vizite precise: grupate (≤ 30 m de mijloc) și departe de pin (> 30 m) → PROPUNERE (coordonata nouă = mijlocul);
+// grupate lângă pin → OK (se poate confirma); împrăștiate → DE VERIFICAT. Nimic nu se schimbă fără butonul lui.
+// Raza propusă = 2 × împrăștierea + 40 m (între 60 și 200 m). Anexa nu se atinge.
+let GV = [];
+const GV_ZI = /-(LU|MA|MI|JO|VI|SA|DU)$/;
+const gvBaza = k => String(k || "").replace(GV_ZI, "");
+function gvCalcul(puncte, vizite){
+  const loc = {};
+  puncte.forEach(p => { if(!p.client_key) return; const b = gvBaza(p.client_key); (loc[b] = loc[b] || { baza: b, puncte: [], viz: [] }).puncte.push(p); });
+  vizite.forEach(v => { const b = gvBaza(v.client_key); if(loc[b]) loc[b].viz.push(v); });
+  return Object.values(loc).filter(l => l.viz.length).map(l => {
+    l.viz.sort((a, b) => String(b.arrive_time || "").localeCompare(String(a.arrive_time || ""))); l.viz = l.viz.slice(0, 10);
+    const p0 = l.puncte.find(p => +p.lat && +p.lon) || l.puncte[0];
+    l.p0 = p0; l.n = l.viz.length;
+    l.confirmat = l.puncte.every(p => p.gps_stare === "CONFIRMAT");
+    l.raza = +(l.puncte.find(p => +p.raza_m) || {}).raza_m || null;
+    if(l.n < 3){ l.stare = "PUTINE"; return l; }
+    const lat = l.viz.reduce((t, v) => t + +v.lat, 0) / l.n, lon = l.viz.reduce((t, v) => t + +v.lon, 0) / l.n;
+    l.mij = { lat: Math.round(lat * 1e6) / 1e6, lon: Math.round(lon * 1e6) / 1e6 };
+    l.imp = Math.max(...l.viz.map(v => rrDist(v.lat, v.lon, lat, lon)));
+    l.dPin = p0 && +p0.lat && +p0.lon ? rrDist(lat, lon, p0.lat, p0.lon) : null;
+    l.razaProp = Math.min(200, Math.max(60, Math.ceil((2 * l.imp + 40) / 10) * 10));
+    l.stare = l.imp > 30 ? "DE VERIFICAT" : (l.dPin == null || l.dPin > 30) ? "PROPUNERE" : (l.confirmat ? "CONFIRMAT" : "OK");
+    return l;
+  });
+}
+async function gvDeschide(){
+  $("gv-cap").textContent = "Se încarcă vizitele…"; $("gv-tbl").innerHTML = ""; $("mod-gv").classList.add("on");
+  try{
+    let viz = [], de = 0;
+    for(;;){
+      const { data, error } = await db.from("visit_logs").select("client_key,lat,lon,gps_acc,arrive_time")
+        .not("client_key", "is", null).not("gps_acc", "is", null).lte("gps_acc", 20).range(de, de + 999);
+      if(error) throw error;
+      viz = viz.concat(data || []); if(!data || data.length < 1000) break; de += 1000;
+    }
+    const { data: pct, error: e2 } = await db.from("clients").select("id,client_key,client,jud,localitate,locatie,lat,lon,raza_m,gps_stare,status").limit(5000);
+    if(e2) throw e2;
+    GV = gvCalcul(pct || [], viz.filter(v => v.lat != null && v.lon != null));
+    gvDeseneaza();
+  }catch(e){ $("gv-cap").textContent = "Eroare: " + e.message; }
+}
+const GV_ST = { "PROPUNERE":["#C0392B","Propunere: coordonată nouă"], "DE VERIFICAT":["#D97706","De verificat: vizite împrăștiate"],
+  "OK":["#2E8B3C","Pinul se potrivește — se poate confirma"], "CONFIRMAT":["#2E8B3C","Confirmat ✓"], "PUTINE":["#8a8f98","Prea puține vizite precise"] };
+function gvDeseneaza(){
+  const toate = $("gv-fil").value === "toate";
+  const rows = GV.filter(l => toate || ["PROPUNERE","DE VERIFICAT","OK"].includes(l.stare))
+    .sort((a, b) => ["PROPUNERE","DE VERIFICAT","OK","CONFIRMAT","PUTINE"].indexOf(a.stare) - ["PROPUNERE","DE VERIFICAT","OK","CONFIRMAT","PUTINE"].indexOf(b.stare) || String(a.p0.client).localeCompare(String(b.p0.client)));
+  const nr = s => GV.filter(l => l.stare === s).length;
+  $("gv-cap").innerHTML = `Din vizitele cu GPS precis (± 20 m sau mai bine, ultimele 10 pe locație; au asta doar vizitele făcute cu Ruta v26 / Șofer EE s53 încolo). ` +
+    `<b style="color:#C0392B">${nr("PROPUNERE")}</b> propuneri · <b style="color:#D97706">${nr("DE VERIFICAT")}</b> de verificat · <b>${nr("OK")}</b> de confirmat · ${nr("CONFIRMAT")} confirmate · ${nr("PUTINE")} cu sub 3 vizite precise. ` +
+    `Butoanele schimbă doar punctele de rută ale locației (toate zilele ei); <b>anexa nu se atinge</b>.`;
+  const harta = (la, lo, t) => la != null && lo != null && +la ? `<a href="https://www.google.com/maps?q=${la},${lo}" target="_blank" rel="noopener">${t}</a>` : "—";
+  $("gv-tbl").innerHTML = `<tr><th>Client</th><th>Locație</th><th>Coduri</th><th>Vizite precise</th><th>Pinul acum</th><th>Mijlocul vizitelor</th><th>Distanța</th><th>Împrăștiere</th><th>Stare</th><th>Rază (m)</th><th></th></tr>` +
+    (rows.length ? rows.map(l => { const i = GV.indexOf(l), st = GV_ST[l.stare];
+      const btn = l.stare === "PROPUNERE" ? `<button class="btn sm" onclick="gvAplica(${i},'mutare')" title="Pune coordonata = mijlocul vizitelor, raza și starea CONFIRMAT pe toate punctele locației">Aplică coordonata nouă</button>`
+        : l.stare === "OK" ? `<button class="btn sm" onclick="gvAplica(${i},'confirma')" title="Păstrează pinul, pune raza și starea CONFIRMAT">Confirmă</button>`
+        : l.stare === "DE VERIFICAT" ? `<button class="btn sm sec" onclick="gvAplica(${i},'verifica')" title="Marchează locația „de verificat” (📍? în Puncte de rută)">Marchează de verificat</button>` : "";
+      return `<tr><td><b>${esc(l.p0.client || "")}</b></td><td>${esc([l.p0.localitate, l.p0.locatie].filter(Boolean).join(", "))}</td>` +
+        `<td style="font-size:12px">${esc(l.puncte.map(p => p.client_key).join(", "))}</td>` +
+        `<td>${l.n} ${l.viz.map((v, j) => harta(v.lat, v.lon, j + 1)).join(" ")}</td>` +
+        `<td>${harta(l.p0.lat, l.p0.lon, "hartă")}</td><td>${l.mij ? harta(l.mij.lat, l.mij.lon, l.mij.lat + ", " + l.mij.lon) : "—"}</td>` +
+        `<td>${l.dPin != null ? gpsDistTxt(l.dPin) : l.mij ? "fără pin" : "—"}</td><td>${l.imp != null ? l.imp + " m" : "—"}</td>` +
+        `<td style="color:${st[0]};font-weight:600">${st[1]}</td>` +
+        `<td><input id="gv-r-${i}" type="number" style="width:70px" value="${l.raza || l.razaProp || 100}" title="Raza locației; propusă din vizite: ${l.razaProp || "—"} m"></td><td style="white-space:nowrap">${btn}</td></tr>`; }).join("")
+      : `<tr><td colspan="11" class="muted">Nimic de rezolvat${toate ? "" : " — alege „toate locațiile cu vizite” ca să vezi tot"}.</td></tr>`);
+}
+async function gvAplica(i, ce){
+  const l = GV[i]; if(!l) return;
+  const raza = Math.round(+$("gv-r-" + i).value) || null, chei = l.puncte.map(p => p.client_key);
+  const rec = ce === "verifica" ? { gps_stare: "DE VERIFICAT" } : { raza_m: raza, gps_stare: "CONFIRMAT", gps_confirmat_la: new Date().toISOString() };
+  if(ce === "mutare"){ rec.lat = l.mij.lat; rec.lon = l.mij.lon; }
+  const txt = ce === "mutare" ? `Mut pinul locației ${l.p0.client} – ${l.p0.locatie || l.p0.localitate} cu ${gpsDistTxt(l.dPin || 0)}, în mijlocul celor ${l.n} vizite (${l.mij.lat}, ${l.mij.lon}), raza ${raza} m, stare CONFIRMAT`
+    : ce === "confirma" ? `Confirm pinul locației ${l.p0.client} – ${l.p0.locatie || l.p0.localitate}, raza ${raza} m` : `Marchez locația ${l.p0.client} – ${l.p0.locatie || l.p0.localitate} „de verificat”`;
+  if(!confirm(txt + `.\n\nSe schimbă ${chei.length} ${chei.length === 1 ? "punct" : "puncte"} de rută (${chei.join(", ")}). Anexa nu se atinge.`)) return;
+  const { error } = await db.from("clients").update(rec).in("client_key", chei);
+  if(error){ toast(error.message, true); return; }
+  toast("Salvat");
+  l.puncte.forEach(p => Object.assign(p, rec));
+  GV = gvCalcul(GV.flatMap(x => x.puncte), GV.flatMap(x => x.viz));
+  gvDeseneaza();
+  if(A_TBL === "clients") adminIncarca();
 }
 function plOLocatie(){ closeModal("mod-pl"); PL_SARI = true; spreRute(PL.m.id); }
 function plMaiMulte(){

@@ -26,7 +26,7 @@ import { openHistoryScreen } from '../pv/js/screens-history.js';
 import { buildComenziActive } from '../pv/js/screens-comenzi.js';
 import { openSettingsScreen } from '../pv/js/screens-setup.js';
 
-export const SOFER_VERSION = 's52';
+export const SOFER_VERSION = 's53';
 
 const KEY_ZI = 'ee-sofer-zi'; // ziua deschisa: { zi, coleg, carId, km, trasee, zile, zona, ordine, ruta }
 const KEY_ULTIMA = 'ee-sofer-ultima'; // ultimele alegeri (masina, traseu, zona) — precompletare
@@ -985,7 +985,7 @@ function ecranFile() {
         if (cadru) { trimiteLaRuta(); return; }
         p.innerHTML = '';
         cadruGata = false;
-        cadru = el('iframe', { class: 'sofer-iframe', src: '../ruta/index.html?sofer=1', allow: 'geolocation', title: 'Rută' });
+        cadru = el('iframe', { class: 'sofer-iframe', src: '../ruta/index.html?sofer=1', allow: 'geolocation; screen-wake-lock', title: 'Rută' });
         cadru.addEventListener('load', () => {
           cadruGata = true;
           try { const rv = cadru.contentWindow.EE_RUTA_VERSION; if (rv) verTag.textContent = `${SOFER_VERSION} · R${String(rv).replace('v', '')}`; } catch (e) {}
