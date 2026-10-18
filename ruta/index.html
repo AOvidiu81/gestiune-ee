@@ -754,6 +754,9 @@
 
 <style>
   /* ===== R27: 🔍 Verificare la client ===== */
+  .obs-verif{flex:1; text-align:center; padding:9px 6px; border-radius:9px; font-size:0.78rem; font-weight:700; cursor:pointer; user-select:none;
+    background:rgba(59,130,246,0.12); color:#3b82f6; border:1px solid rgba(59,130,246,0.45);}
+  .obs-verif.off{opacity:0.4; filter:grayscale(1);}
   .visit-btn.verif{background:rgba(59,130,246,0.12); color:#3b82f6; border-color:rgba(59,130,246,0.45);}
   .badge.vf-de{background:rgba(59,130,246,0.14); color:#3b82f6; border:1px solid rgba(59,130,246,0.45);}
   .badge.vf-ok{background:rgba(61,220,151,0.14); color:var(--activ); border:1px solid rgba(61,220,151,0.45);}
@@ -1093,7 +1096,7 @@ let dayStart = {}; // {brand, plate, kmStart, driver1, driver2, startTime}
 let lastRouteRows = [];
 
 // --- Șofer EE: aplicatia ruleaza in fila „Rută” (../sofer/), care trimite datele zilei ---
-const EE_RUTA_VERSION = 'v27'; // aceeasi cu VERSIUNE din sw.js; Șofer EE o arata langa rotita
+const EE_RUTA_VERSION = 'v28'; // aceeasi cu VERSIUNE din sw.js; Șofer EE o arata langa rotita
 const SOFER_MODE = new URLSearchParams(location.search).get('sofer') === '1';
 let multiZile = null;   // mai multe zile bifate (ruta complementara), altfel null
 let multiTrasee = null; // mai multe trasee bifate, altfel null
@@ -1800,8 +1803,13 @@ window.addEventListener('scroll', ()=>{
 }, {passive:true, capture:true});
 
 listEl.addEventListener('click', (e)=>{
-  const verifBtn = e.target.closest('.visit-btn.verif');   // R27
-  if(verifBtn){ vfDeschide(verifBtn.dataset.key); return; }
+  const verifBtn = e.target.closest('.obs-verif');   // R27: a treia variantă sub 📝 Obs
+  if(verifBtn){
+    const k = verifBtn.dataset.key;
+    if(!vfVizitaDeschisa(k)){ alert('Verificarea se activează după „✅ Am ajuns” (doar cât vizita e deschisă).'); return; }
+    if(visitLog[k]) delete visitLog[k]._obsOpen;
+    render(); vfDeschide(k); return;
+  }
   const nameToggle = e.target.closest('.cartela-badge') ? null : e.target.closest('.card-name-toggle');
   const arriveBtn = e.target.closest('.visit-btn.arrive');
   const leaveBtn = e.target.closest('.visit-btn.leave');
@@ -3339,6 +3347,7 @@ function visitRowHtml(r){
     return `<div class="visit-row obs-row">
       <div class="obs-choice" data-key="${escapeHtml(key)}" data-obs="LA">Lipsă Acces (LA)</div>
       <div class="obs-choice" data-key="${escapeHtml(key)}" data-obs="O">Omis (O)</div>
+      <div class="obs-verif${vfVizitaDeschisa(key) ? '' : ' off'}" data-key="${escapeHtml(key)}">🔍 Verificare${vfTrimisAzi(key) ? ' ✓' : ''}</div>
       <div class="obs-cancel" data-key="${escapeHtml(key)}">✖</div>
     </div>`;
   }
@@ -3383,7 +3392,7 @@ function visitRowHtml(r){
     <div class="visit-btn leave" data-key="${escapeHtml(key)}">🚪 Am plecat</div>
     <div class="visit-btn obs" data-key="${escapeHtml(key)}">📝 Obs</div>
     <div class="visit-reset" data-key="${escapeHtml(key)}">✖</div>
-  </div>${vfRandHtml(key)}`;
+  </div>`;
 }
 
 function cardHtml(r, orderNum, historyInfo){
