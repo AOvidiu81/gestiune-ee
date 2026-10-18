@@ -745,7 +745,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <div class="hd-mij"><div id="titlu-sus"></div><span id="azi-sus" title="Data de azi (calculatorul)"></span></div>
   <button id="btn-mob" class="btn sec" style="padding:5px 10px;font-size:12px" onclick="mobPC(false)" title="Înapoi la varianta de telefon">📱 Telefon</button>
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
-  <span class="ver">v6.35</span>
+  <span class="ver">v6.36</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -1074,6 +1074,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
       <div style="flex:0;min-width:120px"><label>Mașina (traseu)</label><select id="pf-masina" onchange="renderAdmin()"></select></div>
       <div style="flex:0"><label>Status</label><div style="display:flex;gap:6px"><button class="btn sec" id="pf-st-ACTIV" onclick="pfSt('ACTIV')" title="Doar punctele active (implicit)">Active</button><button class="btn sec" id="pf-st-INACTIV" onclick="pfSt('INACTIV')" title="Doar punctele inactive">Inactive</button><button class="btn sec" id="pf-st-" onclick="pfSt('')" title="Toate punctele">Toate</button></div></div>
       <div style="flex:0;min-width:100px"><label>GPS</label><select id="pf-gps" onchange="renderAdmin()"><option value="">toate</option><option value="da">cu GPS</option><option value="nu">fără GPS</option></select></div>
+      <div style="flex:0;min-width:110px"><label>Cartelă</label><select id="pf-cartela" onchange="renderAdmin()" title="Clienții la care șoferii cer semnătura pe cartela (cartonul A4) la fiecare servisare"><option value="">toate</option><option value="da">📇 cu cartelă</option><option value="nu">fără cartelă</option></select></div>
       <div style="flex:0"><label>&nbsp;</label><button class="btn sec" onclick="pfGoleste()">✕ Golește filtrele</button></div>
       <div style="flex:0"><label>&nbsp;</label><button class="btn sec" id="pb-btn" onclick="pbComuta()" title="Bifezi punctele (ex. jumătate de traseu) și le schimbi ziua și/sau mașina dintr-o dată, de la o dată aleasă">☑ Schimbă la cele bifate</button></div>
     </div>
@@ -6199,7 +6200,7 @@ function rrAfiseaza(){
       }
       const sofer = v ? [v.s.driver1, v.s.driver2].filter(Boolean).join(" & ") : "";
       const cel = {
-        "Client": `${peSosire && v ? `<span class="muted" title="A ${i + 1}-a oprire">${i + 1}.</span> ` : ""}<b>${esc(c.client || "—")}</b>${c._orfan ? ' <span class="pill p-X" title="Vizita nu se mai potrivește cu niciun punct de rută (punct modificat sau șters)">punct negăsit</span>' : ""}`,
+        "Client": `${peSosire && v ? `<span class="muted" title="A ${i + 1}-a oprire">${i + 1}.</span> ` : ""}<b>${esc(c.client || "—")}</b>${c.cartela === true ? ' <span title="Necesită cartelă — verifică semnătura clientului pe cartonul A4" style="cursor:help">📇</span>' : ""}${c._orfan ? ' <span class="pill p-X" title="Vizita nu se mai potrivește cu niciun punct de rută (punct modificat sau șters)">punct negăsit</span>' : ""}`,
         "Localitate / locație": `${c.jud ? "<b>[" + esc(c.jud) + "]</b> " : ""}${esc([c.localitate, c.locatie].filter(Boolean).join(", ") || "—")}`,
         "Zi": esc(c.ziua || ""), "Traseu": esc(c.masina || ""), "Produse": esc(produse(c)),
         "Accesorii": `<span style="font-size:12px">${esc(c.accesorii || "")}</span>`,
@@ -6786,10 +6787,12 @@ function pfStButoane(){
 }
 const pfVal = (r, c) => String(r[c] ?? "").trim();
 const pfGps = r => !!(+r.lat && +r.lon);
+// v6.36 (cerut de Ovidiu, 18.10): clienții cu cartelă (semnătura pe cartonul A4 la servisare) — doar de văzut / filtrat
+const pfCart = r => r.cartela === true;
 function pfFiltreaza(rows, fara){
-  const g = $("pf-gps").value;
+  const g = $("pf-gps").value, ca = $("pf-cartela") ? $("pf-cartela").value : "";
   return rows.filter(r => PF.every(([id, c]) => id === fara || !$(id).value || pfVal(r, c) === $(id).value) &&
-                          (fara === "pf-gps" || !g || (g === "da") === pfGps(r)) && (fara === "pf-st" || pfStOk(r)));
+                          (fara === "pf-gps" || !g || (g === "da") === pfGps(r)) && (fara === "pf-cartela" || !ca || (ca === "da") === pfCart(r)) && (fara === "pf-st" || pfStOk(r)));
 }
 function pfOptiuni(){
   PF.forEach(([id, c]) => {
@@ -6799,12 +6802,14 @@ function pfOptiuni(){
     el.innerHTML = '<option value="">toate</option>' + vals.map(x => `<option${x === v ? " selected" : ""}>${esc(x)}</option>`).join("");
   });
 }
-function pfGoleste(){ PF.forEach(([id]) => $(id).value = ""); $("pf-gps").value = ""; PF_ST = "ACTIV"; renderAdmin(); }
+function pfGoleste(){ PF.forEach(([id]) => $(id).value = ""); $("pf-gps").value = ""; if($("pf-cartela")) $("pf-cartela").value = ""; PF_ST = "ACTIV"; renderAdmin(); }
 function pfKpi(rows, inact){
   const loc = {}; rows.forEach(r => { if(r.status === "INACTIV") return; const k = [r.client, r.jud, r.localitate, r.locatie].map(x => String(x || "").trim()).join("|"); loc[k] = Math.max(loc[k] || 0, +r.toalete || 0); });
   const t = [["Puncte", rows.length], ["Clienți", new Set(rows.map(r => r.client).filter(Boolean)).size], ["Locații active", Object.keys(loc).length],
              ["Toalete pe locații", Object.values(loc).reduce((a, b) => a + b, 0)], ["Inactive", (inact == null ? rows.filter(r => r.status === "INACTIV").length : inact)], ["Fără GPS", rows.filter(r => !pfGps(r)).length]];
-  $("pf-kpi").innerHTML = t.map(([e, n]) => `<div><b>${n}</b>${e}</div>`).join("");
+  const nc = rows.filter(pfCart).length, cl = new Set(rows.filter(pfCart).map(r => r.client).filter(Boolean)).size;
+  $("pf-kpi").innerHTML = t.map(([e, n]) => `<div><b>${n}</b>${e}</div>`).join("") +
+    `<div style="cursor:pointer" title="Clic: arată doar punctele cu cartelă (${cl} clienți)" onclick="$('pf-cartela').value='da';renderAdmin()"><b>${nc}</b>📇 Cu cartelă</div>`;
 }
 function renderAdmin(){
   if(PB_ON && A_TBL !== "clients"){ PB_ON = false; PB_SEL.clear(); pbBara(); }
@@ -6823,7 +6828,7 @@ function renderAdmin(){
       const inactiv = (r.activ===false || r.active===false);
       const vr = A_TBL==="clients" && VER && VER.f==="rt" && (VER.chei||[]).includes(r.client_key);
       return `<tr${inactiv?' style="opacity:.45"':''}${vr?' class="r-ver"':''}>`+(pbOn()?`<td><input type="checkbox" style="width:auto;height:auto" ${PB_SEL.has(String(r.id))?"checked":""} onchange="pbBifa('${String(r.id).replace(/'/g,"")}',this.checked)"></td>`:"")+
-        d.lista.map(([c])=>`<td>${A_TBL==="clients" && c==="status" && r.schimbare ? statusIstoric(r) : esc(adminCelula(r,c))}</td>`).join("")+
+        d.lista.map(([c])=>`<td>${A_TBL==="clients" && c==="status" && r.schimbare ? statusIstoric(r) : esc(adminCelula(r,c))}${A_TBL==="clients" && c==="client" && r.cartela===true ? ' <span title="Necesită cartelă — clientul semnează cartonul A4 la fiecare servisare" style="cursor:help">📇</span>' : ""}</td>`).join("")+
         (A_TBL==="clients" ? `<td>${/^A\d+(-\d+)?(-[A-Z]{2})?$/.test(r.client_key||"") ? pvAnexa(parseInt(r.client_key.slice(1))) + flaguriAnexa(parseInt(r.client_key.slice(1)),"rt") : rtComandaPunct(r)}</td>` : "")+
         // v5.17 (cerut de Ovidiu, 09.10): Editează = creion; la puncte de rută și butonul GPS → Google Maps
         `<td class="actions" style="white-space:nowrap"><button class="btn sm sec" title="Editează" onclick="adminEdit('${String(r.id).replace(/'/g,"")}')">✎</button>` +
@@ -7092,7 +7097,7 @@ async function adminReimprospateaza(){
 }
 function adminExport(){
   const d=A_DEF[A_TBL];
-  const ws=XLSX.utils.json_to_sheet(A_TBL==="clients" && A_VAZUTE ? A_VAZUTE : A_ROWS);   // v5.42: la Puncte de rută, ce se vede (după filtre)
+  const ws=XLSX.utils.json_to_sheet(A_TBL==="clients" && A_VAZUTE ? A_VAZUTE.map(r=>({...r, cartela: r.cartela===true ? "DA" : "NU"})) : A_ROWS);   // v6.36: CARTELA DA / NU   // v5.42: la Puncte de rută, ce se vede (după filtre)
   const wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,ws,A_TBL.toUpperCase().slice(0,28));
   XLSX.writeFile(wb,`${d.titlu.replace(/[^\wăâîșțĂÂÎȘȚ]+/g,"_")}_${today()}.xlsx`);
 }
