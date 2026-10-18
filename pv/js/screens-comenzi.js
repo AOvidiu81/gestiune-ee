@@ -66,7 +66,16 @@ function grupeaza(rows) {
   return out;
 }
 // Produsele comenzii pe locatii: o locatie = un PV (varianta B, Primaria); o singura locatie = un PV cu toate produsele
+// v90 (18.10): comanda din exterior pe mai multe locatii (miscari.locatii, GestiuneEE v6.26) — fiecare locatie
+// devine un „rand” al comenzii (aceeasi comanda, adresa + bucatile locatiei), cu PV-ul ei (pv_records.locatie_cod)
 function locatiile(c) {
+  if (Array.isArray(c.locatii) && c.locatii.length > 1 && !(c.extra || []).length) {
+    return c.locatii.map((L) => [Object.assign({}, c, {
+      jud: L.jud || c.jud, loc: L.localitate || '', sat: L.locatie || '', buc: Math.abs(Number(L.buc) || 0),
+      pv_facut_de: L.pv_facut_de || null, pv_facut_la: L.pv_facut_la || null,
+      locatie_cod: L.cod || '', serii: [], serii_punct: [],
+    })]);
+  }
   const toate = [c, ...(c.extra || [])];
   const k = (x) => [x.jud, x.loc, x.sat].map((v) => String(v || '').trim().toUpperCase()).join('|');
   const m = new Map();
@@ -135,6 +144,13 @@ async function citesteDinCloud() {
       rows.forEach((r) => { const x = z.get(r.id); if (x) { if (x.zi_serv) r.zi_servisare = x.zi_serv; r.traseu = x.traseu || ''; } });
     }
   } catch (e) { /* fara zile / traseu din comanda */ }
+  try {
+    const rl = await supabase.rpc('comenzi_active_locatii');   // v90: locatiile comenzii din exterior + PV pe fiecare
+    if (!rl.error) {
+      const l = new Map((rl.data || []).map((x) => [x.id, x.locatii]));
+      rows.forEach((r) => { if (l.has(r.id)) r.locatii = l.get(r.id); });
+    }
+  } catch (e) { /* fara locatii: comanda ramane pe adresa principala */ }
   await MetaRepo.set(CACHE_KEY, { rows, at: new Date().toISOString() });
   return rows;
 }
@@ -292,7 +308,7 @@ export function buildComenziActive({ driver, car, depot, onFaraComanda, onStare,
       if (!processType) return;
       const L = items || locatiile(c)[0];   // s32: PV-ul unei locatii, cu toate produsele ei
       const c0 = L[0];
-      await openProcessVerbalForm({ driver, car, depot, processType, prefill: prefillDin(Object.assign({}, c0, { tip_miscare: c.tip_miscare, serii: c0.serii, serii_punct: c0.serii_punct }), L), miscareId: c0.id });
+      await openProcessVerbalForm({ driver, car, depot, processType, prefill: prefillDin(Object.assign({}, c0, { tip_miscare: c.tip_miscare, serii: c0.serii, serii_punct: c0.serii_punct }), L), miscareId: c0.id, locatieCod: c0.locatie_cod || null });
       load(true);
     }
 
@@ -332,7 +348,7 @@ export function buildComenziActive({ driver, car, depot, onFaraComanda, onStare,
           const x0 = L[0];
           const facut = x0.pv_facut_de;
           return el('div', { class: 'ca-linie', style: 'margin-top:8px;padding-top:6px;border-top:1px dashed rgba(0,0,0,.15)' }, [
-            el('div', {}, [`📍 ${i + 1}) `, [x0.jud, x0.loc, x0.sat].filter(Boolean).join(', ')]),
+            el('div', {}, [`📍 ${i + 1}) `, [x0.jud, x0.loc, x0.sat].filter(Boolean).join(', '), x0.locatie_cod ? ` · ${x0.locatie_cod}` : '']),
             ...L.map((x) => el('div', {}, ['📦 ', prodX(x)])),
             x0.pers_resp || x0.telefon ? el('div', {}, ['☎ ', x0.pers_resp || '', x0.telefon ? ' · ' : '', x0.telefon ? el('a', { href: `tel:${String(x0.telefon).replace(/[^\d+]/g, '')}`, onclick: (e) => e.stopPropagation() }, [x0.telefon]) : null]) : null,
             facut

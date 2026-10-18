@@ -310,6 +310,7 @@ async function trimiteDocument(meta, blob) {
     file_size: blob.size,
     storage_path: storagePath,
     miscare_id: meta.miscareId || null,
+    ...(meta.locatieCod ? { locatie_cod: meta.locatieCod } : {}),   // v90: PV pe o locatie a comenzii din exterior
     serii: meta.serii || null,   // s30
   });
   if (insertErr && String(insertErr.code) !== '23505') {

@@ -115,7 +115,7 @@ function productSeriesEncoded(entries, noSeriesMode) {
     .join(';');
 }
 
-export async function openProcessVerbalForm({ driver, car, depot, processType, prefill, miscareId }) {
+export async function openProcessVerbalForm({ driver, car, depot, processType, prefill, miscareId, locatieCod }) {
   await ensureCatalogSeeded();
   const catalogEntries = await CatalogRepo.getAll();
   const catalogByModel = {};
@@ -899,6 +899,7 @@ export async function openProcessVerbalForm({ driver, car, depot, processType, p
                 processType,
                 carNumber: car.numar,
                 miscareId: miscareId || null,
+                locatieCod: locatieCod || null,   // v90: locatia comenzii din exterior (C71-01)
                 // s30: seriile trecute pe PV ajung in GestiuneEE (pv_records.serii), ca Ovidiu sa stie ce s-a ridicat
                 serii: state.noSeriesMode ? '' : state.productEntries.flatMap((e) => e.series.map((x) => x.trim()).filter(Boolean)).join(', '),
                 createdAt,
