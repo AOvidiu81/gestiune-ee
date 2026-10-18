@@ -745,7 +745,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <div class="hd-mij"><div id="titlu-sus"></div><span id="azi-sus" title="Data de azi (calculatorul)"></span></div>
   <button id="btn-mob" class="btn sec" style="padding:5px 10px;font-size:12px" onclick="mobPC(false)" title="Înapoi la varianta de telefon">📱 Telefon</button>
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
-  <span class="ver">v6.39</span>
+  <span class="ver">v6.40</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -1077,7 +1077,6 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
       <div style="flex:0;min-width:110px"><label>Cartelă</label><select id="pf-cartela" onchange="renderAdmin()" title="Clienții la care șoferii cer semnătura pe cartela (cartonul A4) la fiecare servisare"><option value="">toate</option><option value="da">📇 cu cartelă</option><option value="nu">fără cartelă</option></select></div>
       <div style="flex:0"><label>&nbsp;</label><button class="btn sec" onclick="pfGoleste()">✕ Golește filtrele</button></div>
       <div style="flex:0"><label>&nbsp;</label><button class="btn sec" onclick="gvDeschide()" title="Compară coordonatele locațiilor cu punctele GPS ale șoferilor din vizite și propune corecturi (le aprobi tu)">📍 Verificare GPS</button></div>
-      <div style="flex:0"><label>&nbsp;</label><button class="btn sec" id="vt-btn" onclick="vtDeschide()" title="Verificările la client trimise de șoferi din rută: GPS, bucăți, serii, model, accesorii (le aplici tu)">🔍 Verificări teren</button></div>
       <div style="flex:0"><label>&nbsp;</label><button class="btn sec" id="pb-btn" onclick="pbComuta()" title="Bifezi punctele (ex. jumătate de traseu) și le schimbi ziua și/sau mașina dintr-o dată, de la o dată aleasă">☑ Schimbă la cele bifate</button></div>
     </div>
     <div class="kpi" id="pf-kpi" style="margin:12px 0 0"></div>
@@ -1731,16 +1730,6 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   </div>
   <div class="tw"><table id="gv-tbl"></table></div>
   <div class="row" style="justify-content:flex-end;margin-top:12px"><div style="flex:0"><button class="btn sec" onclick="closeModal('mod-gv')">Închide</button></div></div>
-</div></div>
-
-<div class="modal" id="mod-vt"><div class="box" style="max-width:1300px">
-  <h3 class="lux-cap cap-mut">🔍 Verificări teren</h3>
-  <div id="vt-cap" class="muted" style="margin-bottom:10px;line-height:1.5"></div>
-  <div class="row" style="justify-content:flex-start;gap:10px;margin-bottom:8px">
-    <div style="flex:0;min-width:180px"><label>Arată</label><select id="vt-fil" onchange="vtDeseneaza()"><option value="noua">noi (de rezolvat)</option><option value="toate">toate</option><option value="aplicata">aplicate</option><option value="ignorata">ignorate</option></select></div>
-  </div>
-  <div class="tw"><table id="vt-tbl"></table></div>
-  <div class="row" style="justify-content:flex-end;margin-top:12px"><div style="flex:0"><button class="btn sec" onclick="closeModal('mod-vt')">Închide</button></div></div>
 </div></div>
 
 <div class="modal" id="mod-pl"><div class="box" style="max-width:1100px">
@@ -6750,7 +6739,6 @@ const A_DEF = {
       {c:"raza_m",e:"Rază locație (m) — gol = 100",t:"num"},
       {c:"gps_stare",e:"Stare coordonată",t:"sel",op:["","CONFIRMAT","DE VERIFICAT"]},
       {c:"cartela",e:"Cartelă",t:"bool"},
-      {c:"de_verificat",e:"🔍 De verificat (șoferii văd semnul pe card)",t:"bool"},
       {c:"status",e:"Status",t:"sel",op:["ACTIV","INACTIV"]},
       {c:"observatii",e:"Observații",t:"ta"}
     ],
@@ -6761,7 +6749,7 @@ const A_DEF = {
       ["Produse", [["c4",["toalete","containere","garduri","accesorii"]]]],
       ["Punct de rută", [["c4",["client_key","ziua","masina","frecventa"]]]],
       ["Coordonate GPS", [["c4",["lat","lon","raza_m","gps_stare"]]]],
-      ["Stare", [["c4",["cartela","de_verificat","status"]]]],
+      ["Stare", [["c2",["cartela","status"]]]],
       ["Observații", [["c1",["observatii"]]]]
     ]
   }
@@ -6797,7 +6785,6 @@ async function adminIncarca(){
   const {data,error}=await db.from(A_TBL).select("*").order(d.ord,{nullsFirst:false});
   if(error){ toast(error.message,true); return; }
   A_ROWS=data||[];
-  if(A_TBL==="clients") await vtIncarcaUltime();   // v6.39
   if(A_TBL==="soferi"){
     await incarcaConturi();
     A_ROWS.forEach(r=>{ const c=contulAngajatului(r.id);
@@ -6883,7 +6870,7 @@ function renderAdmin(){
       const inactiv = (r.activ===false || r.active===false);
       const vr = A_TBL==="clients" && VER && VER.f==="rt" && (VER.chei||[]).includes(r.client_key);
       return `<tr${inactiv?' style="opacity:.45"':''}${vr?' class="r-ver"':''}>`+(pbOn()?`<td><input type="checkbox" style="width:auto;height:auto" ${PB_SEL.has(String(r.id))?"checked":""} onchange="pbBifa('${String(r.id).replace(/'/g,"")}',this.checked)"></td>`:"")+
-        d.lista.map(([c])=>`<td>${A_TBL==="clients" && c==="status" && r.schimbare ? statusIstoric(r) : esc(adminCelula(r,c))}${A_TBL==="clients" && c==="client" && r.cartela===true ? ' <span title="Necesită cartelă — clientul semnează cartonul A4 la fiecare servisare" style="cursor:help">📇</span>' : ""}${A_TBL==="clients" && c==="client" && r.gps_stare ? (r.gps_stare==="CONFIRMAT" ? ' <span title="Coordonata GPS confirmată din vizite" style="cursor:help;color:#2E8B3C">📍✓</span>' : ' <span title="Coordonata GPS de verificat (vizitele sunt împrăștiate)" style="cursor:help;color:#D97706">📍?</span>') : ""}${A_TBL==="clients" && c==="client" ? vtBadge(r) : ""}</td>`).join("")+
+        d.lista.map(([c])=>`<td>${A_TBL==="clients" && c==="status" && r.schimbare ? statusIstoric(r) : esc(adminCelula(r,c))}${A_TBL==="clients" && c==="client" && r.cartela===true ? ' <span title="Necesită cartelă — clientul semnează cartonul A4 la fiecare servisare" style="cursor:help">📇</span>' : ""}${A_TBL==="clients" && c==="client" && r.gps_stare ? (r.gps_stare==="CONFIRMAT" ? ' <span title="Coordonata GPS confirmată din vizite" style="cursor:help;color:#2E8B3C">📍✓</span>' : ' <span title="Coordonata GPS de verificat (vizitele sunt împrăștiate)" style="cursor:help;color:#D97706">📍?</span>') : ""}</td>`).join("")+
         (A_TBL==="clients" ? `<td>${/^A\d+(-\d+)?(-[A-Z]{2})?$/.test(r.client_key||"") ? pvAnexa(parseInt(r.client_key.slice(1))) + flaguriAnexa(parseInt(r.client_key.slice(1)),"rt") : rtComandaPunct(r)}</td>` : "")+
         // v5.17 (cerut de Ovidiu, 09.10): Editează = creion; la puncte de rută și butonul GPS → Google Maps
         `<td class="actions" style="white-space:nowrap"><button class="btn sm sec" title="Editează" onclick="adminEdit('${String(r.id).replace(/'/g,"")}')">✎</button>` +
@@ -7488,117 +7475,6 @@ async function gvAplica(i, ce){
   GV = gvCalcul(GV.flatMap(x => x.puncte), GV.flatMap(x => x.viz));
   gvDeseneaza();
   if(A_TBL === "clients") adminIncarca();
-}
-// v6.39 (cerut de Ovidiu, 18.10): verificările la client trimise de șoferi din rută (Ruta R27, tabelul verificari_teren).
-// Nimic nu se schimbă singur: seriile / modelele / bucățile le corectează el; „📍 Aplică locația” mută pinul tuturor punctelor
-// locației (aceeași bază de cod, toate zilele). Semnul „🔍 de verificat” = clients.de_verificat (șoferii îl văd pe card).
-let VT = [], VT_ULT = {}, VT_NOI = 0;
-const vtData = t => { if(!t) return ""; const d = new Date(t), p = n => String(n).padStart(2, "0"); return `${p(d.getDate())}-${p(d.getMonth() + 1)}-${d.getFullYear()} ${p(d.getHours())}:${p(d.getMinutes())}`; };
-const vtPiesa = p => [[p.model || "?"].concat(p.acc || []).join("-"), p.serie || "fără serie"].join(" ");
-async function vtIncarcaUltime(){
-  try{
-    const { data, error } = await db.from("verificari_teren").select("client_key,facuta_la,created_at,stare").order("created_at", { ascending: false }).limit(5000);
-    if(error) throw error;
-    VT_ULT = {}; VT_NOI = 0;
-    (data || []).forEach(v => { const b = gvBaza(v.client_key); if(b && !VT_ULT[b]) VT_ULT[b] = v; if(v.stare === "noua") VT_NOI++; });
-  }catch(e){ VT_ULT = {}; VT_NOI = 0; }
-  vtButon();
-}
-function vtButon(){ const b = $("vt-btn"); if(b) b.innerHTML = "🔍 Verificări teren" + (VT_NOI ? ` <b style="color:#C0392B">(${VT_NOI})</b>` : ""); }
-function vtBadge(r){
-  let s = "";
-  if(r.de_verificat === true) s += ' <span title="De verificat — șoferii văd „🔍 de verificat” pe cardul din rută" style="cursor:help;color:#2563EB">🔍</span>';
-  const u = VT_ULT[gvBaza(r.client_key)];
-  if(u){ const t = vtData(u.facuta_la || u.created_at);
-    s += ` <span title="Ultima verificare la client: ${t} (${u.stare === "noua" ? "nouă — de rezolvat" : u.stare === "aplicata" ? "aplicată" : "ignorată"})" style="cursor:help;font-size:11px;color:${u.stare === "noua" ? "#C0392B" : "#2E8B3C"}">🔍✓ ${t.slice(0, 10)}</span>`; }
-  return s;
-}
-async function vtDeschide(){
-  $("vt-cap").textContent = "Se încarcă…"; $("vt-tbl").innerHTML = ""; $("mod-vt").classList.add("on");
-  try{
-    const { data, error } = await db.from("verificari_teren").select("*").order("created_at", { ascending: false }).limit(1000);
-    if(error) throw error;
-    VT = data || [];
-    vtDeseneaza();
-  }catch(e){ $("vt-cap").textContent = "Eroare: " + e.message; }
-}
-const VT_ST = { noua: ["#C0392B", "nouă"], aplicata: ["#2E8B3C", "aplicată"], ignorata: ["#8a8f98", "ignorată"] };
-function vtDeseneaza(){
-  const f = $("vt-fil").value, rows = VT.filter(v => f === "toate" || v.stare === f);
-  const nr = s => VT.filter(v => v.stare === s).length;
-  $("vt-cap").innerHTML = `Verificările trimise de șoferi din rută (butonul 🔍 Verificare, doar cât vizita e deschisă). <b style="color:#C0392B">${nr("noua")}</b> noi · ${nr("aplicata")} aplicate · ${nr("ignorata")} ignorate. ` +
-    `Nimic nu se schimbă singur: seriile, modelele și bucățile le corectezi tu (Serii, Puncte de rută), apoi apeși „✓ Aplicat”. „📍 Aplică locația” mută pinul tuturor punctelor locației (toate zilele); <b>anexa nu se atinge</b>.`;
-  const harta = (la, lo, t) => la != null && lo != null && +la ? `<a href="https://www.google.com/maps?q=${la},${lo}" target="_blank" rel="noopener">${t}</a>` : "—";
-  $("vt-tbl").innerHTML = `<tr><th>Data / șoferi</th><th>Punct</th><th>GPS</th><th>În gestiune</th><th>Găsit la client</th><th>Diferențe</th><th>Observație</th><th>Stare</th><th></th></tr>` +
-    (rows.length ? rows.map(v => {
-      const i = VT.indexOf(v), g = v.gestiune || {}, gs = (v.gasit && v.gasit.piese) || [], dif = (v.gasit && v.gasit.diferente) || [], st = VT_ST[v.stare] || ["#555", v.stare];
-      const raza = v.raza_m || 100;
-      const gps = (v.gps_lat == null ? '<span class="muted">fără GPS</span>'
-        : (v.dist_m == null ? `${harta(v.gps_lat, v.gps_lon, "telefon")} <span class="muted">(punctul nu avea GPS)</span>`
-          : `${harta(v.gps_lat, v.gps_lon, "telefon")} · <span style="color:${v.dist_m <= raza ? "#2E8B3C" : "#C0392B"};font-weight:600">${gpsDistTxt(v.dist_m)}</span> de ${harta(v.gest_lat, v.gest_lon, "pin")}`) +
-          (v.gps_acc != null ? ` <span class="muted">±${Math.round(v.gps_acc)} m</span>` : "")) +
-        (v.cere_gps ? '<br><b style="color:#D97706">📍 cere actualizarea locației</b>' : "");
-      const cant = [g.toalete ? g.toalete + " T" : "", g.containere ? g.containere + " lavoar" : "", g.garduri ? g.garduri + " T. proprie" : ""].filter(Boolean).join(" · ");
-      const gest = [esc(cant || "—"), g.accesorii ? "Acc.: " + esc(g.accesorii) : "", (g.serii || []).map(p => esc(vtPiesa(p))).join("<br>")].filter(Boolean).join("<br>");
-      const gas = `<b>${gs.length} buc.</b>` + (gs.length ? "<br>" + gs.map(p => esc(vtPiesa(p))).join("<br>") : "");
-      const difH = dif.length ? `<span style="color:#C0392B">${dif.map(esc).join("<br>")}</span>` : '<span style="color:#2E8B3C">se potrivește</span>';
-      const btn = [];
-      if(v.cere_gps && v.gps_lat != null) btn.push(`<button class="btn sm" onclick="vtLocatia(${i})" title="Pune coordonata telefonului pe toate punctele locației (toate zilele); anexa nu se atinge">📍 Aplică locația</button>`);
-      if(v.stare === "noua"){ btn.push(`<button class="btn sm" onclick="vtStare(${i},'aplicata')" title="Ai corectat în gestiune ce era de corectat">✓ Aplicat</button>`); btn.push(`<button class="btn sm sec" onclick="vtStare(${i},'ignorata')" title="Nu e nimic de schimbat">Ignoră</button>`); }
-      else btn.push(`<button class="btn sm sec" onclick="vtStare(${i},'noua')" title="O pune din nou la „noi”">↺ Redeschide</button>`);
-      return `<tr><td style="white-space:nowrap">${vtData(v.facuta_la || v.created_at)}<br><span class="muted" style="font-size:12px">${esc(v.soferi || "")}${v.masina ? "<br>" + esc(v.masina) : ""}</span></td>` +
-        `<td><b>${esc(v.client_name || "")}</b><br><span style="font-size:12px">${esc([v.localitate, v.locatie].filter(Boolean).join(", "))}</span><br><span class="muted" style="font-size:12px">${esc(v.client_key || "")}</span></td>` +
-        `<td style="font-size:12px">${gps}</td><td style="font-size:12px">${gest}</td><td style="font-size:12px">${gas}</td><td style="font-size:12px">${difH}</td>` +
-        `<td style="font-size:12px;max-width:220px">${esc(v.observatie || "")}${v.poza_path ? `<br><a href="#" onclick="vtPoza(${i});return false">📷 poza</a>` : ""}${v.nota_admin ? `<br><i>${esc(v.nota_admin)}</i>` : ""}</td>` +
-        `<td style="color:${st[0]};font-weight:600;white-space:nowrap">${st[1]}${v.rezolvat_la ? `<br><span class="muted" style="font-size:11px;font-weight:400">${vtData(v.rezolvat_la)}</span>` : ""}</td>` +
-        `<td style="white-space:nowrap">${btn.join(" ")}</td></tr>`;
-    }).join("") : `<tr><td colspan="9" class="muted">Nicio verificare${f === "noua" ? " de rezolvat" : ""}.</td></tr>`);
-}
-async function vtPuncte(v){
-  const b = gvBaza(v.client_key); if(!b) return [];
-  const { data, error } = await db.from("clients").select("id,client_key,de_verificat").like("client_key", b + "%");
-  if(error) throw error;
-  return (data || []).filter(p => gvBaza(p.client_key) === b);
-}
-async function vtLocatia(i){
-  const v = VT[i]; if(!v) return;
-  try{
-    const pct = await vtPuncte(v), chei = pct.map(p => p.client_key);
-    if(!chei.length){ toast("Nu găsesc punctele de rută ale locației (" + (v.client_key || "fără cod") + ")", true); return; }
-    const lat = Math.round(v.gps_lat * 1e6) / 1e6, lon = Math.round(v.gps_lon * 1e6) / 1e6;
-    if(!confirm(`Mut pinul locației ${v.client_name || ""} – ${v.locatie || v.localitate || ""} la coordonata telefonului (${lat}, ${lon}${v.gps_acc != null ? ", ±" + Math.round(v.gps_acc) + " m" : ""})${v.dist_m != null ? ", la " + gpsDistTxt(v.dist_m) + " de pinul de acum" : ""}, stare CONFIRMAT.\n\nSe schimbă ${chei.length} ${chei.length === 1 ? "punct" : "puncte"} de rută (${chei.join(", ")}). Anexa nu se atinge.`)) return;
-    const { error } = await db.from("clients").update({ lat, lon, gps_stare: "CONFIRMAT", gps_confirmat_la: new Date().toISOString() }).in("client_key", chei);
-    if(error) throw error;
-    const rec = { cere_gps: false, nota_admin: [v.nota_admin, "📍 locația aplicată " + vtData(new Date().toISOString()).slice(0, 10)].filter(Boolean).join(" · ") };
-    const r2 = await db.from("verificari_teren").update(rec).eq("id", v.id);
-    if(r2.error) throw r2.error;
-    Object.assign(v, rec); toast("Locația actualizată"); vtDeseneaza();
-    if(A_TBL === "clients") adminIncarca();
-  }catch(e){ toast(e.message, true); }
-}
-async function vtStare(i, st){
-  const v = VT[i]; if(!v) return;
-  let eu = null; try{ const { data: { user } } = await db.auth.getUser(); eu = user ? (user.email || user.id) : null; }catch(e){}
-  const rec = st === "noua" ? { stare: st, rezolvat_la: null, rezolvat_de: null } : { stare: st, rezolvat_la: new Date().toISOString(), rezolvat_de: eu };
-  const { error } = await db.from("verificari_teren").update(rec).eq("id", v.id);
-  if(error){ toast(error.message, true); return; }
-  Object.assign(v, rec);
-  if(st !== "noua"){
-    try{
-      const pct = (await vtPuncte(v)).filter(p => p.de_verificat === true);
-      if(pct.length && confirm(`Locația are semnul „🔍 de verificat” (${pct.map(p => p.client_key).join(", ")}). Îl scot?`)){
-        const r2 = await db.from("clients").update({ de_verificat: false }).in("id", pct.map(p => p.id)); if(r2.error) toast(r2.error.message, true);
-      }
-    }catch(e){}
-  }
-  toast("Salvat"); vtDeseneaza();
-  if(A_TBL === "clients") adminIncarca(); else vtIncarcaUltime();
-}
-async function vtPoza(i){
-  const v = VT[i]; if(!v || !v.poza_path) return;
-  const { data, error } = await db.storage.from("pv-documents").createSignedUrl(v.poza_path, 300);
-  if(error){ toast(error.message, true); return; }
-  window.open(data.signedUrl, "_blank", "noopener");
 }
 function plOLocatie(){ closeModal("mod-pl"); PL_SARI = true; spreRute(PL.m.id); }
 function plMaiMulte(){

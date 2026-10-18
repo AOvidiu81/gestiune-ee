@@ -752,53 +752,6 @@
   <div class="list" id="list"></div>
 </div>
 
-<style>
-  /* ===== R27: 🔍 Verificare la client ===== */
-  .obs-verif{flex:1; text-align:center; padding:9px 6px; border-radius:9px; font-size:0.78rem; font-weight:700; cursor:pointer; user-select:none;
-    background:rgba(59,130,246,0.12); color:#3b82f6; border:1px solid rgba(59,130,246,0.45);}
-  /* R29: cele 3 variante de sub Obs egale pe orice ecran */
-  .obs-row .obs-choice, .obs-row .obs-verif{flex:1 1 0; min-width:0; white-space:nowrap; overflow:hidden; text-overflow:clip; padding-left:2px; padding-right:2px; font-size:clamp(0.64rem, 3.2vw, 0.78rem); letter-spacing:-0.1px;}
-  .obs-verif.off{opacity:0.4; filter:grayscale(1);}
-  .visit-btn.verif{background:rgba(59,130,246,0.12); color:#3b82f6; border-color:rgba(59,130,246,0.45);}
-  .badge.vf-de{background:rgba(59,130,246,0.14); color:#3b82f6; border:1px solid rgba(59,130,246,0.45);}
-  .badge.vf-ok{background:rgba(61,220,151,0.14); color:var(--activ); border:1px solid rgba(61,220,151,0.45);}
-  .verif-ov{position:fixed; inset:0; z-index:9000; background:var(--bg); color:var(--text); overflow-y:auto; -webkit-overflow-scrolling:touch; padding:14px 12px 96px;}
-  .vf-top{display:flex; align-items:center; gap:10px; margin-bottom:10px;}
-  .vf-top h2{flex:1; font-size:1.05rem; margin:0;}
-  .vf-sec{background:var(--panel); border:1px solid var(--border); border-radius:12px; padding:12px; margin-bottom:10px;}
-  .vf-h{font-weight:800; font-size:0.9rem; margin-bottom:8px; display:flex; justify-content:space-between; align-items:center; gap:8px;}
-  .vf-l{font-size:0.85rem; margin:3px 0; color:var(--text-dim);}
-  .vf-l b{color:var(--text);}
-  .vf-l a{color:inherit;}
-  .vf-ol{margin:6px 0 0 18px; padding:0; font-size:0.85rem; font-weight:600;}
-  .vf-st{padding:9px 10px; border-radius:9px; font-size:0.85rem; font-weight:700; line-height:1.35;}
-  .vf-st.verde{background:rgba(61,220,151,0.14); color:var(--activ);}
-  .vf-st.rosu{background:rgba(231,76,60,0.14); color:#e74c3c;}
-  .vf-st.port{background:rgba(255,138,61,0.14); color:var(--accent);}
-  .vf-st.gri{background:var(--panel-2); color:var(--text-dim);}
-  .vf-nota{font-size:0.75rem; color:var(--text-dim); margin-top:6px; line-height:1.35;}
-  .vf-cnt{font-size:0.8rem; color:var(--text-dim);}
-  .vf-p{display:grid; grid-template-columns:22px 1fr 1fr 34px; gap:6px; align-items:center; margin-bottom:8px; padding-bottom:8px; border-bottom:1px dashed var(--border);}
-  .vf-p input{padding:8px; font-size:0.9rem; min-width:0;}
-  .vf-nr{font-size:0.8rem; color:var(--text-dim); font-weight:700;}
-  .vf-acc{grid-column:2 / 4; display:flex; gap:6px;}
-  .vf-acc span{flex:1; text-align:center; padding:6px 0; border-radius:8px; border:1px solid var(--border); font-size:0.75rem; font-weight:700; color:var(--text-dim); cursor:pointer; user-select:none;}
-  .vf-acc span.on{background:rgba(61,220,151,0.18); color:var(--activ); border-color:rgba(61,220,151,0.5);}
-  .vf-x{background:none; border:1px solid var(--border); color:#e74c3c; border-radius:8px; height:36px; cursor:pointer; font-weight:700;}
-  .vf-btn{padding:11px 14px; border-radius:10px; font-weight:800; border:1px solid var(--border); background:var(--panel-2); color:var(--text); cursor:pointer; font-size:0.9rem;}
-  .vf-btn.mic{padding:6px 10px; font-size:0.78rem;}
-  .vf-btn.prim{background:#1d7b3a; color:#fff; border-color:#1d7b3a;}
-  .vf-jos{position:fixed; left:0; right:0; bottom:0; display:flex; gap:10px; padding:10px 12px; background:var(--panel); border-top:1px solid var(--border); z-index:9001;}
-  .vf-jos .vf-btn{flex:1;}
-  .vf-dif{font-size:0.8rem; margin-top:10px; padding:8px 10px; border-radius:9px; background:var(--panel-2);}
-  .vf-dif ul{margin:4px 0 0 18px; padding:0;}
-  .vf-chk{display:flex; gap:8px; align-items:flex-start; font-size:0.85rem; margin-top:10px; cursor:pointer;}
-  .vf-chk input{width:auto; margin-top:2px; flex:none;}
-  textarea.vf-obs{width:100%; min-height:70px; box-sizing:border-box; background:var(--panel-2); color:var(--text); border:1px solid var(--border); border-radius:10px; padding:10px; font:inherit; font-size:0.9rem;}
-  .vf-poza img{max-width:100%; border-radius:10px; margin-top:8px; display:block;}
-</style>
-<div id="pageVerif" class="verif-ov" style="display:none;"></div>
-
 <div class="wrap" id="pageFinish" style="display:none;">
   <header>
     <h1>Ruta <span>EuroEcologic</span></h1>
@@ -1098,7 +1051,7 @@ let dayStart = {}; // {brand, plate, kmStart, driver1, driver2, startTime}
 let lastRouteRows = [];
 
 // --- Șofer EE: aplicatia ruleaza in fila „Rută” (../sofer/), care trimite datele zilei ---
-const EE_RUTA_VERSION = 'v29'; // aceeasi cu VERSIUNE din sw.js; Șofer EE o arata langa rotita
+const EE_RUTA_VERSION = 'v30'; // aceeasi cu VERSIUNE din sw.js; Șofer EE o arata langa rotita
 const SOFER_MODE = new URLSearchParams(location.search).get('sofer') === '1';
 let multiZile = null;   // mai multe zile bifate (ruta complementara), altfel null
 let multiTrasee = null; // mai multe trasee bifate, altfel null
@@ -1320,8 +1273,6 @@ async function runQueueItem(item){
     });
     const { error } = await sb.from('visit_logs').upsert(rand, {onConflict: 'session_id,client_id'});
     if(error) throw error;
-  } else if(item.type === 'verif'){
-    await vfRuleaza(item);   // R27
   } else if(item.type === 'finalize'){
     const { error } = await sb.from('route_sessions').update({
       km_end: item.kmEnd, status: 'finalizata', updated_at: new Date().toISOString(),
@@ -1805,13 +1756,6 @@ window.addEventListener('scroll', ()=>{
 }, {passive:true, capture:true});
 
 listEl.addEventListener('click', (e)=>{
-  const verifBtn = e.target.closest('.obs-verif');   // R27: a treia variantă sub 📝 Obs
-  if(verifBtn){
-    const k = verifBtn.dataset.key;
-    if(!vfVizitaDeschisa(k)){ alert('Verificarea se activează după „✅ Am ajuns” (doar cât vizita e deschisă).'); return; }
-    if(visitLog[k]) delete visitLog[k]._obsOpen;
-    render(); vfDeschide(k); return;
-  }
   const nameToggle = e.target.closest('.cartela-badge') ? null : e.target.closest('.card-name-toggle');
   const arriveBtn = e.target.closest('.visit-btn.arrive');
   const leaveBtn = e.target.closest('.visit-btn.leave');
@@ -2088,10 +2032,6 @@ function clientRowFromDb(row){
     clientKey: row.client_key || '',
     weekData: {},
     cartela: !!row.cartela,
-    razaM: row.raza_m || null,          // R27: verificarea la client
-    deVerificat: !!row.de_verificat,
-    accesorii: row.accesorii || '',
-    persResp: row.pers_resp || '',
   };
 }
 
@@ -3066,244 +3006,6 @@ window.eeSoferSerii = function(harta){
   try{ if(document.getElementById('pageApp').style.display !== 'none') render(); }catch(e){}
 };
 
-/* ===== R27 (cerut de Ovidiu, 18.10) — 🔍 Verificare la client =====
-   Butonul apare doar cât vizita e deschisă (după „Am ajuns”, până la „Am plecat”). Pagina arată ce e în gestiune pentru
-   punct (client, locație, telefon, GPS din gestiune față de GPS-ul vizitei, bucăți, serii, accesorii) și șoferul notează
-   ce a găsit (bucăți, model, serie, accesorii), plus observație și poză opțională. Nimic nu se schimbă în gestiune:
-   verificarea merge ca PROPUNERE în tabelul verificari_teren (fără semnal rămâne în coadă); le aplică Ovidiu în GestiuneEE. */
-const VF_ACC = ['LI', 'DS', 'DPH'];
-let VF = null;   // { key, r, gest, piese, obs, poza, cereGps }
-let VF_TRIMISE = {};
-try{ VF_TRIMISE = JSON.parse(localStorage.getItem('ee-ruta-verif') || '{}') || {}; }catch(e){ VF_TRIMISE = {}; }
-function vfAzi(){ const d = new Date(); return d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate()); }
-function vfTrimisAzi(key){ return VF_TRIMISE[key] === vfAzi(); }
-function vfMarcheaza(key){
-  const azi = vfAzi(); Object.keys(VF_TRIMISE).forEach(function(k){ if(VF_TRIMISE[k] !== azi) delete VF_TRIMISE[k]; });
-  VF_TRIMISE[key] = azi; try{ localStorage.setItem('ee-ruta-verif', JSON.stringify(VF_TRIMISE)); }catch(e){}
-}
-function vfVizitaDeschisa(key){ const v = visitLog[key]; return !!(v && v.arrive && !v.leave && !v.obs); }
-function vfRandHtml(key){
-  return `<div class="visit-row"><div class="visit-btn verif" data-key="${escapeHtml(key)}">🔍 Verificare${vfTrimisAzi(key) ? ' · trimisă ✓' : ''}</div></div>`;
-}
-// „ARMAL EE-1; MONDO-LI fără serie” -> [{model:'ARMAL', serie:'EE-1', acc:[]}, {model:'MONDO', serie:'', acc:['LI']}]
-function vfPieseDinSerii(txt){
-  return String(txt || '').split(';').map(function(s){ return s.trim(); }).filter(Boolean).map(function(s){
-    let serie = '', m = s;
-    if(/\s*fără serie$/i.test(s)) m = s.replace(/\s*fără serie$/i, '');
-    else { const i = s.lastIndexOf(' '); if(i > 0){ m = s.slice(0, i); serie = s.slice(i + 1); } else { m = ''; serie = s; } }
-    const parti = m.split('-'), acc = [];
-    while(parti.length > 1 && VF_ACC.includes(parti[parti.length - 1].trim().toUpperCase())) acc.unshift(parti.pop().trim().toUpperCase());
-    return { model: parti.join('-').trim().toUpperCase(), serie: serie.trim().toUpperCase(), acc: acc };
-  });
-}
-function vfSerieNorm(s){ s = String(s || '').trim().toUpperCase().replace(/\s+/g, ''); return /^\d+$/.test(s) ? 'EE-' + s : s; }
-function vfPiesaText(p){ return [[p.model || '?'].concat(p.acc || []).join('-'), p.serie || 'fără serie'].join(' '); }
-function vfDif(gest, gasit, nGest){
-  const out = [], ns = function(s){ return String(s || '').replace(/\s+/g, '').toUpperCase(); };
-  const nG = gest.length || nGest || 0;
-  if(gasit.length !== nG) out.push('bucăți: ' + nG + ' în gestiune → ' + gasit.length + ' găsite');
-  const gs = {}, fs = {};
-  gest.forEach(function(p){ if(p.serie) gs[ns(p.serie)] = p; });
-  gasit.forEach(function(p){ const s = vfSerieNorm(p.serie); if(s) fs[ns(s)] = { model: p.model, serie: s, acc: p.acc || [] }; });
-  Object.keys(gs).forEach(function(s){ if(!fs[s]) out.push('nu e la client: ' + vfPiesaText(gs[s])); });
-  Object.keys(fs).forEach(function(s){
-    const a = gs[s], b = fs[s];
-    if(!a){ out.push('serie nouă: ' + vfPiesaText(b)); return; }
-    if(ns(a.model) !== ns(b.model)) out.push(a.serie + ': model ' + (a.model || '?') + ' → ' + (String(b.model || '').toUpperCase() || '?'));
-    const aa = (a.acc || []).slice().sort().join('+'), bb = (b.acc || []).slice().sort().join('+');
-    if(aa !== bb) out.push(a.serie + ': accesorii ' + (aa || '—') + ' → ' + (bb || '—'));
-  });
-  const far = gasit.filter(function(p){ return !vfSerieNorm(p.serie); }).length;
-  if(far) out.push(far + ' buc. fără serie');
-  return out;
-}
-function vfGps(key, r){
-  const v = visitLog[key] || {}, raza = +r.razaM || 100;
-  const tel = (v.lat != null && v.lon != null && +v.lat) ? { lat: +v.lat, lon: +v.lon, acc: v.gpsAcc != null ? +v.gpsAcc : null } : null;
-  const gest = (r.lat && r.lon && +r.lat) ? { lat: +r.lat, lon: +r.lon } : null;
-  const dist = tel && gest ? Math.round(gpsDistM(tel, gest)) : null;
-  return { tel: tel, gest: gest, raza: raza, dist: dist, inRaza: dist != null && dist <= raza };
-}
-function vfDeschide(key){
-  const r = dataById[key]; if(!r) return;
-  if(!vfVizitaDeschisa(key)){ alert('Verificarea se face doar cât vizita e deschisă (după „Am ajuns”, până la „Am plecat”).'); return; }
-  if(!VF || VF.key !== key){
-    const gest = vfPieseDinSerii(seriiPunct(r));
-    const piese = gest.map(function(p){ return { model: p.model, serie: p.serie, acc: p.acc.slice() }; });
-    if(!piese.length) for(let i = 0; i < (+r.toalete || 0); i++) piese.push({ model: '', serie: '', acc: [] });
-    VF = { key: key, r: r, gest: gest, piese: piese, obs: '', poza: null, cereGps: null };
-  }
-  const g = vfGps(key, r);
-  if(VF.cereGps === null) VF.cereGps = !!(g.tel && (!g.gest || !g.inRaza));
-  document.getElementById('pageVerif').style.display = 'block';
-  document.getElementById('pageVerif').scrollTop = 0;
-  vfDeseneaza();
-}
-function vfInchide(){ document.getElementById('pageVerif').style.display = 'none'; document.getElementById('pageVerif').innerHTML = ''; }
-function vfDifHtml(){
-  const dif = vfDif(VF.gest, VF.piese, +VF.r.toalete || 0);
-  return dif.length ? '<b style="color:var(--accent)">Diferențe față de gestiune:</b><ul>' + dif.map(function(d){ return '<li>' + escapeHtml(d) + '</li>'; }).join('') + '</ul>'
-    : '<b style="color:var(--activ)">✓ Ce ai găsit se potrivește cu gestiunea.</b>';
-}
-function vfDeseneaza(){
-  if(!VF) return;
-  const key = VF.key, r = VF.r, g = vfGps(key, r), E = escapeHtml, el = document.getElementById('pageVerif');
-  const acc = g.tel && g.tel.acc != null ? ' (±' + Math.round(g.tel.acc) + ' m)' : '';
-  let gpsTxt;
-  if(!g.tel) gpsTxt = '<div class="vf-st gri">📡 Telefonul nu are încă o citire GPS pentru vizita asta. Apasă „↻ Citește GPS”.</div>';
-  else if(!g.gest) gpsTxt = '<div class="vf-st port">⚠️ Punctul nu are coordonate GPS în gestiune.<br>Telefonul: ' + g.tel.lat.toFixed(6) + ', ' + g.tel.lon.toFixed(6) + acc + '</div>';
-  else if(g.inRaza) gpsTxt = '<div class="vf-st verde">✅ În raza locației — la ' + g.dist + ' m de pinul din gestiune' + acc + ' · raza ' + g.raza + ' m</div>';
-  else gpsTxt = '<div class="vf-st rosu">⚠️ La ' + g.dist + ' m de pinul din gestiune' + acc + ' — de actualizat (raza ' + g.raza + ' m)</div>';
-  const slab = g.tel && g.tel.acc != null && g.tel.acc > 50 ? '<div class="vf-nota">Precizie slabă. Ieși din cabină, lângă toalete, și apasă „↻ Citește GPS”.</div>' : '';
-  const cant = [];
-  if(+r.toalete) cant.push(r.toalete + ' toalete');
-  if(+r.containere) cant.push(r.containere + ' lavoar');
-  if(+r.garduri) cant.push(r.garduri + ' toaletă proprie');
-  const gestSerii = VF.gest.length ? '<ol class="vf-ol">' + VF.gest.map(function(p){ return '<li>' + E(vfPiesaText(p)) + '</li>'; }).join('') + '</ol>'
-    : '<div class="vf-nota">Nu sunt serii trecute în gestiune pentru punctul ăsta.</div>';
-  const piese = VF.piese.map(function(p, i){
-    return `<div class="vf-p" data-i="${i}"><span class="vf-nr">${i + 1}.</span>
-      <input class="vf-model" list="vf-modele" value="${E(p.model)}" placeholder="Model" autocomplete="off">
-      <input class="vf-serie" value="${E(p.serie)}" placeholder="Serie (cifrele)" autocomplete="off">
-      <button class="vf-x" type="button" title="Scoate bucata">✕</button>
-      <div class="vf-acc">${VF_ACC.map(function(a){ return `<span data-a="${a}" class="${(p.acc || []).includes(a) ? 'on' : ''}">${a}</span>`; }).join('')}</div></div>`;
-  }).join('');
-  el.innerHTML = `
-    <div class="vf-top"><button class="vf-btn" data-vf="inapoi">← Înapoi</button><h2>🔍 Verificare la client</h2></div>
-    <div class="vf-nota" style="margin:-4px 0 10px">Nimic nu se schimbă în gestiune: trimiți o propunere, o verifică administratorul.</div>
-    <div class="vf-sec"><div class="vf-h">Client și locație</div>
-      <div class="vf-l"><b>${E(r.client)}</b></div>
-      <div class="vf-l">${E(r.localitate)}${r.jud ? ' · ' + E(r.jud) : ''}${r.locatie ? ' — ' + E(r.locatie) : ''}</div>
-      ${r.persResp ? `<div class="vf-l">Persoană: <b>${E(r.persResp)}</b></div>` : ''}
-      <div class="vf-l">Telefon: ${r.telefon ? `<a href="${telUrl(r.telefon)}"><b>${E(r.telefon)}</b></a>` : '—'}</div>
-      <div class="vf-l">Cod punct: <b>${E(r.clientKey || '—')}</b>${r.frecventa ? ' · ' + E(r.frecventa) : ''}${r.ziua ? ' · ' + E(r.ziua) : ''}</div>
-    </div>
-    <div class="vf-sec"><div class="vf-h"><span>📍 GPS</span><button class="vf-btn mic" data-vf="gps">↻ Citește GPS</button></div>
-      ${gpsTxt}${slab}
-      <label class="vf-chk"><input type="checkbox" id="vf-cere-gps" ${VF.cereGps ? 'checked' : ''} ${g.tel ? '' : 'disabled'}><span>📍 <b>Actualizează locația</b> — propun coordonata telefonului (o aprobă administratorul)</span></label>
-    </div>
-    <div class="vf-sec"><div class="vf-h">În gestiune</div>
-      <div class="vf-l">Bucăți: <b>${E(cant.join(' · ') || '—')}</b></div>
-      ${r.accesorii ? `<div class="vf-l">Accesorii: <b>${E(r.accesorii)}</b></div>` : ''}
-      ${gestSerii}
-    </div>
-    <div class="vf-sec"><div class="vf-h"><span>Ce ai găsit la client</span><span class="vf-cnt">${VF.piese.length} buc.</span></div>
-      ${piese || '<div class="vf-nota">Nicio bucată. Apasă „+ Bucată” pentru fiecare toaletă găsită.</div>'}
-      <button class="vf-btn" data-vf="adauga" style="width:100%">+ Bucată</button>
-      <div class="vf-nota">Seria: scrie doar cifrele (12345 → EE-12345); fără plăcuță — las-o goală. LI = lavoar interior · DS = dozator săpun · DPH = dispenser prosop hârtie.</div>
-      <div class="vf-dif" id="vf-dif">${vfDifHtml()}</div>
-    </div>
-    <div class="vf-sec"><div class="vf-h">Observație</div>
-      <textarea class="vf-obs" id="vf-obs" placeholder="Ce ai observat (opțional)">${E(VF.obs)}</textarea>
-      <div class="vf-poza">${VF.poza ? `<img src="${VF.poza}" alt="poză"><button class="vf-btn mic" data-vf="fara-poza" style="margin-top:6px">✕ Scoate poza</button>`
-        : `<label class="vf-btn" style="display:block;text-align:center;margin-top:8px">📷 Adaugă poză (opțional)<input type="file" id="vf-poza" accept="image/*" capture="environment" hidden></label>`}</div>
-    </div>
-    <datalist id="vf-modele"><option value="ARMAL"><option value="MONDO"><option value="SATELIT"><option value="FRESH"><option value="HANDY"></datalist>
-    <div class="vf-jos"><button class="vf-btn" data-vf="inapoi">Înapoi</button><button class="vf-btn prim" data-vf="trimite">Trimite verificarea</button></div>`;
-}
-function vfComprima(file){
-  return new Promise(function(res, rej){
-    const url = URL.createObjectURL(file), img = new Image();
-    img.onload = function(){
-      const k = Math.min(1, 1280 / Math.max(img.width, img.height)), c = document.createElement('canvas');
-      c.width = Math.round(img.width * k); c.height = Math.round(img.height * k);
-      c.getContext('2d').drawImage(img, 0, 0, c.width, c.height); URL.revokeObjectURL(url); res(c.toDataURL('image/jpeg', 0.7));
-    };
-    img.onerror = function(){ URL.revokeObjectURL(url); rej(new Error('Poza nu se poate citi')); };
-    img.src = url;
-  });
-}
-function vfCiteste(){
-  if(!VF) return;
-  document.querySelectorAll('#pageVerif .vf-p').forEach(function(d){
-    const p = VF.piese[+d.dataset.i]; if(!p) return;
-    p.model = d.querySelector('.vf-model').value.trim().toUpperCase(); p.serie = d.querySelector('.vf-serie').value.trim().toUpperCase();
-  });
-  const o = document.getElementById('vf-obs'); if(o) VF.obs = o.value;
-}
-async function vfCitesteGps(btn){
-  const key = VF.key; if(btn) btn.textContent = '📡 Caut…';
-  const f = await gpsFix(20000, 0), v = visitLog[key];
-  if(f.err){ alert(f.err + '.'); vfDeseneaza(); return; }
-  if(v && f.acc <= GPS_MAX_ACC && (v.gpsAcc == null || f.acc < v.gpsAcc)){
-    v.lat = f.lat; v.lon = f.lon; v.gpsAcc = Math.round(f.acc * 10) / 10; v.gpsLa = new Date(f.t); v.gpsCitiri = (v.gpsCitiri || 1) + 1;
-    syncVisit(key, dataById[key], v);
-  }
-  if(VF && VF.key === key){ vfCiteste(); vfDeseneaza(); }
-}
-async function vfTrimite(){
-  vfCiteste();
-  const key = VF.key, r = VF.r, g = vfGps(key, r);
-  const piese = VF.piese.map(function(p){ return { model: String(p.model || '').trim().toUpperCase(), serie: vfSerieNorm(p.serie), acc: (p.acc || []).slice() }; });
-  const dif = vfDif(VF.gest, piese, +r.toalete || 0), cere = !!(VF.cereGps && g.tel);
-  if(!confirm('Trimit verificarea pentru ' + r.client + ':\n\n• ' + piese.length + ' buc. găsite' + (dif.length ? '\n• ' + dif.join('\n• ') : '\n• se potrivește cu gestiunea') +
-    (cere ? '\n• propun locația telefonului' : '') + (VF.poza ? '\n• cu poză' : '') + '\n\nNimic nu se schimbă în gestiune până nu aprobă administratorul.')) return;
-  const id = 'vf-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 7);
-  const rand = {
-    local_id: id, session_id: currentSessionId || null, vizita_cheie: key, client_key: r.clientKey || null,
-    client_name: r.client || null, localitate: r.localitate || null, locatie: r.locatie || null,
-    soferi: [dayStart.driver1, dayStart.driver2].filter(Boolean).join(' & ') || null,
-    masina: [dayStart.brand, dayStart.plate].filter(Boolean).join(' - ') || null,
-    facuta_la: new Date().toISOString(),
-    gps_lat: g.tel ? g.tel.lat : null, gps_lon: g.tel ? g.tel.lon : null, gps_acc: g.tel ? g.tel.acc : null,
-    gest_lat: g.gest ? g.gest.lat : null, gest_lon: g.gest ? g.gest.lon : null, raza_m: +r.razaM || null, dist_m: g.dist,
-    cere_gps: cere,
-    gestiune: { toalete: +r.toalete || 0, containere: +r.containere || 0, garduri: +r.garduri || 0, frecventa: r.frecventa || '',
-      accesorii: r.accesorii || '', telefon: r.telefon || '', serii: VF.gest },
-    gasit: { piese: piese, diferente: dif }, buc_gasite: piese.length, observatie: String(VF.obs || '').trim() || null,
-  };
-  enqueueSync('verif:' + id, 'Verificare ' + (r.client || ''), { type: 'verif', rand: rand, poza: VF.poza || null });
-  vfMarcheaza(key); VF = null; vfInchide(); render(); processQueue();
-}
-function vfJwtSub(t){
-  try{ let b = String(t).split('.')[1].replace(/-/g, '+').replace(/_/g, '/'); while(b.length % 4) b += '=';
-       return JSON.parse(decodeURIComponent(escape(atob(b)))).sub || null; }catch(e){ return null; }
-}
-async function vfRuleaza(item){
-  const rand = Object.assign({}, item.rand);
-  if(item.poza && !rand.poza_path){
-    const uid = vfJwtSub(await eeToken());
-    if(!uid) throw new Error('fără cont pentru poză');
-    const blob = await (await fetch(item.poza)).blob();
-    const cale = uid + '/verificari/' + rand.local_id + '.jpg';
-    const up = await sb.storage.from('pv-documents').upload(cale, blob, { contentType: 'image/jpeg', upsert: true });
-    if(up.error) throw up.error;
-    rand.poza_path = cale; item.rand.poza_path = cale; saveQueueToStorage();
-  }
-  const { error } = await sb.from('verificari_teren').insert(rand);
-  if(error && error.code !== '23505') throw error;   // 23505 = trimisă deja
-}
-document.getElementById('pageVerif').addEventListener('click', function(e){
-  if(!VF) return;
-  const b = e.target.closest('[data-vf]'), acc = e.target.closest('.vf-acc span'), x = e.target.closest('.vf-x');
-  if(acc){ vfCiteste(); const p = VF.piese[+acc.closest('.vf-p').dataset.i], a = acc.dataset.a;
-    p.acc = p.acc.includes(a) ? p.acc.filter(function(z){ return z !== a; }) : p.acc.concat([a]); acc.classList.toggle('on');
-    document.getElementById('vf-dif').innerHTML = vfDifHtml(); return; }
-  if(x){ vfCiteste(); VF.piese.splice(+x.closest('.vf-p').dataset.i, 1); vfDeseneaza(); return; }
-  if(!b) return;
-  const ce = b.dataset.vf;
-  if(ce === 'inapoi'){ vfCiteste(); vfInchide(); }
-  else if(ce === 'adauga'){ vfCiteste(); VF.piese.push({ model: '', serie: '', acc: [] }); vfDeseneaza();
-    const ultim = document.querySelectorAll('#pageVerif .vf-model'); if(ultim.length) ultim[ultim.length - 1].focus(); }
-  else if(ce === 'gps') vfCitesteGps(b);
-  else if(ce === 'fara-poza'){ vfCiteste(); VF.poza = null; vfDeseneaza(); }
-  else if(ce === 'trimite') vfTrimite();
-});
-document.getElementById('pageVerif').addEventListener('input', function(e){
-  if(!VF) return;
-  if(e.target.closest('.vf-p')){ vfCiteste(); document.getElementById('vf-dif').innerHTML = vfDifHtml(); }
-  else if(e.target.id === 'vf-obs') VF.obs = e.target.value;
-});
-document.getElementById('pageVerif').addEventListener('change', async function(e){
-  if(!VF) return;
-  if(e.target.id === 'vf-cere-gps') VF.cereGps = e.target.checked;
-  else if(e.target.id === 'vf-poza' && e.target.files && e.target.files[0]){
-    vfCiteste();
-    try{ VF.poza = await vfComprima(e.target.files[0]); }catch(err){ alert(err.message); }
-    vfDeseneaza();
-  }
-});
-
 function nearestNeighborOrder(rows, start){
   const withCoords = rows.filter(r=>r.lat && r.lon).slice();
   const noCoords = rows.filter(r=>!(r.lat && r.lon));
@@ -3347,9 +3049,8 @@ function visitRowHtml(r){
 
   if(v && v._obsOpen){
     return `<div class="visit-row obs-row">
-      <div class="obs-choice" data-key="${escapeHtml(key)}" data-obs="LA">L.A.</div>
+      <div class="obs-choice" data-key="${escapeHtml(key)}" data-obs="LA">Lipsă Acces (LA)</div>
       <div class="obs-choice" data-key="${escapeHtml(key)}" data-obs="O">Omis (O)</div>
-      <div class="obs-verif${vfVizitaDeschisa(key) ? '' : ' off'}" data-key="${escapeHtml(key)}">🔍 Verificare${vfTrimisAzi(key) ? ' ✓' : ''}</div>
       <div class="obs-cancel" data-key="${escapeHtml(key)}">✖</div>
     </div>`;
   }
@@ -3417,7 +3118,7 @@ function cardHtml(r, orderNum, historyInfo){
 
   const top = `
     <div class="card-top">
-      <div class="client card-name-toggle${r.cartela ? ' cartela-name' : ''}">${escapeHtml(r.client)}${r.cartela ? ' <span class="cartela-badge" data-detail="NECESITĂ CARTELĂ">📇</span>' : ''}${r.deVerificat && !vfTrimisAzi(key) ? ' <span class="cartela-badge" data-detail="DE VERIFICAT — la vizită apasă 🔍 Verificare">🔍</span>' : ''} <span class="collapse-arrow">${open ? '▲' : '▼'}</span></div>
+      <div class="client card-name-toggle${r.cartela ? ' cartela-name' : ''}">${escapeHtml(r.client)}${r.cartela ? ' <span class="cartela-badge" data-detail="NECESITĂ CARTELĂ">📇</span>' : ''} <span class="collapse-arrow">${open ? '▲' : '▼'}</span></div>
       <a class="nav-icon-btn ${hasCoords?'':'disabled'}" href="${hasCoords? mapsUrl(r.lat,r.lon):'#'}" target="_blank" rel="noopener" aria-label="Navigare"><svg viewBox="0 0 24 24" width="18" height="18" fill="#1a0f04"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg></a>
     </div>`;
   return `
@@ -3432,7 +3133,6 @@ function cardHtml(r, orderNum, historyInfo){
         ${historyInfo && !historyInfo.valid && historyInfo.code ? `<span class="code-badge">${escapeHtml(historyInfo.code)}</span>` : ''}
         ${r.ziua ? `<span class="badge day">${r.ziua}</span>`:''}
         ${r.masina ? `<span class="badge masina ${masinaClass}">${r.masina}</span>`:''}
-        ${vfTrimisAzi(key) ? '<span class="badge vf-ok">🔍 verificat ✓</span>' : r.deVerificat ? '<span class="badge vf-de">🔍 de verificat</span>' : ''}
         <a class="call-btn ${hasTel?'':'disabled'}" href="${hasTel? telUrl(r.telefon):'#'}">📞 Sună</a>
       </div>
     </div>
