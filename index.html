@@ -745,7 +745,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <div class="hd-mij"><div id="titlu-sus"></div><span id="azi-sus" title="Data de azi (calculatorul)"></span></div>
   <button id="btn-mob" class="btn sec" style="padding:5px 10px;font-size:12px" onclick="mobPC(false)" title="Înapoi la varianta de telefon">📱 Telefon</button>
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
-  <span class="ver">v6.34</span>
+  <span class="ver">v6.35</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -7599,9 +7599,12 @@ async function peCreeaza(){
       const rec = { ...g }; delete rec.id;
       const era = +g[camp] || 0; rec[camp] = dupa;
       rec.status = prodPunct(rec) > 0 ? "ACTIV" : "INACTIV";
-      if(era === dupa && rec.status === g.status) continue;
+      const ct = (acum && rec.status === "ACTIV") ? ctPunct(rec, PL.comun.pers, PL.comun.telefon) : "";   // v6.35: ultima persoană de la locație
+      if(era === dupa && rec.status === g.status && !ct) continue;
       ruteProgrameaza(rec, { id: g.id, orig: g, deLa, ids: g.anexe_ids || [] });
-      upd.push({ id: g.id, cheie: g.client_key, era, dupa, f: { [camp]: rec[camp], status: rec.status, schimbare: rec.schimbare ?? null, anexe_ids: rec.anexe_ids || [] } });
+      const f = { [camp]: rec[camp], status: rec.status, schimbare: rec.schimbare ?? null, anexe_ids: rec.anexe_ids || [] };
+      if(ct){ f.pers_resp = rec.pers_resp; f.telefon = rec.telefon; }
+      upd.push({ id: g.id, cheie: g.client_key, era, dupa, ct, f });
     }
     // zile noi de servisare la o locație existentă (doar la adăugare)
     if(!PL.minus && acum && dupa > 0){
@@ -7609,7 +7612,7 @@ async function peCreeaza(){
       for(const z of PL.zile){
         if(r.puncte.some(p => p.ziua === ZI_RUTE[z])) continue;
         const rec = { client_key: (r.cod || ("C" + m.id)) + "-" + ZI_ABR[z], client: (g0 ? g0.client : m.client || "").toUpperCase(), jud: r.jud || null, localitate: r.localitate || null,
-          locatie: r.locatie || null, ziua: ZI_RUTE[z], masina: PL.masini[z] || null, frecventa: frecv, pers_resp: (g0 && g0.pers_resp) || PL.comun.pers || null, telefon: (g0 && g0.telefon) || PL.comun.telefon || null,
+          locatie: r.locatie || null, ziua: ZI_RUTE[z], masina: PL.masini[z] || null, frecventa: frecv, pers_resp: (ctTel(PL.comun.telefon) ? PL.comun.pers : (g0 && g0.pers_resp) || PL.comun.pers) || null, telefon: (ctTel(PL.comun.telefon) ? PL.comun.telefon : (g0 && g0.telefon) || PL.comun.telefon) || null,
           toalete: g0 ? +g0.toalete || 0 : 0, containere: g0 ? +g0.containere || 0 : 0, garduri: g0 ? +g0.garduri || 0 : 0, accesorii: (g0 && g0.accesorii) || PL.comun.accesorii || null,
           lat: g0 ? g0.lat : (r.lat === "" ? null : +String(r.lat).replace(",", ".")), lon: g0 ? g0.lon : (r.lon === "" ? null : +String(r.lon).replace(",", ".")), cartela: g0 ? !!g0.cartela : false, status: "ACTIV" };
         rec[camp] = dupa; ruteProgrameaza(rec, { ids: [], deLa }); noi.push(rec);
@@ -7622,7 +7625,7 @@ async function peCreeaza(){
   if(!confirm("Comanda #" + m.id + " (" + m.tip_miscare + ") pe " + locatii.length + " locații:\n" +
     locatii.map(l => "  " + l.cod + " · " + [l.localitate, l.locatie].filter(Boolean).join(" – ") + " · " + (PL.minus ? "−" : "+") + l.buc).join("\n") +
     (noi.length ? "\n\nPuncte de rută noi: " + noi.length + "\n" + noi.slice(0, 10).map(x => "  " + x.client_key + " · " + x[camp] + " buc").join("\n") + (noi.length > 10 ? "\n  … și încă " + (noi.length - 10) : "") : "") +
-    (upd.length ? "\n\nPuncte existente care se schimbă: " + upd.length + "\n" + upd.slice(0, 10).map(u => "  " + u.cheie + " · " + u.era + " → " + u.dupa + (u.f.status === "INACTIV" ? " (INACTIV)" : "")).join("\n") : "") +
+    (upd.length ? "\n\nPuncte existente care se schimbă: " + upd.length + "\n" + upd.slice(0, 10).map(u => "  " + u.cheie + " · " + u.era + " → " + u.dupa + (u.f.status === "INACTIV" ? " (INACTIV)" : "") + (u.ct ? "\n      persoana de contact: " + u.ct : "")).join("\n") : "") +
     (t !== PL.total ? "\n\n⚠ Totalul pe locații (" + t + ") nu se potrivește cu bucățile comenzii (" + PL.total + ")." : "") +
     (deLa ? "\n\nComanda e din " + fmtD(deLa) + ": schimbarea intră pe rută din acea zi." : "") +
     "\n\nAnexa: nu e cazul (comandă din exterior, fără anexă).\n\nContinui?")) return;
@@ -7640,6 +7643,17 @@ async function peCreeaza(){
 // Un punct pe locație și zi (decizia lui Ovidiu, 04.10 + 05.10): suplimentarea / reducerea se trece pe
 // punctele care există deja la aceeași locație (cantitatea totală), iar zilele noi primesc punct nou,
 // tot cu cantitatea totală. Comandă cu dată viitoare → schimbarea intră pe rută din data comenzii.
+// v6.35 (hotărât de Ovidiu, 18.10): pe punctul de rută rămâne ultima persoană de contact de la locație (cea de pe comanda trecută
+// pe rută, dacă are telefon); cele vechi rămân pe comenzile lor (istoricul din Comenzi). Întoarce nota pentru fereastră ("" = nimic).
+const ctTel = v => String(v || "").replace(/\D/g, "");
+function ctPunct(rec, pers, tel){
+  pers = String(pers || "").trim(); tel = String(tel || "").trim();
+  if(!ctTel(tel)) return "";
+  if(ctTel(rec.telefon) === ctTel(tel) && faraDiac(String(rec.pers_resp || "")).toUpperCase().trim() === faraDiac(pers).toUpperCase()) return "";
+  const vechi = [rec.pers_resp, rec.telefon].filter(Boolean).join(" · ") || "—";
+  rec.pers_resp = pers || null; rec.telefon = tel;
+  return vechi + " → " + [pers, tel].filter(Boolean).join(" · ");
+}
 async function spreRute(id){
   const m = MISC.find(x => x.id === id); if(!m) return;
   if(livrExterior(m)){ toast("Comanda e livrată din depozitul " + m.depozit + " — nu se face punct de rută la tine (rămân Facturare și Raport lună)", true); if(VER && VER.f === "rt") VER.form = false; return; }
@@ -7707,10 +7721,12 @@ async function spreRute(id){
       if(camp) rec[camp] = totR != null ? totR : Math.max(0, (+rec[camp] || 0) - n);
       if(totR) rec.status = "ACTIV";
       if(!(+rec.toalete || 0) && !(+rec.containere || 0) && !(+rec.garduri || 0)) rec.status = "INACTIV";
-      coada.push({ id: g.id, rec, camp, orig: g, deLa, ids: idsPe(g),
+      const ct = rec.status === "INACTIV" ? "" : ctPunct(rec, m.pers_resp, m.telefon);
+      coada.push({ id: g.id, rec, camp, orig: g, deLa, ids: idsPe(g), ct,
         nota: `Punctul <b>${esc(g.client_key)}</b> (${esc(g.ziua || "")}): am scăzut ${n} buc ${esc(prodN(m.produs || "", n))}` + faraCol +
         (camp ? ` → rămân <b>${rec[camp]}</b>` : "") +
-        (rec.status === "INACTIV" ? ", iar punctul trece pe INACTIV (nu mai rămâne nimic la el)" : "") + "." + notaData(false) });
+        (rec.status === "INACTIV" ? ", iar punctul trece pe INACTIV (nu mai rămâne nimic la el)" : "") + "." + notaData(false) +
+        (ct ? ` Persoana de contact pe punct: <b>${esc(ct)}</b> (ultima de la locație).` : "") });
     });
   } else {
     const zile = String(m.zi_serv || a.zi_servisare || "").split(",").map(z => faraDiac(z).trim().toUpperCase()).filter(z => ZI_ABR[z]);   // v5.91: din comandă
@@ -7728,9 +7744,11 @@ async function spreRute(id){
       const era = camp ? (+rec[camp] || 0) : 0;
       if(camp) rec[camp] = totLoc != null ? totLoc : era + n;
       const lafel = camp && rec[camp] === era;
+      const ct = ctPunct(rec, m.pers_resp, m.telefon);
       coada.push({ id: g.id, rec, camp, orig: g, deLa, ids: idsPe(g),
         nota: `Punctul <b>${esc(g.client_key)}</b> (${esc(g.ziua || "")}) există deja la această locație. ` +
-        (lafel ? `Are deja cantitatea din anexe (<b>${era}</b>) — comanda a mai fost trecută pe rută, nu am adăugat nimic` : `Am adăugat ${n} buc ${esc(prodN(m.produs || "", n))}` + faraCol + (camp ? ` → în total <b>${rec[camp]}</b>` : "")) + "." + notaData(false) });
+        (lafel ? `Are deja cantitatea din anexe (<b>${era}</b>) — comanda a mai fost trecută pe rută, nu am adăugat nimic` : `Am adăugat ${n} buc ${esc(prodN(m.produs || "", n))}` + faraCol + (camp ? ` → în total <b>${rec[camp]}</b>` : "")) + "." + notaData(false) +
+        (ct ? ` Persoana de contact pe punct: <b>${esc(ct)}</b> (ultima de la locație).` : "") });
     });
     // 2. zilele de servisare care nu au încă punct: punct nou, cu cantitatea totală de pe locație
     const zileNoi = zile.filter(z => !activ.some(g => g.ziua === ZI_RUTE[z]));
@@ -7749,13 +7767,15 @@ async function spreRute(id){
                 lat: model ? model.lat : null, lon: model ? model.lon : null,
                 cartela: model ? !!model.cartela : false, status: "ACTIV" };
       rec.status = "ACTIV";
+      const ct = g ? ctPunct(rec, m.pers_resp, m.telefon) : "";
       if(model) ["toalete","containere","garduri"].forEach(c => { rec[c] = +viitor(model)[c] || 0; });
       rec.accesorii = unesteAcc(model ? viitor(model).accesorii : "", m.accesorii) || null;
       if(camp) rec[camp] = totLoc != null ? totLoc : inainte + n;
       let nota = (g ? `Punctul <b>${esc(cheie)}</b> există, pe INACTIV — îl repun pe ACTIV` : `Punct nou`) +
         (z ? ` pentru <b>${esc(ZI_RUTE[z])}</b>` : "") + `, completat din comanda din ${fmtD(m.data)}` + faraCol +
         (model && camp ? `, cu tot ce e pe locație (<b>${rec[camp]}</b> în total)` : "") +
-        ". <b>Alege mașina</b>, verifică și apasă Salvează." + (model ? "" : " Coordonatele se pot pune și mai târziu.") + notaData(true);
+        ". <b>Alege mașina</b>, verifică și apasă Salvează." + (model ? "" : " Coordonatele se pot pune și mai târziu.") + notaData(true) +
+        (ct ? ` Persoana de contact pe punct: <b>${esc(ct)}</b> (ultima de la locație).` : "");
       coada.push({ id: g ? g.id : null, rec, camp, orig: g, deLa, ids: g ? idsPe(g) : [...new Set([...(model ? idsPe(model) : []), m.anexa_id].filter(Boolean))], nota });
     });
     if(!coada.length){ toast("Nu am ce pune pe rută din această comandă.", true); return; }
