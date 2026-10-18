@@ -756,6 +756,8 @@
   /* ===== R27: 🔍 Verificare la client ===== */
   .obs-verif{flex:1; text-align:center; padding:9px 6px; border-radius:9px; font-size:0.78rem; font-weight:700; cursor:pointer; user-select:none;
     background:rgba(59,130,246,0.12); color:#3b82f6; border:1px solid rgba(59,130,246,0.45);}
+  /* R29: cele 3 variante de sub Obs egale pe orice ecran */
+  .obs-row .obs-choice, .obs-row .obs-verif{flex:1 1 0; min-width:0; white-space:nowrap; overflow:hidden; text-overflow:clip; padding-left:2px; padding-right:2px; font-size:clamp(0.64rem, 3.2vw, 0.78rem); letter-spacing:-0.1px;}
   .obs-verif.off{opacity:0.4; filter:grayscale(1);}
   .visit-btn.verif{background:rgba(59,130,246,0.12); color:#3b82f6; border-color:rgba(59,130,246,0.45);}
   .badge.vf-de{background:rgba(59,130,246,0.14); color:#3b82f6; border:1px solid rgba(59,130,246,0.45);}
@@ -1096,7 +1098,7 @@ let dayStart = {}; // {brand, plate, kmStart, driver1, driver2, startTime}
 let lastRouteRows = [];
 
 // --- Șofer EE: aplicatia ruleaza in fila „Rută” (../sofer/), care trimite datele zilei ---
-const EE_RUTA_VERSION = 'v28'; // aceeasi cu VERSIUNE din sw.js; Șofer EE o arata langa rotita
+const EE_RUTA_VERSION = 'v29'; // aceeasi cu VERSIUNE din sw.js; Șofer EE o arata langa rotita
 const SOFER_MODE = new URLSearchParams(location.search).get('sofer') === '1';
 let multiZile = null;   // mai multe zile bifate (ruta complementara), altfel null
 let multiTrasee = null; // mai multe trasee bifate, altfel null
@@ -3345,7 +3347,7 @@ function visitRowHtml(r){
 
   if(v && v._obsOpen){
     return `<div class="visit-row obs-row">
-      <div class="obs-choice" data-key="${escapeHtml(key)}" data-obs="LA">Lipsă Acces (LA)</div>
+      <div class="obs-choice" data-key="${escapeHtml(key)}" data-obs="LA">L.A.</div>
       <div class="obs-choice" data-key="${escapeHtml(key)}" data-obs="O">Omis (O)</div>
       <div class="obs-verif${vfVizitaDeschisa(key) ? '' : ' off'}" data-key="${escapeHtml(key)}">🔍 Verificare${vfTrimisAzi(key) ? ' ✓' : ''}</div>
       <div class="obs-cancel" data-key="${escapeHtml(key)}">✖</div>
