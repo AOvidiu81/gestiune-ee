@@ -745,7 +745,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <div class="hd-mij"><div id="titlu-sus"></div><span id="azi-sus" title="Data de azi (calculatorul)"></span></div>
   <button id="btn-mob" class="btn sec" style="padding:5px 10px;font-size:12px" onclick="mobPC(false)" title="Înapoi la varianta de telefon">📱 Telefon</button>
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
-  <span class="ver">v6.36</span>
+  <span class="ver">v6.37</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -2229,8 +2229,11 @@ function ruteStil(r){
   const p = PCT.filter(x => x.client_key === baza || String(x.client_key || "").startsWith(baza + "-") || extLaLoc(x, r) ||
     (r.anexa_id && [...(x.anexe_ids || []), ...schLista(x.schimbare).flatMap(e => e.anexe_ids || [])].map(Number).includes(r.anexa_id)));   // v4.64: și anexele din schimbarea programată
   const ok = p.length && p.every(x => x.lat != null && x.lon != null && +x.lat && +x.lon);
-  const c = ok ? "#2E8B3C" : "#D97706";
-  return `style="background:${c};border-color:${c};color:#fff" data-gps="${ok ? "da" : !p.length ? "fara punct" : "fara coordonate"}"`;
+  // v6.37 (cerut de Ovidiu, 18.10): verde doar când comanda e trecută pe rută (RT = V) ȘI punctul are GPS — altfel portocaliu
+  const rt = String(r.rt || "").toUpperCase() === "V";
+  const c = ok && rt ? "#2E8B3C" : "#D97706";
+  const de = !p.length ? "fără punct de rută" : !ok ? "punct fără coordonate GPS" : !rt ? "comanda nu e trecută pe rută (RT nu e V)" : "trecută pe rută, cu GPS";
+  return `style="background:${c};border-color:${c};color:#fff" data-gps="${ok ? "da" : !p.length ? "fara punct" : "fara coordonate"}" data-rute="${esc(de)}"`;
 }
 var MISC_CERERE=0, MISC_TQ=null;   // v5.92
 async function loadMiscari(){
@@ -2337,7 +2340,7 @@ function renderMiscari(){
   const clCls = clStare;   // v5.75: doar bifele care contează la comanda asta
   const sTit = M_SORT.camp === "data" ? (M_SORT.dir < 0 ? "Acum: nou → vechi. Apasă: vechi → nou" : M_SORT.dir > 0 ? "Acum: vechi → nou. Apasă: pe grupe (Azi, săptămâna asta, trecută, viitoare)" : "Acum: pe grupe (Azi, săptămâna asta, trecută, viitoare, apoi restul). Apasă: nou → vechi") : "Apasă ca să sortezi după dată";
   let h=`<tr><th class="sortabil" onclick="sorteazaComenzi('data')" title="${sTit}">Data${sg("data")}</th><th>Comandă</th><th>Buc</th><th>Produs</th><th>Tip</th><th>Accesorii</th><th>Client</th><th>Nr. contract</th><th>Anexă</th><th>Jud</th><th>Loc./Com.</th><th>Sat/Str./Locație</th><th>Contract</th><th>Depozit</th><th>Resp. șantier</th><th>Telefon</th><th>Rpt</th><th>RT</th><th>FAC</th><th>PV</th><th>ACT</th><th>WaAp</th><th>Frecv.</th><th class="noprint"></th></tr>`;
-  h+=MISC.map(r=>{const sr=subReferinta(r); const gz=grupaZilei(r.data); return `<tr><td${gz?` class="zd-${gz}"`:""}><span class="zd">${fmtD(r.data)}</span>${sr?` <span class="pill p-T" title="Mai veche decât data de referință a stocului (${fmtD(sr)}) — nu intră în stoc">sub referință</span>`:""}</td><td>${r.grup_id&&r.grup_id!==r.id?'<span class="muted" title="Produs din aceeași comandă cu #'+r.grup_id+'">↳ </span>':""}${tipTxt(r.tip_miscare)}${r.grup_id===r.id?' <span class="muted" title="Comanda are mai multe produse">+'+MISC.filter(x=>x.grup_id===r.id&&x.id!==r.id).length+'</span>':""}</td><td class="tc tc-${tipLit(r.tip_miscare)}">${r.buc}</td><td>${esc(prodN(r.produs, r.buc))}</td><td>${esc([r.model, r.model_fizic].filter(Boolean).join(" "))}</td><td style="font-size:12px;white-space:nowrap" title="${esc(r.accesorii||"")}">${esc(accScurt(r.accesorii))}</td><td><b class="${clCls(r)}">${esc(r.client)}</b>${r.din_telefon?' <span class="tel-v" title="Făcută pe telefon — deschide cu Edit, verifică și apasă Salvează pe PC">📱 de verificat</span>':""}</td><td>${esc(nrCtr(r.contract_id))}</td><td>${esc(nrAnx(r.anexa_id))}</td><td>${esc(r.jud)}</td><td>${esc(r.loc)}</td><td>${esc(r.sat)}</td><td>${esc(r.contract)}</td><td>${esc(r.depozit)}</td><td>${esc(r.pers_resp)}</td><td>${esc(r.telefon)}</td><td>${flNC(r, "rpt", flVer(r, "rpt"))}</td><td>${flNC(r, "rt", flVer(r, "rt"))}</td><td>${flNC(r, "fac", flVer(r, "fac"))}</td><td>${flNC(r, "pv", flVer(r, "pv"))}${semnPvApp(r)}</td><td>${flNC(r, "act", flVer(r, "act"))}</td><td>${flNC(r, "waap", flVer(r, "waap"))}</td><td>${esc(r.frecv_serv)}</td><td class="noprint actions"><button class="btn sm sec" onclick="openMiscare(${r.id})">Edit</button> ${livrExterior(r) ? `<button class="btn sm sec" disabled style="opacity:.45;cursor:default" title="Livrat din depozitul ${esc(r.depozit)} — fără punct de rută la tine (rămân Facturare și Raport lună)">→ Rute</button>` : `<button class="btn sm" ${ruteStil(r)} onclick="spreRute(${r.id})" title="Verde = punctul de rută are coordonate GPS; portocaliu = fără punct sau fără coordonate. Deschide punctul de rută completat din comandă. Nu se salvează nimic până nu verifici și apeși Salvează.">→ Rute</button>`}</td></tr>`;}).join("");
+  h+=MISC.map(r=>{const sr=subReferinta(r); const gz=grupaZilei(r.data); return `<tr><td${gz?` class="zd-${gz}"`:""}><span class="zd">${fmtD(r.data)}</span>${sr?` <span class="pill p-T" title="Mai veche decât data de referință a stocului (${fmtD(sr)}) — nu intră în stoc">sub referință</span>`:""}</td><td>${r.grup_id&&r.grup_id!==r.id?'<span class="muted" title="Produs din aceeași comandă cu #'+r.grup_id+'">↳ </span>':""}${tipTxt(r.tip_miscare)}${r.grup_id===r.id?' <span class="muted" title="Comanda are mai multe produse">+'+MISC.filter(x=>x.grup_id===r.id&&x.id!==r.id).length+'</span>':""}</td><td class="tc tc-${tipLit(r.tip_miscare)}">${r.buc}</td><td>${esc(prodN(r.produs, r.buc))}</td><td>${esc([r.model, r.model_fizic].filter(Boolean).join(" "))}</td><td style="font-size:12px;white-space:nowrap" title="${esc(r.accesorii||"")}">${esc(accScurt(r.accesorii))}</td><td><b class="${clCls(r)}">${esc(r.client)}</b>${r.din_telefon?' <span class="tel-v" title="Făcută pe telefon — deschide cu Edit, verifică și apasă Salvează pe PC">📱 de verificat</span>':""}</td><td>${esc(nrCtr(r.contract_id))}</td><td>${esc(nrAnx(r.anexa_id))}</td><td>${esc(r.jud)}</td><td>${esc(r.loc)}</td><td>${esc(r.sat)}</td><td>${esc(r.contract)}</td><td>${esc(r.depozit)}</td><td>${esc(r.pers_resp)}</td><td>${esc(r.telefon)}</td><td>${flNC(r, "rpt", flVer(r, "rpt"))}</td><td>${flNC(r, "rt", flVer(r, "rt"))}</td><td>${flNC(r, "fac", flVer(r, "fac"))}</td><td>${flNC(r, "pv", flVer(r, "pv"))}${semnPvApp(r)}</td><td>${flNC(r, "act", flVer(r, "act"))}</td><td>${flNC(r, "waap", flVer(r, "waap"))}</td><td>${esc(r.frecv_serv)}</td><td class="noprint actions"><button class="btn sm sec" onclick="openMiscare(${r.id})">Edit</button> ${livrExterior(r) ? `<button class="btn sm sec" disabled style="opacity:.45;cursor:default" title="Livrat din depozitul ${esc(r.depozit)} — fără punct de rută la tine (rămân Facturare și Raport lună)">→ Rute</button>` : `<button class="btn sm" ${ruteStil(r)} onclick="spreRute(${r.id})" title="Verde = comanda e trecută pe rută (RT = V) și punctul are GPS; portocaliu = mai ai de făcut (RT nu e V, fără punct sau fără GPS). Deschide punctul de rută completat din comandă. Nu se salvează nimic până nu verifici și apeși Salvează.">→ Rute</button>`}</td></tr>`;}).join("");
   $("m-tbl").innerHTML=h||"<tr><td>Nicio comandă.</td></tr>";
   $("m-tbl").className = "ds-" + DATA_STIL;
 }
@@ -3887,6 +3890,12 @@ async function openSeriiCmd(mid, cheie){
   SR_CMD = m; SR_DATA = null; SR_STERSE = []; SR_PUNCT = key;
   const aj = p0 ? p0.jud : m.jud, al = p0 ? p0.localitate : m.loc, as = p0 ? p0.locatie : m.sat;
   SR_AN = { id: null, contract_id: null, produs: m.produs || "", model: m.model || "", model_fizic: m.model_fizic || "", jud: aj || null, loc: al || null, sat: as || null, data_livrarii: m.data, anexa: "" };
+  // v6.37 (cerut de Ovidiu, 18.10): „+ Bucată” ia data ultimei amplasări / suplimentări de la locație (nu a primei comenzi)
+  { const kL = extCheie(aj, al, as);
+    const { data: cl } = await db.from("miscari").select("id,data,tip_miscare,jud,loc,sat,locatii").is("anexa_id", null).eq("client", m.client || "")
+      .in("tip_miscare", ["AMPLASARE","SUPLIMENTARE","EVENIMENT-A"]).limit(5000);
+    const d = (cl || []).filter(x => x.data && extLocuri(x).some(l => extCheie(l.jud, l.loc, l.sat) === kL)).map(x => x.data).sort().pop();
+    if(d && d > (m.data || "")) SR_DATA = d; }
   SR_LOCS = [{ key, nume: as || al || "", n, activ: true }];
   SR_ROWS = SER.filter(x => x.punct === key).map(x => Object.assign({}, x)).map(serNormTip);
   $("ms-title").textContent = "Seriile comenzii · " + key + " · " + (m.client || "");
@@ -3907,6 +3916,9 @@ async function openSerii(anexaId, dataNoua, punct){
   SR_AN=a; SR_STERSE=[];
   const linS=serLocIds(a.id); if(!linS.includes(a.id)) linS.push(a.id);   // v4.98: toate anexele locației
   SR_PUNCT=punct||null; SR_LOCS=await serLocatii(linS);   // v5.41
+  // v6.37: fără dată primită, „+ Bucată” ia data ultimei anexe de adăugare a locației (inițiala / -S), nu a primei
+  if(!SR_DATA){ const d=ANX.filter(x=>linS.includes(x.id) && x.data_livrarii && x.tip_anexa!=="R" && (anexaNr(x)||{}).tip!=="R").map(x=>x.data_livrarii).sort().pop();
+    if(d && d>(a.data_livrarii||"")) SR_DATA=d; }
   SR_ROWS=SER.filter(x=>linS.includes(x.anexa_id) && (!SR_PUNCT || serPeLoc(x,SR_PUNCT,linS))).map(x=>Object.assign({},x)).map(serNormTip);
   const k=CTR.find(x=>x.id===a.contract_id), c=k?CLI.find(x=>x.id===k.client_id):null;
   const L=SR_PUNCT ? SR_LOCS.find(x=>x.key===SR_PUNCT) : null;
