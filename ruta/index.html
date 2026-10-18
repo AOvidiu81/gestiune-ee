@@ -1051,7 +1051,7 @@ let dayStart = {}; // {brand, plate, kmStart, driver1, driver2, startTime}
 let lastRouteRows = [];
 
 // --- Șofer EE: aplicatia ruleaza in fila „Rută” (../sofer/), care trimite datele zilei ---
-const EE_RUTA_VERSION = 'v30'; // aceeasi cu VERSIUNE din sw.js; Șofer EE o arata langa rotita
+const EE_RUTA_VERSION = 'v31'; // aceeasi cu VERSIUNE din sw.js; Șofer EE o arata langa rotita
 const SOFER_MODE = new URLSearchParams(location.search).get('sofer') === '1';
 let multiZile = null;   // mai multe zile bifate (ruta complementara), altfel null
 let multiTrasee = null; // mai multe trasee bifate, altfel null
@@ -1791,26 +1791,22 @@ listEl.addEventListener('click', (e)=>{
       }
     }
   } else if(arriveBtn){
-    // v26: „Am ajuns” cere GPS — ora sosirii = momentul apăsării; fără citire GPS sosirea nu se înregistrează
+    // R31 (cerut de Ovidiu, 18.10): „Am ajuns” NU mai blochează — sosirea se înregistrează imediat, oricum.
+    // GPS-ul se caută în spate, fără așteptare și fără mesaje; dacă telefonul îl găsește, se păstrează cea mai bună citire.
     const key = arriveBtn.dataset.key;
     const r = dataById[key];
-    if(gpsCaut.has(key)) return;
     const acum = new Date();
-    gpsCaut.add(key); eeEcranAprins();
-    arriveBtn.textContent = '📡 Caut GPS…';
+    visitLog[key] = visitLog[key] || {};
+    visitLog[key].arrive = acum;
+    syncVisit(key, r, visitLog[key]);
+    eeEcranAprins();
+    render();
     (async function(){
       const f = await gpsFix(25000, 5000);
-      gpsCaut.delete(key);
-      if(f.err || f.acc > 1000){
-        render(); eeEcranAprins();
-        alert((f.err || 'Semnal GPS prea slab') + '.\n\nPornește Locația (GPS) pe telefon și apasă din nou „Am ajuns”. Dacă ești în cabină sau într-o clădire, ieși afară o clipă.\n\nFără GPS sosirea nu se înregistrează.');
-        return;
-      }
-      visitLog[key] = visitLog[key] || {};
-      visitLog[key].arrive = acum;
+      const v = visitLog[key];
+      if(f.err || f.acc > 1000 || !v || v.arrive !== acum || v.leave || v.obs) return;
       gpsPorneste(key, f);
-      syncVisit(key, r, visitLog[key]);
-      eeEcranAprins();
+      syncVisit(key, r, v);
       render();
     })();
   } else if(leaveBtn){
