@@ -745,7 +745,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <div class="hd-mij"><div id="titlu-sus"></div><span id="azi-sus" title="Data de azi (calculatorul)"></span></div>
   <button id="btn-mob" class="btn sec" style="padding:5px 10px;font-size:12px" onclick="mobPC(false)" title="Înapoi la varianta de telefon">📱 Telefon</button>
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
-  <span class="ver">v6.43</span>
+  <span class="ver">v6.44</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -1310,6 +1310,11 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
           <div><label>Comanda nr. <span class="hint">dacă există</span></label><input id="mm-cmd-nr" oninput="mmCmdAct()"></div>
           <div><label>Din data <span class="hint">data comenzii, nu a servisării</span></label><input id="mm-cmd-data" type="date" onchange="mmCmdAct()"></div>
           <div><label>Primită pe</label><select id="mm-cmd-canal" onchange="mmCmdAct()"><option value=""></option><option>WhatsApp</option><option>Email</option><option>PDF</option><option>Telefon</option></select></div>
+        </div>
+        <div class="grid3" id="mm-sv-fact" style="margin-top:8px">
+          <div><label>&nbsp;</label><label style="display:flex;align-items:center;gap:6px;margin:0"><input type="checkbox" id="mm-sv-f" style="width:auto"> Se facturează <span class="hint">(fără anexă: rând în Facturare după PV = V)</span></label></div>
+          <div><label>Preț / servisare (fără TVA)</label><input id="mm-sv-pret" type="number" step="0.01" min="0"></div>
+          <div></div>
         </div>
       </div>
 
@@ -2281,6 +2286,7 @@ function fqSterge(){ $("f-q").value=""; fqX(); clearTimeout(MISC_TQ); loadMiscar
 const DATA_STIL = 1;   // v5.39: ales de Ovidiu (12.10) — „1 pastilă”; butoanele de probă scoase
 // v6.33 (cerut de Ovidiu, 17.10): DAUNA / FURT — produsul iese din chirie, dar nu se întoarce în depozit (ca o reducere fără PV)
 const TIP_PIERD = /^(DAUNA|FURT)$/;
+let R_SERV = new Map();   // v6.44: rândurile de servisare fără anexă din Facturare (index rând → id comandă)
 const tipLit = t => /AMPLASARE|EVENIMENT-A|SUPLIMENTARE/.test(t)?"A":/RIDICARE|EVENIMENT-R|REDUCERE|DAUNA|FURT/.test(t)?"R":/SERVISARE/.test(t)?"S":/Transfer|VANZARE/.test(t)?"T":"X";
 const tipTxt = t => `<span class="tc tc-${tipLit(t)}">${esc(t)}</span>`;
 // v5.22: titlul ferestrei — „Gestiune - Euro Ecologic - Depozit <principal>” (depozitul vine din Administrare → Depozite)
@@ -2699,6 +2705,7 @@ function openMiscare(id){
   $("mm-pers").value=r?(r.pers_resp||""):""; $("mm-tel").value=r?(r.telefon||""):""; $("mm-frecv").value=r?(r.frecv_serv||""):""; $("mm-zi").value=r?(r.zi_serv||""):""; $("mm-traseu").value=r?(r.traseu||""):""; $("mm-obs").value=r?(r.observatii||""):"";
   document.querySelectorAll("#mm-flags .flag").forEach(f=>setFlag(f,r?(r[f.dataset.f]||"-"):(f.dataset.f==="waap"?"V":"-")));
   $("mm-cmd-nr").value = r ? (r.cmd_nr || "") : ""; $("mm-cmd-data").value = r ? (r.cmd_data || "") : ""; $("mm-cmd-canal").value = r ? (r.cmd_canal || "") : ""; mmCmdArata();   // v6.43
+  $("mm-sv-f").checked = r ? (r.tip_miscare === "SERVISARE" && !!r.desp_factureaza) : true; $("mm-sv-pret").value = r && r.tip_miscare === "SERVISARE" && r.desp_pret != null ? (+r.desp_pret).toFixed(2) : "";   // v6.44
   $("mm-desp-f").checked = !!(r && r.desp_factureaza); $("mm-desp-pret").value = r && r.desp_pret != null ? (+r.desp_pret).toFixed(2) : ""; mmDespArata();   // v6.33
   fillAnexeForClient();
   if(r && r.contract_id){ $("mm-ctr").value = r.contract_id; fillAnexeForContract(); cautaSincronizeaza("mm-ctr"); }
@@ -2713,7 +2720,7 @@ function openMiscare(id){
 }
 // v4.80 (cerut de Ovidiu, 08.10): ciornele comenzilor noi nesalvate (tabel `ciorne`, tip 'comanda').
 let MM_CIORNA = null, MM_CIORNE = [];
-const MM_CAMPURI = ["mm-contract","mm-dep","mm-data","mm-tip","mm-buc","mm-prod","mm-model","mm-mf","mm-client","mm-ctr","mm-anexa","mm-jud","mm-loc","mm-sat","mm-pers","mm-tel","mm-frecv","mm-zi","mm-traseu","mm-obs","mm-cmd-nr","mm-cmd-data","mm-cmd-canal"];
+const MM_CAMPURI = ["mm-contract","mm-dep","mm-data","mm-tip","mm-buc","mm-prod","mm-model","mm-mf","mm-client","mm-ctr","mm-anexa","mm-jud","mm-loc","mm-sat","mm-pers","mm-tel","mm-frecv","mm-zi","mm-traseu","mm-obs","mm-cmd-nr","mm-cmd-data","mm-cmd-canal","mm-sv-pret"];
 function mmDate(){
   const d = Object.fromEntries(MM_CAMPURI.map(id => [id, $(id).value || ""]));
   d.acc = accCitite("mm-acc") || ""; d.flags = {};
@@ -2741,7 +2748,7 @@ function mmCiornaIa(id){
   $("mm-client").value = v("mm-client"); fillAnexeForClient();
   if(v("mm-ctr")){ $("mm-ctr").value = v("mm-ctr"); fillAnexeForContract(); cautaSincronizeaza("mm-ctr"); }
   if(v("mm-anexa") && ANX.some(a => a.id == v("mm-anexa"))) mmAnexaAlege(+v("mm-anexa"));
-  ["mm-jud","mm-loc","mm-sat","mm-pers","mm-tel","mm-frecv","mm-zi","mm-traseu","mm-obs","mm-cmd-nr","mm-cmd-data","mm-cmd-canal"].forEach(k => { $(k).value = v(k); }); mmCmdArata();
+  ["mm-jud","mm-loc","mm-sat","mm-pers","mm-tel","mm-frecv","mm-zi","mm-traseu","mm-obs","mm-cmd-nr","mm-cmd-data","mm-cmd-canal","mm-sv-pret"].forEach(k => { $(k).value = v(k); }); mmCmdArata();
   document.querySelectorAll("#mm-flags .flag").forEach(f => setFlag(f, (d.flags || {})[f.dataset.f] || "-"));
   MM_PV = null; mmZile(); mmModClient(); mmSerii(true);
   MM_CIORNA = id; mmCiorneDeseneaza();
@@ -2847,6 +2854,12 @@ async function saveMiscare(genereaza){
   rec.desp_factureaza = TIP_PIERD.test(tip) && $("mm-desp-f").checked;
   rec.desp_pret = rec.desp_factureaza ? Math.round((+$("mm-desp-pret").value || 0) * 100) / 100 : null;
   if(rec.desp_factureaza && !rec.desp_pret){ toast("Scrie valoarea despăgubirii pe bucată (sau debifează „Se facturează”)", true); return false; }
+  // v6.44 (cerut de Ovidiu, 19.10): servisarea fără anexă (GLS) se facturează cu prețul de pe comandă — aceleași coloane ca la despăgubire
+  if(tip === "SERVISARE" && !rec.anexa_id){
+    rec.desp_factureaza = $("mm-sv-f").checked;
+    rec.desp_pret = rec.desp_factureaza ? Math.round((+$("mm-sv-pret").value || 0) * 100) / 100 : null;
+    if(rec.desp_factureaza && !rec.desp_pret){ toast("Scrie prețul servisării (sau debifează „Se facturează”)", true); return false; }
+  }
   mmPvX();
   document.querySelectorAll("#mm-flags .flag").forEach(f=>rec[f.dataset.f]=f.textContent);
   // „Salvează” simplu lasă textul negenerat (portocaliu); „Salvează și generează” pune ora.
@@ -4692,7 +4705,7 @@ function modFactButoane(){
   st("r-mod-lucru", R_MOD === "lucru", "#D97706"); st("r-mod-gata", R_MOD === "gata", "#2E8B3C");
 }
 async function genereazaRaport(){
-  modFactButoane(); R_FMT2 = new Set(); R_DESP = new Set();
+  modFactButoane(); R_FMT2 = new Set(); R_DESP = new Set(); R_SERV = new Map();
   if(!ANX.length){ return; }
   if($("r-tip").value === "facturare") await raportFacturare(); else await raportLuna();
 }
@@ -4753,6 +4766,24 @@ async function raportFacturare(){
         a.um || "BUC", cant, pret, a.moneda || "RON", m.tip_miscare, dRO(dtz(m.data)), "", "", fara, Math.round(fara * (1 + tva) * 100) / 100,
         a.scadent === null || a.scadent === undefined ? "" : a.scadent ]);
       R_AID.push(null); R_AVERT.push({}); R_EXTRA.push(""); R_ROSU.push(false);
+    }); }
+  // v6.44 (cerut de Ovidiu, 19.10): servisarea fără anexă (GLS) — un rând pe servisare, în luna ei, doar cu PV = V și „Se facturează”
+  // bifat pe comandă; preț pe servisare, fără zile. STARE = FACTURAT când FAC = V pe comandă (bifa din coloana FAC).
+  R_SERV = new Map();
+  { const fcS = ($("r-client").value || "").trim().toLowerCase(), fjS = $("r-jud").value;
+    misF.filter(m => m.tip_miscare === "SERVISARE" && !m.anexa_id && m.desp_factureaza && String(m.pv || "").toUpperCase() === "V")
+      .sort((x, y) => (x.client || "").localeCompare(y.client || "") || String(x.data).localeCompare(String(y.data))).forEach(m => {
+      const k = CLI.find(x => x.id === m.client_id) || CLI.find(x => (x.nume || "").toLowerCase() === (m.client || "").toLowerCase()) || {};
+      if(fcS && !((k.nume || m.client || "").toLowerCase().includes(fcS))) return;
+      if(fjS && m.jud !== fjS) return;
+      const cant = Math.abs(+m.buc || 0) || 1, pret = +m.desp_pret || 0, fara = Math.round(cant * pret * 100) / 100;
+      const cda = ["CDA", m.cmd_nr ? "NR " + m.cmd_nr : "", m.cmd_data ? "DIN " + fmtD(m.cmd_data) : ""].filter(Boolean).join(" ");
+      R_SERV.set(R_RANDURI.length, m.id);
+      R_RANDURI.push([ String(m.fac || "").toUpperCase() === "V" ? "FACTURAT" : "ACTIV", "", "", "",
+        k.nume || m.client || "", k.id_tip || "", k.atr || "", k.cui || "", cda === "CDA" ? "" : cda, "", dRO(dtz(m.data)),
+        m.jud || "", m.loc || "", m.sat || "", "SERVISARE", prodN(m.produs || "", cant), [m.model, m.model_fizic].filter(Boolean).join(" "),
+        "BUC", cant, pret, "RON", "SERVISARE", dRO(dtz(m.data)), dRO(dtz(m.data)), "", fara, Math.round(fara * (1 + tva) * 100) / 100, "" ]);
+      R_AID.push(null); R_AVERT.push({}); R_EXTRA.push(flagBtn(m, "fac")); R_ROSU.push(false);
     }); }
   R_NUME = "Facturare";
   R_ANTET[0] = "STARE LUNA";
@@ -4937,12 +4968,13 @@ function deseneazaRaport(){
       const fact = R_NUME === "Facturare" , av = fact ? (R_AVERT[j] || {}) : {};
       const cls = [fact && !["ACTIV","FACTURAT"].includes(f[0]) ? "fs-off" : "", (av.anx || av.ctr) ? "r-depasit" : ""].filter(Boolean).join(" ");
       const rr = R_RIDS[j];
-      const vr = VER && ((VER.f === "fac" && fact && VER.anexe.includes(R_AID[j])) ||
+      const vr = VER && ((VER.f === "fac" && fact && (VER.anexe.includes(R_AID[j]) || R_SERV.get(j) === VER.id)) ||
                          (VER.f === "rpt" && R_NUME === "Raport_luna" && rr && (rr.anx.some(id => VER.anexe.includes(id)) || rr.mis.includes(VER.id))));
       const cls2 = [cls, vr ? "r-ver" : ""].filter(Boolean).join(" ");
       return `<tr${cls2 ? ` class="${cls2}"` : ""}>` + f.map((v, i) => {
         let t = esc(v === null || v === undefined ? "" : (R_FMT2.has(i) && typeof v === "number" ? v.toFixed(2) : v));
-        if(fact && i === 0 && R_DESP.has(j)) t = `<span class="muted" title="Despăgubire DAUNA / FURT — se scoate debifând „Se facturează” pe comandă">DESPĂGUBIRE</span>`;   // v6.33
+        if(fact && i === 0 && R_SERV.has(j)) t = `<span class="muted" title="Servisare fără anexă — FACTURAT când FAC = V pe comandă; se scoate debifând „Se facturează” pe comandă">${esc(v)}</span>`;   // v6.44
+        else if(fact && i === 0 && R_DESP.has(j)) t = `<span class="muted" title="Despăgubire DAUNA / FURT — se scoate debifând „Se facturează” pe comandă">DESPĂGUBIRE</span>`;   // v6.33
         else if(fact && i === 0)
           t = `<select class="fs-sel ${esc(String(v).split(" ")[0])}" onchange="setStareFact(${R_AID[j]}, this.value)">` +
               ["ACTIV","FACTURAT","INACTIV","NU FACTURAM"].map(o => `<option${o === v ? " selected" : ""}>${o}</option>`).join("") + "</select>";
@@ -4997,6 +5029,7 @@ function verBanda(){
   const gasit = [...document.querySelectorAll("#r-tbl tr.r-ver")];
   const desc = [m.tip_miscare + " " + fmtD(m.data), m.client, k ? "CTR " + k.nr_ctr : "", a ? a.anexa : "", Math.abs(+m.buc || 0) + " buc " + prodN(m.produs || "", m.buc) + " " + (m.model || "")].filter(Boolean).join(" · ");
   const nota = gasit.length ? "Rândul comenzii e evidențiat mai jos. Verifică datele și bifează dacă sunt corecte."
+    : (!m.anexa_id && m.tip_miscare === "SERVISARE" && VER.f === "fac") ? "⚠ Servisarea fără anexă apare în Facturare după PV = V, cu „Se facturează” și prețul completate pe comandă."
     : !m.anexa_id ? "⚠ Comanda nu e legată de o anexă — nu are rând în " + unde + " lunii."
     : "⚠ Anexa comenzii nu apare în " + unde + " lunii " + $("r-luna").selectedOptions[0].text + " " + $("r-an").value + " (verifică starea anexei / datele).";
   b.innerHTML = `<div class="vt"><b>Verifici ${F} (${esc(VER_FILE[VER.f].nume)}) pentru comanda:</b> ${esc(desc)}<br><span class="muted">${esc(nota)}</span></div>` +
