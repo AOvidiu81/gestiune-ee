@@ -745,7 +745,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <div class="hd-mij"><div id="titlu-sus"></div><span id="azi-sus" title="Data de azi (calculatorul)"></span></div>
   <button id="btn-mob" class="btn sec" style="padding:5px 10px;font-size:12px" onclick="mobPC(false)" title="Înapoi la varianta de telefon">📱 Telefon</button>
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
-  <span class="ver">v6.44</span>
+  <span class="ver">v6.45</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -1314,7 +1314,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
         <div class="grid3" id="mm-sv-fact" style="margin-top:8px">
           <div><label>&nbsp;</label><label style="display:flex;align-items:center;gap:6px;margin:0"><input type="checkbox" id="mm-sv-f" style="width:auto"> Se facturează <span class="hint">(fără anexă: rând în Facturare după PV = V)</span></label></div>
           <div><label>Preț / servisare (fără TVA)</label><input id="mm-sv-pret" type="number" step="0.01" min="0"></div>
-          <div></div>
+          <div><label>Moneda</label><select id="mm-sv-moneda"></select></div>
         </div>
       </div>
 
@@ -1982,7 +1982,7 @@ function fillAll(){
   umpleModele("mm-prod","mm-model"); umpleModele("ma-prod","ma-model");
   fill("mm-frecv",nomv("frecv_servisare"),""); fill("ma-frecv",nomv("frecv_servisare"),"");
   fill("mc-idtip",nomv("id_tip")); fill("mc-atr",nomv("atr"),"");
-  fill("mk-stare",nomv("stare")); fill("ma-forma",nomv("forma")); fill("ma-um",nomv("um")); fill("ma-moneda",nomv("moneda"));
+  fill("mk-stare",nomv("stare")); fill("ma-forma",nomv("forma")); fill("ma-um",nomv("um")); fill("ma-moneda",nomv("moneda")); fill("mm-sv-moneda",nomv("moneda"));   // v6.45
   const y=new Date().getFullYear(); const yrs=[]; for(let i=y;i>=2023;i--) yrs.push(i); fill("f-an",yrs,"Toți"); $("f-an").value="";   /* v6.12 (cerut de Ovidiu, 15.10): Comenzi pornesc pe „Toți” anii */
   $("f-luna").innerHTML='<option value="">Toate</option>'+LUNI.map((l,i)=>`<option value="${i+1}">${l}</option>`).join("");
   $("dl-clienti").innerHTML=CLI.map(c=>`<option value="${esc(c.nume)}">`).join("");
@@ -2706,6 +2706,7 @@ function openMiscare(id){
   document.querySelectorAll("#mm-flags .flag").forEach(f=>setFlag(f,r?(r[f.dataset.f]||"-"):(f.dataset.f==="waap"?"V":"-")));
   $("mm-cmd-nr").value = r ? (r.cmd_nr || "") : ""; $("mm-cmd-data").value = r ? (r.cmd_data || "") : ""; $("mm-cmd-canal").value = r ? (r.cmd_canal || "") : ""; mmCmdArata();   // v6.43
   $("mm-sv-f").checked = r ? (r.tip_miscare === "SERVISARE" && !!r.desp_factureaza) : true; $("mm-sv-pret").value = r && r.tip_miscare === "SERVISARE" && r.desp_pret != null ? (+r.desp_pret).toFixed(2) : "";   // v6.44
+  $("mm-sv-moneda").value = (r && r.desp_moneda) || "RON"; if(!$("mm-sv-moneda").value && $("mm-sv-moneda").options.length) $("mm-sv-moneda").selectedIndex = 0;   // v6.45
   $("mm-desp-f").checked = !!(r && r.desp_factureaza); $("mm-desp-pret").value = r && r.desp_pret != null ? (+r.desp_pret).toFixed(2) : ""; mmDespArata();   // v6.33
   fillAnexeForClient();
   if(r && r.contract_id){ $("mm-ctr").value = r.contract_id; fillAnexeForContract(); cautaSincronizeaza("mm-ctr"); }
@@ -2720,7 +2721,7 @@ function openMiscare(id){
 }
 // v4.80 (cerut de Ovidiu, 08.10): ciornele comenzilor noi nesalvate (tabel `ciorne`, tip 'comanda').
 let MM_CIORNA = null, MM_CIORNE = [];
-const MM_CAMPURI = ["mm-contract","mm-dep","mm-data","mm-tip","mm-buc","mm-prod","mm-model","mm-mf","mm-client","mm-ctr","mm-anexa","mm-jud","mm-loc","mm-sat","mm-pers","mm-tel","mm-frecv","mm-zi","mm-traseu","mm-obs","mm-cmd-nr","mm-cmd-data","mm-cmd-canal","mm-sv-pret"];
+const MM_CAMPURI = ["mm-contract","mm-dep","mm-data","mm-tip","mm-buc","mm-prod","mm-model","mm-mf","mm-client","mm-ctr","mm-anexa","mm-jud","mm-loc","mm-sat","mm-pers","mm-tel","mm-frecv","mm-zi","mm-traseu","mm-obs","mm-cmd-nr","mm-cmd-data","mm-cmd-canal","mm-sv-pret","mm-sv-moneda"];
 function mmDate(){
   const d = Object.fromEntries(MM_CAMPURI.map(id => [id, $(id).value || ""]));
   d.acc = accCitite("mm-acc") || ""; d.flags = {};
@@ -2748,7 +2749,7 @@ function mmCiornaIa(id){
   $("mm-client").value = v("mm-client"); fillAnexeForClient();
   if(v("mm-ctr")){ $("mm-ctr").value = v("mm-ctr"); fillAnexeForContract(); cautaSincronizeaza("mm-ctr"); }
   if(v("mm-anexa") && ANX.some(a => a.id == v("mm-anexa"))) mmAnexaAlege(+v("mm-anexa"));
-  ["mm-jud","mm-loc","mm-sat","mm-pers","mm-tel","mm-frecv","mm-zi","mm-traseu","mm-obs","mm-cmd-nr","mm-cmd-data","mm-cmd-canal","mm-sv-pret"].forEach(k => { $(k).value = v(k); }); mmCmdArata();
+  ["mm-jud","mm-loc","mm-sat","mm-pers","mm-tel","mm-frecv","mm-zi","mm-traseu","mm-obs","mm-cmd-nr","mm-cmd-data","mm-cmd-canal","mm-sv-pret","mm-sv-moneda"].forEach(k => { $(k).value = v(k); }); if(!$("mm-sv-moneda").value) $("mm-sv-moneda").value = "RON"; mmCmdArata();
   document.querySelectorAll("#mm-flags .flag").forEach(f => setFlag(f, (d.flags || {})[f.dataset.f] || "-"));
   MM_PV = null; mmZile(); mmModClient(); mmSerii(true);
   MM_CIORNA = id; mmCiorneDeseneaza();
@@ -2858,6 +2859,7 @@ async function saveMiscare(genereaza){
   if(tip === "SERVISARE" && !rec.anexa_id){
     rec.desp_factureaza = $("mm-sv-f").checked;
     rec.desp_pret = rec.desp_factureaza ? Math.round((+$("mm-sv-pret").value || 0) * 100) / 100 : null;
+    rec.desp_moneda = rec.desp_factureaza ? ($("mm-sv-moneda").value || "RON") : null;   // v6.45
     if(rec.desp_factureaza && !rec.desp_pret){ toast("Scrie prețul servisării (sau debifează „Se facturează”)", true); return false; }
   }
   mmPvX();
@@ -4782,7 +4784,7 @@ async function raportFacturare(){
       R_RANDURI.push([ String(m.fac || "").toUpperCase() === "V" ? "FACTURAT" : "ACTIV", "", "", "",
         k.nume || m.client || "", k.id_tip || "", k.atr || "", k.cui || "", cda === "CDA" ? "" : cda, "", dRO(dtz(m.data)),
         m.jud || "", m.loc || "", m.sat || "", "SERVISARE", prodN(m.produs || "", cant), [m.model, m.model_fizic].filter(Boolean).join(" "),
-        "BUC", cant, pret, "RON", "SERVISARE", dRO(dtz(m.data)), dRO(dtz(m.data)), "", fara, Math.round(fara * (1 + tva) * 100) / 100, "" ]);
+        "BUC", cant, pret, m.desp_moneda || "RON", "SERVISARE", dRO(dtz(m.data)), dRO(dtz(m.data)), "", fara, Math.round(fara * (1 + tva) * 100) / 100, "" ]);
       R_AID.push(null); R_AVERT.push({}); R_EXTRA.push(flagBtn(m, "fac")); R_ROSU.push(false);
     }); }
   R_NUME = "Facturare";
