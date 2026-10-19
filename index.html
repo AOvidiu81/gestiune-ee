@@ -314,6 +314,13 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
        ca sa nu ramana o zona goala sub el. */
     .page.on{display:flex;flex-direction:column;min-height:calc(100vh - 72px)}
     .page.on > .tw{flex:1 1 auto;max-height:none;min-height:200px}
+    /* v6.54 (cerut de Ovidiu): Comenzi — pagina cât ecranul, tabelul se derulează în el însuși:
+       antetul (Comandă, Buc, Produs…) rămâne sus, bara stânga–dreapta rămâne jos, deasupra barei Windows.
+       --hdr = înălțimea barei de sus, pusă din script. */
+    #p-miscari.page.on{height:calc(100vh - var(--hdr,44px) - 28px);min-height:0}
+    #p-miscari.page.on > .tw{flex:1 1 0;min-height:200px;overflow:auto}
+    #p-miscari.page.on > :not(.tw){flex:0 0 auto}
+    #m-tbl th{z-index:2}
     /* Randul de filtre nu se mai intinde pe tot ecranul: campurile cresc pana la o
        latime citibila si se opresc. */
     main .card > .row > *{max-width:300px}
@@ -747,7 +754,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <div class="hd-mij"><div id="titlu-sus"></div><span id="azi-sus" title="Data de azi (calculatorul)"></span></div>
   <button id="btn-mob" class="btn sec" style="padding:5px 10px;font-size:12px" onclick="mobPC(false)" title="Înapoi la varianta de telefon">📱 Telefon</button>
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
-  <span class="ver">v6.53</span>
+  <span class="ver">v6.54</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -9767,6 +9774,11 @@ document.addEventListener("click", e => {
   if(!era) tr.classList.add("r-ales");
 });
 porneste();
+// v6.54: înălțimea barei de sus → --hdr (pentru pagina Comenzi cât ecranul)
+(function(){
+  const pune = () => { const h = document.querySelector("header"); if(h) document.documentElement.style.setProperty("--hdr", h.offsetHeight + "px"); };
+  pune(); window.addEventListener("resize", pune); window.addEventListener("load", pune);
+})();
 </script>
 </body>
 </html>
