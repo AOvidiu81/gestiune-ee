@@ -746,7 +746,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <div class="hd-mij"><div id="titlu-sus"></div><span id="azi-sus" title="Data de azi (calculatorul)"></span></div>
   <button id="btn-mob" class="btn sec" style="padding:5px 10px;font-size:12px" onclick="mobPC(false)" title="Înapoi la varianta de telefon">📱 Telefon</button>
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
-  <span class="ver">v6.48</span>
+  <span class="ver">v6.49</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -996,7 +996,8 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <div class="card noprint fp-doar-foi"><p class="muted" style="margin:0"><b>Început zi</b> = ora la care șoferul și-a deschis ziua în Șofer EE; zilele în care a lucrat <b>fără rută</b> apar și ele, ca rânduri separate (v5.36: aici e și fosta filă „Începutul zilei”). Câte un rând pentru fiecare rută pornită de șoferi: mașina, șoferii, km, orele și vizitele. Datele vin singure de pe telefon, la „Salvează” de la finalizarea rutei. „PDF” face aici, pe loc, același raport zilnic pe care îl face șoferul pe telefon (nu e salvat în bază). Buton portocaliu = încă negenerat; verde = a fost deja generat (se ține minte în bază, se vede de pe orice calculator).</p></div>
   <div class="card">
     <div class="row noprint">
-      <div style="flex:0;min-width:160px"><label>Luna</label><input type="month" id="fp-luna" onchange="fpAfiseaza()"></div>
+      <div style="flex:0"><label>Perioada</label><div class="subtab" id="fp-per" style="margin:0;gap:4px"><button onclick="fpPer('zi')" title="Ziua de azi; alegi apoi orice zi">Azi</button><button onclick="fpPer('sapt')" title="Săptămâna curentă (luni–duminică); alegi apoi orice săptămână">Săptămâna asta</button><button class="on" onclick="fpPer('luna')" title="Luna curentă; alegi apoi orice lună">Luna asta</button><button onclick="fpPer('an')" title="Anul curent; alegi apoi alt an">Anul ăsta</button></div></div>
+      <div style="flex:0;min-width:240px"><label id="fp-val-l">Luna</label><div style="display:flex;gap:4px;align-items:center"><button class="btn sm sec" title="Perioada dinainte" onclick="fpPas(-1)">‹</button><input type="date" id="fp-zi" onchange="fpAfiseaza()" style="display:none"><input type="month" id="fp-luna" onchange="fpAfiseaza()"><select id="fp-an" onchange="fpAfiseaza()" style="display:none"></select><button class="btn sm sec" title="Perioada următoare" onclick="fpPas(1)">›</button></div><div class="muted" id="fp-per-t" style="font-size:12px;margin-top:2px"></div></div>
       <div style="flex:0;min-width:180px"><label>Șofer</label><select id="fp-sofer" onchange="fpAfiseaza()"></select></div>
       <div class="fp-doar-foi" style="flex:0;min-width:150px"><label>Mașina</label><select id="fp-masina" onchange="fpAfiseaza()"></select></div>
       <div class="fp-doar-foi" style="flex:0;min-width:130px"><label>Stare</label><select id="fp-stare" onchange="fpAfiseaza()"><option value="">toate</option><option value="finalizata">finalizate</option><option value="activa">în lucru</option><option value="fara">fără rută</option></select></div>
@@ -1009,7 +1010,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   </div>
   <div class="card fp-doar-dep">
     <h3 style="margin:0 0 6px">🏭 Prezență la depozit</h3>
-    <p class="muted" style="margin:0 0 8px">Din Șofer EE, „Azi la depozit”: sosirea și plecarea fiecărui om, înregistrate doar cu telefonul la depozit (GPS). <b>Portocaliu</b> = nu a închis ziua după 8 ore. ✎ = corectezi orele; „+ Prezență manuală” = pentru cine a uitat. Filtrele de sus (Luna, Șofer, Caută) se aplică și aici.</p>
+    <p class="muted" style="margin:0 0 8px">Din Șofer EE, „Azi la depozit”: sosirea și plecarea fiecărui om, înregistrate doar cu telefonul la depozit (GPS). <b>Portocaliu</b> = nu a închis ziua după 8 ore. ✎ = corectezi orele; „+ Prezență manuală” = pentru cine a uitat. Filtrele de sus (Perioada, Șofer, Caută) se aplică și aici.</p>
     <div class="tw" style="margin-top:10px"><table id="pd-tbl"></table></div>
   </div>
 </section>
@@ -6508,8 +6509,8 @@ function pdPlecare(r){
 }
 function pdAfiseaza(){
   if(!FP_GATA) return;   // v6.31: tabelul stă în „Raport foi parcurs” (fila „Începutul zilei” e ascunsă din v5.36)
-  const luna = $("fp-luna").value, sf = $("fp-sofer").value, q = $("fp-caut").value.trim().toLowerCase();
-  PD_ROWS = PD.filter(r => (!luna || String(r.zi).startsWith(luna)) && (!sf || r.angajat === sf)
+  const iv = fpInterval(), sf = $("fp-sofer").value, q = $("fp-caut").value.trim().toLowerCase();
+  PD_ROWS = PD.filter(r => fpIn(iv, r.zi) && (!sf || r.angajat === sf)
       && (!q || [r.angajat, r.depozit, r.marcat_de, r.inchis_de, r.observatii].join(" ").toLowerCase().includes(q)))
     .sort((a, b) => String(b.zi).localeCompare(String(a.zi)) || String(a.ora_sosire).localeCompare(String(b.ora_sosire)));
   const cap = ["Data","Angajat","Depozit","Sosire","Plecare","Ore","GPS sosire","GPS plecare","Marcat de","Închis de","Observații",""];
@@ -6645,7 +6646,8 @@ async function loadFP(forta){
       FP = { ses, vis, cl, iz };
       FP_VIZ = {}; vis.forEach(v => (FP_VIZ[v.session_id] ||= []).push(v));
       FP_CL = {}; cl.forEach(c => { FP_CL[rrKey(c)] = c; if(c.client_key) FP_CL[c.client_key] = c; });
-      if(!FP_GATA) $("fp-luna").value = izZiLocala(new Date()).slice(0, 7);
+      if(!FP_GATA){ const azi = izZiLocala(new Date()); $("fp-zi").value = azi; $("fp-luna").value = azi.slice(0, 7); }
+      fpAni(); if(!$("fp-an").value) $("fp-an").value = String(new Date().getFullYear());
       const umple = (id, val, gol) => { const sel = $(id), v = sel.value; sel.innerHTML = `<option value="">${gol}</option>` + val.map(n => `<option>${esc(n)}</option>`).join(""); if(val.includes(v)) sel.value = v; };
       umple("fp-sofer", [...new Set(ses.flatMap(s => [s.driver1, s.driver2]).concat(iz.flatMap(r => [r.sofer1, r.sofer2]), pd.map(r => r.angajat)).filter(Boolean))].sort(), "toți");
       umple("fp-masina", [...new Set(ses.map(s => s.vehicle_plate).concat(iz.map(r => r.masina_numar)).filter(Boolean))].sort(), "toate");
@@ -6653,6 +6655,61 @@ async function loadFP(forta){
     }
     fpAfiseaza();
   }catch(e){ toast("Pontaj angajați: " + e.message, true); }
+}
+// v6.49: Perioada = Azi / Săptămâna asta (luni–duminică, ca „Week Nr.” de sus) / Luna asta / Anul ăsta; fiecare pornește pe perioada curentă,
+// apoi se alege orice zi / săptămână / lună / an (sau ‹ › pentru perioada dinainte / următoare)
+let FP_PER = "luna";
+const fpDt = iso => { const [a, l, z] = String(iso).split("-").map(Number); return new Date(a, l - 1, z); };
+function fpAni(){
+  const sel = $("fp-an"), v = sel.value, ani = new Set([new Date().getFullYear()]);
+  const pune = z => { const a = parseInt(String(z || "").slice(0, 4), 10); if(a > 2000) ani.add(a); };
+  (FP.ses || []).forEach(s => pune(s.created_at ? izZiLocala(s.created_at) : s.session_date));
+  (FP.iz || []).forEach(r => pune(r.zi)); (PD || []).forEach(r => pune(r.zi));
+  if(v) ani.add(+v);
+  sel.innerHTML = [...ani].sort((a, b) => b - a).map(a => `<option>${a}</option>`).join("");
+  if(v) sel.value = v;
+}
+function fpInterval(){
+  if(FP_PER === "zi"){ const z = $("fp-zi").value; return z ? { de: z, pana: z, et: z } : null; }
+  if(FP_PER === "sapt"){
+    const z = $("fp-zi").value; if(!z) return null;
+    const L = fpDt(z); L.setDate(L.getDate() - (L.getDay() + 6) % 7);
+    const D = new Date(L); D.setDate(L.getDate() + 6);
+    const J = new Date(L); J.setDate(L.getDate() + 3);   // anul săptămânii = anul joii ei (ca la Week Nr.)
+    const nr = saptISO(L).nr;
+    return { de: izZiLocala(L), pana: izZiLocala(D), nr, et: `${J.getFullYear()}-S${zi2(nr)}` };
+  }
+  if(FP_PER === "luna"){ const m = $("fp-luna").value; return m ? { de: m + "-01", pana: m + "-31", et: m } : null; }
+  if(FP_PER === "an"){ const a = $("fp-an").value; return a ? { de: a + "-01-01", pana: a + "-12-31", et: a } : null; }
+  return null;
+}
+const fpIn = (iv, z) => { if(!iv) return true; const d = String(z || "").slice(0, 10); return d >= iv.de && d <= iv.pana; };
+function fpPerUI(){
+  document.querySelectorAll("#fp-per button").forEach(b => b.classList.toggle("on", b.getAttribute("onclick").includes("'" + FP_PER + "'")));
+  $("fp-zi").style.display = FP_PER === "zi" || FP_PER === "sapt" ? "" : "none";
+  $("fp-luna").style.display = FP_PER === "luna" ? "" : "none";
+  $("fp-an").style.display = FP_PER === "an" ? "" : "none";
+  $("fp-val-l").textContent = { zi: "Ziua", sapt: "Săptămâna (alege orice zi din ea)", luna: "Luna", an: "Anul" }[FP_PER];
+  const iv = fpInterval();
+  $("fp-per-t").textContent = !iv ? "" : FP_PER === "zi" ? izData(iv.de) : FP_PER === "sapt" ? `Săpt. ${iv.nr}: ${izData(iv.de)} – ${izData(iv.pana)}` : "";
+}
+function fpPer(p){
+  FP_PER = p; const azi = izZiLocala(new Date());
+  if(p === "zi" || p === "sapt") $("fp-zi").value = azi;
+  if(p === "luna") $("fp-luna").value = azi.slice(0, 7);
+  if(p === "an"){ $("fp-an").value = azi.slice(0, 4); if(!$("fp-an").value){ fpAni(); $("fp-an").value = azi.slice(0, 4); } }
+  fpAfiseaza();
+}
+function fpPas(n){
+  const azi = izZiLocala(new Date());
+  if(FP_PER === "zi" || FP_PER === "sapt"){ const d = fpDt($("fp-zi").value || azi); d.setDate(d.getDate() + n * (FP_PER === "sapt" ? 7 : 1)); $("fp-zi").value = izZiLocala(d); }
+  else if(FP_PER === "luna"){ const [a, l] = ($("fp-luna").value || azi.slice(0, 7)).split("-").map(Number), d = new Date(a, l - 1 + n, 1); $("fp-luna").value = d.getFullYear() + "-" + zi2(d.getMonth() + 1); }
+  else if(FP_PER === "an"){
+    const a = String((+$("fp-an").value || new Date().getFullYear()) + n), sel = $("fp-an");
+    if(![...sel.options].some(o => o.value === a)) sel.insertAdjacentHTML("beforeend", `<option>${a}</option>`);
+    sel.value = a;
+  }
+  fpAfiseaza();
 }
 // v5.36: o zi deschisă în Șofer EE fără nicio rută (același șofer 1, aceeași zi) = rând „fără rută”
 function fpFaraRuta(){
@@ -6665,9 +6722,10 @@ function fpFaraRuta(){
 }
 function fpAfiseaza(){
   if(!FP_GATA) return;
-  const luna = $("fp-luna").value, sf = $("fp-sofer").value, ms = $("fp-masina").value, st = $("fp-stare").value, q = $("fp-caut").value.trim().toLowerCase();
+  fpPerUI();
+  const iv = fpInterval(), sf = $("fp-sofer").value, ms = $("fp-masina").value, st = $("fp-stare").value, q = $("fp-caut").value.trim().toLowerCase();
   FP_ROWS = FP.ses.map(fpRand).concat(fpFaraRuta())
-    .filter(x => (!luna || String(x.zi).startsWith(luna)) && (!sf || x.s.driver1 === sf || x.s.driver2 === sf) && (!ms || x.s.vehicle_plate === ms)
+    .filter(x => fpIn(iv, x.zi) && (!sf || x.s.driver1 === sf || x.s.driver2 === sf) && (!ms || x.s.vehicle_plate === ms)
       && (!st || x.s.status === st) && (!q || [x.soferi, x.masina, x.s.zona, x.traseu].join(" ").toLowerCase().includes(q)))
     .sort((a, b) => String(b.s.created_at).localeCompare(String(a.s.created_at)));
   const cap = ["Data","Zona","Traseu · zile","Șoferi","Mașina","Început zi","Km start","Km stop","Total km","Ora start","Ora stop","Total ore","Vizite","Stare",""];
@@ -6733,7 +6791,7 @@ function exportFP(){
     if(!PD_ROWS.length){ toast("Nu e nimic de exportat", true); return; }
     const w = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(w, pdFoaie(), "PREZENTA DEPOZIT");
-    XLSX.writeFile(w, `Prezenta_depozit_${$("fp-luna").value || "tot"}.xlsx`);
+    XLSX.writeFile(w, `Prezenta_depozit_${(fpInterval() || {}).et || "tot"}.xlsx`);
     return;
   }
   if(!FP_ROWS.length){ toast("Nu e nimic de exportat", true); return; }
@@ -6743,7 +6801,7 @@ function exportFP(){
     VIZITE: x.viz.length, LIPSA_ACCES: x.la, OMIS: x.om, STARE: x.fara ? "fără rută" : x.s.status === "finalizata" ? "finalizată" : "în lucru" }))), "FOI PARCURS");
   XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(FP_ROWS.flatMap(x => fpLiniiVizite(x).map(r => ({ DATA: x.zi, SOFERI: x.soferi, MASINA: x.masina,
     NR: r.nr, CLIENT: r.client, LOCALITATE: r.loc, TOALETE: r.toalete, FRECVENTA: r.frecv, SOSIRE: r.sosire, PLECARE: r.plecare, DURATA: r.dur, OBSERVATIE: r.obs, COD: r.cod })))), "VIZITE");
-  XLSX.writeFile(wb, `Foi_parcurs_${$("fp-luna").value || "tot"}.xlsx`);
+  XLSX.writeFile(wb, `Foi_parcurs_${(fpInterval() || {}).et || "tot"}.xlsx`);
 }
 
 // ================= MONITORIZARE RUTE =================
