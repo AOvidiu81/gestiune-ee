@@ -747,7 +747,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <div class="hd-mij"><div id="titlu-sus"></div><span id="azi-sus" title="Data de azi (calculatorul)"></span></div>
   <button id="btn-mob" class="btn sec" style="padding:5px 10px;font-size:12px" onclick="mobPC(false)" title="Înapoi la varianta de telefon">📱 Telefon</button>
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
-  <span class="ver">v6.52</span>
+  <span class="ver">v6.53</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -1742,8 +1742,8 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
 </div></div>
 
 <div class="modal" id="mod-fpv"><div class="box" style="max-width:1250px;width:96vw">
-  <h3 class="lux-cap cap-mut" id="fpv-titlu">Foaie de parcurs</h3>
-  <iframe id="fpv-frame" style="width:100%;height:72vh;border:1px solid var(--bd);border-radius:8px;background:#fff"></iframe>
+  <h3 class="lux-cap cap-mut" id="fpv-titlu">Raport zilnic</h3>
+  <div id="fpv-corp" style="max-height:70vh;overflow:auto"></div>
   <div class="row" style="justify-content:flex-end;margin-top:12px">
     <div style="flex:0"><button class="btn sec" onclick="closeModal('mod-fpv')">Închide</button></div>
     <div style="flex:0"><button class="btn" onclick="fpDescarcaPdf()">⬇ Descarcă PDF</button></div>
@@ -6976,6 +6976,28 @@ async function fpPdf(i){
         FP.vis = FP.vis.filter(v => v.session_id !== id).concat(rv.data || []); FP_VIZ[id] = rv.data || [];
         x = fpRand(rs.data);
       } }
+    fpArata(x);   // v6.52: vizualizare ca tabel în pagină; PDF-ul abia la „Descarcă PDF”
+  }catch(e){ toast("Foaie de parcurs: " + e.message, true); }
+}
+function fpArata(x){
+  const s = x.s, [a, l, z] = x.zi.split("-").map(Number);
+  const data = `${zi2(z)} ${FP_LUNI[l - 1]} ${a}, ${FP_ZILE[new Date(a, l - 1, z).getDay()]}`;
+  const lin = fpLiniiVizite(x), dr = 'style="text-align:right"';
+  const cel = (et, v) => `<div><span class="muted">${et}</span> <b>${esc(String(v))}</b></div>`;
+  $("fpv-titlu").textContent = `Raport zilnic - Euro Ecologic · ${data}${s.zona ? " · Zona " + s.zona : ""}`;
+  $("fpv-corp").innerHTML =
+    `<div style="display:grid;grid-template-columns:repeat(4,minmax(150px,1fr));gap:6px 18px;margin:0 0 12px;font-size:14px">` +
+      cel("Mașina", x.masina || "-") + cel("Km start", s.km_start ?? "-") + cel("Km stop", s.km_end ?? "-") + cel("Total km", x.km === "" ? "-" : x.km) +
+      cel("Șoferi", x.soferi || "-") + cel("Ora start", x.oraStart || "-") + cel("Ora stop", x.oraStop || "-") + cel("Total ore", x.ore || "-") +
+    `</div><div class="tw"><table><thead><tr>${["#","Client","Localitate","Nr. toalete","Frecvența","Sosire","Plecare","Durata","Observație","Cod"].map(h => `<th>${h}</th>`).join("")}</tr></thead><tbody>` +
+    (lin.length ? lin.map(r => `<tr><td>${r.nr}</td><td><b>${esc(r.client)}</b></td><td>${esc(r.loc)}</td><td ${dr}>${esc(String(r.toalete))}</td><td>${esc(r.frecv)}</td>` +
+      `<td>${esc(r.sosire)}</td><td>${esc(r.plecare)}</td><td>${esc(r.dur)}</td><td>${esc(r.obs)}</td><td>${esc(r.cod)}</td></tr>`).join("")
+      : `<tr><td colspan="10" class="muted">Nicio vizită înregistrată.</td></tr>`) +
+    `</tbody></table></div><p style="margin:10px 0 0"><b>Total vizite: ${lin.length}</b></p>`;
+  FP_VIZ_PDF = { x };
+  $("mod-fpv").classList.add("on");
+}
+async function fpFacePdf(x){
     if(!window.jspdf){
       await fpScript("https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js");
       await fpScript("https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js");
@@ -6997,19 +7019,14 @@ async function fpPdf(i){
       styles: { fontSize: 8 }, headStyles: { fillColor: [255,138,61] } });
     doc.setFontSize(9);
     doc.text(`Total vizite: ${linii.length}`, 14, (doc.lastAutoTable ? doc.lastAutoTable.finalY : 48) + 8);
-    // v6.52 (cerut de Ovidiu, 19.10): întâi vizualizare, apoi „Descarcă PDF” din fereastră
-    if(FP_VIZ_PDF.url) URL.revokeObjectURL(FP_VIZ_PDF.url);
-    FP_VIZ_PDF = { doc, s, nume: `Foaie_parcurs_${x.zi}_${fpFaraDiac(s.driver1 || "").replace(/\s+/g, "_")}.pdf`, url: URL.createObjectURL(doc.output("blob")) };
-    $("fpv-titlu").textContent = `Foaie de parcurs · ${izData(x.zi)} · ${x.soferi || "-"} · ${x.masina || "-"}`;
-    $("fpv-frame").src = FP_VIZ_PDF.url;
-    $("mod-fpv").classList.add("on");
-  }catch(e){ toast("PDF: " + e.message, true); }
+    return doc;
 }
 let FP_VIZ_PDF = {};
 async function fpDescarcaPdf(){
-  const { doc, s, nume } = FP_VIZ_PDF; if(!doc) return;
+  const x = FP_VIZ_PDF.x; if(!x) return;
   try{
-    doc.save(nume);
+    const s = x.s, doc = await fpFacePdf(x);
+    doc.save(`Foaie_parcurs_${x.zi}_${fpFaraDiac(s.driver1 || "").replace(/\s+/g, "_")}.pdf`);
     const acum = new Date().toISOString();
     const { error } = await db.from("route_sessions").update({ pdf_generat_at: acum }).eq("id", s.id);
     if(error){ // rămâne ținut minte măcar în acest browser
