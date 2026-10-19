@@ -745,7 +745,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <div class="hd-mij"><div id="titlu-sus"></div><span id="azi-sus" title="Data de azi (calculatorul)"></span></div>
   <button id="btn-mob" class="btn sec" style="padding:5px 10px;font-size:12px" onclick="mobPC(false)" title="Înapoi la varianta de telefon">📱 Telefon</button>
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
-  <span class="ver">v6.40</span>
+  <span class="ver">v6.41</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -2232,7 +2232,8 @@ const extLaLoc = (p, m) => !m.anexa_id && /^C\d+/.test(String(p.client_key || ""
 // totalul la o locație = comenzile fără anexă ale clientului (cu locațiile lor), până la comanda m inclusiv (fără ea, cu faraM)
 function extTotal(ce, key, camp, m, faraM){
   const pana = x => (x.data || "") < (m.data || "") || ((x.data || "") === (m.data || "") && x.id <= m.id);
-  return Math.max(0, (ce || []).filter(x => extCamp(x.produs) === camp && pana(x) && !(faraM && x.id === m.id))
+  // v6.41: SERVISARE nu mută bucăți (efect stoc „niciun”) — nu se adună la totalul locației
+  return Math.max(0, (ce || []).filter(x => extCamp(x.produs) === camp && x.tip_miscare !== "SERVISARE" && pana(x) && !(faraM && x.id === m.id))
     .reduce((t, x) => t + (NEG.test(x.tip_miscare || "") ? -1 : 1) * extLocuri(x).filter(l => extCheie(l.jud, l.loc, l.sat) === key).reduce((s2, l) => s2 + l.buc, 0), 0));
 }
 function ruteStil(r){
@@ -7347,6 +7348,7 @@ function anexeLocatie(a){
 // La Salvează, din formularul deschis de „→ Rute”: anexele de pe punct și, la comandă cu dată viitoare,
 // schimbarea se pune deoparte (clients.schimbare) — punctul rămâne cum e până în ziua comenzii.
 function ruteProgrameaza(rec, x){
+  if(x.cerere){ cerereProgrameaza(rec, x); return; }   // v6.41
   if(x.ids) rec.anexe_ids = x.ids;
   if(!x.deLa) return;   // comandă de azi / din urmă: schimbările programate pentru mai târziu rămân
   const s = { de_la: x.deLa };
@@ -7786,9 +7788,56 @@ function ctPunct(rec, pers, tel){
   rec.pers_resp = pers || null; rec.telefon = tel;
   return vechi + " → " + [pers, tel].filter(Boolean).join(" · ");
 }
+// ================= v6.41: SERVISARE LA CERERE FĂRĂ CONTRACT (GLS, 19.10) =================
+// Comanda SERVISARE fără anexă, cu frecvența „La Cerere”: un singur punct pe locație (cel mai vechi cod C… al clientului la
+// aceeași adresă), cu GPS-ul păstrat. Punctul stă pe INACTIV (rămâne în Puncte de rută = arhiva) și primește două schimbări
+// programate: ACTIV în ziua comenzii (ziua săptămânii + traseul comenzii), INACTIV din ziua următoare. Fără anexă, fără stoc.
+const serCerere = m => !!m && m.tip_miscare === "SERVISARE" && !m.anexa_id && /^la\s*cerere$/i.test(String(m.frecv_serv || "").trim());
+const ZI_DIN = ["DUMINICA","LUNI","MARTI","MIERCURI","JOI","VINERI","SAMBATA"];
+const ziDin = d => ZI_DIN[new Date(d + "T12:00:00").getDay()];
+async function cererePorneste(m){
+  if(!m.data){ toast("Comanda nu are dată", true); return; }
+  const azi = today(), trecut = m.data < azi;
+  if(trecut && !confirm("Comanda e din " + fmtD(m.data) + " (a trecut).\n\nPunctul se creează / se actualizează, dar nu se mai pune pe rută.\n\nContinui?")) return;
+  const { data: gasite, error } = await db.from("clients").select("*").like("client_key", "C%").limit(5000);
+  if(error){ toast(error.message, true); return; }
+  const nr = p => +((/^C(\d+)/.exec(p.client_key || "") || [])[1] || 0);
+  const g = (gasite || []).filter(p => extLaLoc(p, m)).sort((x, y) => nr(x) - nr(y))[0] || null;
+  const zi = ziDin(m.data), ziN = ZI_RUTE[zi] || "";
+  const camp = extCamp(m.produs) || "toalete", n = Math.abs(+m.buc || 0) || 1;
+  const rec = g ? Object.assign({}, g) : { client_key: "C" + m.id, client: m.client || "", jud: m.jud || "", localitate: m.loc || "", locatie: m.sat || "",
+    pers_resp: m.pers_resp || "", telefon: m.telefon || "", toalete: 0, containere: 0, garduri: 0, accesorii: null, lat: null, lon: null, cartela: false, status: "INACTIV" };
+  delete rec.schimbare;
+  rec.ziua = ziN; rec.masina = m.traseu || (g && g.masina) || ""; rec.frecventa = "La Cerere"; rec[camp] = n;
+  if(!g) rec.status = "INACTIV";
+  if(m.data === azi) rec.status = "ACTIV";
+  const ct = g ? ctPunct(rec, m.pers_resp, m.telefon) : "";
+  const nota = (g ? `Punctul <b>${esc(g.client_key)}</b> există deja la această locație (cu GPS-ul lui) — îl folosesc din nou. ` : `Punct nou <b>${esc(rec.client_key)}</b> — <b>pune coordonatele GPS</b> (o singură dată; la cererile următoare punctul se refolosește). `) +
+    (trecut ? `Comanda a trecut — punctul nu se mai pune pe rută.` :
+      `Servisare la cerere: punctul apare pe rută <b>doar ${esc(ziN)} ${fmtD(m.data)}</b>` + (rec.masina ? `, pe <b>${esc(rec.masina)}</b>` : ` — <b>alege traseul (Mașina)</b>`) +
+      `; din ${fmtD(ziUrm(m.data))} trece singur pe INACTIV și rămâne în Puncte de rută.`) +
+    ` Fără anexă, fără stoc. Verifică și apasă Salvează.` + (ct ? ` Persoana de contact pe punct: <b>${esc(ct)}</b> (ultima de la locație).` : "");
+  RUTE_COADA = [{ id: g ? g.id : null, rec, camp, orig: g, cerere: { data: m.data }, ids: [], nota }]; rUrmator();
+}
+// La Salvează: ACTIV în ziua comenzii (cu ziua + traseul din formular), INACTIV din ziua următoare — dacă acea zi nu are
+// deja altă schimbare (o cerere pe ziua următoare rămâne ACTIV). Comanda de azi: punctul e ACTIV de acum.
+function cerereProgrameaza(rec, x){
+  const d = x.cerere.data, azi = today(), urm = ziUrm(d), o = x.orig || null;
+  let l = schLista(o && o.schimbare);
+  if(d > azi){
+    l = l.filter(e => e.de_la !== d);
+    l.push({ de_la: d, status: "ACTIV", ziua: rec.ziua || null, masina: rec.masina || null });
+    // până în ziua comenzii punctul rămâne cum e (poate fi ACTIV azi pentru altă cerere)
+    if(o){ rec.status = o.status; rec.ziua = o.ziua; rec.masina = o.masina; } else rec.status = "INACTIV";
+  }
+  if(d >= azi && !l.some(e => e.de_la === urm)) l.push({ de_la: urm, status: "INACTIV" });
+  rec.schimbare = schImpacheteaza(schLista(schImpacheteaza(l)));
+}
 async function spreRute(id){
   const m = MISC.find(x => x.id === id); if(!m) return;
   if(livrExterior(m)){ toast("Comanda e livrată din depozitul " + m.depozit + " — nu se face punct de rută la tine (rămân Facturare și Raport lună)", true); if(VER && VER.f === "rt") VER.form = false; return; }
+  // v6.41 (cerut de Ovidiu, 19.10): servisare la cerere fără contract / anexă (GLS) — punctul stă pe INACTIV și e ACTIV doar în ziua comenzii
+  if(serCerere(m)){ RUTE_MID = id; await cererePorneste(m); return; }
   // v5.17: la amplasare / suplimentare cu mai multe bucăți se întreabă întâi câte locații are (o singură dată:
   // dacă există deja puncte pe locații A..-NN-.. se deschide direct tabelul; dacă există puncte simple, merge ca înainte)
   // v6.26: comanda din exterior (fără anexă) — mai multe locații: fereastra cu „+ acum” / „− acum” pe fiecare locație
