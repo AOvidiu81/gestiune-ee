@@ -728,6 +728,7 @@
     </div>
   </div>
   <div id="speedToast">⚠️ Ai depășit viteza legală</div>
+  <div id="punctNouToast" style="position:fixed;left:50%;top:12px;transform:translateX(-50%);z-index:9999;max-width:92vw;background:#1a3769;color:#fff;border:2px solid #4CAF50;border-radius:12px;padding:12px 16px;font-weight:700;font-size:15px;box-shadow:0 6px 24px rgba(0,0,0,.4);display:none" onclick="this.style.display='none'"></div>
 
   <div class="filters">
     <input type="text" id="searchInput" class="full" placeholder="Caută client, localitate, serie...">
@@ -1051,7 +1052,7 @@ let dayStart = {}; // {brand, plate, kmStart, driver1, driver2, startTime}
 let lastRouteRows = [];
 
 // --- Șofer EE: aplicatia ruleaza in fila „Rută” (../sofer/), care trimite datele zilei ---
-const EE_RUTA_VERSION = 'v31'; // aceeasi cu VERSIUNE din sw.js; Șofer EE o arata langa rotita
+const EE_RUTA_VERSION = 'v32'; // aceeasi cu VERSIUNE din sw.js; Șofer EE o arata langa rotita
 const SOFER_MODE = new URLSearchParams(location.search).get('sofer') === '1';
 let multiZile = null;   // mai multe zile bifate (ruta complementara), altfel null
 let multiTrasee = null; // mai multe trasee bifate, altfel null
@@ -2072,7 +2073,56 @@ async function loadClientsFromSupabase(){
     return false;
   }
 }
-loadClientsFromSupabase().then(ok=>{ if(ok){ populateHistorySel(); render(); } });
+loadClientsFromSupabase().then(ok=>{ if(ok){ populateHistorySel(); render(); eeLista.semn = eeSemnLista(DATA); } });
+
+// v32 (cerut de Ovidiu, 19.10): punctele puse / schimbate în GestiuneEE după pornirea rutei (ex. servisare la cerere GLS, urgențe)
+// apar singure: lista se reîncarcă la revenirea în aplicație și la fiecare 5 minute. Doar dacă s-a schimbat ceva se redesenează;
+// vizitele deja făcute rămân pe punctul lor (cheia veche se păstrează pe același cod de punct). Fără semnal: rămâne lista de acum.
+const eeLista = { semn: '', ultima: Date.now(), merge: false };
+function eeSemnLista(arr){ return JSON.stringify(arr.map(r => [r.clientKey, r.status, r.ziua, r.masina, r.client, r.localitate, r.locatie, r.toalete, r.frecventa, r.telefon, r.lat, r.lon, r.cartela])); }
+function eeInFiltru(r){
+  const ziua = ziuaSel.value, masina = masinaSel.value;
+  if(currentStatus !== 'TOATE' && r.status !== currentStatus) return false;
+  if(multiZile ? !multiZile.includes(r.ziua) : (ziua !== 'TOATE' && r.ziua !== ziua)) return false;
+  if(multiTrasee ? !multiTrasee.includes(r.masina) : (masina !== 'TOATE' && r.masina !== masina)) return false;
+  return true;
+}
+function eePunctNou(text){
+  const el = document.getElementById('punctNouToast'); if(!el) return;
+  el.textContent = text; el.style.display = 'block';
+  clearTimeout(eePunctNou._t); eePunctNou._t = setTimeout(() => { el.style.display = 'none'; }, 12000);
+}
+async function eeReincarcaLista(motiv){
+  if(!sb || eeLista.merge || !navigator.onLine) return;
+  eeLista.merge = true; eeLista.ultima = Date.now();
+  try{
+    const clientRows = await fetchAllRows('clients');
+    if(!clientRows || !clientRows.length) return;
+    const newData = clientRows.map(clientRowFromDb);
+    const semn = eeSemnLista(newData);
+    if(semn === eeLista.semn) return;   // nimic schimbat
+    const cwRows = await fetchAllRows('client_weeks');
+    const byKey = {}, byCod = {};
+    newData.forEach(r => { byKey[makeClientKey(r)] = r; if(r.clientKey) byCod[r.clientKey] = r; });
+    (cwRows || []).forEach(cw => { const r = byKey[cw.client_key] || byCod[cw.client_key]; if(r) r.weekData[String(cw.week_num)] = cw.code; });
+    const vechiInFiltru = new Set(DATA.filter(eeInFiltru).map(r => r.clientKey || r._id));
+    const vechiId = {}; DATA.forEach(r => { if(r.clientKey && visitLog[visitKey(r)]) vechiId[r.clientKey] = r._id; });
+    assignIds(newData);
+    newData.forEach(r => { if(r.clientKey && vechiId[r.clientKey]) r._id = vechiId[r.clientKey]; });   // vizita rămâne pe punct
+    const noi = newData.filter(r => eeInFiltru(r) && !vechiInFiltru.has(r.clientKey || r._id));
+    const y = window.scrollY;
+    DATA.length = 0; DATA.push(...newData);
+    rebuildDataById();
+    eeLista.semn = semn;
+    render();
+    window.scrollTo(0, y);
+    if(noi.length) eePunctNou('📍 ' + (noi.length === 1 ? 'Punct nou pe rută: ' + noi[0].client + (noi[0].localitate ? ', ' + noi[0].localitate : '')
+      : noi.length + ' puncte noi pe rută: ' + noi.map(r => r.client).join(', ')));
+  }catch(err){ console.warn('Reîncărcarea listei (' + motiv + ') a eșuat:', err); }
+  finally{ eeLista.merge = false; }
+}
+document.addEventListener('visibilitychange', () => { if(document.visibilityState === 'visible' && Date.now() - eeLista.ultima > 60000) eeReincarcaLista('revenire'); });
+setInterval(() => { if(document.visibilityState === 'visible') eeReincarcaLista('5 min'); }, 5 * 60000);
 
 excelImportToggle.addEventListener('click', ()=>{
   excelImportBox.style.display = excelImportBox.style.display === 'block' ? 'none' : 'block';
