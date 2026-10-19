@@ -747,7 +747,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <div class="hd-mij"><div id="titlu-sus"></div><span id="azi-sus" title="Data de azi (calculatorul)"></span></div>
   <button id="btn-mob" class="btn sec" style="padding:5px 10px;font-size:12px" onclick="mobPC(false)" title="Înapoi la varianta de telefon">📱 Telefon</button>
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
-  <span class="ver">v6.50</span>
+  <span class="ver">v6.51</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -1925,7 +1925,7 @@ document.querySelectorAll("nav button").forEach(b=>b.onclick=()=>{
   if(b.dataset.p==="pv"){ pvMod(b.dataset.v || "pv"); loadPV(); }
   if(b.dataset.p==="raportrute"){ if(!RR_CERUT) RR_SID = null; loadRR(true); }   // v6.34: din meniu = toate rutele   // v5.18: la fiecare deschidere, datele proaspete din bază
   if(b.dataset.p==="inceput") loadIZ();
-  if(b.dataset.p==="foi") loadFP();
+  if(b.dataset.p==="foi") loadFP(true);   // v6.51: mereu proaspăt (rutele se finalizează între timp)
   try{ history.replaceState(null,"","#"+(b.dataset.h||b.dataset.p)); }catch(e){}
 });
 
@@ -6955,8 +6955,18 @@ function fpLiniiVizite(x){
 }
 function fpScript(src){ return new Promise((ok, er) => { const s = document.createElement("script"); s.src = src; s.onload = ok; s.onerror = () => er(new Error("biblioteca PDF nu s-a încărcat (verifică internetul)")); document.head.appendChild(s); }); }
 async function fpPdf(i){
-  const x = FP_ROWS[i]; if(!x) return;
+  let x = FP_ROWS[i]; if(!x) return;
   try{
+    // v6.51: ruta și vizitele citite proaspăt din bază înainte de PDF (altfel, cu pagina deschisă de dinainte de finalizare,
+    // ieșea „Km Stop -” / „Ora Stop -”)
+    { const id = x.s.id;
+      const [rs, rv] = await Promise.all([db.from("route_sessions").select("*").eq("id", id).maybeSingle(), db.from("visit_logs").select("*").eq("session_id", id)]);
+      if(rs.error) throw rs.error; if(rv.error) throw rv.error;
+      if(rs.data){
+        const k = FP.ses.findIndex(s => s.id === id); if(k >= 0) FP.ses[k] = rs.data;
+        FP.vis = FP.vis.filter(v => v.session_id !== id).concat(rv.data || []); FP_VIZ[id] = rv.data || [];
+        x = fpRand(rs.data);
+      } }
     if(!window.jspdf){
       await fpScript("https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js");
       await fpScript("https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js");
