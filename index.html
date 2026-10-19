@@ -1004,6 +1004,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
       <div style="min-width:160px"><label>Caută</label><input id="fp-caut" placeholder="zonă, șofer, mașină…" oninput="fpAfiseaza()"></div>
       <div style="flex:0"><label>&nbsp;</label><button class="btn sec" onclick="loadFP(true)">Reîncarcă</button></div>
       <div style="flex:0"><label>&nbsp;</label><button class="btn sec" onclick="exportFP()">Export Excel</button></div>
+      <div class="fp-doar-foi" style="flex:0"><label>&nbsp;</label><button class="btn sec" id="fp-sterge-b" style="border-color:#C0392B;color:#C0392B;display:none" onclick="fpStergeBifate()">🗑 Șterge bifate</button></div>
       <div class="fp-doar-dep" style="flex:0"><label>&nbsp;</label><button class="btn sec" onclick="pdDeschide(null)">+ Prezență manuală</button></div>
     </div>
     <div class="tw fp-doar-foi" style="margin-top:10px"><table id="fp-tbl"></table></div>
@@ -6714,7 +6715,7 @@ function fpPas(n){
 // v5.36: o zi deschisă în Șofer EE fără nicio rută (același șofer 1, aceeași zi) = rând „fără rută”
 function fpFaraRuta(){
   return (FP.iz || []).filter(r => !FP.ses.some(s => s.driver1 === r.sofer1 && (s.session_date === r.zi || (s.created_at && izZiLocala(s.created_at) === r.zi))))
-    .map(r => ({ fara: true, zi: r.zi, viz: [], la: 0, om: 0, soferi: [r.sofer1, r.sofer2].filter(Boolean).join(" & "),
+    .map(r => ({ fara: true, izId: r.id, zi: r.zi, viz: [], la: 0, om: 0, soferi: [r.sofer1, r.sofer2].filter(Boolean).join(" & "),
       masina: [r.masina_marca, r.masina_numar].filter(Boolean).join(" "),
       traseu: [String(r.trasee || "").split("+").filter(Boolean).join(", "), String(r.zile || "").split("+").filter(Boolean).join(", ")].filter(Boolean).join(" · "),
       km: "", oraStart: "", oraStop: "", ore: "", inceput: izOra(r.ora_start),
@@ -6728,16 +6729,56 @@ function fpAfiseaza(){
     .filter(x => fpIn(iv, x.zi) && (!sf || x.s.driver1 === sf || x.s.driver2 === sf) && (!ms || x.s.vehicle_plate === ms)
       && (!st || x.s.status === st) && (!q || [x.soferi, x.masina, x.s.zona, x.traseu].join(" ").toLowerCase().includes(q)))
     .sort((a, b) => String(b.s.created_at).localeCompare(String(a.s.created_at)));
-  const cap = ["Data","Zona","Traseu · zile","Șoferi","Mașina","Început zi","Km start","Km stop","Total km","Ora start","Ora stop","Total ore","Vizite","Stare",""];
+  const cap = ["Data","Zona","Traseu · zile","Șoferi","Mașina","Început zi","Km start","Km stop","Total km","Ora start","Ora stop","Total ore","Vizite","Stare","",""];
   const dr = 'style="text-align:right"';
-  $("fp-tbl").innerHTML = "<thead><tr>" + cap.map(c => `<th>${c}</th>`).join("") + "</tr></thead><tbody>" +
-    (FP_ROWS.length ? FP_ROWS.map((x, i) => `<tr><td style="white-space:nowrap">${izData(x.zi)}</td><td>${esc(x.s.zona || "")}</td><td>${esc(x.traseu)}</td>` +
+  const vizibile = new Set(FP_ROWS.map(fpCheie)); [...FP_BIF].forEach(k => { if(!vizibile.has(k)) FP_BIF.delete(k); });
+  const toate = FP_ROWS.length && FP_ROWS.every(x => FP_BIF.has(fpCheie(x)));
+  $("fp-tbl").innerHTML = `<thead><tr><th><input type="checkbox" title="Bifează toate rândurile afișate" ${toate ? "checked" : ""} onchange="fpBifaToate(this.checked)"></th>` + cap.map(c => `<th>${c}</th>`).join("") + "</tr></thead><tbody>" +
+    (FP_ROWS.length ? FP_ROWS.map((x, i) => `<tr><td><input type="checkbox" ${FP_BIF.has(fpCheie(x)) ? "checked" : ""} onchange="fpBifa(${i}, this.checked)"></td><td style="white-space:nowrap">${izData(x.zi)}</td><td>${esc(x.s.zona || "")}</td><td>${esc(x.traseu)}</td>` +
       `<td>${esc(x.soferi)}</td><td>${esc(x.masina)}</td><td>${x.inceput || ""}</td><td ${dr}>${x.s.km_start ?? ""}</td><td ${dr}>${x.s.km_end ?? ""}</td><td ${dr}><b>${x.km}</b></td>` +
       `<td>${x.oraStart}</td><td>${x.oraStop}</td><td>${x.ore}</td>` +
       `<td><b>${x.viz.length}</b>${x.la || x.om ? ` <span class="muted">(${[x.la ? "lipsă acces " + x.la : "", x.om ? "omis " + x.om : ""].filter(Boolean).join(", ")})</span>` : ""}</td>` +
-      `<td>${x.fara ? '<span class="muted">fără rută</span>' : x.s.status === "finalizata" ? "finalizată" : "în lucru"}</td><td>${x.fara ? "" : fpButonPdf(x, i)}</td></tr>`).join("")
-      : `<tr><td colspan="${cap.length}" class="muted">Nicio rută pentru filtrele alese.</td></tr>`) + "</tbody>";
+      `<td>${x.fara ? '<span class="muted">fără rută</span>' : x.s.status === "finalizata" ? "finalizată" : "în lucru"}</td><td>${x.fara ? "" : fpButonPdf(x, i)}</td>` +
+      `<td><button class="btn sm sec" style="border-color:#C0392B;color:#C0392B" title="Șterge acest rând (cu confirmare)" onclick="fpSterge([${i}])">🗑</button></td></tr>`).join("")
+      : `<tr><td colspan="${cap.length + 1}" class="muted">Nicio rută pentru filtrele alese.</td></tr>`) + "</tbody>";
+  fpStergeBtn();
   pdAfiseaza();
+}
+// v6.49: ștergerea foilor de parcurs (rute de probă / greșite), cu confirmare. Ruta = route_sessions + vizitele ei (visit_logs);
+// rândul „fără rută” = ziua deschisă în Șofer EE (inceput_zi). Punctele de rută, comenzile, anexele și PV-urile NU se ating.
+let FP_BIF = new Set();
+const fpCheie = x => x.fara ? "iz:" + x.izId : "s:" + x.s.id;
+function fpStergeBtn(){ const b = $("fp-sterge-b"); if(!b) return; b.style.display = FP_BIF.size ? "" : "none"; b.textContent = `🗑 Șterge bifate (${FP_BIF.size})`; }
+function fpBifa(i, da){ const x = FP_ROWS[i]; if(!x) return; da ? FP_BIF.add(fpCheie(x)) : FP_BIF.delete(fpCheie(x)); fpAfiseaza(); }
+function fpBifaToate(da){ FP_ROWS.forEach(x => da ? FP_BIF.add(fpCheie(x)) : FP_BIF.delete(fpCheie(x))); fpAfiseaza(); }
+function fpStergeBifate(){ const idx = FP_ROWS.map((x, i) => FP_BIF.has(fpCheie(x)) ? i : -1).filter(i => i >= 0); if(idx.length) fpSterge(idx); }
+async function fpSterge(idx){
+  const rows = idx.map(i => FP_ROWS[i]).filter(Boolean); if(!rows.length) return;
+  const rute = rows.filter(x => !x.fara), zile = rows.filter(x => x.fara);
+  const nViz = rute.reduce((s, x) => s + (FP_VIZ[x.s.id] || []).length, 0);
+  const lista = rows.slice(0, 12).map(x => `• ${izData(x.zi)} · ${x.soferi || "-"} · ${x.masina || "-"}${x.fara ? " · fără rută" : ` · ${(FP_VIZ[x.s.id] || []).length} vizite`}`).join("\n") + (rows.length > 12 ? `\n… și încă ${rows.length - 12}` : "");
+  if(!confirm(`Ștergi definitiv ${rows.length === 1 ? "acest rând" : rows.length + " rânduri"} din Foi de parcurs?\n\n${lista}\n\n` +
+      (rute.length ? `Se șterg ${rute.length} rute și ${nViz} vizite ale lor (dispar și din Verificare rute și Monitorizare rute).\n` : "") +
+      (zile.length ? `Se șterg ${zile.length} zile „fără rută” (începutul zilei din Șofer EE).\n` : "") +
+      `Punctele de rută, comenzile, anexele și PV-urile NU se ating.\nNu se poate anula (doar din copia de siguranță).`)) return;
+  const active = rute.filter(x => x.s.status === "activa");
+  if(active.length && !confirm(`ATENȚIE: ${active.length} din ele ${active.length === 1 ? "este rută ÎN LUCRU" : "sunt rute ÎN LUCRU"} (${active.map(x => x.soferi).join("; ")}).\nDacă șoferul o folosește acum pe telefon, vizitele lui de azi nu se mai salvează. Ștergi oricum?`)) return;
+  try{
+    let nR = 0, nZ = 0;
+    const ids = rute.map(x => x.s.id);
+    for(let k = 0; k < ids.length; k += 50){
+      const bucata = ids.slice(k, k + 50);
+      const v = await db.from("visit_logs").delete().in("session_id", bucata); if(v.error) throw v.error;
+      const r = await db.from("route_sessions").delete().in("id", bucata).select("id"); if(r.error) throw r.error;
+      nR += (r.data || []).length;
+    }
+    const izIds = zile.map(x => x.izId).filter(v => v != null);
+    if(izIds.length){ const z = await db.from("inceput_zi").delete().in("id", izIds).select("id"); if(z.error) throw z.error; nZ = (z.data || []).length; }
+    FP_BIF.clear();
+    const lipsa = (rute.length - nR) + (zile.length - nZ);
+    toast(`Șterse: ${nR} rute${nZ ? `, ${nZ} zile fără rută` : ""}` + (lipsa ? ` — ${lipsa} nu s-au putut șterge (drepturi)` : ""), !!lipsa);
+    await loadFP(true);
+  }catch(e){ toast("Ștergere: " + e.message, true); }
 }
 function fpLiniiVizite(x){
   return x.viz.map((v, i) => {
