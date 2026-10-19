@@ -747,7 +747,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <div class="hd-mij"><div id="titlu-sus"></div><span id="azi-sus" title="Data de azi (calculatorul)"></span></div>
   <button id="btn-mob" class="btn sec" style="padding:5px 10px;font-size:12px" onclick="mobPC(false)" title="Înapoi la varianta de telefon">📱 Telefon</button>
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
-  <span class="ver">v6.51</span>
+  <span class="ver">v6.52</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -1738,6 +1738,15 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
     <div style="flex:1"></div>
     <div style="flex:0"><button class="btn sec" onclick="cmdInchide()">Închide</button></div>
     <div style="flex:0"><button class="btn" onclick="copiazaComanda()">Copiază textul</button></div>
+  </div>
+</div></div>
+
+<div class="modal" id="mod-fpv"><div class="box" style="max-width:1250px;width:96vw">
+  <h3 class="lux-cap cap-mut" id="fpv-titlu">Foaie de parcurs</h3>
+  <iframe id="fpv-frame" style="width:100%;height:72vh;border:1px solid var(--bd);border-radius:8px;background:#fff"></iframe>
+  <div class="row" style="justify-content:flex-end;margin-top:12px">
+    <div style="flex:0"><button class="btn sec" onclick="closeModal('mod-fpv')">Închide</button></div>
+    <div style="flex:0"><button class="btn" onclick="fpDescarcaPdf()">⬇ Descarcă PDF</button></div>
   </div>
 </div></div>
 
@@ -6765,7 +6774,7 @@ function fpButonPdf(x, i){
   const cand = x.s.pdf_generat_at || FP_PDF[x.s.id];
   const stil = cand ? "background:rgba(46,139,60,.28);border:1px solid #2E8B3C" : "background:rgba(217,119,6,.28);border:1px solid #D97706";
   const tit = cand ? "PDF generat la " + dRO(new Date(cand)) + " " + izOra(cand) + " — apasă ca să îl faci din nou" : "PDF negenerat încă";
-  return `<button class="btn sec" style="padding:3px 10px;white-space:nowrap;${stil}" title="${tit}" onclick="fpPdf(${i})">${cand ? "✓ PDF" : "PDF"}</button>`;
+  return `<button class="btn sec" style="padding:3px 10px;white-space:nowrap;${stil}" title="${tit} · se deschide întâi vizualizarea, apoi Descarcă PDF" onclick="fpPdf(${i})">${cand ? "✓ 👁 PDF" : "👁 PDF"}</button>`;
 }
 const fpOre = m => Math.floor(m / 60) + ":" + zi2(m % 60);
 function fpRand(s){
@@ -6988,7 +6997,19 @@ async function fpPdf(i){
       styles: { fontSize: 8 }, headStyles: { fillColor: [255,138,61] } });
     doc.setFontSize(9);
     doc.text(`Total vizite: ${linii.length}`, 14, (doc.lastAutoTable ? doc.lastAutoTable.finalY : 48) + 8);
-    doc.save(`Foaie_parcurs_${x.zi}_${fpFaraDiac(s.driver1 || "").replace(/\s+/g, "_")}.pdf`);
+    // v6.52 (cerut de Ovidiu, 19.10): întâi vizualizare, apoi „Descarcă PDF” din fereastră
+    if(FP_VIZ_PDF.url) URL.revokeObjectURL(FP_VIZ_PDF.url);
+    FP_VIZ_PDF = { doc, s, nume: `Foaie_parcurs_${x.zi}_${fpFaraDiac(s.driver1 || "").replace(/\s+/g, "_")}.pdf`, url: URL.createObjectURL(doc.output("blob")) };
+    $("fpv-titlu").textContent = `Foaie de parcurs · ${izData(x.zi)} · ${x.soferi || "-"} · ${x.masina || "-"}`;
+    $("fpv-frame").src = FP_VIZ_PDF.url;
+    $("mod-fpv").classList.add("on");
+  }catch(e){ toast("PDF: " + e.message, true); }
+}
+let FP_VIZ_PDF = {};
+async function fpDescarcaPdf(){
+  const { doc, s, nume } = FP_VIZ_PDF; if(!doc) return;
+  try{
+    doc.save(nume);
     const acum = new Date().toISOString();
     const { error } = await db.from("route_sessions").update({ pdf_generat_at: acum }).eq("id", s.id);
     if(error){ // rămâne ținut minte măcar în acest browser
