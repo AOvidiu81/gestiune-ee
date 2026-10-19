@@ -26,7 +26,7 @@ import { openHistoryScreen } from '../pv/js/screens-history.js';
 import { buildComenziActive } from '../pv/js/screens-comenzi.js';
 import { openSettingsScreen } from '../pv/js/screens-setup.js';
 
-export const SOFER_VERSION = 's53';
+export const SOFER_VERSION = 's54';
 
 const KEY_ZI = 'ee-sofer-zi'; // ziua deschisa: { zi, coleg, carId, km, trasee, zile, zona, ordine, ruta }
 const KEY_ULTIMA = 'ee-sofer-ultima'; // ultimele alegeri (masina, traseu, zona) — precompletare
@@ -290,7 +290,7 @@ function ecranDateLipsa(lipsa) {
 
 // Pagina „Ziua de azi”. `initial` = valorile de pornire; `gata(z)` primeste ziua completata;
 // `inapoi` (optional) = renuntare, cand pagina e deschisa din aplicatie.
-function construiesteZiua({ initial, liste, gata, inapoi, cereColeg }) {
+function construiesteZiua({ initial, liste, gata, inapoi, cereColeg, nota }) {
   const z = { coleg: '', carId: null, km: '', trasee: [], zile: [], zona: '', ordine: 'depot', ruta: false, ...initial };
   const screen = el('div', { class: 'screen' });
   if (inapoi) {
@@ -308,6 +308,7 @@ function construiesteZiua({ initial, liste, gata, inapoi, cereColeg }) {
 
   const masina = campMasina('Mașina *', z.carId);
   const km = campNumar('Km bord *', z.km);
+  if (z.kmBlocat) { km.input.readOnly = true; km.input.style.opacity = '0.75'; }   // s54: ruta continuă pe alt telefon — km de dimineață
 
   function bife(valori, alese) {
     const rand = el('div', { class: 'sofer-bife' });
@@ -358,6 +359,7 @@ function construiesteZiua({ initial, liste, gata, inapoi, cereColeg }) {
 
   const camp = (t, nod, nota) => el('div', { class: 'field' }, [el('label', { class: 'field-label' }, [t]), nod, nota ? el('div', { class: 'sofer-nota' }, [nota]) : null]);
   const card = sectionCard(`Ziua de azi · ${dataScurta()}`, [
+    nota ? el('div', { style: 'background:rgba(46,139,60,.18);border:1px solid #2E8B3C;border-radius:10px;padding:10px 12px;margin-bottom:12px;font-weight:600;line-height:1.45' }, [nota]) : null,
     echipa,
     masina.nod,
     km.nod,
@@ -442,10 +444,39 @@ async function trimiteInceput() {
 }
 
 // Dimineata: „Alege un coleg” peste pagina „Ziua de azi”
+// s54 (cerut de Ovidiu, 19.10): telefon stricat / pierdut la prânz — același șofer 1 intră pe alt telefon în aceeași zi.
+// Dacă are o rută pornită azi (route_sessions activă, driver1 = el), „Ziua de azi” vine completată din ea: colegul, mașina,
+// km de dimineață (blocați — altfel totalul de km al zilei ar ieși greșit), traseul, ziua, zona, ordinea. „Generează ruta”
+// continuă aceeași rută (aplicația de rute o găsește după șofer 1 + zi), cu vizitele deja făcute.
+async function rutaPornitaAzi() {
+  try {
+    const sb = await getSupabase();
+    const ziRuta = new Date().toISOString().slice(0, 10);   // aceeași zi ca în aplicația de rute (findOrCreateSession)
+    const { data, error } = await sb.from('route_sessions').select('*')
+      .eq('session_date', ziRuta).eq('driver1', stare.driver?.name || '').eq('status', 'activa')
+      .order('created_at', { ascending: false }).limit(1);
+    if (error || !data || !data[0]) return null;
+    const s = data[0];
+    const car = stare.cars.find((c) => c.numar === s.vehicle_plate);
+    const lista = (v) => String(v || '').split('+').map((x) => x.trim()).filter((x) => x && x !== 'TOATE');
+    const zile = lista(s.last_ziua);
+    const ora = s.created_at ? new Date(s.created_at).toLocaleTimeString('ro-RO', { hour: '2-digit', minute: '2-digit' }) : '';
+    return {
+      initial: {
+        coleg: s.driver2 || '', carId: car ? car.id : null, km: s.km_start ?? '', kmBlocat: s.km_start != null && !!car,
+        trasee: lista(s.last_masina), zile: zile.length ? zile : [ZI_DIN_DATA[new Date().getDay()]],
+        zona: s.zona || '', ordine: s.last_sort_mode ?? 'depot', ruta: false,
+      },
+      nota: `🔁 Ai o rută pornită azi la ${ora}${s.vehicle_plate ? ' cu ' + s.vehicle_plate : ''}${s.driver2 ? ' (coleg: ' + s.driver2 + ')' : ''}. ` +
+        'Datele sunt completate de pe ea — apasă „Generează ruta” și continui pe aceeași rută, cu vizitele deja făcute.',
+    };
+  } catch (e) { return null; }
+}
 async function deschideZiua() {
   const liste = await incarcaListe();
+  const cont = await rutaPornitaAzi();
   const z = await new Promise((resolve) => {
-    replaceRoot(() => construiesteZiua({ initial: valoriDePornire(), liste, gata: resolve, cereColeg: true }));
+    replaceRoot(() => construiesteZiua({ initial: cont ? cont.initial : valoriDePornire(), liste, gata: resolve, cereColeg: !cont, nota: cont ? cont.nota : null }));
   });
   salveazaZiua(z);
   if (z.ruta) inchideLaRuta([stare.driver.name, z.coleg]);
