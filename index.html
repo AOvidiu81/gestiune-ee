@@ -754,7 +754,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <div class="hd-mij"><div id="titlu-sus"></div><span id="azi-sus" title="Data de azi (calculatorul)"></span></div>
   <button id="btn-mob" class="btn sec" style="padding:5px 10px;font-size:12px" onclick="mobPC(false)" title="Înapoi la varianta de telefon">📱 Telefon</button>
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
-  <span class="ver">v6.54</span>
+  <span class="ver">v6.55</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -9778,6 +9778,20 @@ porneste();
 (function(){
   const pune = () => { const h = document.querySelector("header"); if(h) document.documentElement.style.setProperty("--hdr", h.offsetHeight + "px"); };
   pune(); window.addEventListener("resize", pune); window.addEventListener("load", pune);
+  // v6.55: înălțimea paginii Comenzi măsurată exact, ca să nu mai apară a doua bară (a ferestrei)
+  const potriveste = () => {
+    const pg = document.getElementById("p-miscari"); if(!pg) return;
+    if(!pg.classList.contains("on") || window.innerWidth < 900){ pg.style.height = ""; return; }
+    const sus = pg.getBoundingClientRect().top + window.scrollY;
+    let h = Math.max(320, Math.floor(window.innerHeight - sus - 14));
+    pg.style.height = h + "px";
+    const peste = document.documentElement.scrollHeight - window.innerHeight;
+    if(peste > 0) pg.style.height = Math.max(320, h - peste) + "px";
+  };
+  window.addEventListener("resize", () => { pune(); potriveste(); }); window.addEventListener("load", potriveste);
+  const pg = document.getElementById("p-miscari");
+  if(pg) new MutationObserver(() => setTimeout(potriveste, 0)).observe(pg, { attributes: true, attributeFilter: ["class"] });
+  setTimeout(potriveste, 300);
 })();
 </script>
 </body>
