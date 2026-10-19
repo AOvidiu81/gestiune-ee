@@ -218,6 +218,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   .fs-sel.ACTIV{background:var(--card2,#fff);border-color:var(--bd);color:var(--tx)}
   .fs-sel.FACTURAT{background:rgba(63,166,107,.14);border-color:rgba(63,166,107,.45);color:#3fa66b}
   .fs-sel.INACTIV{background:rgba(107,114,128,.14);border-color:rgba(107,114,128,.4);color:var(--mut)}
+  .fs-sel.FACTURA{background:rgba(59,130,246,.12);border-color:rgba(59,130,246,.45);color:#3b82f6}   /* v6.47: avans / proformă */
   .fs-sel.NU{background:rgba(217,83,79,.12);border-color:rgba(217,83,79,.4);color:#d9534f}
   .fs-sel option{background:var(--card,#fff);color:var(--tx)}
   .cx-w{position:relative;display:block} .cx-w>input{padding-right:30px}   /* v5.98: ✕ în căsuțele de căutare */
@@ -745,7 +746,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <div class="hd-mij"><div id="titlu-sus"></div><span id="azi-sus" title="Data de azi (calculatorul)"></span></div>
   <button id="btn-mob" class="btn sec" style="padding:5px 10px;font-size:12px" onclick="mobPC(false)" title="Înapoi la varianta de telefon">📱 Telefon</button>
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
-  <span class="ver">v6.46</span>
+  <span class="ver">v6.47</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -2286,6 +2287,9 @@ function fqSterge(){ $("f-q").value=""; fqX(); clearTimeout(MISC_TQ); loadMiscar
 const DATA_STIL = 1;   // v5.39: ales de Ovidiu (12.10) — „1 pastilă”; butoanele de probă scoase
 // v6.33 (cerut de Ovidiu, 17.10): DAUNA / FURT — produsul iese din chirie, dar nu se întoarce în depozit (ca o reducere fără PV)
 const TIP_PIERD = /^(DAUNA|FURT)$/;
+// v6.47 (cerut de Ovidiu, 19.10): STARE LUNA — și FACTURA AVANS / FACTURA PROFORMA (păstrează valoarea, intră la „Gata de trimis”)
+const FACT_STARI = ["ACTIV","FACTURAT","FACTURA AVANS","FACTURA PROFORMA","INACTIV","NU FACTURAM"];
+const FACT_VAL = st => ["ACTIV","FACTURAT","FACTURA AVANS","FACTURA PROFORMA"].includes(st);
 let R_SERV = new Map();   // v6.44: rândurile de servisare fără anexă din Facturare (index rând → id comandă)
 const tipLit = t => /AMPLASARE|EVENIMENT-A|SUPLIMENTARE/.test(t)?"A":/RIDICARE|EVENIMENT-R|REDUCERE|DAUNA|FURT/.test(t)?"R":/SERVISARE/.test(t)?"S":/Transfer|VANZARE/.test(t)?"T":"X";
 const tipTxt = t => `<span class="tc tc-${tipLit(t)}">${esc(t)}</span>`;
@@ -4740,7 +4744,7 @@ async function raportFacturare(){
   R_RANDURI = r.map(x => {
     const cant = x.cant, pret = +x.a.pret || 0;
     const st = FS[x.a.id] || "ACTIV";
-    const fara = (st === "ACTIV" || st === "FACTURAT") ? Math.round(x.zile * pret * cant * 100) / 100 : 0;
+    const fara = FACT_VAL(st) ? Math.round(x.zile * pret * cant * 100) / 100 : 0;
     return [ st, x.c.nr_ctr || "", dRO(dtz(x.c.data_emitere)),
              ctrExp(x.c) ? dRO(dtz(ctrExp(x.c))) : ctrExpText(x.c),
              x.k.nume || "", x.k.id_tip || "", x.k.atr || "", x.k.cui || "", x.a.anexa || "",
@@ -4779,7 +4783,7 @@ async function raportFacturare(){
       if(fcS && !((k.nume || m.client || "").toLowerCase().includes(fcS))) return;
       if(fjS && m.jud !== fjS) return;
       const stS = m.fact_stare || (String(m.fac || "").toUpperCase() === "V" ? "FACTURAT" : "ACTIV");   // v6.46
-      const cant = Math.abs(+m.buc || 0) || 1, pret = +m.desp_pret || 0, fara = (stS === "ACTIV" || stS === "FACTURAT") ? Math.round(cant * pret * 100) / 100 : 0;
+      const cant = Math.abs(+m.buc || 0) || 1, pret = +m.desp_pret || 0, fara = FACT_VAL(stS) ? Math.round(cant * pret * 100) / 100 : 0;
       const cda = ["CDA", m.cmd_nr ? "NR " + m.cmd_nr : "", m.cmd_data ? "DIN " + fmtD(m.cmd_data) : ""].filter(Boolean).join(" ");
       R_SERV.set(R_RANDURI.length, m.id);
       R_RANDURI.push([ stS, "", "", "",
@@ -4797,20 +4801,21 @@ async function raportFacturare(){
     Object.keys(pe).sort().map(m => `<div>Fără TVA (${esc(m)})<b>${bani(pe[m][0])}</b></div><div>Cu TVA (${esc(m)})<b>${bani(pe[m][1])}</b></div>`).join("");
   const nDep = R_AVERT.filter(v => v.anx || v.ctr).length;
   if(nDep) $("r-kpi").innerHTML += `<div class="kpi-amb">Termen depășit<b>${nDep}</b></div>`;
-  const deFact = R_RANDURI.filter(f => f[0] === "ACTIV" || f[0] === "FACTURAT").length;
+  const deFact = R_RANDURI.filter(f => FACT_VAL(f[0])).length;
   const fct = R_RANDURI.filter(f => f[0] === "FACTURAT").length;
   if(deFact) $("r-kpi").innerHTML += `<div>Facturate<b>${fct} din ${deFact}</b></div>`;
   $("r-nota").textContent = "Zilele se numără de la data amplasării de pe anexă. Când o locație are suplimentări / reduceri, fiecare anexă (ex. ANEXA NR 1, 1-S1, 1-R1) are rândul ei, cu totalul de la client și perioada ei: de la data anexei până în ziua dinaintea anexei următoare. Ziua reducerii se facturează încă la cantitatea veche, deci anexa de reducere începe de a doua zi. Anexele cu statusul RIDICARE se facturează în luna ridicării până în ziua ridicării (data ridicării de pe anexă); fără dată de ridicare se trec cu 0 zile. Dacă nu vrei să facturezi acele câteva zile, alege NU FACTURAM la STARE LUNA. La anexele bifate „La facturare: un singur rând” (ex. Primăria), produsele cu același preț și aceeași perioadă se adună într-un rând. " +
     "Contractele trecute de termen sunt marcate cu ⚠ (act adițional sau trecere pe nedeterminat). " +
-    "STARE LUNA se alege pe fiecare rând, doar pentru luna aceasta: FACTURAT păstrează valoarea și marchează factura făcută; INACTIV și NU FACTURAM trec rândul cu valoare 0.";
+    "STARE LUNA se alege pe fiecare rând, doar pentru luna aceasta: FACTURAT păstrează valoarea și marchează factura făcută; FACTURA AVANS / FACTURA PROFORMA păstrează valoarea și apar la „Gata de trimis” cu documentul cerut; INACTIV și NU FACTURAM trec rândul cu valoare 0.";
   if(R_MOD === "gata"){
     const idx = [1, 4, 5, 6, 7, 8, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 22, 23, 25, 26, 27];
-    R_ROSU = R_ROSU.filter((v, j) => R_RANDURI[j][0] === "ACTIV" || R_RANDURI[j][0] === "FACTURAT");
-    R_RANDURI = R_RANDURI.filter(f => f[0] === "ACTIV" || f[0] === "FACTURAT").map(f => idx.map(i => f[i]));
-    R_ANTET = ["NR CTR","NUME CLIENT","ID","ATR.","NUMAR","ANEXA NR","JUD.","LOCALITATE","SAT / LOCATIE / STRADA","FORMA","PRODUS","TIP","UM","CANT.","PRET","MONEDA","INCEPUT LUNA","SFARSIT LUNA","VALOARE FARA TVA","VALOARE CU TVA","SCADENT"];
+    R_ROSU = R_ROSU.filter((v, j) => FACT_VAL(R_RANDURI[j][0]));
+    // v6.47: ultima coloană „DOCUMENT” = FACTURA AVANS / FACTURA PROFORMA (gol la factura obișnuită)
+    R_RANDURI = R_RANDURI.filter(f => FACT_VAL(f[0])).map(f => idx.map(i => f[i]).concat([/^FACTURA /.test(f[0]) ? f[0] : ""]));
+    R_ANTET = ["NR CTR","NUME CLIENT","ID","ATR.","NUMAR","ANEXA NR","JUD.","LOCALITATE","SAT / LOCATIE / STRADA","FORMA","PRODUS","TIP","UM","CANT.","PRET","MONEDA","INCEPUT LUNA","SFARSIT LUNA","VALOARE FARA TVA","VALOARE CU TVA","SCADENT","DOCUMENT"];
     R_NUM = new Set([13, 14, 18, 19]); R_FMT2 = new Set([14, 18, 19]);
     R_EXTRA_T = ""; R_EXTRA = []; R_AID = []; R_AVERT = []; R_NUME = "Facturare_de_trimis";
-    $("r-nota").textContent = "Varianta de trimis la sediu: doar rândurile de facturat (STARE LUNA = ACTIV sau FACTURAT). Schimbările se fac pe „În lucru”. Export Excel scoate exact acest tabel.";
+    $("r-nota").textContent = "Varianta de trimis la sediu: doar rândurile de facturat (STARE LUNA = ACTIV, FACTURAT, FACTURA AVANS sau FACTURA PROFORMA; ultima coloană spune dacă e avans / proformă). Schimbările se fac pe „În lucru”. Export Excel scoate exact acest tabel.";
   }
   deseneazaRaport();
 }
@@ -5002,7 +5007,7 @@ function deseneazaRaport(){
     (R_EXTRA_T ? `<th class="noprint" title="Se bifează de mână: - → V → L → X">${esc(R_EXTRA_T)}</th>` : "") + "</tr></thead><tbody>" +
     R_RANDURI.map((f, j) => {
       const fact = R_NUME === "Facturare" , av = fact ? (R_AVERT[j] || {}) : {};
-      const cls = [fact && !["ACTIV","FACTURAT"].includes(f[0]) ? "fs-off" : "", (av.anx || av.ctr) ? "r-depasit" : ""].filter(Boolean).join(" ");
+      const cls = [fact && !FACT_VAL(f[0]) ? "fs-off" : "", (av.anx || av.ctr) ? "r-depasit" : ""].filter(Boolean).join(" ");
       const rr = R_RIDS[j];
       const vr = VER && ((VER.f === "fac" && fact && (VER.anexe.includes(R_AID[j]) || R_SERV.get(j) === VER.id)) ||
                          (VER.f === "rpt" && R_NUME === "Raport_luna" && rr && (rr.anx.some(id => VER.anexe.includes(id)) || rr.mis.includes(VER.id))));
@@ -5011,11 +5016,11 @@ function deseneazaRaport(){
         let t = esc(v === null || v === undefined ? "" : (R_FMT2.has(i) && typeof v === "number" ? v.toFixed(2) : v));
         if(fact && i === 0 && R_SERV.has(j))   // v6.46: STARE LUNA și pe servisarea fără anexă (ținută pe comandă, miscari.fact_stare)
           t = `<select class="fs-sel ${esc(String(v).split(" ")[0])}" title="Servisare fără anexă — starea se ține pe comandă" onchange="setStareServ(${R_SERV.get(j)}, this.value)">` +
-              ["ACTIV","FACTURAT","INACTIV","NU FACTURAM"].map(o => `<option${o === v ? " selected" : ""}>${o}</option>`).join("") + "</select>";
+              FACT_STARI.map(o => `<option${o === v ? " selected" : ""}>${o}</option>`).join("") + "</select>";
         else if(fact && i === 0 && R_DESP.has(j)) t = `<span class="muted" title="Despăgubire DAUNA / FURT — se scoate debifând „Se facturează” pe comandă">DESPĂGUBIRE</span>`;   // v6.33
         else if(fact && i === 0)
           t = `<select class="fs-sel ${esc(String(v).split(" ")[0])}" onchange="setStareFact(${R_AID[j]}, this.value)">` +
-              ["ACTIV","FACTURAT","INACTIV","NU FACTURAM"].map(o => `<option${o === v ? " selected" : ""}>${o}</option>`).join("") + "</select>";
+              FACT_STARI.map(o => `<option${o === v ? " selected" : ""}>${o}</option>`).join("") + "</select>";
         if(fact && i === 3 && av.ctr)  t += ` <span class="warn-pill" title="Contractul a expirat la ${esc(fmtD(av.ctr))} — e nevoie de act adițional">⚠ act adițional</span>`;
         if(fact && i === 10 && av.anx) t += ` <span class="warn-pill" title="Anexa a expirat la ${esc(fmtD(av.anx))}; echipamentul nu e trecut pe RIDICARE, deci se facturează mai departe">⚠ act adițional</span>`;
         if(R_ROSU[j] && ((fact && (i === 1 || i === 4)) || (R_NUME === "Facturare_de_trimis" && (i === 0 || i === 1))))
