@@ -754,7 +754,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <div class="hd-mij"><div id="titlu-sus"></div><span id="azi-sus" title="Data de azi (calculatorul)"></span></div>
   <button id="btn-mob" class="btn sec" style="padding:5px 10px;font-size:12px" onclick="mobPC(false)" title="Înapoi la varianta de telefon">📱 Telefon</button>
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
-  <span class="ver">v6.55</span>
+  <span class="ver">v6.56</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -4054,8 +4054,9 @@ function serFormat(v){
   const t=String(v||"").trim().toUpperCase(); if(!t) return "";
   // v5.43 (cerut de Ovidiu, 12.10): bucata fără plăcuță (ruptă / distrusă) = serie goală → „fără serie”; nu dă avertizare de serie dublă
   if(/^(FARA|FĂRĂ|FARA SERIE|FĂRĂ SERIE|F\.?S\.?|-+|X|N\/?A)$/.test(t)) return "";
-  const m=/^(?:EE[\s\-_.]*)?(\d+)$/.exec(t);
-  return m ? "EE-"+m[1] : t;
+  // v6.56 (cerut de Ovidiu, 20.10): și seriile cu sufix „7343-2” → „EE-7343-2” (spațiile din jurul cratimei se scot)
+  const m=/^(?:EE[\s\-_.]*)?(\d+)(?:\s*-\s*(\d+))?$/.exec(t);
+  return m ? "EE-"+m[1]+(m[2] ? "-"+m[2] : "") : t;
 }
 function serSet(i,camp,v){
   const r=SR_ROWS[i]; if(!r) return; r[camp]=v;
