@@ -1052,7 +1052,7 @@ let dayStart = {}; // {brand, plate, kmStart, driver1, driver2, startTime}
 let lastRouteRows = [];
 
 // --- Șofer EE: aplicatia ruleaza in fila „Rută” (../sofer/), care trimite datele zilei ---
-const EE_RUTA_VERSION = 'v32'; // aceeasi cu VERSIUNE din sw.js; Șofer EE o arata langa rotita
+const EE_RUTA_VERSION = 'v33'; // aceeasi cu VERSIUNE din sw.js; Șofer EE o arata langa rotita
 const SOFER_MODE = new URLSearchParams(location.search).get('sofer') === '1';
 let multiZile = null;   // mai multe zile bifate (ruta complementara), altfel null
 let multiTrasee = null; // mai multe trasee bifate, altfel null
@@ -2047,6 +2047,37 @@ async function fetchAllRows(table){
   return allRows;
 }
 
+// v33 (cerut de Ovidiu, 20.10): pătrățelele W iau codul și din vizitele reale din bază (ultimele 8 săptămâni), calculat ca în
+// GestiuneEE (ora sosirii + minutele de staționare). Codul scris de mână în Verificare rute (client_weeks) are întâietate.
+// Doar citire; nu se scrie nimic în bază. Dacă cererea pică, rămân doar codurile scrise de mână.
+async function eeCoduriDinVizite(rows, byKey, byCod){
+  try{
+    const cur = getCurrentWeekNum(); if(cur === null) return;
+    const de = sIso(sStart(sMuta(cur, -8)));
+    const { data: ses, error } = await sb.from('route_sessions').select('id, session_date').gte('session_date', de);
+    if(error) throw error;
+    const wDe = {}; (ses || []).forEach(x => { wDe[x.id] = sCod(x.session_date); });
+    const ids = Object.keys(wDe), vis = [];
+    for(let i = 0; i < ids.length; i += 100){
+      const { data, error: e2 } = await sb.from('visit_logs').select('session_id, client_id, client_key, arrive_time, leave_time, obs')
+        .in('session_id', ids.slice(i, i + 100));
+      if(e2) throw e2;
+      vis.push(...(data || []));
+    }
+    const best = {};   // rând + săptămână -> ultima vizită
+    vis.forEach(v => {
+      const r = (v.client_key && byCod[v.client_key]) || byKey[v.client_id]; if(!r) return;
+      const w = String(wDe[v.session_id]); if(r.weekData[w] !== undefined) return;   // codul scris de mână rămâne
+      const t = String(v.arrive_time || ''), k = makeClientKey(r) + '#' + w;
+      if(!best[k] || t > best[k].t) best[k] = { r, w, t, v };
+    });
+    Object.values(best).forEach(({ r, w, v }) => {
+      const cod = fmtCode({ obs: v.obs, arrive: v.arrive_time ? new Date(v.arrive_time) : null, leave: v.leave_time ? new Date(v.leave_time) : null });
+      if(cod) r._wViz = Object.assign(r._wViz || {}, { [w]: cod });
+    });
+    rows.forEach(r => { if(r._wViz){ Object.keys(r._wViz).forEach(w => { if(r.weekData[w] === undefined) r.weekData[w] = r._wViz[w]; }); delete r._wViz; } });
+  }catch(err){ console.warn('Codurile din vizite (W) nu s-au încărcat:', err); }
+}
 async function loadClientsFromSupabase(){
   if(!sb) return false;
   try{
@@ -2063,6 +2094,7 @@ async function loadClientsFromSupabase(){
       const r = byKey[cw.client_key] || byCod[cw.client_key];   // v20: și codurile ținute pe codul punctului
       if(r) r.weekData[String(cw.week_num)] = cw.code;
     });
+    await eeCoduriDinVizite(newData, byKey, byCod);
 
     DATA.length = 0; DATA.push(...newData);
     assignIds(DATA);
@@ -2105,6 +2137,7 @@ async function eeReincarcaLista(motiv){
     const byKey = {}, byCod = {};
     newData.forEach(r => { byKey[makeClientKey(r)] = r; if(r.clientKey) byCod[r.clientKey] = r; });
     (cwRows || []).forEach(cw => { const r = byKey[cw.client_key] || byCod[cw.client_key]; if(r) r.weekData[String(cw.week_num)] = cw.code; });
+    await eeCoduriDinVizite(newData, byKey, byCod);
     const vechiInFiltru = new Set(DATA.filter(eeInFiltru).map(r => r.clientKey || r._id));
     const vechiId = {}; DATA.forEach(r => { if(r.clientKey && visitLog[visitKey(r)]) vechiId[r.clientKey] = r._id; });
     assignIds(newData);
