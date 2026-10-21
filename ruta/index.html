@@ -1054,7 +1054,7 @@ let dayStart = {}; // {brand, plate, kmStart, driver1, driver2, startTime}
 let lastRouteRows = [];
 
 // --- Șofer EE: aplicatia ruleaza in fila „Rută” (../sofer/), care trimite datele zilei ---
-const EE_RUTA_VERSION = 'v35'; // aceeasi cu VERSIUNE din sw.js; Șofer EE o arata langa rotita
+const EE_RUTA_VERSION = 'v36'; // aceeasi cu VERSIUNE din sw.js; Șofer EE o arata langa rotita
 const SOFER_MODE = new URLSearchParams(location.search).get('sofer') === '1';
 let multiZile = null;   // mai multe zile bifate (ruta complementara), altfel null
 let multiTrasee = null; // mai multe trasee bifate, altfel null
@@ -2516,9 +2516,10 @@ async function generateDailyPdf(kmEndEl){
   const now = new Date();
   const dayFullName = DAY_NAMES_RO[now.getDay()];
   const dateWithDayStr = `${pad2(now.getDate())} ${MONTH_FULL_RO[now.getMonth()]} ${now.getFullYear()}, ${dayFullName}`;
-  const titleLine = stripDiacritics(dayStart.zona
-    ? `Raport zilnic - Euro Ecologic    ${dateWithDayStr}, Zona ${dayStart.zona}`
-    : `Raport zilnic - Euro Ecologic    ${dateWithDayStr}`);
+  // R36 (cerut de Ovidiu, 21.10): după zonă și traseul — „…, Zona TG JIU | Traseu I”
+  const trRaw = dayStart.traseu != null ? dayStart.traseu : traseeSalvate();
+  const trPdf = String(trRaw || '').split('+').map(x => x.trim()).filter(x => x && x !== 'TOATE').join(' + ');
+  const titleLine = stripDiacritics(`Raport zilnic - Euro Ecologic    ${dateWithDayStr}` + (dayStart.zona ? `, Zona ${dayStart.zona}` : '') + (trPdf ? ` | ${trPdf}` : ''));
   const vehicleStr = stripDiacritics(`${dayStart.brand || '-'} ${dayStart.plate || '-'}`);
 
   const startTimeStr = dayStart.startTime ? `${pad2(dayStart.startTime.getHours())}:${pad2(dayStart.startTime.getMinutes())}` : '-';
@@ -2632,7 +2633,7 @@ async function regenerateHistoryPdf(session){
 
   dayStart = {
     brand: session.vehicle_brand, plate: session.vehicle_plate,
-    kmStart: session.km_start, driver1: session.driver1, driver2: session.driver2,
+    kmStart: session.km_start, driver1: session.driver1, driver2: session.driver2, traseu: session.last_masina || '',
   };
   Object.keys(visitLog).forEach(k=>delete visitLog[k]);
   (visits||[]).forEach(v=>{
