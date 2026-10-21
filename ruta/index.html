@@ -772,7 +772,9 @@
     <div id="savedConfirm" class="route-config-note" style="display:none; text-align:center; color:var(--activ);">✅ Salvat cu succes</div>
     <div class="wizard-btn" id="btnGoHome" style="margin-top:10px; display:none; background:var(--panel-2); color:var(--text); border:1px solid var(--border);">🏠 Acasă</div>
     <div class="wizard-btn" id="btnBackToRoute" style="margin-top:10px; background:var(--panel-2); color:var(--text); border:1px solid var(--border);">← Înapoi la rută</div>
-    <div class="wizard-btn" id="btnGeneratePdf2" style="margin-top:10px; display:none; background:var(--accent); color:#1a0f04;">🧾 Generează raport PDF (opțional)</div>
+    <div class="wizard-btn" id="btnGeneratePdf2" style="margin-top:10px; display:none; background:#25D366; color:#06210f;">📤 Trimite raportul pe WhatsApp (obligatoriu)</div>
+    <div id="eeWaFinMsg" style="display:none; margin-top:8px; font-size:13px; color:var(--inactiv);"></div>
+    <div id="btnWaNuPot" style="display:none; display:block;text-align:center;padding:14px;border-radius:12px;font-weight:700;font-size:15px;cursor:pointer;margin-top:10px; background:var(--panel-2); color:var(--text); border:1px solid var(--border);">Nu pot trimite acum</div>
   </div>
 </div>
 
@@ -1052,7 +1054,7 @@ let dayStart = {}; // {brand, plate, kmStart, driver1, driver2, startTime}
 let lastRouteRows = [];
 
 // --- Șofer EE: aplicatia ruleaza in fila „Rută” (../sofer/), care trimite datele zilei ---
-const EE_RUTA_VERSION = 'v33'; // aceeasi cu VERSIUNE din sw.js; Șofer EE o arata langa rotita
+const EE_RUTA_VERSION = 'v34'; // aceeasi cu VERSIUNE din sw.js; Șofer EE o arata langa rotita
 const SOFER_MODE = new URLSearchParams(location.search).get('sofer') === '1';
 let multiZile = null;   // mai multe zile bifate (ruta complementara), altfel null
 let multiTrasee = null; // mai multe trasee bifate, altfel null
@@ -1891,6 +1893,8 @@ function showFinishPage(){
   savedConfirm.style.display = 'none';
   btnGeneratePdf2.style.display = 'none';
   btnGoHome.style.display = 'none';
+  btnBackToRoute.style.display = 'block';
+  eeWaFinalAscunde();
 }
 
 btnBackToRoute.addEventListener('click', ()=>{
@@ -1911,19 +1915,48 @@ btnSaveFinish.addEventListener('click', async ()=>{
     return;
   }
   btnSaveFinish.textContent = '⏳ Se salvează...';
+  const sidFinal = currentSessionId;   // R34: id-ul rutei, pentru ora trimiterii pe WhatsApp
   await finalizeSessionSync(parseInt(kmEndInput2.value,10));
   btnSaveFinish.style.display = 'none';
   savedConfirm.style.display = 'block';
+  // R34 (cerut de Ovidiu, 21.10): după km sfârșit + Salvează, raportul PDF pe WhatsApp e OBLIGATORIU;
+  // „Acasă” și „Înapoi la rută” apar abia după trimitere (sau după „Nu pot trimite acum”, notat la birou).
+  btnGeneratePdf2.dataset.sid = sidFinal || '';
+  btnGeneratePdf2.textContent = '📤 Trimite raportul pe WhatsApp (obligatoriu)';
   btnGeneratePdf2.style.display = 'block';
-  // raportul se vede oricum in GestiuneEE (Raport foi parcurs): PDF-ul de pe telefon e la alegere,
-  // „Acasă” apare imediat dupa salvare (cerut de Ovidiu 03.10)
-  btnGoHome.style.display = 'block';
+  btnGoHome.style.display = 'none';
+  btnBackToRoute.style.display = 'none';
+  eeWaFinalAscunde();
 });
 
+let eeWaFinalOcupat = false;
+function eeWaFinalAscunde(){ const m = document.getElementById('eeWaFinMsg'), b = document.getElementById('btnWaNuPot'); if(m) m.style.display = 'none'; if(b) b.style.display = 'none'; }
+function eeWaFinalGata(text){
+  btnGeneratePdf2.textContent = text;
+  eeWaFinalAscunde();
+  btnGoHome.style.display = 'block';
+  btnBackToRoute.style.display = 'block';
+}
 btnGeneratePdf2.addEventListener('click', async ()=>{
-  btnGeneratePdf2.textContent = '⏳ Se generează...';
-  const ok = await generateDailyPdf(kmEndInput2);
-  btnGeneratePdf2.textContent = '🧾 Generează raport PDF (opțional)';
+  if(eeWaFinalOcupat) return;
+  eeWaFinalOcupat = true;
+  btnGeneratePdf2.textContent = '⏳ Se generează raportul...';
+  let r; try{ r = await generateDailyPdf(kmEndInput2); }catch(e){ r = false; }
+  eeWaFinalOcupat = false;
+  const sid = btnGeneratePdf2.dataset.sid;
+  if(r === 'ok'){ await eeWaNoteaza(sid, 'final', true); eeWaFinalGata('✓ Raport trimis — trimite din nou'); return; }
+  btnGeneratePdf2.textContent = '📤 Trimite raportul pe WhatsApp (obligatoriu)';
+  const m = document.getElementById('eeWaFinMsg');
+  m.textContent = r === 'anulat' ? 'Nu s-a trimis (ai închis fereastra). Apasă din nou și alege WhatsApp.'
+    : r === 'descarcat' ? 'Telefonul nu poate trimite PDF-ul direct — s-a descărcat. Trimite-l din WhatsApp (atașează fișierul), apoi apasă din nou sau „Nu pot trimite acum”.'
+    : 'Raportul nu s-a putut face. Încearcă din nou.';
+  m.style.display = 'block';
+  document.getElementById('btnWaNuPot').style.display = 'block';
+});
+document.getElementById('btnWaNuPot').addEventListener('click', async ()=>{
+  if(!confirm('Sigur nu poți trimite raportul acum? Se notează la birou că nu s-a trimis.')) return;
+  await eeWaNoteaza(btnGeneratePdf2.dataset.sid, 'final', false);
+  eeWaFinalGata('📤 Trimite raportul pe WhatsApp');
 });
 
 function lockStartDay(){
@@ -2576,13 +2609,14 @@ async function generateDailyPdf(kmEndEl){
     const file = new File([pdfBlob], filename, {type:'application/pdf'});
     if(navigator.canShare && navigator.canShare({files:[file]})){
       await navigator.share({files:[file], title:'Raport zilnic Euro Ecologic'});
-      return true;
+      return 'ok';   // R34: s-a ales o aplicație (WhatsApp)
     }
   }catch(err){
+    if(err && err.name === 'AbortError') return 'anulat';   // R34: fereastra închisă fără trimitere
     console.error('Partajare directă eșuată, se descarcă normal:', err);
   }
   doc.save(filename);
-  return true;
+  return 'descarcat';
 }
 
 async function regenerateHistoryPdf(session){
@@ -3511,8 +3545,101 @@ async function eeSoferAplica(z){
       }catch(err){ console.error('Șofer EE: actualizarea rutei a eșuat:', err); }
     }
     eeArataRuta();
+    if(s && currentSessionId && !s.wa_start_la) eeWaStart(currentSessionId);   // R34: ruta pe WhatsApp, obligatoriu
     return !!currentSessionId;
   } finally { eeSoferOcupat = false; }
+}
+
+// ===== R34 (cerut de Ovidiu, 21.10): WhatsApp obligatoriu — ruta (text) după „Generează ruta”, raportul PDF la final =====
+// Ora trimiterii se scrie pe route_sessions (wa_start_la / wa_start_ok, wa_final_la / wa_final_ok); fără semnal rămâne în
+// telefon și pleacă la revenirea internetului. Telefonul știe doar că s-a ales WhatsApp, nu că mesajul a plecat efectiv.
+const EE_WA_PEND = 'ee-wa-pending';
+let eeWaDeschis = false;
+function eeWaPend(){ try{ return JSON.parse(localStorage.getItem(EE_WA_PEND) || '[]'); }catch(e){ return []; } }
+function eeWaPendSet(l){ try{ localStorage.setItem(EE_WA_PEND, JSON.stringify(l)); }catch(e){} }
+async function eeWaTrimitePend(){
+  if(!sb) return;
+  const l = eeWaPend(); if(!l.length) return;
+  const rest = [];
+  for(const x of l){
+    try{ const { error } = await sb.from('route_sessions').update(x.rec).eq('id', x.sid); if(error) throw error; }
+    catch(e){ rest.push(x); }
+  }
+  eeWaPendSet(rest);
+}
+async function eeWaNoteaza(sid, faza, ok){
+  if(!sid) return;
+  const acum = new Date().toISOString();
+  const rec = faza === 'start' ? { wa_start_la: acum, wa_start_ok: ok } : { wa_final_la: acum, wa_final_ok: ok };
+  eeWaPendSet(eeWaPend().filter(x => !(x.sid === sid && x.faza === faza)).concat([{ sid, faza, rec }]));
+  await eeWaTrimitePend();
+}
+window.addEventListener('online', eeWaTrimitePend);
+setInterval(eeWaTrimitePend, 30000);
+function eeMesajStart(){
+  const now = new Date();
+  const lines = [];
+  if(dayStart.zona) lines.push(`*Ruta: ${String(dayStart.zona).toUpperCase()}*`);
+  lines.push(`${DAY_NAMES_RO[now.getDay()]} - ${pad2(now.getDate())} ${MONTH_FULL_RO[now.getMonth()]} ${now.getFullYear()} ; Ora ${pad2(now.getHours())}:${pad2(now.getMinutes())}`);
+  if(dayStart.driver1) lines.push(`Șofer 1: ${dayStart.driver1}`);
+  if(dayStart.driver2) lines.push(`Șofer 2: ${dayStart.driver2}`);
+  const nr = String(dayStart.plate || '').trim().replace(/\s+/g, '-');
+  const masina = [dayStart.brand, nr ? 'NR: ' + nr : ''].filter(Boolean).join(' - ');
+  if(masina) lines.push(masina);
+  if(dayStart.kmStart != null && dayStart.kmStart !== '') lines.push(`Km START: ${dayStart.kmStart}`);
+  const tr = traseeSalvate(), zl = zileSalvate();
+  if(tr && tr !== 'TOATE') lines.push(`Traseu: ${tr.split('+').join(' + ')}`);
+  if(zl && zl !== 'TOATE') lines.push(`Ziua: ${zl.split('+').join(' + ')}`);
+  const p = (countBadge.textContent || '').trim(); if(p) lines.push(`Puncte: ${p}`);
+  return lines.join('\n');
+}
+async function eeWaTrimiteText(text){
+  if(navigator.share){
+    try{ await navigator.share({ text }); return 'ok'; }
+    catch(err){ if(err && err.name === 'AbortError') return 'anulat'; console.error('share:', err); }
+  }
+  const w = window.open('https://wa.me/?text=' + encodeURIComponent(text), '_blank');
+  return w ? 'ok' : 'eroare';
+}
+function eeWaFereastra(o){
+  return new Promise(res => {
+    const B = 'display:block;text-align:center;padding:14px;border-radius:12px;font-weight:700;font-size:15px;cursor:pointer;margin-top:10px;';
+    const f = document.createElement('div');
+    f.style.cssText = 'position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.72);display:flex;align-items:center;justify-content:center;padding:16px';
+    f.innerHTML = `<div style="background:var(--panel);color:var(--text);border:1px solid var(--border);border-radius:14px;max-width:440px;width:100%;padding:18px;max-height:92vh;overflow:auto">
+      <div style="font-size:18px;font-weight:700;margin-bottom:6px">${escapeHtml(o.titlu)}</div>
+      <div style="font-size:13px;color:var(--text-dim);margin-bottom:10px">${escapeHtml(o.nota)}</div>
+      <pre data-a="text" style="white-space:pre-wrap;font-family:inherit;font-size:13px;line-height:1.4;background:var(--panel-2);border-radius:8px;padding:10px;margin:0 0 4px"></pre>
+      <div data-a="trimite" style="${B}background:#25D366;color:#06210f">${escapeHtml(o.btn)}</div>
+      <div data-a="mesaj" style="display:none;margin-top:10px;font-size:13px;color:var(--inactiv)"></div>
+      <div data-a="nupot" style="display:none;${B}background:var(--panel-2);color:var(--text);border:1px solid var(--border)">Nu pot trimite acum</div>
+    </div>`;
+    document.body.appendChild(f);
+    const q = a => f.querySelector(`[data-a="${a}"]`);
+    q('text').textContent = o.text();
+    let ocupat = false;
+    const inchide = async ok => { await o.gata(ok); f.remove(); res(ok); };
+    q('trimite').onclick = async () => {
+      if(ocupat) return; ocupat = true;
+      const t = o.text(); q('text').textContent = t;
+      const t0 = q('trimite').textContent; q('trimite').textContent = '⏳ Se deschide…';
+      let r; try{ r = await eeWaTrimiteText(t); }catch(e){ r = 'eroare'; }
+      q('trimite').textContent = t0; ocupat = false;
+      if(r === 'ok'){ await inchide(true); return; }
+      q('mesaj').textContent = r === 'anulat' ? 'Nu s-a trimis (ai închis fereastra). Apasă din nou și alege WhatsApp.' : 'WhatsApp nu s-a putut deschide. Încearcă din nou.';
+      q('mesaj').style.display = 'block'; q('nupot').style.display = 'block';
+    };
+    q('nupot').onclick = async () => { if(!confirm('Sigur nu poți trimite acum? Se notează la birou că nu s-a trimis.')) return; await inchide(false); };
+  });
+}
+async function eeWaStart(sid){
+  if(eeWaDeschis || eeWaPend().some(x => x.sid === sid && x.faza === 'start')) return;
+  eeWaDeschis = true;
+  try{
+    await eeWaFereastra({ titlu: '📤 Trimite ruta pe WhatsApp', btn: '📤 Trimite pe WhatsApp', text: eeMesajStart,
+      nota: 'Obligatoriu înainte de a porni pe rută: se deschide WhatsApp — alege grupul și apasă Trimite.',
+      gata: ok => eeWaNoteaza(sid, 'start', ok) });
+  } finally { eeWaDeschis = false; }
 }
 
 // Masina s-a stricat pe drum: se inchide sesiunea ei (km final) si incepe una noua, cu aceeasi ruta

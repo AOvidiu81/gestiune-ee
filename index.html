@@ -79,7 +79,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   .rl-b{display:inline-block;min-width:16px;padding:0 5px;border-radius:6px;font-weight:700;font-size:11.5px;line-height:17px}
   td.rl-up .rl-b{background:rgba(46,139,60,.28);border:1px solid rgba(76,175,90,.6);color:var(--t-ok)}
   td.rl-down .rl-b{background:rgba(192,57,43,.28);border:1px solid rgba(224,90,80,.6);color:var(--t-err)}
-  .flag.V{background:#1f9d55;color:#fff;border-color:#1f9d55}.flag.L{background:#f08c00;color:#fff;border-color:#f08c00}.flag.X{background:#d93025;color:#fff;border-color:#d93025}
+  .flag.V{background:#1f9d55;color:#fff;border-color:#1f9d55}.flag.L{background:#f08c00;color:#fff;border-color:#f08c00}.flag.X{background:#d93025;color:#fff;border-color:#d93025}.flag.W{background:#1f9d55;color:#fff;border-color:#1f9d55}
   .stoc-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:12px}
   .stoc{background:#fff;border:1px solid var(--bd);border-radius:10px;padding:12px}
   .stoc h4{margin:0 0 8px;font-size:13px;color:var(--g)}
@@ -436,6 +436,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   :root[data-tema="inchis"] .flag.V{background:#1f9d55;color:#fff;border-color:#1f9d55}
   :root[data-tema="inchis"] .flag.L{background:#f08c00;color:#fff;border-color:#f08c00}
   :root[data-tema="inchis"] .flag.X{background:#d93025;color:#fff;border-color:#d93025}
+  :root[data-tema="inchis"] .flag.W{background:#1f9d55;color:#fff;border-color:#1f9d55}
 
   @media (min-width:900px){
     /* Fila activă e o pastilă, ca în model, nu o linie pe margine. */
@@ -754,7 +755,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <div class="hd-mij"><div id="titlu-sus"></div><span id="azi-sus" title="Data de azi (calculatorul)"></span></div>
   <button id="btn-mob" class="btn sec" style="padding:5px 10px;font-size:12px" onclick="mobPC(false)" title="Înapoi la varianta de telefon">📱 Telefon</button>
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
-  <span class="ver">v6.56</span>
+  <span class="ver">v6.57</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -1366,8 +1367,9 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   #mod-c .box{resize:both;overflow:auto;width:760px;max-width:98vw;max-height:96vh;min-width:380px;min-height:300px;position:relative}
   #mod-c h3{cursor:move;user-select:none}
   #mod-c .mc-r{display:grid;gap:10px;margin-bottom:10px}
-  #mod-c .r3{grid-template-columns:150px 150px 1fr} #mod-c .r2{grid-template-columns:1fr 1fr}
-  @media(max-width:600px){ #mod-c .r3,#mod-c .r2{grid-template-columns:1fr} }
+  #mod-c .r3{grid-template-columns:150px 150px 1fr} #mod-c .r2{grid-template-columns:1fr 1fr} #mod-c .r4{grid-template-columns:90px 130px 1fr 160px}
+  #mod-c .r3.pf{grid-template-columns:150px 1fr}
+  @media(max-width:600px){ #mod-c .r3,#mod-c .r2,#mod-c .r4,#mod-c .r3.pf{grid-template-columns:1fr} }
   #mc-ciorne{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:-4px 0 12px;font-size:12px}
   #mc-ciorne:empty{display:none}
   #mc-ciorne .ch{border:1px dashed var(--bd);border-radius:14px;padding:3px 4px 3px 10px;cursor:pointer;display:inline-flex;gap:6px;align-items:center}
@@ -1387,15 +1389,21 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
     <div class="mc-r"><div><label>Client / societate / beneficiar</label><input id="mc-nume"></div></div>
     <div class="mc-r r3">
       <div><label>Tip ID</label><select id="mc-idtip" onchange="mcCuiVerif()"></select></div>
-      <div><label>Atribut fiscal</label><select id="mc-atr"><option value=""></option></select></div>
+      <div id="mc-atr-w"><label>Atribut fiscal</label><select id="mc-atr"><option value=""></option></select></div>
       <div><label>Număr</label><div style="display:flex;gap:6px"><input id="mc-cui" oninput="mcCuiVerif()" onblur="mcCuiRO()" style="flex:1;min-width:0">
         <button type="button" class="btn sm sec" id="mc-anaf-b" onclick="mcAnaf()" title="Caută firma la ANAF după CUI/CIF (denumire, sediu, TVA, stare, bilanț)">ANAF</button></div>
         <div id="mc-cui-info" style="font-size:12px;margin-top:3px"></div></div>
     </div>
     <div id="mc-anaf"></div>
+    <div class="mc-r r4" id="mc-ci">
+      <div><label>C.I. — Seria</label><input id="mc-ci-serie" maxlength="4" style="text-transform:uppercase"></div>
+      <div><label>Număr</label><input id="mc-ci-nr" maxlength="10"></div>
+      <div><label>Eliberat de</label><input id="mc-ci-elib" placeholder="SPCLEP Deva"></div>
+      <div><label>Data expirării</label><input id="mc-ci-exp" type="date" onchange="mcCuiVerif()"><div id="mc-ci-info" style="font-size:12px;margin-top:3px"></div></div>
+    </div>
     <div class="mc-r r2">
       <div><label>Reprezentant legal</label><input id="mc-pers" placeholder="nume și prenume"></div>
-      <div><label>Funcția</label><input id="mc-func" list="dl-functii" placeholder="Administrator, Director general, Primar…"><datalist id="dl-functii"><option value="Administrator"><option value="Director general"><option value="Director"><option value="Primar"><option value="Asociat unic"><option value="Președinte"></datalist></div>
+      <div><label>Funcția</label><input id="mc-func" list="dl-functii" placeholder="Administrator, Director general, Primar…"><datalist id="dl-functii"><option value="Administrator"><option value="Director general"><option value="Director"><option value="Primar"><option value="Asociat unic"><option value="Președinte"><option value="Beneficiar"></datalist></div>
     </div>
     <div class="mc-r r2">
       <div><label>Telefon</label><input id="mc-tel"></div>
@@ -1865,6 +1873,10 @@ const SUPABASE_KEY = "sb_publishable_P1TSfVqqbyr3L-elKVgopg_1FpIpkv4";
 const db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 const LUNI = ["IAN","FEB","MAR","APR","MAI","IUN","IUL","AUG","SEP","OCT","NOI","DEC"];
 const FLAGS = ["-","V","L","X"];
+// v6.57 (cerut de Ovidiu, 21.10): PV = W — PV-ul există la sediu / alt depozit (nu e la el); W e verde ca V. Doar pe bifa PV.
+const FLAGS_PV = ["-","V","W","L","X"];
+const flagsDe = f => f === "pv" ? FLAGS_PV : FLAGS;
+const eVerde = (f, v) => v === "V" || (f === "pv" && v === "W");
 
 // cache
 let NOM = {}, DEP = [], SOF = [], MAS = [], CLI = [], CTR = [], ANX = [], MISC = [], STOC = [], SI = [];
@@ -1909,15 +1921,17 @@ const livrExterior = r => !!(r && r.depozit && r.contract && r.contract === depP
 //  - contract la el, livrat din alt depozit (HARGHITA…): RT nu e al lui (șoferii celuilalt depozit).
 //    v5.79 (decizia lui): PV-ul contează — pornește pe X (neprimit încă), îl trece el pe V când îl are, sau L dacă lipsește.
 // Clientul e verde când toate bifele care contează sunt V; celelalte pot rămâne „-”.
+// v6.57 (decizia lui, 21.10): servisare fără anexă cu „Se facturează” debifat → FAC nu contează la verde
+const servFaraFact = r => !!(r && r.tip_miscare === "SERVISARE" && !r.anexa_id && !r.desp_factureaza);
 const ctrExterior = r => { const d = DEP.find(x => x.nume === (r && r.contract)); return !!(d && d.tip === "secundar"); };
 const FLAGURI = ["rpt","rt","fac","pv","act","waap"];
-function flaguriNuConteaza(r){ const n = new Set(); if(ctrExterior(r)) ["rpt","fac","act"].forEach(f => n.add(f)); if(livrExterior(r)) n.add("rt"); if(r && r.tip_miscare === "SERVISARE") n.add("rpt"); return n; }   // v6.42: servisările nu intră în Raport lună   // v5.79: PV contează și la livrarea din alt depozit (X → V / L)
+function flaguriNuConteaza(r){ const n = new Set(); if(ctrExterior(r)) ["rpt","fac","act"].forEach(f => n.add(f)); if(livrExterior(r)) n.add("rt"); if(r && r.tip_miscare === "SERVISARE") n.add("rpt"); if(servFaraFact(r)) n.add("fac"); return n; }   // v6.42: servisările nu intră în Raport lună   // v5.79: PV contează și la livrarea din alt depozit (X → V / L)
 function clStare(r){
-  const nu = flaguriNuConteaza(r), v = FLAGURI.filter(f => !nu.has(f)).map(f => r[f] || "-");
+  const nu = flaguriNuConteaza(r), v = FLAGURI.filter(f => !nu.has(f));
   if(FLAGURI.every(f => (r[f] || "-") === "-")) return "";
-  return v.every(x => x === "V") ? "cl-toate" : "cl-unele";
+  return v.every(f => eVerde(f, r[f] || "-")) ? "cl-toate" : "cl-unele";   // v6.57: PV = W e verde ca V
 }
-const flNC = (r, f, html) => flaguriNuConteaza(r).has(f) ? `<span class="fl-nc" title="Nu e nevoie la această comandă (${ctrExterior(r) && ["rpt","fac","act"].includes(f) ? "contract pe depozitul " + esc(r.contract) : f === "rpt" ? "servisările nu intră în Raport lună" : "livrată din depozitul " + esc(r.depozit)}) — nu contează la verde">${html}</span>` : html;
+const flNC = (r, f, html) => flaguriNuConteaza(r).has(f) ? `<span class="fl-nc" title="Nu e nevoie la această comandă (${ctrExterior(r) && ["rpt","fac","act"].includes(f) ? "contract pe depozitul " + esc(r.contract) : f === "rpt" ? "servisările nu intră în Raport lună" : f === "fac" && servFaraFact(r) ? "servisare care nu se facturează (Se facturează debifat)" : "livrată din depozitul " + esc(r.depozit)}) — nu contează la verde">${html}</span>` : html;
 const depPrincipalId = () => { const p=DEP.find(d=>d.tip==="principal"); return p?p.id  :(DEP[0]?DEP[0].id  :null); };
 let DEP_PRESELECTAT = false;
 function pune(sel,val){ const s=$(sel); if(!s||!val) return; if([...s.options].some(o=>o.value===val)) s.value=val; }
@@ -2426,7 +2440,7 @@ function exportMiscari(){
   const ws=XLSX.utils.json_to_sheet(rows); const wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,ws,"COMENZI"); XLSX.writeFile(wb,`Comenzi_${today()}.xlsx`);
 }
 // ---- flags
-document.querySelectorAll("#mm-flags .flag").forEach(f=>f.onclick=()=>{ const i=(FLAGS.indexOf(f.textContent)+1)%FLAGS.length; setFlag(f,FLAGS[i]); });
+document.querySelectorAll("#mm-flags .flag").forEach(f=>f.onclick=()=>{ const L=flagsDe(f.dataset.f), i=(L.indexOf(f.textContent)+1)%L.length; setFlag(f,L[i]); });
 function setFlag(el,v){ el.textContent=v; el.className="flag "+(v==="-"?"":v); }
 // La RIDICARE / REDUCERE / TransferOUT / VANZARE bucatile se arata cu minus inca din formular.
 // Ovidiu poate scrie si el minusul; la salvare semnul il decide oricum tipul comenzii.
@@ -3245,6 +3259,7 @@ function openClient(id){
   $("mc-nume").value=c?c.nume:""; $("mc-idtip").value=c?(c.id_tip||"CUI"):"CUI"; $("mc-atr").value=c?(c.atr||""):"RO"; $("mc-cui").value=c?(c.cui||""):"";
   $("mc-pers").value=c?(c.pers_resp||""):""; $("mc-tel").value=c?(c.telefon||""):""; $("mc-email").value=c?(c.email||""):""; $("mc-obs").value=c?(c.observatii||""):"";
   $("mc-func").value=c?(c.reprezentant_functie||""):"";
+  $("mc-ci-serie").value=c?(c.ci_serie||""):""; $("mc-ci-nr").value=c?(c.ci_numar||""):""; $("mc-ci-elib").value=c?(c.ci_eliberat_de||""):""; $("mc-ci-exp").value=c?(c.ci_expira||""):"";
   MC_CIORNA = null; $("mc-conf").classList.remove("on"); $("mc-ciorne").innerHTML = "";
   $("mc-anaf").innerHTML = ""; mcCuiVerif();
   $("mod-c").classList.add("on");
@@ -3261,7 +3276,32 @@ function cuiValid(v){
   let ctl = (sum * 10) % 11; if(ctl === 10) ctl = 0;
   return ctl === +c.slice(-1);
 }
+// v6.57 (cerut de Ovidiu, 21.10): la persoane fizice (CNP) — verificarea CNP-ului + cartea de identitate; doar avertismente.
+const mcEPF = () => $("mc-idtip").value === "CNP";
+function cnpProbleme(v){
+  const c = String(v || "").replace(/\s/g, ""); if(!c) return [];
+  if(!/^\d{13}$/.test(c)) return [{ r: 1, t: "CNP-ul are " + c.length + " caractere — trebuie 13 cifre." }];
+  const p = [], k = "279146358279"; let sum = 0; for(let i = 0; i < 12; i++) sum += (+c[i]) * (+k[i]);
+  let ctl = sum % 11; if(ctl === 10) ctl = 1;
+  if(ctl !== +c[12]) p.push({ r: 1, t: "CNP greșit — cifra de control nu se potrivește. Verifică cifrele." });
+  const s = +c[0], sec = { 1: 1900, 2: 1900, 3: 1800, 4: 1800, 5: 2000, 6: 2000 }[s];
+  const an2 = +c.slice(1, 3), lu = +c.slice(3, 5), zi = +c.slice(5, 7);
+  if(s === 0) p.push({ r: 1, t: "CNP greșit — prima cifră nu poate fi 0." });
+  const ani = sec ? [sec + an2] : [1900 + an2, 2000 + an2];   // 7, 8, 9 = rezidenți: secolul nu se știe
+  const ok = ani.some(a => { const d = new Date(a, lu - 1, zi); return lu >= 1 && lu <= 12 && d.getMonth() === lu - 1 && d.getDate() === zi; });
+  if(!ok) p.push({ r: 1, t: "CNP greșit — data nașterii (cifrele 2–7) nu e o dată reală." });
+  const id = +$("mc-id").value || 0;
+  const alt = (typeof CLI !== "undefined" ? CLI : []).filter(x => x.id !== id && String(x.cui || "").replace(/\s/g, "") === c);
+  if(alt.length) p.push({ r: 0, t: "Există deja la clientul " + alt.map(x => x.nume).join(", ") + "." });
+  return p;
+}
+function mcCiProbleme(){
+  if(!mcEPF()) return [];
+  const e = $("mc-ci-exp").value; if(!e) return [];
+  return e < today() ? [{ r: 1, t: "Cartea de identitate a expirat (" + fmtD(e) + ")." }] : [];
+}
 function mcCuiProbleme(){
+  if(mcEPF()) return cnpProbleme($("mc-cui").value).concat(mcCiProbleme());
   if(!mcEFirma()) return [];
   const c = cuiCurat($("mc-cui").value); if(!c) return [];
   const p = [];
@@ -3272,7 +3312,12 @@ function mcCuiProbleme(){
   return p;
 }
 function mcCuiVerif(){
-  const f = mcEFirma(); $("mc-anaf-b").style.display = f ? "" : "none";
+  const f = mcEFirma(), pf = mcEPF(); $("mc-anaf-b").style.display = f ? "" : "none";
+  $("mc-atr-w").style.display = pf ? "none" : ""; $("mc-atr-w").parentElement.classList.toggle("pf", pf); $("mc-ci").style.display = pf ? "" : "none";
+  const ci = mcCiProbleme(); $("mc-ci-info").innerHTML = ci.map(x => `<div style="color:var(--t-err)">⚠ ${esc(x.t)}</div>`).join("");
+  if(pf){ const c = $("mc-cui").value.replace(/\s/g, ""), p = cnpProbleme(c);
+    $("mc-cui-info").innerHTML = !c ? "" : p.length ? p.map(x => `<div style="color:${x.r ? "var(--t-err)" : "#d97706"}">⚠ ${esc(x.t)}</div>`).join("") : '<span style="color:var(--t-ok)">✓ CNP valid</span>';
+    return; }
   if(!f) $("mc-anaf").innerHTML = "";
   const c = cuiCurat($("mc-cui").value), p = mcCuiProbleme();
   $("mc-cui-info").innerHTML = !f || !c ? "" : p.length
@@ -3335,9 +3380,11 @@ function mcAnafAplica(){
 // v4.77 (cerut de Ovidiu, 08.10): ciornele clienților nesalvați, ținute în bază (tabel `ciorne`, tip 'client').
 let MC_CIORNA = null, MC_CIORNE = [];
 const MC_CAMPURI = [["mc-nume","nume","Client / societate / beneficiar"],["mc-idtip","id_tip","Tip ID"],["mc-atr","atr","Atribut fiscal"],["mc-cui","cui","Număr"],
+  ["mc-ci-serie","ci_serie","C.I. seria"],["mc-ci-nr","ci_numar","C.I. număr"],["mc-ci-elib","ci_eliberat_de","C.I. eliberat de"],["mc-ci-exp","ci_expira","C.I. expiră"],
   ["mc-pers","pers_resp","Reprezentant legal"],["mc-func","reprezentant_functie","Funcția"],["mc-tel","telefon","Telefon"],["mc-email","email","E-mail"],["mc-obs","observatii","Observații"]];
+const MC_CI = ["ci_serie","ci_numar","ci_eliberat_de","ci_expira"];
 const mcDate = () => Object.fromEntries(MC_CAMPURI.map(([el, c]) => [c, ($(el).value || "").trim()]));
-const mcGol = d => !["nume","cui","pers_resp","reprezentant_functie","telefon","email","observatii"].some(c => d[c]);
+const mcGol = d => !["nume","cui","pers_resp","reprezentant_functie","telefon","email","observatii"].concat(MC_CI).some(c => d[c]);
 async function mcCiorne(){
   const { data, error } = await db.from("ciorne").select("*").eq("tip", "client").order("id");
   if(error){ $("mc-ciorne").innerHTML = ""; return; }
@@ -3388,7 +3435,7 @@ function mcVerifica(){
   $("mc-conf-ok").textContent = nou ? "Creează client nou" : "Salvează modificările";
   d.nume = d.nume.toUpperCase();
   const prb = mcCuiProbleme();
-  $("mc-conf-date").innerHTML = prb.map(x => `<div style="color:${x.r ? "var(--t-err)" : "#d97706"};margin-bottom:6px">⚠ ${esc(x.t)} Poți salva oricum.</div>`).join("") + "<table>" + MC_CAMPURI.map(([, c, l]) => `<tr><td>${esc(l)}</td><td><b>${esc(d[c] || "—")}</b></td></tr>`).join("") + "</table>";
+  $("mc-conf-date").innerHTML = prb.map(x => `<div style="color:${x.r ? "var(--t-err)" : "#d97706"};margin-bottom:6px">⚠ ${esc(x.t)} Poți salva oricum.</div>`).join("") + "<table>" + MC_CAMPURI.filter(([, c]) => mcEPF() ? c !== "atr" : !MC_CI.includes(c)).map(([, c, l]) => `<tr><td>${esc(l)}</td><td><b>${esc(d[c] || "—")}</b></td></tr>`).join("") + "</table>";
   confSubBara("mc-conf");
   $("mc-conf").classList.add("on");
 }
@@ -3397,6 +3444,10 @@ function confSubBara(id){ const cf = $(id), cap = cf.parentElement.querySelector
   cf.parentElement.scrollTop = 0; cf.style.top = (cap ? cap.offsetHeight : 0) + "px"; }
 async function saveClient(dupa){
   const rec={nume:$("mc-nume").value.trim().toUpperCase(),id_tip:$("mc-idtip").value,atr:$("mc-atr").value||null,cui:$("mc-cui").value||null,pers_resp:$("mc-pers").value||null,telefon:$("mc-tel").value||null,email:$("mc-email").value||null,observatii:$("mc-obs").value||null,reprezentant_functie:$("mc-func").value.trim()||null};
+  { const pf = rec.id_tip === "CNP";   // v6.57: cartea de identitate doar la persoane fizice; Atribut fiscal doar la firme
+    if(pf){ rec.atr = null; if(rec.cui) rec.cui = rec.cui.replace(/\s/g, ""); }
+    rec.ci_serie = pf ? ($("mc-ci-serie").value.trim().toUpperCase() || null) : null; rec.ci_numar = pf ? ($("mc-ci-nr").value.trim() || null) : null;
+    rec.ci_eliberat_de = pf ? ($("mc-ci-elib").value.trim() || null) : null; rec.ci_expira = pf ? ($("mc-ci-exp").value || null) : null; }
   if(!rec.nume){toast("Numele este obligatoriu",true);return;}
   $("mc-conf").classList.remove("on");
   const id=$("mc-id").value; let noulId = id ? +id : null;
@@ -4456,7 +4507,8 @@ async function saveStocInitial(){
 const V_DEF = {
   clienti: { titlu:'Clienți', cap:r=>r.nume, campuri:[
     {c:'nume',l:'Nume client'},{c:'id_tip',l:'Tip ID',nom:'id_tip'},{c:'atr',l:'Atribut fiscal',nom:'atr',gol:1},
-    {c:'cui',l:'Număr'},{c:'pers_resp',l:'Reprezentant legal'},{c:'reprezentant_functie',l:'Funcția'},{c:'telefon',l:'Telefon'},{c:'email',l:'Email'},
+    {c:'cui',l:'Număr'},{c:'ci_serie',l:'C.I. seria'},{c:'ci_numar',l:'C.I. număr'},{c:'ci_eliberat_de',l:'C.I. eliberat de'},{c:'ci_expira',l:'C.I. expiră',t:'date'},
+    {c:'pers_resp',l:'Reprezentant legal'},{c:'reprezentant_functie',l:'Funcția'},{c:'telefon',l:'Telefon'},{c:'email',l:'Email'},
     {c:'observatii',l:'Observații'}]},
   contracte: { titlu:'Contracte', sel:'*, clienti(nume)', cap:r=>'CTR '+r.nr_ctr, ctx:r=>r.clienti?('Client: '+r.clienti.nume):'', campuri:[
     {c:'nr_ctr',l:'Nr. contract'},{c:'data_emitere',l:'Data emitere',t:'date'},{c:'data_expirare',l:'Data expirare',t:'date'},
@@ -4831,7 +4883,7 @@ async function raportFacturare(){
   // bifat pe comandă; preț pe servisare, fără zile. STARE = FACTURAT când FAC = V pe comandă (bifa din coloana FAC).
   R_SERV = new Map();
   { const fcS = ($("r-client").value || "").trim().toLowerCase(), fjS = $("r-jud").value;
-    misF.filter(m => m.tip_miscare === "SERVISARE" && !m.anexa_id && m.desp_factureaza && String(m.pv || "").toUpperCase() === "V")
+    misF.filter(m => m.tip_miscare === "SERVISARE" && !m.anexa_id && m.desp_factureaza && ["V","W"].includes(String(m.pv || "").toUpperCase()))   // v6.57: și PV = W
       .sort((x, y) => (x.client || "").localeCompare(y.client || "") || String(x.data).localeCompare(String(y.data))).forEach(m => {
       const k = CLI.find(x => x.id === m.client_id) || CLI.find(x => (x.nume || "").toLowerCase() === (m.client || "").toLowerCase()) || {};
       if(fcS && !((k.nume || m.client || "").toLowerCase().includes(fcS))) return;
@@ -5255,7 +5307,7 @@ function verBanda(){
 async function verSalveaza(val){
   if(!VER) return;
   const f = VER.f, id = VER.id, v = val || "V";
-  if(!confirm("Salvați bifa " + f.toUpperCase() + " (" + v + (v === "L" ? " — lipsă" : v === "-" ? " — goală" : "") + ") pentru această comandă?\n\n" + (VER.m.client || "") + " · " + VER.m.tip_miscare + " " + fmtD(VER.m.data))) return;
+  if(!confirm("Salvați bifa " + f.toUpperCase() + " (" + v + (v === "L" ? " — lipsă" : v === "W" ? " — PV la sediu / alt depozit" : v === "-" ? " — goală" : "") + ") pentru această comandă?\n\n" + (VER.m.client || "") + " · " + VER.m.tip_miscare + " " + fmtD(VER.m.data))) return;
   const tot = grupTot(id, f);   // v5.14: PV / WaAp se pun pe toată comanda (toate produsele)
   const { error } = await (tot ? db.from("miscari").update({ [f]: v }).or(`id.eq.${id},grup_id.eq.${id}`) : db.from("miscari").update({ [f]: v }).eq("id", id));
   if(error){ toast(error.message, true); return; }
@@ -5413,6 +5465,7 @@ function verBandaPv(){
   b.innerHTML = `<div class="vt"><b>Verifici PV (Procese verbale) pentru comanda:</b> ${esc(desc)}<br><span class="muted">${esc(nota)}</span></div>` +
     (gasit.length ? `<button class="btn" onclick="verSalveaza()">✓ E corect — bifează PV</button>`
                   : `<button class="btn" style="background:#2f9e44;border-color:#2f9e44" onclick="verSalveaza('V')" title="Ai PV-ul în altă parte (pe PC, pe hârtie) — bifa devine V">V — am PV-ul (PC / hârtie)</button>` +
+                    `<button class="btn" style="background:#2f9e44;border-color:#2f9e44" onclick="verSalveaza('W')" title="PV-ul există la sediu / la alt depozit — nu e la tine. Bifa devine W (verde, ca V)">W — PV la sediu / alt depozit</button>` +
                     `<button class="btn" style="background:#f08c00;border-color:#f08c00" onclick="verSalveaza('L')">L — lipsă PV</button>` +
                     `<button class="btn sec" onclick="verSalveaza('X')" title="PV-ul nu există / nu se face">X — nu există</button>` +
                     `<button class="btn sec" onclick="verSalveaza('-')" title="Golește bifa">- golește</button>`) +
@@ -6785,6 +6838,14 @@ function fpButonPdf(x, i){
   return `<button class="btn sec" style="padding:3px 10px;white-space:nowrap;${stil}" title="${tit} · se deschide întâi vizualizarea, apoi Descarcă PDF" onclick="fpPdf(${i})">${cand ? "✓ 👁 PDF" : "👁 PDF"}</button>`;
 }
 const fpOre = m => Math.floor(m / 60) + ":" + zi2(m % 60);
+// v6.57 (cerut de Ovidiu, 21.10): trimiterea pe WhatsApp din Șofer EE (R34) — ruta la pornire, raportul la final
+function fpWaTxt(la, ok){ return !la ? "—" : (ok ? "✓ " : "✗ netrimis ") + izOra(la); }
+function fpWa(x){
+  if(x.fara) return "";
+  const c = (la, ok, et) => `<div style="white-space:nowrap" title="${et}: ${ok === false ? "șoferul a apăsat „Nu pot trimite acum”" : la ? "s-a deschis WhatsApp" : "nimic încă (rute vechi sau netrimis)"}">` +
+    `<span class="muted">${et}</span> ${!la ? '<span class="muted">—</span>' : ok ? `<span style="color:var(--t-ok)">✓ ${izOra(la)}</span>` : `<span style="color:var(--t-err)">✗ ${izOra(la)}</span>`}</div>`;
+  return c(x.s.wa_start_la, x.s.wa_start_ok, "start") + (x.s.status === "finalizata" || x.s.wa_final_la ? c(x.s.wa_final_la, x.s.wa_final_ok, "final") : "");
+}
 function fpRand(s){
   const zi = s.created_at ? izZiLocala(s.created_at) : s.session_date;
   const viz = (FP_VIZ[s.id] || []).filter(v => v.arrive_time || v.obs)
@@ -6907,7 +6968,7 @@ function fpAfiseaza(){
     .filter(x => fpIn(iv, x.zi) && (!sf || x.s.driver1 === sf || x.s.driver2 === sf) && (!ms || x.s.vehicle_plate === ms)
       && (!st || x.s.status === st) && (!q || [x.soferi, x.masina, x.s.zona, x.traseu].join(" ").toLowerCase().includes(q)))
     .sort((a, b) => String(b.s.created_at).localeCompare(String(a.s.created_at)));
-  const cap = ["Data","Zona","Traseu · zile","Șoferi","Mașina","Început zi","Km start","Km stop","Total km","Ora start","Ora stop","Total ore","Vizite","Stare","",""];
+  const cap = ["Data","Zona","Traseu · zile","Șoferi","Mașina","Început zi","Km start","Km stop","Total km","Ora start","Ora stop","Total ore","Vizite","Stare","WhatsApp","",""];
   const dr = 'style="text-align:right"';
   const vizibile = new Set(FP_ROWS.map(fpCheie)); [...FP_BIF].forEach(k => { if(!vizibile.has(k)) FP_BIF.delete(k); });
   const toate = FP_ROWS.length && FP_ROWS.every(x => FP_BIF.has(fpCheie(x)));
@@ -6916,7 +6977,7 @@ function fpAfiseaza(){
       `<td>${esc(x.soferi)}</td><td>${esc(x.masina)}</td><td>${x.inceput || ""}</td><td ${dr}>${x.s.km_start ?? ""}</td><td ${dr}>${x.s.km_end ?? ""}</td><td ${dr}><b>${x.km}</b></td>` +
       `<td>${x.oraStart}</td><td>${x.oraStop}</td><td>${x.ore}</td>` +
       `<td><b>${x.viz.length}</b>${x.la || x.om ? ` <span class="muted">(${[x.la ? "lipsă acces " + x.la : "", x.om ? "omis " + x.om : ""].filter(Boolean).join(", ")})</span>` : ""}</td>` +
-      `<td>${x.fara ? '<span class="muted">fără rută</span>' : x.s.status === "finalizata" ? "finalizată" : "în lucru"}</td><td>${x.fara ? "" : fpButonPdf(x, i)}</td>` +
+      `<td>${x.fara ? '<span class="muted">fără rută</span>' : x.s.status === "finalizata" ? "finalizată" : "în lucru"}</td><td style="font-size:12px">${fpWa(x)}</td><td>${x.fara ? "" : fpButonPdf(x, i)}</td>` +
       `<td><button class="btn sm sec" style="border-color:#C0392B;color:#C0392B" title="Șterge acest rând (cu confirmare)" onclick="fpSterge([${i}])">🗑</button></td></tr>`).join("")
       : `<tr><td colspan="${cap.length + 1}" class="muted">Nicio rută pentru filtrele alese.</td></tr>`) + "</tbody>";
   fpStergeBtn();
@@ -7056,7 +7117,8 @@ function exportFP(){
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(FP_ROWS.map(x => ({ DATA: x.zi, ZONA: x.s.zona || "", TRASEU: x.traseu, SOFER_1: x.s.driver1 || "", SOFER_2: x.s.driver2 || "",
     MASINA: x.masina, INCEPUT_ZI: x.inceput || "", KM_START: x.s.km_start ?? "", KM_STOP: x.s.km_end ?? "", TOTAL_KM: x.km, ORA_START: x.oraStart, ORA_STOP: x.oraStop, TOTAL_ORE: x.ore,
-    VIZITE: x.viz.length, LIPSA_ACCES: x.la, OMIS: x.om, STARE: x.fara ? "fără rută" : x.s.status === "finalizata" ? "finalizată" : "în lucru" }))), "FOI PARCURS");
+    VIZITE: x.viz.length, LIPSA_ACCES: x.la, OMIS: x.om, STARE: x.fara ? "fără rută" : x.s.status === "finalizata" ? "finalizată" : "în lucru",
+    WHATSAPP_START: x.fara ? "" : fpWaTxt(x.s.wa_start_la, x.s.wa_start_ok), WHATSAPP_FINAL: x.fara ? "" : fpWaTxt(x.s.wa_final_la, x.s.wa_final_ok) }))), "FOI PARCURS");
   XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(FP_ROWS.flatMap(x => fpLiniiVizite(x).map(r => ({ DATA: x.zi, SOFERI: x.soferi, MASINA: x.masina,
     NR: r.nr, CLIENT: r.client, LOCALITATE: r.loc, TOALETE: r.toalete, FRECVENTA: r.frecv, SOSIRE: r.sosire, PLECARE: r.plecare, DURATA: r.dur, OBSERVATIE: r.obs, COD: r.cod })))), "VIZITE");
   XLSX.writeFile(wb, `Foi_parcurs_${(fpInterval() || {}).et || "tot"}.xlsx`);
@@ -7669,7 +7731,7 @@ async function incarcaCma(){
 function flagBtn(m, f){
   const v = m[f] || "-";
   return `<span class="flag ${v === "-" ? "" : esc(v)}" data-mid="${m.id}" data-f="${f}" onclick="flagClic(this)" ` +
-    `title="${esc(fmtD(m.data) + " · " + (m.tip_miscare || "") + " · " + (m.buc || 0) + " buc — apasă: - → V → L → X")}">${esc(v)}</span>`;
+    `title="${esc(fmtD(m.data) + " · " + (m.tip_miscare || "") + " · " + (m.buc || 0) + " buc — apasă: " + flagsDe(f).join(" → ") + (f === "pv" ? " (W = PV la sediu / alt depozit)" : ""))}">${esc(v)}</span>`;
 }
 // 📄 pentru fiecare comandă a anexei: deschide PV-ul legat de ea (în Puncte de rută, lângă RT).
 // v6.24: RT pe punctul C<id> (comandă fără anexă) — pătratul comenzii însăși
@@ -7695,7 +7757,7 @@ function flaguriAnexa(anexaId, f, lista){
 }
 async function flagClic(el){
   const id = +el.dataset.mid, f = el.dataset.f;
-  const v = FLAGS[(FLAGS.indexOf(el.textContent) + 1) % FLAGS.length];
+  const L = flagsDe(f), v = L[(L.indexOf(el.textContent) + 1) % L.length];
   const tot = grupTot(id, f);   // v5.14
   const { error } = await (tot ? db.from("miscari").update({ [f]: v }).or(`id.eq.${id},grup_id.eq.${id}`) : db.from("miscari").update({ [f]: v }).eq("id", id));
   if(error){ toast(error.message, true); return; }
