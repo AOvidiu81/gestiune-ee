@@ -1054,7 +1054,7 @@ let dayStart = {}; // {brand, plate, kmStart, driver1, driver2, startTime}
 let lastRouteRows = [];
 
 // --- Șofer EE: aplicatia ruleaza in fila „Rută” (../sofer/), care trimite datele zilei ---
-const EE_RUTA_VERSION = 'v34'; // aceeasi cu VERSIUNE din sw.js; Șofer EE o arata langa rotita
+const EE_RUTA_VERSION = 'v35'; // aceeasi cu VERSIUNE din sw.js; Șofer EE o arata langa rotita
 const SOFER_MODE = new URLSearchParams(location.search).get('sofer') === '1';
 let multiZile = null;   // mai multe zile bifate (ruta complementara), altfel null
 let multiTrasee = null; // mai multe trasee bifate, altfel null
@@ -3576,22 +3576,19 @@ async function eeWaNoteaza(sid, faza, ok){
 }
 window.addEventListener('online', eeWaTrimitePend);
 setInterval(eeWaTrimitePend, 30000);
+// R35 (formatul cerut de Ovidiu, 21.10): „TG JIU | Traseu I” / „Mie. - 21 Oct. 2026 ; Ora 07:42” / șoferii / mașina + km
+const EE_ZI_SCURT = ['Dum.','Lun.','Mar.','Mie.','Joi','Vin.','Sâm.'];
+const EE_LUNA_SCURT = ['Ian.','Feb.','Mar.','Apr.','Mai','Iun.','Iul.','Aug.','Sep.','Oct.','Nov.','Dec.'];
 function eeMesajStart(){
   const now = new Date();
-  const lines = [];
-  if(dayStart.zona) lines.push(`*Ruta: ${String(dayStart.zona).toUpperCase()}*`);
-  lines.push(`${DAY_NAMES_RO[now.getDay()]} - ${pad2(now.getDate())} ${MONTH_FULL_RO[now.getMonth()]} ${now.getFullYear()} ; Ora ${pad2(now.getHours())}:${pad2(now.getMinutes())}`);
-  if(dayStart.driver1) lines.push(`Șofer 1: ${dayStart.driver1}`);
-  if(dayStart.driver2) lines.push(`Șofer 2: ${dayStart.driver2}`);
+  const tr = traseeSalvate();
+  const cap = [dayStart.zona ? String(dayStart.zona).toUpperCase() : '', tr && tr !== 'TOATE' ? tr.split('+').join(' + ') : ''].filter(Boolean).join(' | ');
+  const bloc1 = [cap ? `*${cap}*` : '', `${EE_ZI_SCURT[now.getDay()]} - ${now.getDate()} ${EE_LUNA_SCURT[now.getMonth()]} ${now.getFullYear()} ; Ora ${pad2(now.getHours())}:${pad2(now.getMinutes())}`];
+  const bloc2 = [dayStart.driver1 ? `Șofer 1: ${dayStart.driver1}` : '', dayStart.driver2 ? `Șofer 2: ${dayStart.driver2}` : ''];
   const nr = String(dayStart.plate || '').trim().replace(/\s+/g, '-');
-  const masina = [dayStart.brand, nr ? 'NR: ' + nr : ''].filter(Boolean).join(' - ');
-  if(masina) lines.push(masina);
-  if(dayStart.kmStart != null && dayStart.kmStart !== '') lines.push(`Km START: ${dayStart.kmStart}`);
-  const tr = traseeSalvate(), zl = zileSalvate();
-  if(tr && tr !== 'TOATE') lines.push(`Traseu: ${tr.split('+').join(' + ')}`);
-  if(zl && zl !== 'TOATE') lines.push(`Ziua: ${zl.split('+').join(' + ')}`);
-  const p = (countBadge.textContent || '').trim(); if(p) lines.push(`Puncte: ${p}`);
-  return lines.join('\n');
+  const bloc3 = [[dayStart.brand, nr ? 'NR: ' + nr : ''].filter(Boolean).join(' - '),
+    dayStart.kmStart != null && dayStart.kmStart !== '' ? `Km START: ${dayStart.kmStart}` : ''];
+  return [bloc1, bloc2, bloc3].map(b => b.filter(Boolean).join('\n')).filter(Boolean).join('\n\n');
 }
 async function eeWaTrimiteText(text){
   if(navigator.share){
