@@ -767,7 +767,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <div class="hd-mij"><div id="titlu-sus"></div><span id="azi-sus" title="Data de azi (calculatorul)"></span></div>
   <button id="btn-mob" class="btn sec" style="padding:5px 10px;font-size:12px" onclick="mobPC(false)" title="Înapoi la varianta de telefon">📱 Telefon</button>
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
-  <span class="ver">v6.66</span>
+  <span class="ver">v6.67</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -4703,7 +4703,8 @@ let R_RANDURI = [], R_ANTET = [], R_NUME = "Raport", R_NUM = new Set();
 // Coloana de verificare (Rpt / FAC) de la capatul tabelului: doar pe ecran, nu intra in Excel.
 let R_EXTRA = [], R_EXTRA_T = "", R_MIS = [], R_CEL = [];   // v5.04: R_CEL[j][col] = "up" | "down" (Raport lună)
 // Facturare: starea fiecărui rând pe luna aleasă (ACTIV / INACTIV / NU FACTURAM) și avertizările.
-let R_AID = [], R_AVERT = [], R_RIDS = [], R_ROSU = [];   // R_ROSU (v6.11): rândurile din Facturare cu RIDICARE în luna aleasă   // R_RIDS (v4.83): pe fiecare rând din Raport lună, anexele și comenzile lui
+let R_AID = [], R_AVERT = [], R_RIDS = [], R_ROSU = [], R_FCOL = [];   // R_FCOL (v6.67): Facturare — {col: "up" | "down"} = verde (amplasare / suplimentare) / roșu (ridicare / reducere)
+   // R_ROSU (v6.11): rândurile din Facturare cu RIDICARE în luna aleasă   // R_RIDS (v4.83): pe fiecare rând din Raport lună, anexele și comenzile lui
 
 const zileInLuna = (an, luna) => new Date(an, luna, 0).getDate();
 const dtz = s => s ? new Date(s + "T00:00:00") : null;
@@ -4914,7 +4915,24 @@ async function raportFacturare(){
     const d = dtz(rid ? a.data_ridicarii : (a.data_livrarii || a.data_emitere));
     return d && d >= fp1 && d <= fpN ? st : "";
   };
-  R_ROSU = r.map(x => stLuna(x.a).toUpperCase().includes("RIDICARE"));
+  // v6.67 (cerut de Ovidiu, 22.10): „RIDICARE” informativ cât timp linia are anexa -R FINAL în luna aleasă (înainte de „Confirmă ridicarea”);
+  // datele colorate: INCEPUT LUNA verde = ziua amplasării / suplimentării, SFARSIT LUNA roșu = ziua ridicării / reducerii; STATUS la fel.
+  const inLuna = d => d && d >= fp1 && d <= fpN, acZi = (d1, d2) => d1 && d2 && d1.getTime() === d2.getTime();
+  const stInfo = x => { const st = stLuna(x.a); if(st) return st;
+    const fin = anexeLinie(x.a.id).find(y => /FINAL/i.test(y.anexa || "") && (anexaNr(y) || {}).tip === "R" && inLuna(dtz(y.data_livrarii || y.data_emitere)));
+    return fin ? "RIDICARE" : ""; };
+  const ST_R = /RIDICARE|REDUCERE|EVENIMENT-R/i, ST_A = /AMPLASARE|SUPLIMENTARE|EVENIMENT-A/i;
+  R_FCOL = r.map(x => {
+    const o = {}; if(x.per || x.acoperit) return o;
+    const lin = anexeLinie(x.a.id), nA = anexaNr(x.a) || {};
+    if(nA.tip !== "R" && inLuna(x.de) && acZi(x.de, dtz(x.a.data_livrarii || x.a.data_emitere))) o[22] = "up";
+    const rid = lin.some(y => (anexaNr(y) || {}).tip === "R" && acZi(x.la, dtz(y.data_livrarii || y.data_emitere))) ||
+                (String(x.a.status || "").toUpperCase().includes("RIDICARE") && acZi(x.la, dtz(x.a.data_ridicarii)));
+    if(inLuna(x.la) && rid) o[23] = "down";
+    const st = stInfo(x); if(st) o[21] = ST_R.test(st) ? "down" : ST_A.test(st) ? "up" : "";
+    return o;
+  });
+  R_ROSU = r.map(x => stInfo(x).toUpperCase().includes("RIDICARE"));
   R_RANDURI = r.map(x => {
     const cant = x.cant, pret = +x.a.pret || 0;
     const st = x.acoperit ? "ACOPERIT DE AVANS" : (FS[x.a.id] || (x.per && x.per.document) || "ACTIV");
@@ -4925,7 +4943,7 @@ async function raportFacturare(){
              dRO(dtz(x.a.data_emitere)),
              dRO(dtz(x.a.data_livrarii || x.a.data_emitere)),
              x.a.jud || "", x.a.loc || "", x.a.sat || "", x.a.forma || "", prodN(x.a.produs || "", cant),
-             modelAcc(x.a), x.a.um || "", cant, pret, x.a.moneda || "", stLuna(x.a),
+             modelAcc(x.a), x.a.um || "", cant, pret, x.a.moneda || "", stInfo(x),
              dRO(x.de), dRO(x.la), x.zile, fara, Math.round(fara * (1 + tva) * 100) / 100,
              x.a.scadent === null || x.a.scadent === undefined ? "" : x.a.scadent ];
   });
@@ -4945,7 +4963,7 @@ async function raportFacturare(){
         m.jud || "", m.loc || "", m.sat || "", "DESPAGUBIRE " + m.tip_miscare, prodN(m.produs || "", cant), [m.model, m.model_fizic].filter(Boolean).join(" "),
         a.um || "BUC", cant, pret, a.moneda || "RON", m.tip_miscare, dRO(dtz(m.data)), "", "", fara, Math.round(fara * (1 + tva) * 100) / 100,
         a.scadent === null || a.scadent === undefined ? "" : a.scadent ]);
-      R_AID.push(null); R_AVERT.push({}); R_EXTRA.push(""); R_ROSU.push(false);
+      R_AID.push(null); R_AVERT.push({}); R_EXTRA.push(""); R_ROSU.push(false); R_FCOL.push({});
     }); }
   // v6.44 (cerut de Ovidiu, 19.10): servisarea fără anexă (GLS) — un rând pe servisare, în luna ei, doar cu PV = V și „Se facturează”
   // bifat pe comandă; preț pe servisare, fără zile. STARE = FACTURAT când FAC = V pe comandă (bifa din coloana FAC).
@@ -4964,7 +4982,7 @@ async function raportFacturare(){
         k.nume || m.client || "", k.id_tip || "", k.atr || "", k.cui || "", cda === "CDA" ? "" : cda, "", dRO(dtz(m.data)),
         m.jud || "", m.loc || "", m.sat || "", "SERVISARE", prodN(m.produs || "", cant), [m.model, m.model_fizic].filter(Boolean).join(" "),
         "BUC", cant, pret, m.desp_moneda || "RON", "SERVISARE", dRO(dtz(m.data)), dRO(dtz(m.data)), "", fara, Math.round(fara * (1 + tva) * 100) / 100, m.desp_scadent == null ? "" : m.desp_scadent ]);
-      R_AID.push(null); R_AVERT.push({}); R_ROSU.push(false);
+      R_AID.push(null); R_AVERT.push({}); R_ROSU.push(false); R_FCOL.push({});
       R_EXTRA.push(flagBtn(m, "fac") + ` <button class="btn sm sec" title="Copiază textul pentru departamentul de facturare (client, comanda, servisarea, PV, preț)" onclick="servText(${m.id})">📋</button>`);
     }); }
   R_NUME = "Facturare";
@@ -5307,6 +5325,8 @@ function deseneazaRaport(){
         else if(fact && i === 0)
           t = `<select class="fs-sel ${esc(String(v).split(" ")[0])}" onchange="setStareFact(${R_AID[j]}, this.value)">` +
               FACT_STARI.map(o => `<option${o === v ? " selected" : ""}>${o}</option>`).join("") + "</select>";
+        { const fc = fact && R_FCOL[j] ? R_FCOL[j][i] : "";   // v6.67: verde = amplasare / suplimentare, roșu = ridicare / reducere
+          if(fc && t) t = `<span style="color:var(${fc === "up" ? "--ok" : "--red"})">${t}</span>`; }
         if(fact && (i === 22 || i === 23) && R_AID[j] != null){   // v6.50: dublu clic = perioada de facturare
           const p = R_FX[j] && R_FX[j].per;
           if(p && i === 22) t = `<span title="Perioadă pusă de mână${p.document ? " · " + esc(p.document) : ""}${p.observatii ? " · " + esc(p.observatii) : ""}">📅 </span>` + t;
