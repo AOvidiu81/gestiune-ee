@@ -767,7 +767,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <div class="hd-mij"><div id="titlu-sus"></div><span id="azi-sus" title="Data de azi (calculatorul)"></span></div>
   <button id="btn-mob" class="btn sec" style="padding:5px 10px;font-size:12px" onclick="mobPC(false)" title="Înapoi la varianta de telefon">📱 Telefon</button>
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
-  <span class="ver">v6.67</span>
+  <span class="ver">v6.68</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -2970,8 +2970,22 @@ function largesteFiltrele(rec){
 const NEG=/RIDICARE|EVENIMENT-R|REDUCERE|TransferOUT|VANZARE|DAUNA|FURT/;
 // `genereaza` = true vine de la butonul „Salvează și generează”: salveaza la fel,
 // apoi deschide si textul de copiat pe WhatsApp.
+// v6.68 (cerut de Ovidiu, 22.10): ridicare finală (RIDICARE / EVENIMENT-R) pe o anexă a cărei linie n-are încă anexa -R FINAL
+function lipsaFinal(anexaId){
+  if(!anexaId) return false;
+  return !anexeLinie(anexaId).some(x => x.tip_anexa === "R" && /FINAL/i.test(x.anexa || ""));
+}
 async function saveMiscare(genereaza){
   const tip=$("mm-tip").value; let buc=Math.abs(+$("mm-buc").value||0); if(!buc){toast("Introdu numărul de bucăți",true);return false;}
+  { const aid = +$("mm-anexa").value || null;   // v6.68
+    if(FARA_ACT(tip) && aid && !mmExterior() && lipsaFinal(aid)){
+      const a = ANX.find(x => x.id === aid) || {};
+      if(confirm("⚠ Lipsește anexa de ridicare finală pentru " + (a.anexa || "anexa aleasă") + ".\n\n" +
+                 "OK = o creez acum (se deschide „Anexă de ridicare finală”, completată; după Salvează te întorci în comandă și apeși din nou Salvează)\n" +
+                 "Anulează = salvez comanda fără anexă finală (rămâne în De urmărit → „Ridicări fără anexă finală”)")){
+        anexaNouaDinMiscare(); return false;
+      }
+    } }
   if(NEG.test(tip)) buc=-buc;
   // v4.76: scoasă avertizarea „anexa nu e de forma 1.0-S1 / -R1” — numerotarea anexelor o face Ovidiu, în stilul lui.
   const client=$("mm-client").value.trim();
@@ -5641,11 +5655,12 @@ async function loadAtentie(){
   const orizont = new Date(Date.now() + (+$("t-zile").value || 90) * 86400000).toISOString().slice(0, 10);
   const prag = new Date(Date.now() - (+$("t-prag").value || 30) * 86400000).toISOString().slice(0, 10);
 
-  const [pct, mis, doc, fper] = await Promise.all([
+  const [pct, mis, doc, fper, rid] = await Promise.all([
     db.from("clients").select("client_key,client,jud,localitate,locatie,ziua,masina,frecventa,lat,lon"),
     db.from("miscari").select("*").is("client_id", null),
     db.from("documente").select("*").or("status_prim.is.null,status_prim.neq.PRIMIT").lt("data_trimitere", prag).order("data_trimitere"),
-    db.from("facturare_perioada").select("*")
+    db.from("facturare_perioada").select("*"),
+    db.from("miscari").select("id,data,tip_miscare,client,anexa_id,loc,sat").in("tip_miscare", ["RIDICARE", "EVENIMENT-R"]).not("anexa_id", "is", null)   // v6.68
   ]);
   await incarcaNote();
   // v6.22 (15.10): comenzile pe contract din alt depozit (MURES, ARAD…) sunt fără client în baza lui intenționat — nu se semnalează
@@ -5750,6 +5765,15 @@ async function loadAtentie(){
        .map(p => ({ id: "p" + p.client_key, ctx: "fara_masina",
                     v: [p.client_key || "", p.client || "", p.localitate || "", p.ziua || "", p.frecventa || ""] })));
 
+  // v6.68 (cerut de Ovidiu, 22.10): ridicările finale fără anexa -R FINAL (facturarea nu se oprește la data ridicării)
+  add("rid_fara_final", "Ridicări fără anexă finală",
+      "Comandă RIDICARE / EVENIMENT-R pe o anexă care n-are încă anexa de ridicare finală (-R FINAL) — fără ea Facturare nu se oprește la data ridicării. Deschide comanda → „+” lângă Anexă → Salvează. Dispare singur după.",
+      ["Comanda", "Data", "Tip", "Client", "Anexă", "Locație"],
+      ((rid && rid.data) || []).filter(m => { const a = ANX.find(x => x.id === m.anexa_id); return a && !/FINAL/i.test(a.anexa || "") && lipsaFinal(a.id); })
+        .sort((x, y) => String(x.data).localeCompare(String(y.data)))
+        .map(m => { const a = ANX.find(x => x.id === m.anexa_id) || {};
+          return { id: "r" + m.id, mid: m.id, ctx: String(m.anexa_id), v: ["#" + m.id, fmtD(m.data), m.tip_miscare || "", m.client || "", a.anexa || "", [m.loc, m.sat].filter(Boolean).join(", ")] }; }));
+
   add("mis_fara_client", "Mișcări nelegate de un client din gestiune",
       "Clientul e scris ca text, dar nu se potrivește cu niciunul din listă. Nu apar corect în rapoarte.",
       ["Data", "Tip", "Buc.", "Produs", "Client scris", "Localitate"],
@@ -5774,6 +5798,15 @@ function renderPlaci(){
 }
 
 function alegeAtentie(cheie){ AT_SEL = cheie; renderPlaci(); }
+// v6.68: deschide comanda din De urmărit (o aduce în listă dacă filtrele din Comenzi n-o au)
+async function atDeschideCmd(id){
+  if(!MISC.some(x => x.id === id)){
+    const { data, error } = await db.from("miscari").select("*").eq("id", id).maybeSingle();
+    if(error || !data){ toast("Comanda nu s-a putut citi" + (error ? ": " + error.message : ""), true); return; }
+    MISC.push(data);
+  }
+  openMiscare(id);
+}
 
 // ================= v6.04 REZUMATUL BAZEI (cerut de Ovidiu, 14.10) =================
 // Cât ocupă baza și fișierele față de limitele planului gratuit Supabase (500 MB date, 1 GB fișiere),
@@ -5856,7 +5889,7 @@ function renderAtentie(){
   $("t-nota").textContent = x.nota;
   const rnd = atVizibile(x);
   $("t-tbl").innerHTML =
-    "<thead><tr>" + x.cap.map(h => `<th>${esc(h)}</th>`).join("") +
+    "<thead><tr>" + x.cap.map(h => `<th>${esc(h)}</th>`).join("") + (x.randuri.some(r => r.mid) ? '<th class="noprint"></th>' : "") +
     `<th class="noprint">Rezolvat</th><th class="noprint">Amână până la</th><th class="noprint">Notă</th></tr></thead><tbody>` +
     rnd.map(r => {
       const n = AT_NOTE[atK(x.cheie, r.id)], pot = atPotrivit(n, r);
@@ -5864,6 +5897,7 @@ function renderAtentie(){
       const pana = pot && n.stare === "aminat" ? (n.pana_la || "") : "";
       const nt   = pot ? (n.nota || "") : "";
       return "<tr>" + r.v.map(v => `<td>${esc(v === null || v === undefined ? "" : v)}</td>`).join("") +
+        (x.randuri.some(q => q.mid) ? `<td class="noprint">${r.mid ? `<button class="btn sm" onclick="atDeschideCmd(${r.mid})">Deschide</button>` : ""}</td>` : "") +
         `<td class="noprint" style="text-align:center"><input type="checkbox"${bif} onchange="atSalveaza(${r.i},'rezolvat',this.checked)"></td>` +
         `<td class="noprint"><input type="date" value="${esc(pana)}" onchange="atSalveaza(${r.i},'pana_la',this.value)"></td>` +
         `<td class="noprint"><input value="${esc(nt)}" placeholder="scrie ceva…" onchange="atSalveaza(${r.i},'nota',this.value)" style="min-width:170px"></td></tr>`;
