@@ -255,10 +255,10 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   th.sortabil .sg.pe{opacity:1}
   /* v5.21 (cerut de Ovidiu, 11.10): Comenzi — data colorată pe săptămâni, clientul colorat după bife */
   /* v5.22: culorile datei pe teme + 3 stiluri de probă (1 pastilă, 2 celulă, 3 plin) */
-  :root{--z-azi:#a16207;--z-sa:#1d4ed8;--z-st:#6d28d9;--z-sv:#0f766e}
+  :root{--z-azi:#15803d;--z-sa:#1d4ed8;--z-st:#6d28d9;--z-sv:#a16207}   /* v6.62 (cerut de Ovidiu, 22.10): azi verde, săpt. viitoare galben */
   /* v5.46: textele de stare (ok / eroare / atenție) — pastel pe temă închisă, închise la culoare pe tema deschisă */
   :root{--t-ok:#7ad69a;--t-err:#ff9c96;--t-warn:#e8a33d}
-  :root[data-tema="inchis"]{--z-azi:#FACC15;--z-sa:#60A5FA;--z-st:#A78BFA;--z-sv:#2DD4BF}
+  :root[data-tema="inchis"]{--z-azi:#4ADE80;--z-sa:#60A5FA;--z-st:#A78BFA;--z-sv:#FACC15}
   td.zd-azi{--zc:var(--z-azi);font-weight:700} td.zd-sa{--zc:var(--z-sa)} td.zd-st{--zc:var(--z-st)} td.zd-sv{--zc:var(--z-sv)}
   td[class*="zd-"]{color:var(--zc)}
   /* v6.34: Verificare rute șoferi — rândul vizitei: în lucru (sosit) portocaliu 30%, finalizat (plecat) verde 30% */
@@ -518,7 +518,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
     --hd:#1a3769; --hd-tx:#ffffff;
     --ok:#1B6E44; --red:#A8261C; --amb:#9A5B00;
     --rand-hov:#E2E8F1; --umbra:none; --r:4px;
-    --z-azi:#7A5600; --z-sa:#1A4FB8; --z-st:#5B2FB0; --z-sv:#0B6B62;
+    --z-azi:#17703A; --z-sa:#1A4FB8; --z-st:#5B2FB0; --z-sv:#6B5000;
     --cl-toate:#1B6E44; --cl-unele:#9A4E06;
     --t-ok:#185C38; --t-err:#8E2A22; --t-warn:#7A4A08;
   }
@@ -548,6 +548,9 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   :root:not([data-tema="inchis"]) .modal .box{border-radius:4px}
   :root:not([data-tema="inchis"]) .modal h3.cap-mut{border-radius:4px 4px 0 0}
   :root:not([data-tema="inchis"]) .kpi div b{font-weight:700}
+  :root:not([data-tema="inchis"]) .ds-1 td.zd-sv .zd{background:#F6DC5C}   /* v6.62: săpt. viitoare galben */
+  :root:not([data-tema="inchis"]) .ds-2 td.zd-sv{background:#F8EAA0}
+  :root:not([data-tema="inchis"]) .ds-3 td.zd-sv .zd{background:#E9C21F;color:#3D2E00}
   :root:not([data-tema="inchis"]) #fe-bara button{border-radius:4px}
   :root:not([data-tema="inchis"]) .tel-v{color:#1F5FD1;border-color:#1F5FD1}
   :root:not([data-tema="inchis"]) td.rl-up .rl-b{background:#CFE6D8;border-color:#7FB898}
@@ -568,7 +571,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
     --hd:#1a3769; --hd-tx:#ffffff;
     --ok:#5DD39A; --red:#E5534B; --amb:#F2B04A;
     --rand-hov:#2B3B5A; --umbra:none; --r:4px;
-    --z-azi:#FFE290; --z-sa:#8DB8FF; --z-st:#C9B2FF; --z-sv:#6EE7D6;
+    --z-azi:#6EE7A0; --z-sa:#8DB8FF; --z-st:#C9B2FF; --z-sv:#FFE290;
     --cl-toate:#7BE0A8; --cl-unele:#F7C66B;
     --t-ok:#A3E3C0; --t-err:#FFB5AE; --t-warn:#F7CF8A;
   }
@@ -755,7 +758,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <div class="hd-mij"><div id="titlu-sus"></div><span id="azi-sus" title="Data de azi (calculatorul)"></span></div>
   <button id="btn-mob" class="btn sec" style="padding:5px 10px;font-size:12px" onclick="mobPC(false)" title="Înapoi la varianta de telefon">📱 Telefon</button>
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
-  <span class="ver">v6.61</span>
+  <span class="ver">v6.62</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
