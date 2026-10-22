@@ -767,7 +767,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <div class="hd-mij"><div id="titlu-sus"></div><span id="azi-sus" title="Data de azi (calculatorul)"></span></div>
   <button id="btn-mob" class="btn sec" style="padding:5px 10px;font-size:12px" onclick="mobPC(false)" title="Înapoi la varianta de telefon">📱 Telefon</button>
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
-  <span class="ver">v6.65</span>
+  <span class="ver">v6.66</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -1956,7 +1956,8 @@ function actDoc(r){
   return ds.find(d => d.status_prim === "PRIMIT") || ds.sort((x, y) => y.id - x.id)[0];
 }
 function actEf(r){
-  const v = (r && r.act) || "-", d = actDoc(r); if(!d) return v;
+  const v = (r && r.act) || "-"; if(r && FARA_ACT(r.tip_miscare)) return v;   // v6.66: la ridicare / EVENIMENT-R ACT = bifa (fără acte)
+  const d = actDoc(r); if(!d) return v;
   return d.status_prim === "PRIMIT" ? "V" : d.status_prim === "IN ASTEPTARE" ? "VA" : d.status_prim === "LIPSA" ? "X" : d.status_prim === "ANULAT" ? "-" : v;
 }
 const actR = r => { const e = actEf(r); return e === ((r && r.act) || "-") ? r : { ...r, act: e }; };
@@ -2917,6 +2918,12 @@ $("mm-flags").addEventListener("click", mmSchimbat);
 function mmPvX(){ const d = $("mm-dep").value; const f = document.querySelector('#mm-flags .flag[data-f="pv"]');
   if(f && d && d !== depPrincipal() && f.textContent === "-") setFlag(f, "X"); }
 $("mm-dep").addEventListener("change", mmPvX);
+// v6.66 (cerut de Ovidiu, 22.10): la RIDICARE și EVENIMENT-R (se ridică tot de pe locație) nu se fac acte, doar PV → ACT trece singur pe V
+// (AMPLASARE / SUPLIMENTARE / REDUCERE au acte: anexe / acte adiționale)
+function FARA_ACT(t){ return t === "RIDICARE" || t === "EVENIMENT-R"; }
+function mmActRid(){ const f = document.querySelector('#mm-flags .flag[data-f="act"]');
+  if(f && FARA_ACT($("mm-tip").value) && f.textContent === "-") setFlag(f, "V"); }
+$("mm-tip").addEventListener("change", mmActRid);
 // Randul de sub titlu: clientul si contractul, cat se vad in acest moment in formular.
 function mmAntet(){
   const el=$("mm-sub"); if(!el) return;
@@ -2989,7 +2996,7 @@ async function saveMiscare(genereaza){
     rec.desp_scadent = rec.desp_factureaza && $("mm-sv-scad").value !== "" ? Math.max(0, Math.round(+$("mm-sv-scad").value || 0)) : null;   // v6.48
     if(rec.desp_factureaza && !rec.desp_pret){ toast("Scrie prețul servisării (sau debifează „Se facturează”)", true); return false; }
   }
-  mmPvX();
+  mmPvX(); mmActRid();   // v6.66
   document.querySelectorAll("#mm-flags .flag").forEach(f=>rec[f.dataset.f]=f.textContent);
   // „Salvează” simplu lasă textul negenerat (portocaliu); „Salvează și generează” pune ora.
   // v5.33 (decizia lui): o comandă deja trimisă rămâne la șoferi și după editare (se actualizează la ei); textul WhatsApp se retrimite doar dacă e nevoie
