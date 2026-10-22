@@ -80,6 +80,9 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   td.rl-up .rl-b{background:rgba(46,139,60,.28);border:1px solid rgba(76,175,90,.6);color:var(--t-ok)}
   td.rl-down .rl-b{background:rgba(192,57,43,.28);border:1px solid rgba(224,90,80,.6);color:var(--t-err)}
   .flag.V{background:#1f9d55;color:#fff;border-color:#1f9d55}.flag.L{background:#f08c00;color:#fff;border-color:#f08c00}.flag.X{background:#d93025;color:#fff;border-color:#d93025}.flag.W{background:#2563eb;color:#fff;border-color:#2563eb}
+  /* v6.63 (cerut de Ovidiu, 22.10): bifa care contează la comandă și e încă „-” = de făcut → portocaliu 30% */
+  .flag.DF{background:rgba(234,88,12,.3);border-color:rgba(234,88,12,.3);color:#9A3412}
+  #mm-flags .flag.NCF{opacity:.38}
   .stoc-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:12px}
   .stoc{background:#fff;border:1px solid var(--bd);border-radius:10px;padding:12px}
   .stoc h4{margin:0 0 8px;font-size:13px;color:var(--g)}
@@ -437,6 +440,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   :root[data-tema="inchis"] .flag.L{background:#f08c00;color:#fff;border-color:#f08c00}
   :root[data-tema="inchis"] .flag.X{background:#d93025;color:#fff;border-color:#d93025}
   :root[data-tema="inchis"] .flag.W{background:#2563eb;color:#fff;border-color:#2563eb}
+  :root[data-tema="inchis"] .flag.DF{background:rgba(234,88,12,.3);border-color:rgba(234,88,12,.3);color:#FDBA74}
 
   @media (min-width:900px){
     /* Fila activă e o pastilă, ca în model, nu o linie pe margine. */
@@ -758,7 +762,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <div class="hd-mij"><div id="titlu-sus"></div><span id="azi-sus" title="Data de azi (calculatorul)"></span></div>
   <button id="btn-mob" class="btn sec" style="padding:5px 10px;font-size:12px" onclick="mobPC(false)" title="Înapoi la varianta de telefon">📱 Telefon</button>
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
-  <span class="ver">v6.62</span>
+  <span class="ver">v6.63</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -1934,7 +1938,9 @@ function clStare(r){
   if(FLAGURI.every(f => (r[f] || "-") === "-")) return "";
   return v.every(f => eVerde(f, r[f] || "-")) ? "cl-toate" : "cl-unele";   // v6.57: PV = W e verde ca V
 }
-const flNC = (r, f, html) => flaguriNuConteaza(r).has(f) ? `<span class="fl-nc" title="Nu e nevoie la această comandă (${ctrExterior(r) && ["rpt","fac","act"].includes(f) ? "contract pe depozitul " + esc(r.contract) : f === "rpt" ? "servisările nu intră în Raport lună" : f === "fac" && servFaraFact(r) ? "servisare care nu se facturează (Se facturează debifat)" : "livrată din depozitul " + esc(r.depozit)}) — nu contează la verde">${html}</span>` : html;
+// v6.63: bifa care contează și e încă „-” primește clasa DF (de făcut, portocaliu 30%)
+const flDF = (r, f, html) => (r && (r[f] || "-") === "-") ? html.replace('class="flag ', 'class="flag DF ') : html;
+const flNC = (r, f, html) => !flaguriNuConteaza(r).has(f) ? flDF(r, f, html) : flaguriNuConteaza(r).has(f) ? `<span class="fl-nc" title="Nu e nevoie la această comandă (${ctrExterior(r) && ["rpt","fac","act"].includes(f) ? "contract pe depozitul " + esc(r.contract) : f === "rpt" ? "servisările nu intră în Raport lună" : f === "fac" && servFaraFact(r) ? "servisare care nu se facturează (Se facturează debifat)" : "livrată din depozitul " + esc(r.depozit)}) — nu contează la verde">${html}</span>` : html;
 const depPrincipalId = () => { const p=DEP.find(d=>d.tip==="principal"); return p?p.id  :(DEP[0]?DEP[0].id  :null); };
 let DEP_PRESELECTAT = false;
 function pune(sel,val){ const s=$(sel); if(!s||!val) return; if([...s.options].some(o=>o.value===val)) s.value=val; }
@@ -2444,7 +2450,18 @@ function exportMiscari(){
 }
 // ---- flags
 document.querySelectorAll("#mm-flags .flag").forEach(f=>f.onclick=()=>{ const L=flagsDe(f.dataset.f), i=(L.indexOf(f.textContent)+1)%L.length; setFlag(f,L[i]); });
-function setFlag(el,v){ el.textContent=v; el.className="flag "+(v==="-"?"":v); }
+function setFlag(el,v){ el.textContent=v; el.className="flag "+(v==="-"?"":v); if(el.closest && el.closest("#mm-flags")) mmFlagDFcurand(); }
+// v6.63: în formularul comenzii — „-” pe o bifă care contează = portocaliu (DF); bifele care nu contează, stinse (NCF)
+let MM_DF_T = null;
+function mmFlagDFcurand(){ clearTimeout(MM_DF_T); MM_DF_T = setTimeout(mmFlagDF, 0); }
+function mmFlagDF(){
+  const ext = typeof mmExterior === "function" && mmExterior(), sv = $("mm-sv-f");
+  const r = { tip_miscare: $("mm-tip").value, contract: $("mm-contract").value || null, depozit: $("mm-dep").value || null,
+    anexa_id: ext ? null : (+$("mm-anexa").value || null), desp_factureaza: !!(sv && sv.checked) };
+  const nu = flaguriNuConteaza(r);
+  document.querySelectorAll("#mm-flags .flag").forEach(f => { const k = f.dataset.f;
+    f.classList.toggle("NCF", nu.has(k)); f.classList.toggle("DF", !nu.has(k) && f.textContent === "-"); });
+}
 // La RIDICARE / REDUCERE / TransferOUT / VANZARE bucatile se arata cu minus inca din formular.
 // Ovidiu poate scrie si el minusul; la salvare semnul il decide oricum tipul comenzii.
 function semnBuc(){ const b=$("mm-buc"); const n=Math.abs(+b.value||0); const neg=NEG.test($("mm-tip").value);
@@ -2855,6 +2872,7 @@ function mmStareGen(){
 function mmSchimbat(){ if(MM_GEN){ MM_GEN = null; mmStareGen(); } }
 ["input","change"].forEach(ev => document.querySelector("#mod-m .lux-corp").addEventListener(ev, mmSchimbat));
 $("mm-flags").addEventListener("click", mmSchimbat);
+["input","change"].forEach(ev => document.querySelector("#mod-m .lux-corp").addEventListener(ev, mmFlagDFcurand));   // v6.63
 // v5.79: livrare din alt depozit decât cel principal → PV pornește pe X (control: PV neprimit încă), doar dacă e „-”.
 function mmPvX(){ const d = $("mm-dep").value; const f = document.querySelector('#mm-flags .flag[data-f="pv"]');
   if(f && d && d !== depPrincipal() && f.textContent === "-") setFlag(f, "X"); }
