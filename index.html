@@ -821,7 +821,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <button id="btn-mob" class="btn sec" style="padding:5px 10px;font-size:12px" onclick="mobPC(false)" title="Înapoi la varianta de telefon">📱 Telefon</button>
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
   <span id="tz-w" title="Mărimea tabelului (doar tabelul, restul rămâne la fel), din 5 în 5%. Merge și cu Ctrl + rotița mausului, Ctrl + / Ctrl − / Ctrl 0. Dublu clic pe procent = scrii tu valoarea."><button class="pictograma" onclick="tzPas(-1)" aria-label="Micșorează tabelul">−</button><b id="tz-v" ondblclick="tzScrie()" title="Dublu clic = scrii mărimea (ex. 87), Enter">100%</b><input id="tz-in" type="number" min="30" max="300" step="5" style="display:none"><button class="pictograma" onclick="tzPas(1)" aria-label="Mărește tabelul">+</button></span>
-  <span class="ver">v6.80</span>
+  <span class="ver">v6.81</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -2020,7 +2020,13 @@ const livrExterior = r => !!(r && r.depozit && r.contract && r.contract === depP
 const servFaraFact = r => !!(r && r.tip_miscare === "SERVISARE" && !r.anexa_id && !r.desp_factureaza);
 const ctrExterior = r => { const d = DEP.find(x => x.nume === (r && r.contract)); return !!(d && d.tip === "secundar"); };
 const FLAGURI = ["rpt","rt","fac","pv","act","waap"];
-function flaguriNuConteaza(r){ const n = new Set(); if(ctrExterior(r)) ["rpt","fac","act"].forEach(f => n.add(f)); if(livrExterior(r)) n.add("rt"); if(r && r.tip_miscare === "SERVISARE") n.add("rpt"); if(servFaraFact(r)) n.add("fac"); return n; }   // v6.42: servisările nu intră în Raport lună   // v5.79: PV contează și la livrarea din alt depozit (X → V / L)
+// v6.81: evenimentul fără servisare nu are puncte de rută (amplasarea / ridicarea merg din Comenzi + PV) → RT nu contează
+function evFaraRute(r){
+  if(!r || !r.anexa_id || !/^EVENIMENT-[AR]$/.test(r.tip_miscare || "")) return false;
+  if(r.tip_miscare === "EVENIMENT-A") return !(Array.isArray(r.ev_serv) && r.ev_serv.length);
+  return true;   // la ridicarea evenimentului punctele de servisare (dacă au fost) s-au stins singure
+}
+function flaguriNuConteaza(r){ const n = new Set(); if(ctrExterior(r)) ["rpt","fac","act"].forEach(f => n.add(f)); if(livrExterior(r)) n.add("rt"); if(r && r.tip_miscare === "SERVISARE") n.add("rpt"); if(servFaraFact(r)) n.add("fac"); if(evFaraRute(r)) n.add("rt"); return n; }   // v6.42: servisările nu intră în Raport lună   // v5.79: PV contează și la livrarea din alt depozit (X → V / L)
 // v6.64 (cerut de Ovidiu, 22.10): ACT ia culoarea din Registru documente (rândul cu același nr. contract + aceeași anexă în Observații):
 // PRIMIT → V verde · IN ASTEPTARE → V galben (VA, nu e verde) · LIPSA → X · ANULAT → „-” (de făcut). Fără rând în registru → bifa salvată.
 let DOC_ACT = null;
@@ -5261,10 +5267,21 @@ async function genereazaRaport(){
   if($("r-tip").value === "facturare") await raportFacturare(); else await raportLuna();
 }
 
+let FACT_CMD = {};
+function factCmd(a){   // v6.81: comanda clientului de pe amplasarea evenimentului (aceeași linie de anexă)
+  if(!a) return null; const ids = [a.id, a.linie_id].filter(Boolean);
+  for(const i of ids) if(FACT_CMD[i]) return FACT_CMD[i];
+  return null;
+}
+const factAnxNr = a => { const m = factCmd(a); return m ? (String(m.cmd_nr || "COMANDA").trim()) : (a.anexa || ""); };
+const factAnxEm = a => { const m = factCmd(a); return m && m.cmd_data ? m.cmd_data : a.data_emitere; };
 async function raportFacturare(){
   const tva = (+$("r-tva").value || 0) / 100;
   let r = randuriFacturare();
   const anF = +$("r-an").value, lunaF = +$("r-luna").value;
+  // v6.81 (cerut de Ovidiu, 23.10): anexa evenimentului cu „Comanda clientului” pe amplasare → ANEXA NR = comanda clientului, EMITERE ANEXA = data ei
+  { const { data: cm } = await db.from("miscari").select("id,anexa_id,cmd_nr,cmd_data").eq("tip_miscare", "EVENIMENT-A").not("anexa_id", "is", null).or("cmd_nr.not.is.null,cmd_data.not.is.null").limit(5000);
+    FACT_CMD = {}; (cm || []).sort((x, y) => x.id - y.id).forEach(m => { FACT_CMD[m.anexa_id] = m; }); }
   const [misF, fsR, fpR] = await Promise.all([ miscariLuna(anF, lunaF),
     db.from("facturare_stare").select("anexa_id,stare").eq("an", anF).eq("luna", lunaF),
     db.from("facturare_perioada").select("*") ]);
@@ -5314,8 +5331,8 @@ async function raportFacturare(){
     const fara = FACT_VAL(st) ? Math.round(x.zile * pret * cant * 100) / 100 : 0;
     return [ st, x.c.nr_ctr || "", dRO(dtz(x.c.data_emitere)),
              ctrExp(x.c) ? dRO(dtz(ctrExp(x.c))) : ctrExpText(x.c),
-             x.k.nume || "", x.k.id_tip || "", x.k.atr || "", x.k.cui || "", x.a.anexa || "",
-             dRO(dtz(x.a.data_emitere)),
+             x.k.nume || "", x.k.id_tip || "", x.k.atr || "", x.k.cui || "", factAnxNr(x.a),
+             dRO(dtz(factAnxEm(x.a))),
              dRO(dtz(x.a.data_livrarii || x.a.data_emitere)),
              x.a.jud || "", x.a.loc || "", x.a.sat || "", x.a.forma || "", prodN(x.a.produs || "", cant),
              modelAcc(x.a), x.a.um || "", cant, pret, x.a.moneda || "", stInfo(x),
@@ -8859,6 +8876,10 @@ async function spreRute(id){
   if(serCerere(m)){ RUTE_MID = id; await cererePorneste(m); return; }
   // v6.79 (cerut de Ovidiu, 23.10): eveniment cu program — punctele de servisare, ACTIVE doar în zilele lor (implicit Traseu-EV)
   if(m.tip_miscare === "EVENIMENT-A" && m.anexa_id && Array.isArray(m.ev_serv) && m.ev_serv.length){ RUTE_MID = id; await evPorneste(m); return; }
+  if((m.tip_miscare === "EVENIMENT-A" || m.tip_miscare === "EVENIMENT-R") && m.anexa_id && !PL_SARI){   // v6.81: eveniment fără servisare
+    toast("Eveniment fără servisare: nu e nevoie de punct de rută — amplasarea și ridicarea merg din Comenzi (șoferii le văd pe telefon) + PV. RT nu contează. Dacă vrei servisare: Edit comandă → Servisare → Cu servisare.", true);
+    if(VER && VER.f === "rt") VER.form = false; return;
+  }
   // v5.17: la amplasare / suplimentare cu mai multe bucăți se întreabă întâi câte locații are (o singură dată:
   // dacă există deja puncte pe locații A..-NN-.. se deschide direct tabelul; dacă există puncte simple, merge ca înainte)
   // v6.26: comanda din exterior (fără anexă) — mai multe locații: fereastra cu „+ acum” / „− acum” pe fiecare locație
@@ -9067,7 +9088,14 @@ function textComandaDin(d){
   else if(d.evRid && d.tip === "EVENIMENT-A") ext.push("DATA RID.  :  " + dz(d.evRid));   // v6.79: ridicarea programată
   if(+a.transport) ext.push("TRANSPORT  :  " + a.transport);
   L.push("");
-  const anxT = [...new Set([a.anexa, ...(d.extra || []).map(x => x.anexa)].filter(Boolean))].join(", ");   // v5.76: toate anexele de pe comandă
+  let anxT = [...new Set([a.anexa, ...(d.extra || []).map(x => x.anexa)].filter(Boolean))].join(", ");   // v5.76: toate anexele de pe comandă
+  // v6.81 (cerut de Ovidiu, 23.10): comanda are „Comanda clientului” (ACT = comanda) → în text apare comanda clientului cu data ei,
+  // nu anexa internă. La EVENIMENT-R se ia de pe amplasarea evenimentului (aceeași linie de anexă).
+  { let cn = d.cmdNr || "", cd = d.cmdData || "";
+    if(!cn && !cd && d.tip === "EVENIMENT-R" && a.id){ const ids = anexeLinie(a.id).map(x => x.id);
+      const am = (MISC || []).filter(x => x.tip_miscare === "EVENIMENT-A" && ids.includes(x.anexa_id) && (x.cmd_nr || x.cmd_data)).sort((x, y) => y.id - x.id)[0];
+      if(am){ cn = am.cmd_nr || ""; cd = am.cmd_data || ""; } }
+    if(cn || cd) anxT = String(cn || "COMANDA").trim() + (cd ? " din " + cd.split("-").reverse().join(".") : ""); }
   if(k.nr_ctr) L.push("CTR.  :  " + k.nr_ctr + (anxT ? "  ·  " + anxT : ""));
   else if(d.cdep) L.push("CTR.  :  " + d.cdep);   // v5.31: fără număr de contract, se scrie contractul (gestiune)
   if(d.dep) L.push("DEP.  :  " + d.dep);
@@ -9094,6 +9122,7 @@ function textComanda(){
     jud: $("mm-jud").value, loc: $("mm-loc").value, sat: $("mm-sat").value, dep: $("mm-dep").value, cdep: $("mm-contract").value,
     pers: $("mm-pers").value, tel: $("mm-tel").value, frecv: $("mm-frecv").value, zile: $("mm-zi").value, traseu: $("mm-traseu").value, obs: $("mm-obs").value, extra: mmDocExtra(),
     evServ: $("mm-tip").value === "EVENIMENT-A" ? evServLista() : null, evRid: $("mm-ev-rid").value || null,
+    cmdNr: CMD_TIP($("mm-tip").value) ? $("mm-cmd-nr").value.trim() : "", cmdData: CMD_TIP($("mm-tip").value) ? $("mm-cmd-data").value : "",
     locatii: (() => { const x = !$("mm-anexa").value && MISC.find(q => q.id === +$("mm-id").value); return x && Array.isArray(x.locatii) ? x.locatii : null; })() });
 }
 function serAlegeSalvata(m){
@@ -9107,6 +9136,7 @@ function textComandaSalvata(m){
     buc: m.buc, produs: m.produs, model: [m.model, m.model_fizic].filter(Boolean).join(" "), acc: m.accesorii, ser: ser.length ? { lista: ser, alege: 0 } : serAlegeSalvata(m),
     jud: m.jud, loc: m.loc, sat: m.sat, dep: m.depozit, cdep: m.contract, pers: m.pers_resp, tel: m.telefon, frecv: m.frecv_serv, zile: m.zi_serv, traseu: m.traseu, obs: m.observatii,
     evServ: m.tip_miscare === "EVENIMENT-A" && Array.isArray(m.ev_serv) ? m.ev_serv : null, evRid: m.ev_rid || null,
+    cmdNr: m.cmd_nr || "", cmdData: m.cmd_data || "",
     locatii: !m.anexa_id && Array.isArray(m.locatii) ? m.locatii : null,
     extra: m.grup_id === m.id ? (MISC || []).filter(x => x.grup_id === m.id && x.id !== m.id).sort((x, y) => x.id - y.id).map(x => ({ buc: x.buc, produs: x.produs, model: [x.model, x.model_fizic].filter(Boolean).join(" "), acc: x.accesorii, anexa: (ANX.find(z => z.id === x.anexa_id) || {}).anexa || "", jud: x.jud, loc: x.loc, sat: x.sat, pers: x.pers_resp, tel: x.telefon })) : [] });   // v5.13
 }
