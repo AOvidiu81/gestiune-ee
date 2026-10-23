@@ -821,7 +821,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <button id="btn-mob" class="btn sec" style="padding:5px 10px;font-size:12px" onclick="mobPC(false)" title="Înapoi la varianta de telefon">📱 Telefon</button>
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
   <span id="tz-w" title="Mărimea tabelului (doar tabelul, restul rămâne la fel), din 5 în 5%. Merge și cu Ctrl + rotița mausului, Ctrl + / Ctrl − / Ctrl 0. Dublu clic pe procent = scrii tu valoarea."><button class="pictograma" onclick="tzPas(-1)" aria-label="Micșorează tabelul">−</button><b id="tz-v" ondblclick="tzScrie()" title="Dublu clic = scrii mărimea (ex. 87), Enter">100%</b><input id="tz-in" type="number" min="30" max="300" step="5" style="display:none"><button class="pictograma" onclick="tzPas(1)" aria-label="Mărește tabelul">+</button></span>
-  <span class="ver">v6.78</span>
+  <span class="ver">v6.79</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -1384,6 +1384,18 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
       </div>
 
       <div class="sect ev-info" id="mm-ev-info" style="display:none"></div>
+      <div class="sect" id="mm-evp-sect" style="display:none">
+        <h4>Program eveniment <span class="hint">servisări pe rută doar în zilele alese + ridicarea, generată singură la „Salvează și generează”</span></h4>
+        <div id="mm-evp-per" class="muted" style="margin:-4px 0 8px"></div>
+        <div class="grid3">
+          <div><label>Ridicare programată</label><input id="mm-ev-rid" type="date" onchange="mmEvpDeseneaza()"></div>
+          <div><label>Traseu servisare</label><select id="mm-ev-traseu" onchange="$('mm-traseu').value=this.value;mmSchimbat()"><option>Traseu-EV</option><option>Traseu I</option><option>Traseu II</option><option>Traseu III</option></select></div>
+          <div><label>Zi de servisare</label><div class="cu-plus"><input id="mm-ev-zi" type="date"><button type="button" class="btn sec plus" style="width:auto;padding:0 10px" title="Adaugă ziua aleasă" onclick="mmEvZiAdauga()">+ Zi</button></div></div>
+        </div>
+        <input type="hidden" id="mm-ev-serv">
+        <div id="mm-ev-zile" style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-top:8px"></div>
+        <div id="mm-ev-rinfo" class="muted" style="margin-top:8px"></div>
+      </div>
       <div class="sect" id="mm-cmd-sect" style="display:none">
         <h4>Comanda clientului <span class="hint">(ACT — ce trece pe factură)</span></h4>
         <div class="grid3">
@@ -1821,7 +1833,12 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <h3 id="cmd-title" class="lux-cap cap-mut" title="Trage de aici ca să muți fereastra; dublu-clic = înapoi la loc">Comanda de trimis</h3>
   <p class="muted" style="margin:0 0 10px">Se scrie singură din ce ai completat. Verific-o, corectează ce vrei direct aici, apoi copiaz-o și trimite-o pe WhatsApp.</p>
   <div class="ver-banda" id="cmd-ver" style="display:none;margin:0 0 10px;padding:10px;border-radius:10px"></div>
+  <div id="cmd-cap1" style="display:none;font-weight:700;margin:0 0 4px">AMPLASARE</div>
   <textarea id="cmd-text" rows="15" style="width:100%;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:13px;line-height:1.5"></textarea>
+  <div id="cmd-doi" style="display:none;margin-top:12px">
+    <div style="display:flex;align-items:center;gap:10px;margin:0 0 4px"><b style="flex:1">RIDICARE <span class="muted" style="font-weight:400" id="cmd-doi-info"></span></b><button class="btn sm" onclick="copiazaComanda2()">Copiază ridicarea</button></div>
+    <textarea id="cmd-text2" rows="12" style="width:100%;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:13px;line-height:1.5"></textarea>
+  </div>
   <div class="row" style="margin-top:12px;justify-content:flex-end">
     <div style="flex:1"></div>
     <div style="flex:0"><button class="btn sec" onclick="cmdInchide()">Închide</button></div>
@@ -2941,6 +2958,7 @@ function openMiscare(id){
   $("mm-pers").value=r?(r.pers_resp||""):""; $("mm-tel").value=r?(r.telefon||""):""; $("mm-frecv").value=r?(r.frecv_serv||""):""; $("mm-zi").value=r?(r.zi_serv||""):""; $("mm-traseu").value=r?(r.traseu||""):""; $("mm-obs").value=r?(r.observatii||""):"";
   document.querySelectorAll("#mm-flags .flag").forEach(f=>setFlag(f,r?(r[f.dataset.f]||"-"):(f.dataset.f==="waap"?"V":"-")));
   $("mm-cmd-nr").value = r ? (r.cmd_nr || "") : ""; $("mm-cmd-data").value = r ? (r.cmd_data || "") : ""; $("mm-cmd-canal").value = r ? (r.cmd_canal || "") : ""; mmCmdArata();   // v6.43
+  $("mm-ev-rid").value = r ? (r.ev_rid || "") : ""; $("mm-ev-serv").value = r && Array.isArray(r.ev_serv) ? r.ev_serv.join(",") : ""; $("mm-ev-zi").value = "";   // v6.79
   $("mm-sv-f").checked = r ? (r.tip_miscare === "SERVISARE" && !!r.desp_factureaza) : true; $("mm-sv-pret").value = r && r.tip_miscare === "SERVISARE" && r.desp_pret != null ? (+r.desp_pret).toFixed(2) : "";   // v6.44
   $("mm-sv-scad").value = r && r.tip_miscare === "SERVISARE" && r.desp_scadent != null ? r.desp_scadent : "";   // v6.48
   $("mm-sv-moneda").value = (r && r.desp_moneda) || "RON"; if(!$("mm-sv-moneda").value && $("mm-sv-moneda").options.length) $("mm-sv-moneda").selectedIndex = 0;   // v6.45
@@ -2953,12 +2971,12 @@ function openMiscare(id){
   MM_FRATI = []; mmDoc(true); if(r && r.grup_id === r.id) mmFratiIncarca(r.id);   // v5.13
   mmZile();
   mmAntet(); $("mod-m").classList.add("on");
-  mmModClient(); mmExtIncarca();
+  mmModClient(); mmExtIncarca(); mmEvpArata();   // v6.79
   MM_CIORNA = null; $("mm-ciorne").innerHTML = ""; if(!r) mmCiorne();
 }
 // v4.80 (cerut de Ovidiu, 08.10): ciornele comenzilor noi nesalvate (tabel `ciorne`, tip 'comanda').
 let MM_CIORNA = null, MM_CIORNE = [];
-const MM_CAMPURI = ["mm-contract","mm-dep","mm-data","mm-tip","mm-buc","mm-prod","mm-model","mm-mf","mm-client","mm-ctr","mm-anexa","mm-jud","mm-loc","mm-sat","mm-pers","mm-tel","mm-frecv","mm-zi","mm-traseu","mm-obs","mm-cmd-nr","mm-cmd-data","mm-cmd-canal","mm-sv-pret","mm-sv-moneda","mm-sv-scad"];
+const MM_CAMPURI = ["mm-contract","mm-dep","mm-data","mm-tip","mm-buc","mm-prod","mm-model","mm-mf","mm-client","mm-ctr","mm-anexa","mm-jud","mm-loc","mm-sat","mm-pers","mm-tel","mm-frecv","mm-zi","mm-traseu","mm-obs","mm-cmd-nr","mm-cmd-data","mm-cmd-canal","mm-sv-pret","mm-sv-moneda","mm-sv-scad","mm-ev-rid","mm-ev-serv"];
 function mmDate(){
   const d = Object.fromEntries(MM_CAMPURI.map(id => [id, $(id).value || ""]));
   d.acc = accCitite("mm-acc") || ""; d.flags = {};
@@ -2986,7 +3004,7 @@ function mmCiornaIa(id){
   $("mm-client").value = v("mm-client"); fillAnexeForClient();
   if(v("mm-ctr")){ $("mm-ctr").value = v("mm-ctr"); fillAnexeForContract(); cautaSincronizeaza("mm-ctr"); }
   if(v("mm-anexa") && ANX.some(a => a.id == v("mm-anexa"))) mmAnexaAlege(+v("mm-anexa"));
-  ["mm-jud","mm-loc","mm-sat","mm-pers","mm-tel","mm-frecv","mm-zi","mm-traseu","mm-obs","mm-cmd-nr","mm-cmd-data","mm-cmd-canal","mm-sv-pret","mm-sv-moneda","mm-sv-scad"].forEach(k => { $(k).value = v(k); }); if(!$("mm-sv-moneda").value) $("mm-sv-moneda").value = "RON"; mmCmdArata();
+  ["mm-jud","mm-loc","mm-sat","mm-pers","mm-tel","mm-frecv","mm-zi","mm-traseu","mm-obs","mm-cmd-nr","mm-cmd-data","mm-cmd-canal","mm-sv-pret","mm-sv-moneda","mm-sv-scad","mm-ev-rid","mm-ev-serv"].forEach(k => { $(k).value = v(k); }); if(!$("mm-sv-moneda").value) $("mm-sv-moneda").value = "RON"; mmCmdArata(); mmEvpArata();
   document.querySelectorAll("#mm-flags .flag").forEach(f => setFlag(f, (d.flags || {})[f.dataset.f] || "-"));
   MM_PV = null; mmZile(); mmModClient(); mmSerii(true);
   MM_CIORNA = id; mmCiorneDeseneaza();
@@ -3103,6 +3121,11 @@ async function saveMiscare(genereaza){
       : String(a.forma || "").toUpperCase() !== "EVENIMENT" ? "Anexa " + (a.anexa || "") + " nu are Forma EVENIMENT → Facturare numără de la amplasare la ridicare."
       : !a.ev_de ? "Anexa " + (a.anexa || "") + " n-are perioada evenimentului → Facturare numără de la amplasare la ridicare." : "";
     if(msg && !confirm("⚠ " + msg + "\n\nOK = salvez comanda așa · Anulează = mă întorc să corectez")) return false;
+    { const r = $("mm-ev-rid").value, d = $("mm-data").value, sv = evServLista();   // v6.79: programul evenimentului
+      if(r && d && r <= d && !confirm("⚠ Ridicarea programată (" + fmtD(r) + ") nu e după amplasare (" + fmtD(d) + ").\n\nSalvez așa?")) return false;
+      const af = sv.filter(z => (d && z < d) || (r && z >= r));
+      if(af.length && !confirm("⚠ Zile de servisare în afara intervalului amplasare – ridicare: " + af.map(fmtD).join(", ") + ".\n\nSalvez așa?")) return false;
+      if(genereaza && !r && !confirm("Nu ai pus „Ridicare programată” → comanda de ridicare NU se creează singură (o faci tu, ca până acum).\n\nContinui?")) return false; }
   }
   if(NEG.test(tip)) buc=-buc;
   // v4.76: scoasă avertizarea „anexa nu e de forma 1.0-S1 / -R1” — numerotarea anexelor o face Ovidiu, în stilul lui.
@@ -3114,6 +3137,9 @@ async function saveMiscare(genereaza){
     pers_resp:$("mm-pers").value||null,telefon:$("mm-tel").value||null,frecv_serv:$("mm-frecv").value||null,zi_serv:$("mm-zi").value||null,traseu:$("mm-traseu").value||null,observatii:$("mm-obs").value||null,
     contract_id:+$("mm-ctr").value||null, anexa_id:+$("mm-anexa").value||null};
   if(mmExterior()){ rec.client_id = null; rec.contract_id = null; rec.anexa_id = null; }   // v4.78: clientul exterior nu e în baza lui
+  { const evp = tip === "EVENIMENT-A" && !mmExterior(), sv = evp ? evServLista() : [];   // v6.79: programul evenimentului
+    rec.ev_rid = evp ? ($("mm-ev-rid").value || null) : null; rec.ev_serv = sv.length ? sv : null;
+    if(sv.length && !rec.traseu) rec.traseu = "Traseu-EV"; }
   // v6.33 (cerut de Ovidiu, 17.10): despăgubirea la DAUNA / FURT — opțională, rând separat în Facturare (valoare / buc, fără zile)
   { const sv = CMD_TIP(tip);   // v6.43; v6.71 și EVENIMENT-A
     rec.cmd_nr = sv ? ($("mm-cmd-nr").value.trim() || null) : null; rec.cmd_data = sv ? ($("mm-cmd-data").value || null) : null; rec.cmd_canal = sv ? ($("mm-cmd-canal").value || null) : null; }
@@ -3154,6 +3180,12 @@ async function saveMiscare(genereaza){
   if(!id && MM_CIORNA){ await db.from("ciorne").delete().eq("id", MM_CIORNA); MM_CIORNA = null; $("mm-ciorne").innerHTML = ""; }   // v4.80: ciorna folosită nu mai rămâne
   await mmDocSalveaza(salvat.id, rec);   // v5.13: celelalte produse ale anexei
   await mmSeriiSalveaza(salvat.id);
+  let textRid = null;   // v6.79: EVENIMENT-A cu ridicare programată → anexa -R FINAL + comanda EVENIMENT-R, generată
+  if(genereaza && tip === "EVENIMENT-A" && rec.ev_rid && rec.anexa_id){
+    const multe = mmDocExtra().length;
+    try{ textRid = await evRidCreeaza(salvat.id, rec); }catch(e){ toast("Ridicarea nu s-a putut crea: " + (e.message || e), true); }
+    if(textRid && multe) toast("Comanda are mai multe produse: ridicarea generată e doar pentru produsul principal — pentru celelalte fă EVENIMENT-R separat", true);
+  }
   const largite = largesteFiltrele(rec);
   if(genereaza){
     // Formularul rămâne deschis, cu butonul verde; textul se deschide deasupra.
@@ -3163,7 +3195,7 @@ async function saveMiscare(genereaza){
   toast(largite.length
     ? "Comandă salvată. Nu intra în filtrele de acum, așa că am pus " + largite.join(", ") + "."
     : "Comandă salvată");
-  if(textDeCopiat !== null){ $("cmd-text").value = textDeCopiat; $("mod-cmd").classList.add("on"); }
+  if(textDeCopiat !== null){ $("cmd-text").value = textDeCopiat; cmdDoi(textRid); $("mod-cmd").classList.add("on"); }
   await loadMiscari(); loadStoc();
   return true;
 }
@@ -3305,6 +3337,126 @@ function mmEvInfo(){
   el.style.display = "";
 }
 ["mm-ctr", "mm-anexa"].forEach(id => { const e = $(id); if(e) e.addEventListener("change", mmEvInfo); });
+// ================= v6.79: PROGRAM EVENIMENT (cerut de Ovidiu, 23.10) =================
+// Pe EVENIMENT-A: ridicarea programată (miscari.ev_rid), zilele exacte de servisare (miscari.ev_serv) și traseul servisării
+// (miscari.traseu, implicit Traseu-EV). „→ Rute”: un punct pe fiecare zi a săptămânii din program (A<anexă>-SA, A<anexă>-DU),
+// ACTIV doar în zilele lui (schimbări programate, ca la cererile GLS). „Salvează și generează”: se creează singure anexa internă
+// -R FINAL (nu se trimite clientului) și comanda EVENIMENT-R pe data ridicării, generată (șoferii o văd la „alte zile”).
+// Servisările sunt incluse în prețul evenimentului — fără rânduri în Facturare. Anexa evenimentului nu se schimbă.
+const evPerAnexa = a => { if(!a) return null; const b = a.ev_de ? a : ANX.find(x => x.id === a.linie_id); return b && b.ev_de ? { de: b.ev_de, pana: b.ev_pana || b.ev_de } : null; };
+const ZS3 = ["dum","lun","mar","mie","joi","vin","sam"];
+const zsD = iso => ZS3[new Date(iso + "T12:00:00").getDay()] + " " + fmtD(iso);
+function evServLista(){ return [...new Set(String($("mm-ev-serv").value || "").split(",").map(x => x.trim()).filter(x => /^\d{4}-\d{2}-\d{2}$/.test(x)))].sort(); }
+function evServSet(l){ $("mm-ev-serv").value = [...new Set(l)].sort().join(","); if(l.length && !$("mm-traseu").value) $("mm-traseu").value = $("mm-ev-traseu").value || "Traseu-EV"; mmEvpDeseneaza(); mmSchimbat(); }
+function mmEvpArata(){
+  const s = $("mm-evp-sect"); if(!s) return;
+  const on = $("mm-tip").value === "EVENIMENT-A" && !mmExterior();
+  s.style.display = on ? "" : "none"; if(!on) return;
+  const a = ANX.find(x => x.id === (+$("mm-anexa").value || 0)), p = evPerAnexa(a);
+  $("mm-ev-traseu").value = $("mm-traseu").value || "Traseu-EV";
+  $("mm-evp-per").innerHTML = !a ? "Alege întâi anexa evenimentului." : p ? "Perioada evenimentului (din anexa " + esc(a.anexa || "") + "): <b>" + zsD(p.de) + (p.pana !== p.de ? " – " + zsD(p.pana) : "") + "</b>"
+    : "<span style='color:var(--t-err)'>Anexa n-are perioada evenimentului</span> — pune-o din Edit anexă („Eveniment de la / până la”).";
+  mmEvpDeseneaza();
+}
+function mmEvpDeseneaza(){
+  const el = $("mm-ev-zile"); if(!el) return;
+  const l = evServLista(), d = $("mm-data").value, r = $("mm-ev-rid").value, azi = today();
+  const a = ANX.find(x => x.id === (+$("mm-anexa").value || 0)), p = evPerAnexa(a);
+  const ch = "border:1px solid var(--bd);border-radius:14px;padding:3px 4px 3px 10px;display:inline-flex;gap:6px;align-items:center";
+  el.innerHTML = '<span class="muted">Servisări:</span>' + (l.length ? l.map(z => {
+      const afara = (d && z < d) || (r && z >= r), trec = z < azi;
+      return `<span style="${ch}${afara ? ";border-color:var(--t-err)" : ""}" title="${afara ? "În afara intervalului amplasare – ridicare" : trec ? "Ziua a trecut — nu se mai pune pe rută" : ""}"><b style="font-weight:600${trec ? ";opacity:.55" : ""}">${zsD(z)}</b>` +
+        `<button type="button" style="border:0;background:none;color:var(--mut);cursor:pointer;font-size:13px;padding:0 4px" title="Scoate ziua" onclick="mmEvZiScoate('${z}')">✕</button></span>`; }).join("") : ' <span class="muted">nicio zi (evenimentul fără servisare)</span>') +
+    (p ? ` <button type="button" class="btn sm sec" onclick="mmEvZiToate()" title="${esc(fmtD(p.de) + " – " + fmtD(p.pana))}">Toate zilele evenimentului</button>` : "") +
+    (l.length ? ` <button type="button" class="btn sm sec" onclick="evServSet([])">Golește</button>` : "");
+  const ri = $("mm-ev-rinfo"); if(!ri) return;
+  const fin = a ? anexeLinie(a.id).find(x => x.tip_anexa === "R" && /FINAL/i.test(x.anexa || "")) : null;
+  ri.innerHTML = !r ? "Fără „Ridicare programată” comanda de ridicare nu se creează singură." :
+    "La <b>Salvează și generează</b>: " + (fin ? "anexa <b>" + esc(fin.anexa || "") + "</b> există (o folosesc)" : "se creează anexa internă <b>-R FINAL</b>") +
+    " + comanda <b>EVENIMENT-R</b> pe <b>" + zsD(r) + "</b>, generată (șoferii o văd la „alte zile”). Apoi: PV de ridicare → „Confirmă ridicarea”." +
+    (l.length ? " Servisările: „→ Rute” pe această comandă pune punctele, ACTIVE doar în zilele lor, pe " + esc($("mm-traseu").value || "Traseu-EV") + "." : "");
+}
+function mmEvZiAdauga(){ const v = $("mm-ev-zi").value; if(!v){ toast("Alege data servisării în căsuța de lângă", true); return; } evServSet([...evServLista(), v]); $("mm-ev-zi").value = ""; }
+function mmEvZiScoate(z){ evServSet(evServLista().filter(x => x !== z)); }
+function mmEvZiToate(){
+  const p = evPerAnexa(ANX.find(x => x.id === (+$("mm-anexa").value || 0))); if(!p) return;
+  const l = []; for(let z = p.de; z <= p.pana && l.length < 60; z = ziUrm(z)) l.push(z);
+  evServSet([...evServLista(), ...l]);
+}
+$("mm-tip").addEventListener("change", mmEvpArata);
+$("mm-data").addEventListener("change", mmEvpDeseneaza);
+$("mm-traseu").addEventListener("change", () => { $("mm-ev-traseu").value = $("mm-traseu").value || "Traseu-EV"; mmEvpDeseneaza(); });
+{ const v = $("mm-anexa").onchange; $("mm-anexa").onchange = function(){ if(v) v.apply(this, arguments); mmEvpArata(); }; }
+$("mm-contract").addEventListener("change", mmEvpArata);
+// La „Salvează și generează” pe EVENIMENT-A: anexa -R FINAL (dacă linia n-o are) + comanda EVENIMENT-R pe data ridicării, generată.
+// Dacă există deja (a doua apăsare), nu se dublează: la altă dată întreabă și mută ridicarea. Întoarce textul WhatsApp al ridicării.
+async function evRidCreeaza(aId, rec){
+  const a = ANX.find(x => x.id === rec.anexa_id); if(!a) return null;
+  const zi = rec.ev_rid, lin = anexeLinie(a.id), baza = lin.find(x => !x.tip_anexa) || a;
+  let fin = lin.find(x => x.tip_anexa === "R" && /FINAL/i.test(x.anexa || ""));
+  if(fin){
+    const { data: ex, error } = await db.from("miscari").select("*").eq("anexa_id", fin.id).eq("tip_miscare", "EVENIMENT-R").order("id").limit(1);
+    if(error) throw error;
+    const c = (ex || [])[0];
+    if(c){
+      if(c.data !== zi && confirm("Comanda de ridicare " + c.id + " există deja, pe " + fmtD(c.data) + ".\n\nO mut pe " + fmtD(zi) + " (și anexa " + (fin.anexa || "") + ")?\n\nOK = mut · Anulează = rămâne pe " + fmtD(c.data))){
+        const e1 = (await db.from("miscari").update({ data: zi, generat_la: new Date().toISOString() }).eq("id", c.id)).error; if(e1) throw e1;
+        const e2 = (await db.from("anexe").update({ data_emitere: zi, data_livrarii: zi }).eq("id", fin.id)).error; if(e2) throw e2;
+        c.data = zi; await reloadClienti();
+      }
+      cmdDoiInfo = "comanda " + c.id + " · " + (fin.anexa || "");
+      return textComandaSalvata(c);
+    }
+  } else {
+    const acum = cantLinie(baza.id);
+    if(acum <= 0){ toast("Pe anexă nu e nimic la client — nu am creat ridicarea", true); return null; }
+    const nB = String(baza.anexa || "ANEXA NR").trim().replace(/\s*-\s*[SR]\s*\d+\s*$/i, "").replace(/(\d+)\.0$/, "$1");
+    const ra = { contract_id: baza.contract_id, anexa: nB + "-R FINAL", data_emitere: zi, data_livrarii: zi, data_ridicarii: null, data_expirare: null, expirare_text: null,
+      jud: baza.jud || null, loc: baza.loc || null, sat: baza.sat || null, forma: baza.forma || "EVENIMENT", produs: baza.produs, model: baza.model || null, model_fizic: baza.model_fizic || null,
+      accesorii: baza.accesorii || null, um: baza.um || "BUC", cant: -acum, pret: +baza.pret || 0, moneda: baza.moneda || "RON", scadent: +baza.scadent || 30, status: "REDUCERE",
+      depozit: baza.depozit || null, contract_depozit: baza.contract_depozit || null, transport: 0, pers_contact: rec.pers_resp || baza.pers_contact || null, telefon: rec.telefon || baza.telefon || null,
+      ev_de: null, ev_pana: null, linie_id: baza.id, tip_anexa: "R" };
+    const { data: fa, error } = await db.from("anexe").insert(ra).select("*").single();
+    if(error) throw error;
+    fin = fa;
+  }
+  const rr = { data: zi, tip_miscare: "EVENIMENT-R", buc: -Math.abs(+fin.cant || +rec.buc || 0), produs: rec.produs, model: rec.model, model_fizic: rec.model_fizic, accesorii: rec.accesorii,
+    client_id: rec.client_id, client: rec.client, jud: rec.jud, loc: rec.loc, sat: rec.sat, contract: rec.contract, depozit: rec.depozit, pers_resp: rec.pers_resp, telefon: rec.telefon,
+    frecv_serv: null, zi_serv: null, traseu: null, contract_id: rec.contract_id, anexa_id: fin.id,
+    observatii: "Ridicare eveniment — creată din comanda " + aId + " (amplasare " + fmtD(rec.data) + ")",
+    rpt: "-", rt: "-", fac: "-", pv: rec.depozit && rec.depozit !== depPrincipal() ? "X" : "-", act: "V", waap: "V",
+    generat_la: new Date().toISOString(), din_telefon: false };
+  const { data: nc, error: e3 } = await db.from("miscari").insert(rr).select("*").single();
+  if(e3) throw e3;
+  await reloadClienti();
+  cmdDoiInfo = "comanda " + nc.id + " · " + (fin.anexa || "") + " — create acum";
+  toast("Ridicarea e creată: comanda " + nc.id + " (EVENIMENT-R, " + fmtD(zi) + ") + anexa " + (fin.anexa || ""));
+  return textComandaSalvata(nc);
+}
+// Al doilea text în fereastra comenzii (RIDICARE); se ascunde singur la închiderea ferestrei.
+let cmdDoiInfo = "";
+function cmdDoi(t){
+  const on = typeof t === "string" && !!t;
+  $("cmd-doi").style.display = on ? "" : "none"; $("cmd-cap1").style.display = on ? "" : "none";
+  $("cmd-text2").value = on ? t : ""; $("cmd-doi-info").textContent = on && cmdDoiInfo ? "· " + cmdDoiInfo : "";
+  const b = document.querySelector('#mod-cmd button[onclick="copiazaComanda()"]'); if(b) b.textContent = on ? "Copiază amplasarea" : "Copiază textul";
+  if(!on) cmdDoiInfo = "";
+}
+new MutationObserver(() => { if(!$("mod-cmd").classList.contains("on")) cmdDoi(null); }).observe($("mod-cmd"), { attributes: true, attributeFilter: ["class"] });
+async function copiazaComanda2(){
+  try{ await navigator.clipboard.writeText($("cmd-text2").value); toast("Textul ridicării e copiat — dă-l paste pe WhatsApp"); }
+  catch(e){ $("cmd-text2").select(); document.execCommand("copy"); toast("Textul ridicării e copiat"); }
+}
+// Textul ridicării pentru o amplasare deja generată (butonul „Generează text comandă”).
+async function evRidTextExistent(){
+  if($("mm-tip").value !== "EVENIMENT-A" || mmExterior()) return null;
+  const a = ANX.find(x => x.id === (+$("mm-anexa").value || 0)); if(!a) return null;
+  const fin = anexeLinie(a.id).find(x => x.tip_anexa === "R" && /FINAL/i.test(x.anexa || "")); if(!fin) return null;
+  const { data, error } = await db.from("miscari").select("*").eq("anexa_id", fin.id).eq("tip_miscare", "EVENIMENT-R").order("id").limit(1);
+  if(error || !data || !data.length) return null;
+  cmdDoiInfo = "comanda " + data[0].id + " · " + (fin.anexa || "");
+  return textComandaSalvata(data[0]);
+}
 function mmCmdAct(){   // data + canalul completate → ACT trece pe V (se vede înainte de Salvează; îl poți schimba)
   const f = document.querySelector('#mm-flags .flag[data-f="act"]');
   if(f && f.textContent === "-" && $("mm-cmd-data").value && $("mm-cmd-canal").value){ setFlag(f, "V"); mmSchimbat(); }
@@ -8153,6 +8305,7 @@ function anexeLocatie(a){
 // schimbarea se pune deoparte (clients.schimbare) — punctul rămâne cum e până în ziua comenzii.
 function ruteProgrameaza(rec, x){
   if(x.cerere){ cerereProgrameaza(rec, x); return; }   // v6.41
+  if(x.evProg){ rec.anexe_ids = x.ids || []; evProgrameaza(rec, x); return; }   // v6.79
   if(x.ids) rec.anexe_ids = x.ids;
   if(!x.deLa) return;   // comandă de azi / din urmă: schimbările programate pentru mai târziu rămân
   const s = { de_la: x.deLa };
@@ -8637,11 +8790,52 @@ function cerereProgrameaza(rec, x){
   if(d >= azi && !l.some(e => e.de_la === urm)) l.push({ de_la: urm, status: "INACTIV" });
   rec.schimbare = schImpacheteaza(schLista(schImpacheteaza(l)));
 }
+// v6.79: servisările unui eveniment. Câte un punct pe ziua săptămânii (A<anexă>-SA …), cu toate bucățile evenimentului;
+// stă pe INACTIV și e ACTIV doar în datele din program (de la 00:00 în ziua lui, INACTIV din ziua următoare). Anexa nu se schimbă.
+async function evPorneste(m){
+  const azi = today(), zile = [...new Set(m.ev_serv)].sort(), viit = zile.filter(d => d >= azi);
+  if(!viit.length){ toast("Toate zilele de servisare ale evenimentului au trecut — nu mai pun nimic pe rută", true); return; }
+  const a = ANX.find(x => x.id === m.anexa_id) || {}, loc = anexeLocatie(a);
+  const baza = "A" + (loc.length ? Math.min(...loc) : m.anexa_id);
+  const { data: gasite, error } = await db.from("clients").select("*").like("client_key", baza + "%").limit(500);
+  if(error){ toast(error.message, true); return; }
+  const camp = extCamp(m.produs) || "toalete", n = Math.abs(+m.buc || 0) || 1;
+  const model = (gasite || []).find(p => +p.lat && +p.lon) || null;
+  const peZi = {}; viit.forEach(d => { const z = ziDin(d); (peZi[z] = peZi[z] || []).push(d); });
+  const coada = Object.keys(peZi).sort((x, y) => peZi[x][0] < peZi[y][0] ? -1 : 1).map(z => {
+    const cheie = baza + "-" + ZI_ABR[z], g = (gasite || []).find(p => p.client_key === cheie) || null, dz = peZi[z];
+    const rec = g ? Object.assign({}, g) : { client_key: cheie, client: m.client || "", jud: m.jud || "", localitate: m.loc || "", locatie: m.sat || "",
+      pers_resp: "", telefon: "", toalete: 0, containere: 0, garduri: 0, accesorii: null, lat: model ? model.lat : null, lon: model ? model.lon : null, cartela: false, status: "INACTIV" };
+    delete rec.schimbare;
+    rec.ziua = ZI_RUTE[z] || ""; rec.masina = m.traseu || "Traseu-EV"; rec.frecventa = "La Cerere"; rec[camp] = n;
+    rec.accesorii = unesteAcc(rec.accesorii, m.accesorii) || null;
+    if(m.pers_resp) rec.pers_resp = m.pers_resp; if(m.telefon) rec.telefon = m.telefon;
+    rec.status = dz.includes(azi) ? "ACTIV" : "INACTIV";
+    const nota = `Servisare eveniment: punctul <b>${esc(cheie)}</b> apare pe rută <b>doar ${dz.map(zsD).join(", ")}</b>, pe <b>${esc(rec.masina)}</b> (îl poți schimba din Mașina); în rest stă pe INACTIV și rămâne în Puncte de rută. ` +
+      (g ? "Punctul există deja — îl refolosesc. " : model ? "Punct nou — coordonatele le-am luat de la alt punct al locației, <b>verifică-le</b>. " : "Punct nou — <b>pune coordonatele GPS</b>. ") +
+      `${n} buc ${esc(prodN(m.produs || "", n))}. Anexa nu se schimbă; servisarea e inclusă în prețul evenimentului (nu apare în Facturare). Verifică și apasă Salvează.`;
+    return { id: g ? g.id : null, rec, camp, orig: g, evProg: { zile: dz }, ids: [...new Set([...((g && g.anexe_ids) || []).map(Number), m.anexa_id])], nota };
+  });
+  if(coada.length > 1) coada.forEach((x, k) => { x.nota = `<b>Punctul ${k + 1} din ${coada.length}.</b> ` + x.nota + (k + 1 < coada.length ? " După Salvează sau Renunță urmează următorul." : ""); });
+  RUTE_COADA = coada; rUrmator();
+}
+// La Salvează: ACTIV în fiecare dată din program (cu ziua + traseul din formular), INACTIV din ziua de după (dacă nu e tot zi de servisare).
+function evProgrameaza(rec, x){
+  const azi = today(), zile = x.evProg.zile, o = x.orig || null, ziua = rec.ziua || null, masina = rec.masina || null;
+  const atinse = new Set([...zile, ...zile.map(ziUrm)]);
+  const l = schLista(o && o.schimbare).filter(e => !atinse.has(e.de_la));
+  zile.filter(d => d > azi).forEach(d => l.push({ de_la: d, status: "ACTIV", ziua, masina }));
+  zile.forEach(d => { const u = ziUrm(d); if(!zile.includes(u)) l.push({ de_la: u, status: "INACTIV" }); });
+  rec.status = zile.includes(azi) ? "ACTIV" : "INACTIV";
+  rec.schimbare = schImpacheteaza(schLista(schImpacheteaza(l)));
+}
 async function spreRute(id){
   const m = MISC.find(x => x.id === id); if(!m) return;
   if(livrExterior(m)){ toast("Comanda e livrată din depozitul " + m.depozit + " — nu se face punct de rută la tine (rămân Facturare și Raport lună)", true); if(VER && VER.f === "rt") VER.form = false; return; }
   // v6.41 (cerut de Ovidiu, 19.10): servisare la cerere fără contract / anexă (GLS) — punctul stă pe INACTIV și e ACTIV doar în ziua comenzii
   if(serCerere(m)){ RUTE_MID = id; await cererePorneste(m); return; }
+  // v6.79 (cerut de Ovidiu, 23.10): eveniment cu program — punctele de servisare, ACTIVE doar în zilele lor (implicit Traseu-EV)
+  if(m.tip_miscare === "EVENIMENT-A" && m.anexa_id && Array.isArray(m.ev_serv) && m.ev_serv.length){ RUTE_MID = id; await evPorneste(m); return; }
   // v5.17: la amplasare / suplimentare cu mai multe bucăți se întreabă întâi câte locații are (o singură dată:
   // dacă există deja puncte pe locații A..-NN-.. se deschide direct tabelul; dacă există puncte simple, merge ca înainte)
   // v6.26: comanda din exterior (fără anexă) — mai multe locații: fereastra cu „+ acum” / „− acum” pe fiecare locație
@@ -8837,13 +9031,17 @@ function textComandaDin(d){
   if(d.pers || d.tel){ L.push(""); if(d.pers) L.push("PERS. RES.  :  " + d.pers); if(d.tel) L.push("TEL.  :  " + d.tel); }
   }
   // v5.91 (cerut de Ovidiu, 14.10): comanda ajunge la șoferi cu frecvența, zilele și traseul
-  { const zl = String(d.zile || "").split(",").filter(Boolean).join(", ");
+  if(Array.isArray(d.evServ) && d.evServ.length){   // v6.79: servisările evenimentului, pe date exacte
+    L.push(""); L.push("SERVISARE  :  " + d.evServ.map(dz).join(", ")); L.push("TRASEU  :  " + (d.traseu || "Traseu-EV"));
+  } else { const zl = String(d.zile || "").split(",").filter(Boolean).join(", ");
     if(d.frecv || zl){ L.push(""); L.push("SERVISARE  :  " + [d.frecv, zl].filter(Boolean).join(" · ")); }
     if(d.traseu) L.push("TRASEU  :  " + d.traseu); }
   const ext = [];
   // v5.03: la ridicare / reducere data amplasării anexei nu se scrie (la 1-R1 era data reducerii, se citea greșit)
   if(a.data_livrarii && a.data_livrarii !== d.data && !SER_RID.test(d.tip || "")) ext.push("DATA AMPL.  :  " + dz(a.data_livrarii));
+  if(d.tip === "EVENIMENT-A"){ const p = evPerAnexa(a); if(p) ext.push("EVENIMENT  :  " + dz(p.de) + (p.pana !== p.de ? "  –  " + dz(p.pana) : "")); }   // v6.79
   if(a.data_ridicarii) ext.push("DATA RID.  :  " + dz(a.data_ridicarii));
+  else if(d.evRid && d.tip === "EVENIMENT-A") ext.push("DATA RID.  :  " + dz(d.evRid));   // v6.79: ridicarea programată
   if(+a.transport) ext.push("TRANSPORT  :  " + a.transport);
   L.push("");
   const anxT = [...new Set([a.anexa, ...(d.extra || []).map(x => x.anexa)].filter(Boolean))].join(", ");   // v5.76: toate anexele de pe comandă
@@ -8872,6 +9070,7 @@ function textComanda(){
     buc: $("mm-buc").value, produs: $("mm-prod").value, model: [$("mm-model").value, $("mm-mf").value].filter(Boolean).join(" "), acc: accCitite("mm-acc"), ser: mmSeriiText(),
     jud: $("mm-jud").value, loc: $("mm-loc").value, sat: $("mm-sat").value, dep: $("mm-dep").value, cdep: $("mm-contract").value,
     pers: $("mm-pers").value, tel: $("mm-tel").value, frecv: $("mm-frecv").value, zile: $("mm-zi").value, traseu: $("mm-traseu").value, obs: $("mm-obs").value, extra: mmDocExtra(),
+    evServ: $("mm-tip").value === "EVENIMENT-A" ? evServLista() : null, evRid: $("mm-ev-rid").value || null,
     locatii: (() => { const x = !$("mm-anexa").value && MISC.find(q => q.id === +$("mm-id").value); return x && Array.isArray(x.locatii) ? x.locatii : null; })() });
 }
 function serAlegeSalvata(m){
@@ -8884,6 +9083,7 @@ function textComandaSalvata(m){
   return textComandaDin({ tip: m.tip_miscare, data: m.data, client: m.client, anexa_id: m.anexa_id, contract_id: m.contract_id,
     buc: m.buc, produs: m.produs, model: [m.model, m.model_fizic].filter(Boolean).join(" "), acc: m.accesorii, ser: ser.length ? { lista: ser, alege: 0 } : serAlegeSalvata(m),
     jud: m.jud, loc: m.loc, sat: m.sat, dep: m.depozit, cdep: m.contract, pers: m.pers_resp, tel: m.telefon, frecv: m.frecv_serv, zile: m.zi_serv, traseu: m.traseu, obs: m.observatii,
+    evServ: m.tip_miscare === "EVENIMENT-A" && Array.isArray(m.ev_serv) ? m.ev_serv : null, evRid: m.ev_rid || null,
     locatii: !m.anexa_id && Array.isArray(m.locatii) ? m.locatii : null,
     extra: m.grup_id === m.id ? (MISC || []).filter(x => x.grup_id === m.id && x.id !== m.id).sort((x, y) => x.id - y.id).map(x => ({ buc: x.buc, produs: x.produs, model: [x.model, x.model_fizic].filter(Boolean).join(" "), acc: x.accesorii, anexa: (ANX.find(z => z.id === x.anexa_id) || {}).anexa || "", jud: x.jud, loc: x.loc, sat: x.sat, pers: x.pers_resp, tel: x.telefon })) : [] });   // v5.13
 }
@@ -8892,6 +9092,7 @@ function deschideComanda(){
   $("cmd-text").value = textComanda();
   $("cmd-ver").style.display = "none";
   $("mod-cmd").classList.add("on");
+  evRidTextExistent().then(t => { if(t && $("mod-cmd").classList.contains("on")) cmdDoi(t); });   // v6.79
 }
 function cmdInchide(){
   if(VER && VER.f === "waap"){ verInapoi(false); return; }
