@@ -666,6 +666,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   @media screen{
   #nav-sus{display:none}
   #titlu-sus{display:none}
+#tab-sus{display:none}
   .nv-i{width:20px;height:20px;flex:0 0 20px;fill:none;stroke:currentColor;stroke-width:1.75;stroke-linecap:round;stroke-linejoin:round;opacity:.78;transition:opacity .2s,transform .25s cubic-bezier(.65,0,.35,1)}
   nav button.on .nv-i{opacity:1}
   nav button:hover .nv-i{opacity:1;transform:translateX(1px)}
@@ -708,6 +709,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   header h1{display:none}
   .hd-mij{flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;line-height:1.25}
   #titlu-sus{display:block;font-size:18px;font-weight:700;letter-spacing:-.01em;line-height:1.15;opacity:.95;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+  :root[data-nav="mic"] #tab-sus{display:block;flex:0 0 auto;font-size:18px;font-weight:700;letter-spacing:-.01em;line-height:1.15;white-space:nowrap;opacity:.95;padding-right:12px}   /* v6.74 */
   .hd-mij #azi-sus{flex:0 0 auto;max-width:100%}
   nav{grid-column:1;grid-row:1 / span 2;top:0;height:100vh;padding-top:0}
   #nav-sus{display:flex;align-items:center;gap:8px;height:56px;flex:0 0 56px;padding:0 10px 0 12px;margin-bottom:8px;
@@ -813,12 +815,13 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
 </div>
 
 <header>
+  <span id="tab-sus"></span><!-- v6.74: fila deschisă, doar cu meniul strâns -->
   <h1>GestiuneEE <span class="sub-marca">Euro Ecologic</span></h1>
   <div class="hd-mij"><div id="titlu-sus"></div><span id="azi-sus" title="Data de azi (calculatorul)"></span></div>
   <button id="btn-mob" class="btn sec" style="padding:5px 10px;font-size:12px" onclick="mobPC(false)" title="Înapoi la varianta de telefon">📱 Telefon</button>
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
   <span id="tz-w" title="Mărimea tabelului (doar tabelul, restul rămâne la fel), din 5 în 5%. Merge și cu Ctrl + rotița mausului, Ctrl + / Ctrl − / Ctrl 0. Dublu clic pe procent = scrii tu valoarea."><button class="pictograma" onclick="tzPas(-1)" aria-label="Micșorează tabelul">−</button><b id="tz-v" ondblclick="tzScrie()" title="Dublu clic = scrii mărimea (ex. 87), Enter">100%</b><input id="tz-in" type="number" min="30" max="300" step="5" style="display:none"><button class="pictograma" onclick="tzPas(1)" aria-label="Mărește tabelul">+</button></span>
-  <span class="ver">v6.73</span>
+  <span class="ver">v6.74</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -930,14 +933,15 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
 <section class="page ecran" id="p-miscari">
   <div class="card noprint">
     <div class="row">
-      <div><label>An</label><select id="f-an"></select></div>
-      <div><label>Luna</label><select id="f-luna"><option value="">Toate</option></select></div>
-      <div><label>Tip comandă</label><select id="f-tip"><option value="">Toate</option></select></div>
-      <div><label>Produs</label><select id="f-prod"><option value="">Toate</option></select></div>
-      <div><label>Depozit</label><select id="f-dep"><option value="">Toate</option></select></div>
-      <div><label>Caută (client / localitate / contract)</label><div style="position:relative"><input id="f-q" placeholder="ex: ACOMIN" style="padding-right:30px"><button type="button" id="f-q-x" title="Șterge căutarea" onclick="fqSterge()" style="display:none;position:absolute;right:4px;top:50%;transform:translateY(-50%);border:0;background:none;color:var(--mut);font-size:16px;line-height:1;padding:4px 6px;cursor:pointer">✕</button></div></div>
-      <div style="flex:0"><button class="btn" onclick="loadMiscari()">Filtrează</button></div>
+      <!-- v6.74 (cerut de Ovidiu, 23.10): ordinea Comandă nouă · Caută · An · Luna · Tip · Produs · Depozit · Export · PDF; filtrele se aplică singure; „Filtrează” → „Resetează tot” -->
       <div style="flex:0"><button class="btn" onclick="openMiscare()">+ Comandă nouă</button></div>
+      <div><label>Caută (client / localitate / contract)</label><div style="position:relative"><input id="f-q" placeholder="ex: ACOMIN" style="padding-right:30px"><button type="button" id="f-q-x" title="Șterge căutarea" onclick="fqSterge()" style="display:none;position:absolute;right:4px;top:50%;transform:translateY(-50%);border:0;background:none;color:var(--mut);font-size:16px;line-height:1;padding:4px 6px;cursor:pointer">✕</button></div></div>
+      <div><label>An</label><select id="f-an" onchange="loadMiscari()"></select></div>
+      <div><label>Luna</label><select id="f-luna" onchange="loadMiscari()"><option value="">Toate</option></select></div>
+      <div><label>Tip comandă</label><select id="f-tip" onchange="loadMiscari()"><option value="">Toate</option></select></div>
+      <div><label>Produs</label><select id="f-prod" onchange="loadMiscari()"><option value="">Toate</option></select></div>
+      <div><label>Depozit</label><select id="f-dep" onchange="loadMiscari()"><option value="">Toate</option></select></div>
+      <div style="flex:0"><button class="btn sec" onclick="fResetTot()" title="Golește căutarea și pune toate filtrele pe Toți / Toate">↺ Resetează tot</button></div>
       <div style="flex:0"><button class="btn sec" onclick="exportMiscari()">Export Excel</button></div>
       <div style="flex:0"><button class="btn sec" onclick="window.print()">PDF / Print</button></div>
     </div>
@@ -2075,7 +2079,7 @@ async function init(){
     $("conn").textContent="● online"; $("conn").style.color="#9fe0b8";
     fillAll(); await loadStoc(); loadVerif(); loadAtentie();
     // v5.06: fila din adresă (#raport-luna …) se deschide abia după ce s-au încărcat datele — la F5 rămânea goală
-    INIT_GATA = true; deschideSectiune((location.hash || "").replace("#", ""));
+    INIT_GATA = true; deschideSectiune((location.hash || "").replace("#", "") || (matchMedia("(min-width:900px)").matches ? "miscari" : ""));   // v6.74: pe PC pornește pe Comenzi
     mobDupaInit();   // v5.27: varianta de telefon
     ghidPorneste();   // v5.15
   }catch(e){ console.error(e); $("conn").textContent="● eroare conexiune"; $("conn").style.color="#ffb4ae"; toast("Nu m-am putut conecta la baza de date: "+e.message,true); }
@@ -2293,6 +2297,11 @@ function potrivesteTema(){
     b.insertAdjacentHTML("afterbegin", `<svg class="nv-i" viewBox="0 0 24 24" aria-hidden="true">${IC[k] || IC[d.p] || c(12, 12, 4)}</svg>`);
   });
 })();
+// v6.74: numele filei deschise, în bara de sus (se vede doar cu meniul strâns)
+function tabSus(){ const t = $("tab-sus"), b = document.querySelector("nav button.on"); if(!t) return;
+  t.textContent = b ? [...b.childNodes].filter(n => n.nodeType === 3).map(n => n.textContent).join(" ").trim() : ""; }
+document.addEventListener("click", e => { if(e.target.closest && e.target.closest("nav button")) setTimeout(tabSus, 0); });
+setTimeout(tabSus, 0);
 function navComuta(){
   const h = document.documentElement; h.classList.add("nv-anim");
   if(h.dataset.nav === "mic") delete h.dataset.nav; else h.dataset.nav = "mic";
@@ -2438,6 +2447,10 @@ $("f-q").addEventListener("keydown",e=>{if(e.key==="Enter"){clearTimeout(MISC_TQ
 $("f-q").addEventListener("input",()=>{fqX();clearTimeout(MISC_TQ);MISC_TQ=setTimeout(loadMiscari,350);});
 // v5.94 (cerut de Ovidiu, 14.10): ✕ în căsuța de căutare — golește și reîncarcă lista
 function fqX(){ const b=$("f-q-x"); if(b) b.style.display=$("f-q").value?"":"none"; }
+// v6.74: „Resetează tot” — căutarea goală, toate listele pe prima opțiune (Toți / Toate), apoi reîncarcă
+function fResetTot(){ $("f-q").value = ""; fqX(); clearTimeout(MISC_TQ);
+  ["f-an","f-luna","f-tip","f-prod","f-dep"].forEach(id => { const e = $(id); if(e){ const o = [...e.options].find(x => x.value === ""); e.value = o ? "" : (e.options[0] ? e.options[0].value : ""); } });
+  loadMiscari(); }
 function fqSterge(){ $("f-q").value=""; fqX(); clearTimeout(MISC_TQ); loadMiscari(); $("f-q").focus(); }
 // v5.22: stilul de probă al datei în Comenzi (ales de Ovidiu după ce le vede; ținut doar pe acest calculator)
 const DATA_STIL = 1;   // v5.39: ales de Ovidiu (12.10) — „1 pastilă”; butoanele de probă scoase
