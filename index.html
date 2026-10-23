@@ -324,9 +324,6 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
     /* v6.54 (cerut de Ovidiu): Comenzi — pagina cât ecranul, tabelul se derulează în el însuși:
        antetul (Comandă, Buc, Produs…) rămâne sus, bara stânga–dreapta rămâne jos, deasupra barei Windows.
        --hdr = înălțimea barei de sus, pusă din script. */
-    #p-miscari.page.on{height:calc(100vh - var(--hdr,44px) - 28px);min-height:0}
-    #p-miscari.page.on > .tw{flex:1 1 0;min-height:200px;overflow:auto}
-    #p-miscari.page.on > :not(.tw){flex:0 0 auto}
     #m-tbl th{z-index:2}
     /* Randul de filtre nu se mai intinde pe tot ecranul: campurile cresc pana la o
        latime citibila si se opresc. */
@@ -724,6 +721,44 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   }
   html[data-tema="inchis"][data-nav="mic"] #nav-sus .ns-logo{opacity:0}
   html[data-tema="inchis"]:not([data-nav="mic"]) #nav-sus .ns-semn{opacity:0}
+
+  /* ================= v6.69 (cerut de Ovidiu, 23.10): APLICAȚIA CÂT ECRANUL =================
+     Meniul din stânga și bara de sus stau pe loc; dedesubt, doar conținutul se derulează (o singură bară verticală).
+     Paginile cu tabel mare (.ecran): filtrele / cardurile stau sus, tabelul ia tot restul până la marginea de jos a ecranului
+     (chiar dacă are puține rânduri), cu bara lui stânga–dreapta mereu vizibilă jos. Explicațiile lungi → butonul ⓘ.
+     Zoom doar pe tabel: −/+ din bara de sus sau Ctrl + rotița / Ctrl + / Ctrl − / Ctrl 0. */
+  #tz-w{display:none}
+  @media screen and (min-width:900px){
+    html,body{height:100%}
+    body{height:100vh;overflow:hidden;grid-template-rows:auto minmax(0,1fr);align-items:stretch}
+    header{position:relative}
+    main{grid-row:2;min-height:0;height:100%;overflow:auto;padding-bottom:12px}
+    .page.on{min-height:0}
+    .page.ecran.on{display:flex;flex-direction:column;height:100%;min-height:0}
+    .page.ecran.on > *{flex:0 0 auto}
+    .page.ecran.on > .tw,.page.ecran.on > .ecran-t{flex:1 1 0;min-height:180px;margin-bottom:0;display:flex;flex-direction:column}
+    .page.ecran.on > .ecran-t:has(> .tw[style*="none"]){flex:0 0 auto;min-height:0;margin-bottom:14px}
+    .page.ecran.on > .tw{display:block;max-height:none;overflow:auto}
+    .page.ecran.on > .ecran-t > *{flex:0 0 auto}
+    .page.ecran.on > .ecran-t > .tw{flex:1 1 0;min-height:0;max-height:none;overflow:auto}
+    main .page.on .tw{zoom:var(--tz,1)}
+    #tz-w{display:inline-flex;align-items:center;gap:4px;font-size:12px;user-select:none}
+    #tz-w .pictograma{width:26px;height:26px;font-size:15px;line-height:1;padding:0;display:grid;place-items:center}
+    #tz-w b{min-width:40px;text-align:center;font-weight:600;cursor:pointer;opacity:.9}
+  }
+  [data-info]{display:none !important}
+  .info-b{width:38px;padding:8px 0 !important;font-size:17px !important;line-height:1;color:var(--blue,#1d4ed8) !important;border-color:currentColor !important}
+  #info-mod{position:fixed;inset:0;background:rgba(0,0,0,.45);display:none;align-items:flex-start;justify-content:center;padding:70px 14px 20px;z-index:80}
+  #info-mod.on{display:flex}
+  #info-mod .ib{background:var(--card);color:var(--tx);border:1px solid var(--bd);border-radius:12px;max-width:760px;width:100%;
+     max-height:calc(100vh - 100px);display:flex;flex-direction:column;box-shadow:0 26px 64px rgba(0,0,0,.35)}
+  #info-mod .ic{display:flex;align-items:center;gap:10px;padding:14px 16px 12px 20px;border-bottom:1px solid var(--bd)}
+  #info-mod .ic b{flex:1;font-size:16px}
+  #info-mod .ix{width:32px;height:32px;border:1px solid var(--bd);border-radius:8px;background:transparent;color:var(--tx);font-size:16px;cursor:pointer}
+  #info-mod .ix:hover{background:rgba(214,69,69,.1);color:#d64545;border-color:rgba(214,69,69,.45)}
+  #info-mod .ic2{padding:14px 22px 18px;overflow:auto;font-size:14px;line-height:1.6}
+  #info-mod .ic2 ul{margin:0;padding-left:20px}
+  #info-mod .ic2 li{margin:0 0 8px}
   /* La tipărire, mereu pe alb, indiferent de temă. */
   @media print{
     :root,:root[data-tema="inchis"]{--bg:#fff;--card:#fff;--card2:#fff;--tx:#000;--mut:#444;
@@ -767,7 +802,8 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <div class="hd-mij"><div id="titlu-sus"></div><span id="azi-sus" title="Data de azi (calculatorul)"></span></div>
   <button id="btn-mob" class="btn sec" style="padding:5px 10px;font-size:12px" onclick="mobPC(false)" title="Înapoi la varianta de telefon">📱 Telefon</button>
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
-  <span class="ver">v6.68</span>
+  <span id="tz-w" title="Mărimea tabelului (doar tabelul, restul rămâne la fel). Merge și cu Ctrl + rotița mausului, Ctrl + / Ctrl − / Ctrl 0"><button class="pictograma" onclick="tzPas(-1)" aria-label="Micșorează tabelul">−</button><b id="tz-v" ondblclick="tzPune(1)">100%</b><button class="pictograma" onclick="tzPas(1)" aria-label="Mărește tabelul">+</button></span>
+  <span class="ver">v6.69</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -862,7 +898,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
 </section>
 
 <!-- ================= CASATE / PIERDUTE (v6.33) ================= -->
-<section class="page" id="p-casate">
+<section class="page ecran" id="p-casate">
   <div class="subtab noprint"><button onclick="subStoc('stoc')">Stoc</button><button onclick="subStoc('produse')">Produse</button><button class="on" onclick="subStoc('casate')">Casate / pierdute</button></div>
   <div class="card noprint">
     <div class="row">
@@ -870,13 +906,13 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
       <div style="flex:0"><button class="btn" onclick="loadCasate()">Reîncarcă</button></div>
       <div style="flex:0"><button class="btn sec" onclick="exportCasate()">Export Excel</button></div>
     </div>
-    <p class="muted" style="margin:8px 0 0">Produsele care nu se mai întorc în depozit (daună totală, furt): comenzile <b>DAUNA</b> / <b>FURT</b> și bucățile trecute pe DAUNA / FURT în fereastra Serii. Ies din ÎNCHIRIATE și nu intră în DEPOZIT; chiria se oprește prin anexa -R a clientului.</p>
+    <p class="muted" data-info="Casate / pierdute" style="margin:8px 0 0">Produsele care nu se mai întorc în depozit (daună totală, furt): comenzile <b>DAUNA</b> / <b>FURT</b> și bucățile trecute pe DAUNA / FURT în fereastra Serii. Ies din ÎNCHIRIATE și nu intră în DEPOZIT; chiria se oprește prin anexa -R a clientului.</p>
   </div>
-  <div class="card"><div class="tw"><table id="cp-tbl"></table></div></div>
+  <div class="card ecran-t"><div class="tw"><table id="cp-tbl"></table></div></div>
 </section>
 
 <!-- ================= MISCARI ================= -->
-<section class="page" id="p-miscari">
+<section class="page ecran" id="p-miscari">
   <div class="card noprint">
     <div class="row">
       <div><label>An</label><select id="f-an"></select></div>
@@ -913,7 +949,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
 
 <!-- ================= NOMENCLATOARE ================= -->
 <!-- ================= RAPOARTE ================= -->
-<section class="page" id="p-rapoarte">
+<section class="page ecran" id="p-rapoarte">
   <div class="card noprint">
     <div class="row">
       <div style="flex:0;min-width:180px;display:none"><label>Raport</label>
@@ -934,14 +970,14 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
       <div style="flex:0"><label>&nbsp;</label><button class="btn sec" onclick="window.print()">PDF / Print</button></div>
     </div>
     <div class="kpi" id="r-kpi" style="margin-top:12px"></div>
-    <p class="muted" id="r-nota" style="margin:4px 0 0"></p>
+    <p class="muted" id="r-nota" data-info="Facturare — cum se calculează" style="margin:4px 0 0"></p>
   </div>
   <div class="card noprint ver-banda" id="r-ver" style="display:none"></div>
-  <div class="card"><div class="tw"><table id="r-tbl"></table></div></div>
+  <div class="card ecran-t"><div class="tw"><table id="r-tbl"></table></div></div>
 </section>
 
 <!-- ================= REGISTRU DOCUMENTE ================= -->
-<section class="page" id="p-documente">
+<section class="page ecran" id="p-documente">
   <div class="card noprint">
     <div class="row">
       <div style="flex:0"><label>An</label><select id="g-an" onchange="renderDoc()"></select></div>
@@ -954,7 +990,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
     </div>
     <div class="kpi" id="g-kpi" style="margin-top:12px"></div>
   </div>
-  <div class="card"><div class="tw"><table id="g-tbl"></table></div></div>
+  <div class="card ecran-t"><div class="tw"><table id="g-tbl"></table></div></div>
 </section>
 
 <!-- ================= MONITORIZARE RUTE ================= -->
@@ -971,9 +1007,9 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
 </section>
 
 <!-- ================= VERIFICARE RUTE ȘOFERI (fost Raport rute; redenumit v4.90) ================= -->
-<section class="page" id="p-raportrute">
+<section class="page ecran" id="p-raportrute">
   <div class="card noprint"><p class="muted" id="rr-nota" style="margin:0">Toate punctele de rută, cu vizita din săptămâna aleasă (sosire, plecare, cod, locul GPS de pe telefon) și codurile ultimelor 6 săptămâni.</p></div>
-  <div class="card">
+  <div class="card ecran-t">
     <div class="row noprint">
       <div style="flex:0;min-width:90px"><label>An</label><select id="rr-an" onchange="rrSaptOpt();rrAfiseaza()"></select></div>
       <div style="flex:0;min-width:230px"><label>Săptămâna</label><select id="rr-sapt" onchange="rrSaptCul();rrAfiseaza()"></select></div>
@@ -996,9 +1032,9 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
 </section>
 
 <!-- ================= ÎNCEPUTUL ZILEI ================= -->
-<section class="page" id="p-inceput">
+<section class="page ecran" id="p-inceput">
   <div class="card noprint"><p class="muted" style="margin:0">Începutul zilei, așa cum l-au completat șoferii în Șofer EE („Ziua de azi”): dată, oră, șoferi, mașină, km start — și în zilele fără rută. Km final și sfârșitul vin din ruta zilei, când există.</p></div>
-  <div class="card">
+  <div class="card ecran-t">
     <div class="row noprint">
       <div style="flex:0;min-width:160px"><label>Luna</label><input type="month" id="iz-luna" onchange="izAfiseaza()"></div>
       <div style="flex:0;min-width:180px"><label>Șofer</label><select id="iz-sofer" onchange="izAfiseaza()"></select></div>
@@ -1012,10 +1048,10 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
 </section>
 
 <!-- ================= RAPORT FOI PARCURS ================= -->
-<section class="page" id="p-foi">
+<section class="page ecran" id="p-foi">
   <div class="subtab noprint" id="fp-sub"><button class="on" onclick="fpSub('foi')">Foi de parcurs</button><button onclick="fpSub('depozit')">Prezență depozit</button></div>
-  <div class="card noprint fp-doar-foi"><p class="muted" style="margin:0"><b>Început zi</b> = ora la care șoferul și-a deschis ziua în Șofer EE; zilele în care a lucrat <b>fără rută</b> apar și ele, ca rânduri separate (v5.36: aici e și fosta filă „Începutul zilei”). Câte un rând pentru fiecare rută pornită de șoferi: mașina, șoferii, km, orele și vizitele. Datele vin singure de pe telefon, la „Salvează” de la finalizarea rutei. „PDF” face aici, pe loc, același raport zilnic pe care îl face șoferul pe telefon (nu e salvat în bază). Buton portocaliu = încă negenerat; verde = a fost deja generat (se ține minte în bază, se vede de pe orice calculator).</p></div>
-  <div class="card">
+  <div class="card noprint fp-doar-foi" data-info="Foi de parcurs"><p class="muted" style="margin:0"><b>Început zi</b> = ora la care șoferul și-a deschis ziua în Șofer EE; zilele în care a lucrat <b>fără rută</b> apar și ele, ca rânduri separate (v5.36: aici e și fosta filă „Începutul zilei”). Câte un rând pentru fiecare rută pornită de șoferi: mașina, șoferii, km, orele și vizitele. Datele vin singure de pe telefon, la „Salvează” de la finalizarea rutei. „PDF” face aici, pe loc, același raport zilnic pe care îl face șoferul pe telefon (nu e salvat în bază). Buton portocaliu = încă negenerat; verde = a fost deja generat (se ține minte în bază, se vede de pe orice calculator).</p></div>
+  <div class="card ecran-t">
     <div class="row noprint">
       <div style="flex:0"><label>Perioada</label><div class="subtab" id="fp-per" style="margin:0;gap:4px"><button onclick="fpPer('zi')" title="Ziua de azi; alegi apoi orice zi">Azi</button><button onclick="fpPer('sapt')" title="Săptămâna curentă (luni–duminică); alegi apoi orice săptămână">Săptămâna asta</button><button class="on" onclick="fpPer('luna')" title="Luna curentă; alegi apoi orice lună">Luna asta</button><button onclick="fpPer('an')" title="Anul curent; alegi apoi alt an">Anul ăsta</button></div></div>
       <div style="flex:0;min-width:240px"><label id="fp-val-l">Luna</label><div style="display:flex;gap:4px;align-items:center"><button class="btn sm sec" title="Perioada dinainte" onclick="fpPas(-1)">‹</button><input type="date" id="fp-zi" onchange="fpAfiseaza()" style="display:none"><input type="month" id="fp-luna" onchange="fpAfiseaza()"><select id="fp-an" onchange="fpAfiseaza()" style="display:none"></select><button class="btn sm sec" title="Perioada următoare" onclick="fpPas(1)">›</button></div><div class="muted" id="fp-per-t" style="font-size:12px;margin-top:2px"></div></div>
@@ -1030,17 +1066,17 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
     </div>
     <div class="tw fp-doar-foi" style="margin-top:10px"><table id="fp-tbl"></table></div>
   </div>
-  <div class="card fp-doar-dep">
+  <div class="card fp-doar-dep ecran-t">
     <h3 style="margin:0 0 6px">🏭 Prezență la depozit</h3>
-    <p class="muted" style="margin:0 0 8px">Din Șofer EE, „Azi la depozit”: sosirea și plecarea fiecărui om, înregistrate doar cu telefonul la depozit (GPS). <b>Portocaliu</b> = nu a închis ziua după 8 ore. ✎ = corectezi orele; „+ Prezență manuală” = pentru cine a uitat. Filtrele de sus (Perioada, Șofer, Caută) se aplică și aici.</p>
+    <p class="muted fp-doar-dep" data-info="Prezență la depozit" style="margin:0 0 8px">Din Șofer EE, „Azi la depozit”: sosirea și plecarea fiecărui om, înregistrate doar cu telefonul la depozit (GPS). <b>Portocaliu</b> = nu a închis ziua după 8 ore. ✎ = corectezi orele; „+ Prezență manuală” = pentru cine a uitat. Filtrele de sus (Perioada, Șofer, Caută) se aplică și aici.</p>
     <div class="tw" style="margin-top:10px"><table id="pd-tbl"></table></div>
   </div>
 </section>
 
 <!-- ================= PROCESE VERBALE ================= -->
-<section class="page" id="p-pv">
+<section class="page ecran" id="p-pv">
   <div class="card noprint"><p class="muted" id="pv-nota" style="margin:0">Procesele verbale întocmite de șoferi pe telefon.</p></div>
-  <div class="card" id="a-card-pv">
+  <div class="card ecran-t" id="a-card-pv">
     <div class="row">
       <div style="flex:0;min-width:180px"><label>Șofer</label><select id="pv-sofer" onchange="loadPV()"></select></div>
       <div style="flex:0;min-width:150px"><label>Tip</label><select id="pv-tip" onchange="loadPV()"><option value="">toate</option><option value="AMPLASARE">Amplasare</option><option value="RIDICARE">Ridicare</option><option value="SERVISARE">Servisare</option><option value="LIPSA ACCES">Lipsă acces</option><option value="VANZARE">Vânzare</option></select></div>
@@ -1057,7 +1093,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
 </section>
 
 <!-- ================= ADMINISTRARE ================= -->
-<section class="page" id="p-admin">
+<section class="page ecran" id="p-admin">
   <div class="card noprint">
     <div class="row">
       <div style="flex:0;min-width:210px" id="a-w-sect"><label>Secțiune</label>
@@ -1107,7 +1143,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   </div>
 
   <div class="card noprint ver-banda" id="a-ver" style="display:none"></div>
-  <div class="card" id="a-card-crud"><div class="tw"><table id="a-tbl"></table></div></div>
+  <div class="card ecran-t" id="a-card-crud"><div class="tw"><table id="a-tbl"></table></div></div>
 
   <div class="card" id="a-card-liste" style="display:none">
     <div class="row">
@@ -9963,15 +9999,68 @@ document.addEventListener("click", e => {
   tb.querySelectorAll("tr.r-ales").forEach(x => x.classList.remove("r-ales"));
   if(!era) tr.classList.add("r-ales");
 });
+
+// v6.69 (cerut de Ovidiu, 23.10): ⓘ în loc de textele lungi + zoom doar pe tabel
+function infoDeschide(el, titlu){
+  let m = document.getElementById("info-mod");
+  if(!m){
+    m = document.createElement("div"); m.id = "info-mod";
+    m.innerHTML = '<div class="ib" role="dialog"><div class="ic"><span style="font-size:20px">ⓘ</span><b></b><button class="ix" title="Închide (Esc)" onclick="infoInchide()">✕</button></div><div class="ic2"></div></div>';
+    m.addEventListener("mousedown", e => { if(e.target === m) infoInchide(); });
+    document.body.appendChild(m);
+  }
+  m.querySelector(".ic b").textContent = titlu || "Informații";
+  const c = m.querySelector(".ic2"), t = (el.textContent || "").trim();
+  if(!t){ c.textContent = "Nicio explicație pentru ce e afișat acum."; }
+  else if(el.querySelector("br,b,ul,button")){ c.innerHTML = el.innerHTML; }
+  else {
+    const fr = t.split(/(?<=[.!?])\s+(?=[A-ZĂÂÎȘȚ„⚠(0-9])(?<!\b(?:ex|nr|NR|Nr|art|pct)\.\s+)/).filter(Boolean);
+    c.innerHTML = fr.length > 1 ? "<ul>" + fr.map(x => "<li>" + esc(x) + "</li>").join("") + "</ul>" : esc(t);
+  }
+  m.classList.add("on");
+}
+function infoInchide(){ const m = document.getElementById("info-mod"); if(m) m.classList.remove("on"); }
+document.addEventListener("keydown", e => { if(e.key === "Escape"){ const m = document.getElementById("info-mod"); if(m && m.classList.contains("on")){ infoInchide(); e.stopPropagation(); } } }, true);
+(function(){
+  document.querySelectorAll("[data-info]").forEach(el => {
+    const pg = el.closest("section.page"); const rand = pg && pg.querySelector(".row"); if(!rand) return;
+    const w = document.createElement("div"); w.style.flex = "0";
+    ["fp-doar-foi", "fp-doar-dep"].forEach(k => { if(el.classList.contains(k)) w.classList.add(k); });
+    w.innerHTML = '<label>&nbsp;</label><button type="button" class="btn sec info-b" title="Explicații — ' + esc(el.dataset.info) + '">ⓘ</button>';
+    w.querySelector("button").onclick = () => infoDeschide(el, el.dataset.info);
+    rand.appendChild(w);
+  });
+})();
+let TZ = 1;
+try { TZ = +localStorage.getItem("tz") || 1; } catch(e){}
+function tzPune(v){
+  TZ = Math.min(2, Math.max(.5, Math.round(v * 10) / 10));
+  document.documentElement.style.setProperty("--tz", TZ);
+  const e = document.getElementById("tz-v"); if(e) e.textContent = Math.round(TZ * 100) + "%";
+  try { localStorage.setItem("tz", TZ); } catch(e){}
+}
+function tzPas(d){ tzPune(TZ + d * .1); }
+tzPune(TZ);
+const tzAre = () => window.innerWidth >= 900 && !!document.querySelector("main .page.on .tw > table");
+window.addEventListener("wheel", e => {
+  if(!e.ctrlKey || !tzAre()) return;
+  e.preventDefault(); tzPas(e.deltaY < 0 ? 1 : -1);
+}, { passive: false });
+window.addEventListener("keydown", e => {
+  if(!(e.ctrlKey || e.metaKey) || e.altKey || !tzAre()) return;
+  if(e.key === "+" || e.key === "=" || e.code === "NumpadAdd"){ e.preventDefault(); tzPas(1); }
+  else if(e.key === "-" || e.code === "NumpadSubtract"){ e.preventDefault(); tzPas(-1); }
+  else if(e.key === "0" || e.code === "Numpad0"){ e.preventDefault(); tzPune(1); }
+});
 porneste();
 // v6.54: înălțimea barei de sus → --hdr (pentru pagina Comenzi cât ecranul)
 (function(){
   const pune = () => { const h = document.querySelector("header"); if(h) document.documentElement.style.setProperty("--hdr", h.offsetHeight + "px"); };
   pune(); window.addEventListener("resize", pune); window.addEventListener("load", pune);
   // v6.55: înălțimea paginii Comenzi măsurată exact, ca să nu mai apară a doua bară (a ferestrei)
-  const potriveste = () => {
+  const potriveste = () => {   // v6.69: înălțimea o dă CSS-ul (aplicația cât ecranul) — aici doar curățăm ce punea v6.55
     const pg = document.getElementById("p-miscari"); if(!pg) return;
-    if(!pg.classList.contains("on") || window.innerWidth < 900){ pg.style.height = ""; return; }
+    pg.style.height = ""; return;
     const sus = pg.getBoundingClientRect().top + window.scrollY;
     let h = Math.max(320, Math.floor(window.innerHeight - sus - 14));
     pg.style.height = h + "px";
