@@ -2020,11 +2020,10 @@ const livrExterior = r => !!(r && r.depozit && r.contract && r.contract === depP
 const servFaraFact = r => !!(r && r.tip_miscare === "SERVISARE" && !r.anexa_id && !r.desp_factureaza);
 const ctrExterior = r => { const d = DEP.find(x => x.nume === (r && r.contract)); return !!(d && d.tip === "secundar"); };
 const FLAGURI = ["rpt","rt","fac","pv","act","waap"];
-// v6.81: evenimentul fără servisare nu are puncte de rută (amplasarea / ridicarea merg din Comenzi + PV) → RT nu contează
+// v6.81: la ridicarea evenimentului nu e nevoie de „→ Rute” (punctele se sting singure) → RT nu contează
 function evFaraRute(r){
   if(!r || !r.anexa_id || !/^EVENIMENT-[AR]$/.test(r.tip_miscare || "")) return false;
-  if(r.tip_miscare === "EVENIMENT-A") return !(Array.isArray(r.ev_serv) && r.ev_serv.length);
-  return true;   // la ridicarea evenimentului punctele de servisare (dacă au fost) s-au stins singure
+  return r.tip_miscare === "EVENIMENT-R";   // v6.81: la amplasare se fac punctele pe locații (RT contează)   // la ridicarea evenimentului punctele de servisare (dacă au fost) s-au stins singure
 }
 function flaguriNuConteaza(r){ const n = new Set(); if(ctrExterior(r)) ["rpt","fac","act"].forEach(f => n.add(f)); if(livrExterior(r)) n.add("rt"); if(r && r.tip_miscare === "SERVISARE") n.add("rpt"); if(servFaraFact(r)) n.add("fac"); if(evFaraRute(r)) n.add("rt"); return n; }   // v6.42: servisările nu intră în Raport lună   // v5.79: PV contează și la livrarea din alt depozit (X → V / L)
 // v6.64 (cerut de Ovidiu, 22.10): ACT ia culoarea din Registru documente (rândul cu același nr. contract + aceeași anexă în Observații):
@@ -3332,7 +3331,7 @@ function mmEvInfo(){
       else if(!a.ev_de) L.push('<span class="av">● Anexa ' + esc(a.anexa || "") + ' n-are perioada evenimentului.</span> Edit anexă → „Eveniment de la / până la”, altfel Facturare numără amplasare → ridicare.');
       else L.push('<span class="ok">● Anexa ' + esc(a.anexa || "") + ': eveniment ' + fmtD(a.ev_de) + (a.ev_pana && a.ev_pana !== a.ev_de ? ' – ' + fmtD(a.ev_pana) : '') + '</span> — se facturează doar aceste zile.');
     }
-    L.push('● ACT: contract / anexă trimisă → din Registru; contract-cadru sau doar comenzi → completează „Comanda clientului” mai jos (data + primită pe → ACT = V). Fără servisare, fără „→ Rute”.');
+    L.push('● ACT: contract / anexă trimisă → din Registru; contract-cadru sau doar comenzi → completează „Comanda clientului” mai jos (data + primită pe → ACT = V). După PV-ul de amplasare: „→ Rute” = câte un punct pe locație, ACTIV până la ridicare, pe rută doar în zilele de servisare.');
   } else {
     if(!a) L.push('<span class="av">● Alege anexa evenimentului</span>, apoi „+” lângă Anexă → anexa <b>-R FINAL</b> (internă, nu se trimite clientului).');
     else if(lipsaFinal(a.id)) L.push('<span class="av">● Lipsește anexa -R FINAL.</span> „+” lângă Anexă → se deschide completată.');
@@ -3397,7 +3396,7 @@ function mmEvpDeseneaza(){
   ri.innerHTML = !r ? "Fără „Ridicare programată” comanda de ridicare nu se creează singură." :
     "La <b>Salvează și generează</b>: " + (fin ? "anexa <b>" + esc(fin.anexa || "") + "</b> există (o folosesc)" : "se creează anexa internă <b>-R FINAL</b>") +
     " + comanda <b>EVENIMENT-R</b> pe <b>" + zsD(r) + "</b>, generată (șoferii o văd la „alte zile”). Apoi: PV de ridicare → „Confirmă ridicarea”." +
-    (l.length ? " Servisările: „→ Rute” pe această comandă pune punctele, ACTIVE doar în zilele lor, pe " + esc($("mm-traseu").value || "Traseu-EV") + "." : "");
+    " După PV-ul de amplasare: „→ Rute” = câte un punct pe locație, ACTIV până la ridicare" + (l.length ? ", pe rută (" + esc($("mm-traseu").value || "Traseu-EV") + ") doar în zilele de servisare." : " (fără servisări nu apare pe rută).");
 }
 function mmEvZiAdauga(){ const v = $("mm-ev-zi").value; if(!v){ toast("Alege data servisării în căsuța de lângă", true); return; } evServSet([...evServLista(), v]); $("mm-ev-zi").value = ""; }
 function mmEvZiScoate(z){ evServSet(evServLista().filter(x => x !== z)); }
@@ -8830,43 +8829,62 @@ function cerereProgrameaza(rec, x){
   if(d >= azi && !l.some(e => e.de_la === urm)) l.push({ de_la: urm, status: "INACTIV" });
   rec.schimbare = schImpacheteaza(schLista(schImpacheteaza(l)));
 }
-// v6.79: servisările unui eveniment. Câte un punct pe ziua săptămânii (A<anexă>-SA …), cu toate bucățile evenimentului;
-// stă pe INACTIV și e ACTIV doar în datele din program (de la 00:00 în ziua lui, INACTIV din ziua următoare). Anexa nu se schimbă.
+// v6.81 (cerut de Ovidiu, 23.10): punctele evenimentului = câte un punct pe locație (A<anexă> sau A<anexă>-01, -02…), făcute după PV-ul
+// de amplasare, ACTIVE pe toată perioada până la ridicare, dar FĂRĂ zi de rută (nu apar pe nicio rută, nu ies „Fără vizită").
+// În zilele de servisare din program primesc ziua + traseul (schimbări programate) și apar pe rută doar atunci; a doua zi revin fără zi.
+// Din ziua de după ridicarea programată trec singure pe INACTIV (sau mai devreme, la „Confirmă ridicarea” cu bife). Anexa nu se schimbă.
 async function evPorneste(m){
-  const azi = today(), zile = [...new Set(m.ev_serv)].sort(), viit = zile.filter(d => d >= azi);
-  if(!viit.length){ toast("Toate zilele de servisare ale evenimentului au trecut — nu mai pun nimic pe rută", true); return; }
+  const azi = today(), zile = [...new Set(Array.isArray(m.ev_serv) ? m.ev_serv : [])].sort();
+  if(m.ev_rid && m.ev_rid < azi){ toast("Evenimentul s-a încheiat (ridicare " + fmtD(m.ev_rid) + ") — nu mai pun puncte pe rută", true); return; }
   const a = ANX.find(x => x.id === m.anexa_id) || {}, loc = anexeLocatie(a);
   const baza = "A" + (loc.length ? Math.min(...loc) : m.anexa_id);
   const { data: gasite, error } = await db.from("clients").select("*").like("client_key", baza + "%").limit(500);
   if(error){ toast(error.message, true); return; }
+  const re = new RegExp("^" + baza + "(-\\d{2})?$");
+  const ex = (gasite || []).filter(p => re.test(p.client_key)).sort((x, y) => x.client_key < y.client_key ? -1 : 1);
   const camp = extCamp(m.produs) || "toalete", n = Math.abs(+m.buc || 0) || 1;
-  const model = (gasite || []).find(p => +p.lat && +p.lon) || null;
-  const peZi = {}; viit.forEach(d => { const z = ziDin(d); (peZi[z] = peZi[z] || []).push(d); });
-  const coada = Object.keys(peZi).sort((x, y) => peZi[x][0] < peZi[y][0] ? -1 : 1).map(z => {
-    const cheie = baza + "-" + ZI_ABR[z], g = (gasite || []).find(p => p.client_key === cheie) || null, dz = peZi[z];
-    const rec = g ? Object.assign({}, g) : { client_key: cheie, client: m.client || "", jud: m.jud || "", localitate: m.loc || "", locatie: m.sat || "",
-      pers_resp: "", telefon: "", toalete: 0, containere: 0, garduri: 0, accesorii: null, lat: model ? model.lat : null, lon: model ? model.lon : null, cartela: false, status: "INACTIV" };
+  let lista;
+  if(ex.length) lista = ex.map(g => ({ g, cheie: g.client_key }));
+  else {
+    const t = prompt("Câte locații are evenimentul?\n\nSe face câte un punct de rută pe fiecare locație, cu GPS-ul lui (din PV-ul de amplasare). Bucățile le împarți în formular.", "1");
+    if(t === null) return;
+    const k = Math.max(1, Math.min(30, parseInt(t, 10) || 1));
+    lista = Array.from({ length: k }, (_, i) => ({ g: null, cheie: k === 1 ? baza : baza + "-" + String(i + 1).padStart(2, "0"), i, k }));
+  }
+  const svT = zile.filter(d => d >= azi), rid = m.ev_rid || null, deLa = m.data > azi ? m.data : null;
+  const coada = lista.map(o => {
+    const g = o.g;
+    const rec = g ? Object.assign({}, g) : { client_key: o.cheie, client: m.client || "", jud: m.jud || "", localitate: m.loc || "",
+      locatie: (m.sat || "") + (o.k > 1 ? " [ LOC " + (o.i + 1) + " ]" : ""), pers_resp: m.pers_resp || "", telefon: m.telefon || "",
+      toalete: 0, containere: 0, garduri: 0, accesorii: m.accesorii || null, lat: null, lon: null, cartela: false, status: "ACTIV" };
     delete rec.schimbare;
-    rec.ziua = ZI_RUTE[z] || ""; rec.masina = m.traseu || "Traseu-EV"; rec.frecventa = "La Cerere"; rec[camp] = n;
-    rec.accesorii = unesteAcc(rec.accesorii, m.accesorii) || null;
-    if(m.pers_resp) rec.pers_resp = m.pers_resp; if(m.telefon) rec.telefon = m.telefon;
-    rec.status = dz.includes(azi) ? "ACTIV" : "INACTIV";
-    const nota = `Servisare eveniment: punctul <b>${esc(cheie)}</b> apare pe rută <b>doar ${dz.map(zsD).join(", ")}</b>, pe <b>${esc(rec.masina)}</b> (îl poți schimba din Mașina); în rest stă pe INACTIV și rămâne în Puncte de rută. ` +
-      (g ? "Punctul există deja — îl refolosesc. " : model ? "Punct nou — coordonatele le-am luat de la alt punct al locației, <b>verifică-le</b>. " : "Punct nou — <b>pune coordonatele GPS</b>. ") +
-      `${n} buc ${esc(prodN(m.produs || "", n))}. Anexa nu se schimbă; servisarea e inclusă în prețul evenimentului (nu apare în Facturare). Verifică și apasă Salvează.`;
-    return { id: g ? g.id : null, rec, camp, orig: g, evProg: { zile: dz }, ids: [...new Set([...((g && g.anexe_ids) || []).map(Number), m.anexa_id])], nota };
+    if(!g) rec[camp] = Math.floor(n / o.k) + (o.i < n % o.k ? 1 : 0);
+    rec.masina = m.traseu || (g && g.masina) || "Traseu-EV"; rec.frecventa = "La Cerere"; rec.ziua = "";
+    const nota = `Eveniment: punctul <b>${esc(o.cheie)}</b>` + (o.k > 1 ? ` (locația ${o.i + 1} din ${o.k} — scrie numele locației și împarte bucățile)` : "") +
+      ` e ACTIV ${deLa ? "din " + fmtD(deLa) : "de acum"} până la ridicare${rid ? " (" + fmtD(rid) + "), apoi trece singur pe INACTIV" : ""}, dar <b>fără zi de rută</b> — nu apare pe rută (ignoră „Ziua” din formular, o pune programul). ` +
+      (svT.length ? `Apare pe <b>${esc(rec.masina)}</b> doar în zilele de servisare: <b>${svT.map(zsD).join(", ")}</b>. ` : `Nu are servisări; dacă apar, Edit comandă → Servisare → Cu servisare, apoi din nou „→ Rute” (se folosesc aceleași puncte). `) +
+      (g ? "Punctul există — îl actualizez. " : "<b>Pune coordonatele GPS</b> (din PV-ul de amplasare). ") +
+      "Anexa nu se schimbă; servisările sunt incluse în prețul evenimentului. Verifică și apasă Salvează.";
+    return { id: g ? g.id : null, rec, camp, orig: g, evProg: { zile: svT, deLa, rid }, ids: [...new Set([...((g && g.anexe_ids) || []).map(Number), m.anexa_id])], nota };
   });
   if(coada.length > 1) coada.forEach((x, k) => { x.nota = `<b>Punctul ${k + 1} din ${coada.length}.</b> ` + x.nota + (k + 1 < coada.length ? " După Salvează sau Renunță urmează următorul." : ""); });
   RUTE_COADA = coada; rUrmator();
 }
-// La Salvează: ACTIV în fiecare dată din program (cu ziua + traseul din formular), INACTIV din ziua de după (dacă nu e tot zi de servisare).
+// La Salvează: ACTIV (din ziua amplasării, dacă e în viitor), fără zi; în fiecare dată de servisare ziua + traseul, a doua zi din nou fără zi;
+// din ziua de după ridicarea programată INACTIV.
 function evProgrameaza(rec, x){
-  const azi = today(), zile = x.evProg.zile, o = x.orig || null, ziua = rec.ziua || null, masina = rec.masina || null;
-  const atinse = new Set([...zile, ...zile.map(ziUrm)]);
+  const azi = today(), P = x.evProg, zile = P.zile || [], o = x.orig || null, masina = rec.masina || null;
+  const rid1 = P.rid ? ziUrm(P.rid) : null;
+  const atinse = new Set([...zile, ...zile.map(ziUrm), P.deLa, rid1].filter(Boolean));
   const l = schLista(o && o.schimbare).filter(e => !atinse.has(e.de_la));
-  zile.filter(d => d > azi).forEach(d => l.push({ de_la: d, status: "ACTIV", ziua, masina }));
-  zile.forEach(d => { const u = ziUrm(d); if(!zile.includes(u)) l.push({ de_la: u, status: "INACTIV" }); });
-  rec.status = zile.includes(azi) ? "ACTIV" : "INACTIV";
+  if(P.deLa){ rec.status = o ? o.status : "INACTIV"; l.push({ de_la: P.deLa, status: "ACTIV", ziua: "" }); } else rec.status = "ACTIV";
+  rec.ziua = P.deLa && o ? (o.ziua || "") : "";   // formularul arată „Luni” la zi goală — ziua o pune doar programul
+  zile.forEach(d => {
+    const z = ZI_RUTE[ziDin(d)] || "";
+    if(d === azi){ rec.ziua = z; rec.masina = masina; } else l.push({ de_la: d, ziua: z, masina });
+    const u = ziUrm(d); if(!zile.includes(u) && u !== rid1) l.push({ de_la: u, ziua: "" });
+  });
+  if(rid1) l.push({ de_la: rid1, status: "INACTIV", ziua: "" });
   rec.schimbare = schImpacheteaza(schLista(schImpacheteaza(l)));
 }
 async function spreRute(id){
@@ -8875,9 +8893,9 @@ async function spreRute(id){
   // v6.41 (cerut de Ovidiu, 19.10): servisare la cerere fără contract / anexă (GLS) — punctul stă pe INACTIV și e ACTIV doar în ziua comenzii
   if(serCerere(m)){ RUTE_MID = id; await cererePorneste(m); return; }
   // v6.79 (cerut de Ovidiu, 23.10): eveniment cu program — punctele de servisare, ACTIVE doar în zilele lor (implicit Traseu-EV)
-  if(m.tip_miscare === "EVENIMENT-A" && m.anexa_id && Array.isArray(m.ev_serv) && m.ev_serv.length){ RUTE_MID = id; await evPorneste(m); return; }
-  if((m.tip_miscare === "EVENIMENT-A" || m.tip_miscare === "EVENIMENT-R") && m.anexa_id && !PL_SARI){   // v6.81: eveniment fără servisare
-    toast("Eveniment fără servisare: nu e nevoie de punct de rută — amplasarea și ridicarea merg din Comenzi (șoferii le văd pe telefon) + PV. RT nu contează. Dacă vrei servisare: Edit comandă → Servisare → Cu servisare.", true);
+  if(m.tip_miscare === "EVENIMENT-A" && m.anexa_id){ RUTE_MID = id; await evPorneste(m); return; }   // v6.81: punctele evenimentului (pe locații)
+  if(m.tip_miscare === "EVENIMENT-R" && m.anexa_id){   // v6.81
+    toast("Ridicare eveniment: punctele evenimentului trec singure pe INACTIV din ziua de după ridicarea programată (sau la „Confirmă ridicarea”). Nu e nevoie de „→ Rute”.");
     if(VER && VER.f === "rt") VER.form = false; return;
   }
   // v5.17: la amplasare / suplimentare cu mai multe bucăți se întreabă întâi câte locații are (o singură dată:
