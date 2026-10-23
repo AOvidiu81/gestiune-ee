@@ -818,7 +818,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <button id="btn-mob" class="btn sec" style="padding:5px 10px;font-size:12px" onclick="mobPC(false)" title="Înapoi la varianta de telefon">📱 Telefon</button>
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
   <span id="tz-w" title="Mărimea tabelului (doar tabelul, restul rămâne la fel), din 5 în 5%. Merge și cu Ctrl + rotița mausului, Ctrl + / Ctrl − / Ctrl 0. Dublu clic pe procent = scrii tu valoarea."><button class="pictograma" onclick="tzPas(-1)" aria-label="Micșorează tabelul">−</button><b id="tz-v" ondblclick="tzScrie()" title="Dublu clic = scrii mărimea (ex. 87), Enter">100%</b><input id="tz-in" type="number" min="30" max="300" step="5" style="display:none"><button class="pictograma" onclick="tzPas(1)" aria-label="Mărește tabelul">+</button></span>
-  <span class="ver">v6.72</span>
+  <span class="ver">v6.73</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -2522,17 +2522,7 @@ document.addEventListener("mouseover", e => {
   if(c.scrollWidth > c.clientWidth + 1){ if(!c.title || c.dataset.lat) { c.title = c.innerText.trim().replace(/\s+/g, " "); c.dataset.lat = "1"; } }
   else if(c.dataset.lat){ c.removeAttribute("title"); delete c.dataset.lat; }
 });
-function renderMiscari(){
-  aplicaSortarea();
-  const sumA=MISC.filter(r=>r.buc>0).reduce((s,r)=>s+r.buc,0), sumR=MISC.filter(r=>r.buc<0).reduce((s,r)=>s+r.buc,0);
-  $("m-kpi").innerHTML=`<div>Comenzi<b>${MISC.length}</b></div><div>Amplasate (+)<b>${sumA}</b></div><div>Ridicate (−)<b>${sumR}</b></div><div>Net<b>${sumA+sumR}</b></div>`;
-  const nrSub=MISC.filter(r=>subReferinta(r)).length;
-  if(nrSub) $("m-kpi").innerHTML += `<div class="kpi-amb">Sub referință<b>${nrSub}</b></div>`;
-  const fl=(v)=>`<span class="flag ${esc(v)}" style="cursor:default">${esc(v||"-")}</span>`;
-  // v4.82: bifele care duc în fila lor, pe comanda asta (deocamdată FAC)
-  const flVer=(r,f)=>`<span class="flag ${esc(r[f])}" style="cursor:pointer" title="Deschide ${VER_FILE[f].nume} pe această comandă, verifici și bifezi${f==="act"?esc(actTitlu(r)):""}" onclick="verDeschide(${r.id},'${f}')">${esc(r[f]==="VA"?"V":(r[f]||"-"))}</span>`;
-  const nrCtr=id=>{ const k=CTR.find(x=>x.id===id); return k?k.nr_ctr||"":""; };
-  const nrAnx=id=>{ const a=ANX.find(x=>x.id===id); return a?(a.anexa||"—"):""; };
+// v6.72: la nivel de script (nu în renderMiscari), ca butoanele din card să găsească funcțiile și ascultătorii să fie puși o singură dată
 // v6.72: pătrățel cu numărul accesoriilor; lista întreagă la mouse
 function accIcon(t){
   const L = accLista(t); if(!L.length) return "";
@@ -2571,6 +2561,17 @@ document.addEventListener("mouseover", e => { const b = e.target.closest && e.ta
 document.addEventListener("mousedown", e => { if(!(e.target.closest && e.target.closest("#cl-pop"))) clPopAscunde(); });
 document.addEventListener("keydown", e => { if(e.key === "Escape") clPopAscunde(); });
 document.addEventListener("scroll", clPopAscunde, true);
+function renderMiscari(){
+  aplicaSortarea();
+  const sumA=MISC.filter(r=>r.buc>0).reduce((s,r)=>s+r.buc,0), sumR=MISC.filter(r=>r.buc<0).reduce((s,r)=>s+r.buc,0);
+  $("m-kpi").innerHTML=`<div>Comenzi<b>${MISC.length}</b></div><div>Amplasate (+)<b>${sumA}</b></div><div>Ridicate (−)<b>${sumR}</b></div><div>Net<b>${sumA+sumR}</b></div>`;
+  const nrSub=MISC.filter(r=>subReferinta(r)).length;
+  if(nrSub) $("m-kpi").innerHTML += `<div class="kpi-amb">Sub referință<b>${nrSub}</b></div>`;
+  const fl=(v)=>`<span class="flag ${esc(v)}" style="cursor:default">${esc(v||"-")}</span>`;
+  // v4.82: bifele care duc în fila lor, pe comanda asta (deocamdată FAC)
+  const flVer=(r,f)=>`<span class="flag ${esc(r[f])}" style="cursor:pointer" title="Deschide ${VER_FILE[f].nume} pe această comandă, verifici și bifezi${f==="act"?esc(actTitlu(r)):""}" onclick="verDeschide(${r.id},'${f}')">${esc(r[f]==="VA"?"V":(r[f]||"-"))}</span>`;
+  const nrCtr=id=>{ const k=CTR.find(x=>x.id===id); return k?k.nr_ctr||"":""; };
+  const nrAnx=id=>{ const a=ANX.find(x=>x.id===id); return a?(a.anexa||"—"):""; };
   const sg = c => M_SORT.camp === c ? `<span class="sg pe">${M_SORT.dir > 0 ? "▲" : M_SORT.dir < 0 ? "▼" : "◆"}</span>` : '<span class="sg">▼</span>';
   // v5.21: clientul verde = toate cele 6 bife pe V; normal = toate goale („-”); orice altă combinație (V, X, L, -) = portocaliu
   const clCls = clStare;   // v5.75: doar bifele care contează la comanda asta
