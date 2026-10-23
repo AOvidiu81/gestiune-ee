@@ -290,6 +290,10 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   td[class*="zd-"] .zd{display:inline-block;padding:2px 8px;border-radius:10px;white-space:nowrap}
   /* v6.83 (cerut de Ovidiu, 23.10): datele din Comenzi la aceeași lățime — casetă fixă, cifre egale, textul centrat */
   #m-tbl .zd{display:inline-block;width:124px;box-sizing:border-box;text-align:center;font-variant-numeric:tabular-nums;white-space:nowrap}
+  /* v6.84 (cerut de Ovidiu, 23.10): Comenzi — „Comandă” la mărimea restului textului; textele din rând pe aceeași linie (baseline); Buc la dreapta */
+  #m-tbl .tc{font-size:inherit}
+  #m-tbl td,#m-tbl td .zd{vertical-align:baseline}
+  #m-tbl td:nth-child(3),#m-tbl th:nth-child(3){text-align:right}
   .ds-1 td[class*="zd-"] .zd{background:color-mix(in srgb,var(--zc) 20%,transparent);font-weight:400}   /* v6.65: datele fără bold (cerut de Ovidiu, 22.10) */
   .ds-2 td[class*="zd-"]{background:color-mix(in srgb,var(--zc) 15%,transparent);box-shadow:inset 3px 0 0 var(--zc)}
   .ds-2 td[class*="zd-"] .zd{padding:0}
@@ -823,7 +827,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <button id="btn-mob" class="btn sec" style="padding:5px 10px;font-size:12px" onclick="mobPC(false)" title="Înapoi la varianta de telefon">📱 Telefon</button>
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
   <span id="tz-w" title="Mărimea tabelului (doar tabelul, restul rămâne la fel), din 5 în 5%. Merge și cu Ctrl + rotița mausului, Ctrl + / Ctrl − / Ctrl 0. Dublu clic pe procent = scrii tu valoarea."><button class="pictograma" onclick="tzPas(-1)" aria-label="Micșorează tabelul">−</button><b id="tz-v" ondblclick="tzScrie()" title="Dublu clic = scrii mărimea (ex. 87), Enter">100%</b><input id="tz-in" type="number" min="30" max="300" step="5" style="display:none"><button class="pictograma" onclick="tzPas(1)" aria-label="Mărește tabelul">+</button></span>
-  <span class="ver">v6.83</span>
+  <span class="ver">v6.84</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
