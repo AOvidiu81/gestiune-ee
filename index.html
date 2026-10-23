@@ -766,6 +766,11 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
                                     --bd:#bbb;--rand-hov:#fff;--umbra:none}
     .card,.stoc,.tw,.kpi div{box-shadow:none}
   }
+  /* v6.71: informarea la evenimente + contract intern */
+  .ev-info{border-left:3px solid #d97706;background:rgba(217,119,6,.08);padding:8px 12px;font-size:13px;line-height:1.45}
+  .ev-info details{margin-top:4px}.ev-info summary{cursor:pointer;color:#d97706}
+  .ev-info ol{margin:4px 0 0 18px;padding:0}.ev-info .ok{color:#2E8B3C}.ev-info .av{color:#C0392B}
+  .tag-int{font-size:11px;padding:1px 6px;border-radius:8px;border:1px solid #d97706;color:#d97706;margin-left:6px;font-weight:600}
 </style>
 <style>
   /* v5.84 (cerut de Ovidiu, 13.10): rândul de sub mouse mai vizibil; clic pe rând = rămâne marcat (urmărești același rând pe ecran).
@@ -804,7 +809,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <button id="btn-mob" class="btn sec" style="padding:5px 10px;font-size:12px" onclick="mobPC(false)" title="Înapoi la varianta de telefon">📱 Telefon</button>
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
   <span id="tz-w" title="Mărimea tabelului (doar tabelul, restul rămâne la fel), din 5 în 5%. Merge și cu Ctrl + rotița mausului, Ctrl + / Ctrl − / Ctrl 0. Dublu clic pe procent = scrii tu valoarea."><button class="pictograma" onclick="tzPas(-1)" aria-label="Micșorează tabelul">−</button><b id="tz-v" ondblclick="tzScrie()" title="Dublu clic = scrii mărimea (ex. 87), Enter">100%</b><input id="tz-in" type="number" min="30" max="300" step="5" style="display:none"><button class="pictograma" onclick="tzPas(1)" aria-label="Mărește tabelul">+</button></span>
-  <span class="ver">v6.70</span>
+  <span class="ver">v6.71</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -1365,11 +1370,12 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
         </div>
       </div>
 
+      <div class="sect ev-info" id="mm-ev-info" style="display:none"></div>
       <div class="sect" id="mm-cmd-sect" style="display:none">
         <h4>Comanda clientului <span class="hint">(ACT — ce trece pe factură)</span></h4>
         <div class="grid3">
           <div><label>Comanda nr. <span class="hint">dacă există</span></label><input id="mm-cmd-nr" oninput="mmCmdAct()"></div>
-          <div><label>Din data <span class="hint">data comenzii, nu a servisării</span></label><input id="mm-cmd-data" type="date" onchange="mmCmdAct()"></div>
+          <div><label>Din data <span class="hint">data comenzii clientului (nu a servisării / amplasării)</span></label><input id="mm-cmd-data" type="date" onchange="mmCmdAct()"></div>
           <div><label>Primită pe</label><select id="mm-cmd-canal" onchange="mmCmdAct()"><option value=""></option><option>WhatsApp</option><option>Email</option><option>PDF</option><option>Telefon</option></select></div>
         </div>
         <div class="grid3" id="mm-sv-fact" style="margin-top:8px">
@@ -1545,7 +1551,8 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
         <label class="mk-chip" title="Apasă ca să treci contractul pe nedeterminat (nu mai expiră)"><input type="checkbox" id="mk-tacit" onchange="mkTacit()"><span>Nedeterminat</span></label></div>
     </div>
     <div class="mk-g">
-      <div><label>Stare</label><select id="mk-stare"></select></div>
+      <div><label>Stare</label><select id="mk-stare"></select>
+        <label class="mk-chip" style="margin-top:8px" title="Clientul n-are contract semnat — lucrează doar pe comenzi (ex. evenimente). Contractul există doar în aplicație, ca anexele și Facturarea să meargă; Registrul nu-l cere."><input type="checkbox" id="mk-intern" onchange="mkIntern()"><span>Contract intern (fără contract semnat — doar comenzi)</span></label></div>
       <div><label>Perioada contract <span class="muted">(estimativ)</span></label><div id="mk-per" class="mk-per">—</div></div>
     </div>
     <div class="row" style="margin-top:14px;justify-content:flex-end">
@@ -1717,7 +1724,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
     <div class="ma-sect">
       <h4>Produse</h4>
       <div class="ma-g c5">
-        <div class="maf"><label>Forma</label><select id="ma-forma"></select></div>
+        <div class="maf"><label>Forma</label><select id="ma-forma" onchange="maEvArata()"></select></div>
         <div class="maf"><label>Produs <button type="button" class="cat-plus" onclick="catRapid('ma','prod',this)" title="Categorie nouă în catalog, dacă produsul nu există încă">＋ nou</button></label><select id="ma-prod"></select></div>
         <div class="maf"><label>Tip <button type="button" class="cat-plus" onclick="catRapid('ma','model',this)" title="Tip nou la categoria aleasă, dacă nu există încă">＋ nou</button></label><select id="ma-model"></select></div>
         <div class="maf"><label>Model <button type="button" class="cat-plus" onclick="catRapid('ma','mf',this)" title="Model nou la categoria aleasă (ex. 14 WC, DUS)">＋ nou</button></label><select id="ma-mf"></select></div>
@@ -1733,6 +1740,10 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
       <div class="ma-g c2">
         <div class="maf"><label id="ma-dliv-l">Data amplasării</label><input type="date" id="ma-dliv"></div>
         <div class="maf"><label>Data ridicării <span class="hint" style="text-transform:none;letter-spacing:0">goală = nedeterminat</span></label><input type="date" id="ma-drid" placeholder="NEDETERMINAT"></div>
+      </div>
+      <div class="ma-g c2" id="ma-ev-g" style="display:none"><!-- v6.71: perioada efectivă a evenimentului (se facturează doar ea) -->
+        <div class="maf"><label>Eveniment de la <span class="hint" style="text-transform:none;letter-spacing:0">se facturează doar zilele evenimentului</span></label><input type="date" id="ma-evde" onchange="if(!$('ma-evpana').value||$('ma-evpana').value<this.value)$('ma-evpana').value=this.value"></div>
+        <div class="maf"><label>Eveniment până la</label><input type="date" id="ma-evpana"></div>
       </div>
     </div>
     <div class="ma-sect">
@@ -2558,7 +2569,7 @@ function fillAnexeForClient(){
   const sc = $("mm-ctr"); sc.innerHTML = '<option value="">— toate —</option>';
   if(c) CTR.filter(k => k.client_id === c.id)
           .sort((a,b) => String(a.nr_ctr||"").localeCompare(String(b.nr_ctr||"")))
-          .forEach(k => { sc.innerHTML += `<option value="${k.id}">CTR ${esc(k.nr_ctr)} · ${fmtD(k.data_emitere)} · ${esc(k.stare||"")}</option>`; });
+          .forEach(k => { sc.innerHTML += `<option value="${k.id}">CTR ${esc(k.nr_ctr)} · ${fmtD(k.data_emitere)} · ${esc(k.stare||"")}${k.intern ? " · INTERN" : ""}</option>`; });
   fillAnexeForContract();
   cautaSincronizeaza("mm-ctr");
   // Din fisa clientului NU se mai ia nimic in „Responsabil santier”: acolo e
@@ -2947,7 +2958,7 @@ function mmStareGen(){
   $("mm-save").style.display = ok ? "none" : "";
   $("mm-text").style.display = ok ? "" : "none";
 }
-function mmSchimbat(){ if(MM_GEN){ MM_GEN = null; mmStareGen(); } }
+function mmSchimbat(){ if(MM_GEN){ MM_GEN = null; mmStareGen(); } if(typeof mmEvInfo === "function") mmEvInfo(); }   // v6.71: și informarea la evenimente
 ["input","change"].forEach(ev => document.querySelector("#mod-m .lux-corp").addEventListener(ev, mmSchimbat));
 $("mm-flags").addEventListener("click", mmSchimbat);
 ["input","change"].forEach(ev => document.querySelector("#mod-m .lux-corp").addEventListener(ev, mmFlagDFcurand));   // v6.63
@@ -3023,6 +3034,13 @@ async function saveMiscare(genereaza){
         anexaNouaDinMiscare(); return false;
       }
     } }
+  if(tip === "EVENIMENT-A" && !mmExterior()){   // v6.71
+    const a = ANX.find(x => x.id === (+$("mm-anexa").value || 0));
+    const msg = !a ? "Evenimentul nu are anexă → nu va apărea în Facturare.\n\nCreeaz-o cu „+” lângă Anexă (Forma EVENIMENT, preț pe zi, perioada evenimentului)."
+      : String(a.forma || "").toUpperCase() !== "EVENIMENT" ? "Anexa " + (a.anexa || "") + " nu are Forma EVENIMENT → Facturare numără de la amplasare la ridicare."
+      : !a.ev_de ? "Anexa " + (a.anexa || "") + " n-are perioada evenimentului → Facturare numără de la amplasare la ridicare." : "";
+    if(msg && !confirm("⚠ " + msg + "\n\nOK = salvez comanda așa · Anulează = mă întorc să corectez")) return false;
+  }
   if(NEG.test(tip)) buc=-buc;
   // v4.76: scoasă avertizarea „anexa nu e de forma 1.0-S1 / -R1” — numerotarea anexelor o face Ovidiu, în stilul lui.
   const client=$("mm-client").value.trim();
@@ -3034,7 +3052,7 @@ async function saveMiscare(genereaza){
     contract_id:+$("mm-ctr").value||null, anexa_id:+$("mm-anexa").value||null};
   if(mmExterior()){ rec.client_id = null; rec.contract_id = null; rec.anexa_id = null; }   // v4.78: clientul exterior nu e în baza lui
   // v6.33 (cerut de Ovidiu, 17.10): despăgubirea la DAUNA / FURT — opțională, rând separat în Facturare (valoare / buc, fără zile)
-  { const sv = tip === "SERVISARE";   // v6.43
+  { const sv = CMD_TIP(tip);   // v6.43; v6.71 și EVENIMENT-A
     rec.cmd_nr = sv ? ($("mm-cmd-nr").value.trim() || null) : null; rec.cmd_data = sv ? ($("mm-cmd-data").value || null) : null; rec.cmd_canal = sv ? ($("mm-cmd-canal").value || null) : null; }
   rec.desp_factureaza = TIP_PIERD.test(tip) && $("mm-desp-f").checked;
   rec.desp_pret = rec.desp_factureaza ? Math.round((+$("mm-desp-pret").value || 0) * 100) / 100 : null;
@@ -3186,7 +3204,44 @@ $("mm-buc").addEventListener("change", ()=>mmSerii(false));
 $("mm-tip").addEventListener("change", () => mmDoc(false));   // v5.13
 // v6.43 (hotărât de Ovidiu, 19.10): la SERVISARE, ACT = comanda clientului trecută în evidență (WhatsApp / email / PDF):
 // nr. comenzii (dacă există), data comenzii (nu a servisării), pe ce a venit — datele care merg pe factură.
-function mmCmdArata(){ $("mm-cmd-sect").style.display = $("mm-tip").value === "SERVISARE" ? "" : "none"; }
+// v6.71 (cerut de Ovidiu, 23.10): „Comanda clientului” și la EVENIMENT-A (cazurile cu contract-cadru / doar comenzi → ACT = comanda)
+const CMD_TIP = t => t === "SERVISARE" || t === "EVENIMENT-A";
+function mmCmdArata(){ const t = $("mm-tip").value; $("mm-cmd-sect").style.display = CMD_TIP(t) ? "" : "none";
+  const f = $("mm-sv-fact"); if(f) f.style.display = t === "SERVISARE" ? "" : "none"; mmEvInfo(); }
+// v6.71: informarea la evenimente — cum se procedează în cele 3 cazuri (contract + anexă / contract-cadru + comenzi / doar comenzi)
+const ctrIntern = k => !!(k && k.intern);
+function mmEvInfo(){
+  const el = $("mm-ev-info"); if(!el) return;
+  const t = $("mm-tip").value;
+  if(!/^EVENIMENT-[AR]$/.test(t) || mmExterior()){ el.style.display = "none"; return; }
+  const k = CTR.find(x => x.id === +$("mm-ctr").value), a = ANX.find(x => x.id == $("mm-anexa").value);
+  const L = [];
+  if(t === "EVENIMENT-A"){
+    if(!k) L.push('<span class="av">● Lipsește contractul.</span> Alege contractul clientului sau creează-l cu „+” (vezi cazurile de mai jos).');
+    else L.push('<span class="ok">● Contract ' + esc(k.nr_ctr || "") + '</span>' + (ctrIntern(k) ? ' <span class="tag-int">INTERN</span> — fără contract semnat; ACT = comanda clientului.' : ''));
+    if(k && !a) L.push('<span class="av">● Lipsește anexa.</span> Creeaz-o cu „+” lângă Anexă: Forma <b>EVENIMENT</b>, preț pe zi, <b>Eveniment de la / până la</b>. Fără anexă evenimentul <b>nu apare în Facturare</b>.');
+    if(a){
+      const ev = String(a.forma || "").toUpperCase() === "EVENIMENT";
+      if(!ev) L.push('<span class="av">● Anexa ' + esc(a.anexa || "") + ' are Forma ' + esc(a.forma || "—") + '.</span> Pentru eveniment pune Forma EVENIMENT (Edit anexă), altfel Facturare numără amplasare → ridicare.');
+      else if(!a.ev_de) L.push('<span class="av">● Anexa ' + esc(a.anexa || "") + ' n-are perioada evenimentului.</span> Edit anexă → „Eveniment de la / până la”, altfel Facturare numără amplasare → ridicare.');
+      else L.push('<span class="ok">● Anexa ' + esc(a.anexa || "") + ': eveniment ' + fmtD(a.ev_de) + (a.ev_pana && a.ev_pana !== a.ev_de ? ' – ' + fmtD(a.ev_pana) : '') + '</span> — se facturează doar aceste zile.');
+    }
+    L.push('● ACT: contract / anexă trimisă → din Registru; contract-cadru sau doar comenzi → completează „Comanda clientului” mai jos (data + primită pe → ACT = V). Fără servisare, fără „→ Rute”.');
+  } else {
+    if(!a) L.push('<span class="av">● Alege anexa evenimentului</span>, apoi „+” lângă Anexă → anexa <b>-R FINAL</b> (internă, nu se trimite clientului).');
+    else if(lipsaFinal(a.id)) L.push('<span class="av">● Lipsește anexa -R FINAL.</span> „+” lângă Anexă → se deschide completată.');
+    else L.push('<span class="ok">● Anexa -R FINAL există.</span>');
+    L.push('● La ridicare nu se fac acte (ACT = V singur), doar PV. <b>„Confirmă ridicarea” abia după PV.</b> Se ridică tot de pe locație.');
+  }
+  el.innerHTML = '<b>Eveniment — cum procedez</b><br>' + L.join('<br>') +
+    '<details><summary>Cele 3 cazuri</summary><ol>' +
+    '<li><b>Contract + anexă pe eveniment:</b> contract → anexă Forma EVENIMENT (preț / zi + perioada evenimentului) → EVENIMENT-A. ACT din Registru.</li>' +
+    '<li><b>Contract-cadru + comenzi:</b> contractul-cadru o singură dată; la fiecare eveniment o <b>anexă internă</b> pe el (ex. „ANEXA EV 1”, nu se trimite) → EVENIMENT-A cu „Comanda clientului” = ACT.</li>' +
+    '<li><b>Doar comenzi (fără contract):</b> o singură dată un contract cu bifa <b>„Contract intern”</b> (nr. propus CMD-…); la fiecare eveniment anexă internă → EVENIMENT-A cu „Comanda clientului” = ACT.</li>' +
+    '</ol>Ridicarea (toate cazurile): EVENIMENT-R → „+” → -R FINAL → Salvează și generează → PV → „Confirmă ridicarea”.</details>';
+  el.style.display = "";
+}
+["mm-ctr", "mm-anexa"].forEach(id => { const e = $(id); if(e) e.addEventListener("change", mmEvInfo); });
 function mmCmdAct(){   // data + canalul completate → ACT trece pe V (se vede înainte de Salvează; îl poți schimba)
   const f = document.querySelector('#mm-flags .flag[data-f="act"]');
   if(f && f.textContent === "-" && $("mm-cmd-data").value && $("mm-cmd-canal").value){ setFlag(f, "V"); mmSchimbat(); }
@@ -3367,7 +3422,7 @@ function renderClienti(){
     const ks=ctrPt(c);
     return `<div class="card"><details ${q?"open":""}><summary><span class="c-nr" title="Numărul contractului">${ks.length?ks.map(k=>"CTR "+esc(k.nr_ctr||"?")).join(", "):"—"}</span>${esc(c.nume)} <span class="muted">${esc(c.id_tip||"")} ${esc(c.atr||"")} ${esc(c.cui||"")}</span>${c.activ===false?` <span class="badge" title="Închis la ultima ridicare">INACTIV</span> <button class="btn sm sec noprint" onclick="event.preventDefault();clientReactiveaza(${c.id})">Reactivează</button>`:""} <button class="btn sm sec noprint" onclick="event.preventDefault();openClient(${c.id})">Edit</button></summary>`+
       ks.map(k=>{ const an=ANX.filter(a=>a.contract_id===k.id);
-        return `<div style="margin:8px 0 4px;padding-left:8px;border-left:3px solid var(--gl)"><b>CTR ${esc(k.nr_ctr)}</b> <span class="muted">${fmtD(k.data_emitere)} → ${esc(ctrExpText(k))}${k.prelungire_tacita && k.prelungire_tacita_din ? " (tacit din " + fmtD(k.prelungire_tacita_din) + ")" : ""} · ${esc(k.stare)}</span> <button class="btn sm sec noprint" onclick="openContract(${k.id})">Edit</button> <button class="btn sm noprint" onclick="openAnexa(null,${k.id})">+ Anexă</button>
+        return `<div style="margin:8px 0 4px;padding-left:8px;border-left:3px solid var(--gl)"><b>CTR ${esc(k.nr_ctr)}</b>${k.intern ? '<span class="tag-int" title="Fără contract semnat — doar comenzi">INTERN</span>' : ""} <span class="muted">${fmtD(k.data_emitere)} → ${esc(ctrExpText(k))}${k.prelungire_tacita && k.prelungire_tacita_din ? " (tacit din " + fmtD(k.prelungire_tacita_din) + ")" : ""} · ${esc(k.stare)}</span> <button class="btn sm sec noprint" onclick="openContract(${k.id})">Edit</button> <button class="btn sm noprint" onclick="openAnexa(null,${k.id})">+ Anexă</button>
         <div class="tw" style="max-height:none;margin-top:4px"><table><tr><th>Anexa</th><th>Emitere</th><th>Expirare</th><th>Jud</th><th>Loc.</th><th>Locație</th><th>Forma</th><th>Produs</th><th>Tip</th><th>Cant</th><th>Preț</th><th>Status</th><th>Depozit</th><th class="noprint" title="ACT pe comenzile acestei anexe">ACT</th><th class="noprint"></th></tr>`+
         an.map(a=>`<tr${VER&&VER.f==="act"&&VER.m.anexa_id===a.id?' class="r-ver"':''}><td>${esc(a.anexa)}</td><td>${fmtD(a.data_emitere)}</td><td>${a.data_expirare?fmtD(a.data_expirare):esc(a.expirare_text)}</td><td>${esc(a.jud)}</td><td>${esc(a.loc)}</td><td>${esc(a.sat)}</td><td>${esc(a.forma)}</td><td>${esc(prodN(a.produs, a.cant))}</td><td>${esc([a.model, a.model_fizic].filter(Boolean).join(" "))}</td><td>${a.cant}</td><td>${fmtPret(a.pret)} ${esc(a.moneda)}${actLista(a).map(u => `<div class="muted" style="font-size:11px;white-space:nowrap">→ ${u.pret != null ? esc(fmtPret(u.pret) + " " + (a.moneda || "")) : ""}${u.model ? " " + esc(u.model) : ""} din ${esc(fmtD(u.de_la))}${u.act_nr ? " (AA " + esc(u.act_nr) + ")" : ""}</div>`).join("")}</td><td>${esc(a.status)}</td><td>${esc(a.depozit)}</td><td class="noprint">${flaguriAnexa(a.id,"act")}</td><td class="noprint"><button class="btn sm sec" onclick="openAnexa(${a.id})">Edit</button> ${butonSerii(a)} ${a.tip_anexa === "R" ? "" : `<button class="btn sm sec" title="Act adițional: preț / tip nou de la o dată (facturarea desparte luna)" onclick="openAct(${a.id})">Actualizare${actLista(a).length ? " (" + actLista(a).length + ")" : ""}</button>`}</td></tr>`).join("")+`</table></div></div>`; }).join("")+`</details></div>`;
   }).join("")||'<p class="muted">Niciun client.</p>';
@@ -3647,6 +3702,7 @@ async function reloadClienti(){ const [c,k,a,sr]=await Promise.all([db.from("cli
 function openContract(id,clientId){
   const k=id?CTR.find(x=>x.id===id):null; $("mk-title").textContent=k?"Editare contract":"Contract nou"; $("mk-id").value=k?k.id:""; $("mk-client").value=k?k.client_id:clientId;
   $("mk-nr").value=k?k.nr_ctr:""; $("mk-de").value=k?(k.data_emitere||""):today(); $("mk-dx").value=k?(k.data_expirare||""):""; $("mk-xt").value=k?(k.expirare_text||""):""; $("mk-stare").value=k?k.stare:"ACTIV";
+  $("mk-intern").checked = !!(k && k.intern);   // v6.71
   MK_AA = k ? ctrAA(k).map(x => ({ ...x })) : []; $("mk-tacit").checked = !!(k && k.prelungire_tacita); $("mk-tdin").value = k ? (k.prelungire_tacita_din || "") : ""; mkAADeseneaza();
   const cl = CLI.find(x => x.id === +$("mk-client").value); $("mk-cl").textContent = cl ? "Client: " + cl.nume : "";
   MK_CIORNA = null; $("mk-conf").classList.remove("on"); $("mk-ciorne").innerHTML = "";
@@ -3808,8 +3864,10 @@ function mkVerifica(){
   confSubBara("mk-conf");
   $("mk-conf").classList.add("on");
 }
+// v6.71: contract intern = clientul lucrează doar pe comenzi; numărul propus CMD-<id client> (unic, ca Registrul să nu-l confunde)
+function mkIntern(){ if($("mk-intern").checked && !$("mk-nr").value.trim()) $("mk-nr").value = "CMD-" + ($("mk-client").value || ""); }
 async function saveContract(dupa){
-  const rec={client_id:+$("mk-client").value,nr_ctr:$("mk-nr").value.trim(),data_emitere:$("mk-de").value||null,data_expirare:$("mk-dx").value||null,stare:$("mk-stare").value};
+  const rec={client_id:+$("mk-client").value,nr_ctr:$("mk-nr").value.trim(),data_emitere:$("mk-de").value||null,data_expirare:$("mk-dx").value||null,stare:$("mk-stare").value,intern:$("mk-intern").checked};
   const dk = mkDate(); rec.acte_aditionale = dk.acte_aditionale; rec.prelungire_tacita = dk.prelungire_tacita; rec.prelungire_tacita_din = dk.prelungire_tacita_din || null;
   rec.expirare_text = dk.prelungire_tacita ? "Nedeterminat" : null;
   if(!rec.nr_ctr){toast("Nr. contract obligatoriu",true);return;}
@@ -3859,16 +3917,32 @@ function maUmpleRand(a){
   $("ma-status").value=g("status",""); $("ma-dep").value=g("depozit","");
   $("ma-ctrdep").value=g("contract_depozit", depPrincipal());
   $("ma-dliv").value=g("data_livrarii", ($("mod-m").classList.contains("on") && $("mm-data").value) || today()); $("ma-drid").value=g("data_ridicarii","");
+  $("ma-evde").value=g("ev_de",""); $("ma-evpana").value=g("ev_pana",""); maEvArata();   // v6.71
   $("ma-transp").value=g("transport",0); $("ma-frecv").value=g("frecv_servisare","");
   ziSet(g("zi_servisare","")); $("ma-pers").value=g("pers_contact",""); $("ma-tel").value=g("telefon","");
   $("ma-status").closest("div").style.display = a && a.id ? "" : "none";   // la un rând nou starea se pune singură
   $("ma-del").style.display = MA_RAND.some(r => r.id) ? "" : "none";
 }
+// v6.71 (cerut de Ovidiu, 23.10 — PRIMĂRIA CĂLAN): la Forma EVENIMENT, amplasarea / ridicarea nu sunt zilele evenimentului;
+// perioada evenimentului se pune pe anexă și Facturare numără doar zilele ei (prețul rămâne pe zi).
+const maEsteEv = () => String($("ma-forma").value || "").toUpperCase() === "EVENIMENT";
+function maEvArata(){ const g = $("ma-ev-g"); if(g) g.style.display = maEsteEv() ? "" : "none"; }
+function maEvVerifica(r){
+  if(String(r.forma || "").toUpperCase() !== "EVENIMENT" || (+r.cant || 0) < 0) return true;
+  const nume = r.anexa || "anexa";
+  if(!r.ev_de) return confirm("⚠ " + nume + ": nu ai pus perioada evenimentului (Eveniment de la / până la).\n\nFără ea, Facturare numără toate zilele de la amplasare până la ridicare.\n\nSalvezi așa?");
+  if(r.ev_pana && r.ev_pana < r.ev_de){ toast("Eveniment până la e înainte de Eveniment de la", true); return false; }
+  const am = r.data_livrarii || r.data_emitere, ri = r.data_ridicarii;
+  if((am && r.ev_de < am) || (ri && (r.ev_pana || r.ev_de) > ri))
+    return confirm("⚠ Perioada evenimentului (" + fmtD(r.ev_de) + " – " + fmtD(r.ev_pana || r.ev_de) + ") iese din intervalul amplasare – ridicare (" + (am ? fmtD(am) : "?") + " – " + (ri ? fmtD(ri) : "nedeterminat") + ").\n\nFacturare numără doar zilele în care toaletele sunt la client.\n\nSalvezi așa?");
+  return true;
+}
 function maRecForm(){
   return {contract_id:+$("ma-contract").value,anexa:$("ma-an").value||null,data_emitere:$("ma-de").value||null,data_expirare:$("ma-dx").value||null,expirare_text:$("ma-xt").value||null,jud:$("ma-jud").value||null,loc:$("ma-loc").value||null,sat:$("ma-sat").value||null,forma:$("ma-forma").value,produs:$("ma-prod").value,model:$("ma-model").value||null,model_fizic:$("ma-mf").value||null,accesorii:accCitite("ma-acc"),um:$("ma-um").value,cant:+$("ma-cant").value||0,pret:+$("ma-pret").value||0,moneda:$("ma-moneda").value,scadent:+$("ma-scad").value||30,status:$("ma-status").value||null,depozit:$("ma-dep").value||null,
     contract_depozit:$("ma-ctrdep").value||null,data_livrarii:$("ma-dliv").value||null,
     data_ridicarii:$("ma-drid").value||null,transport:+$("ma-transp").value||0,
-    pers_contact:$("ma-pers").value||null,telefon:$("ma-tel").value||null};
+    pers_contact:$("ma-pers").value||null,telefon:$("ma-tel").value||null,
+    ev_de:maEsteEv()&&$("ma-evde").value||null,ev_pana:maEsteEv()&&($("ma-evpana").value||$("ma-evde").value)||null};   // v6.71
 }
 function maRandPastreaza(){ const r = MA_RAND[MA_I] || {}; MA_RAND[MA_I] = { ...r, ...maRecForm(), id: r.id }; }
 function maRandArata(i){ MA_I = i; const r = MA_RAND[i] || {}; $("ma-id").value = r.id || ""; maUmpleRand(r); maRanduri(); }
@@ -3906,7 +3980,7 @@ function maRandScoate(i){
 let MA_CIORNA = null, MA_CIORNE = [];
 const MA_CAMPURI = [["ma-an","anexa","Anexa nr."],["ma-de","data_emitere","Data emitere"],["ma-jud","jud","Județ"],["ma-loc","loc","Localitate / Comună / Sector"],["ma-sat","sat","Sat / Stradă / Locație"],
   ["ma-forma","forma","Forma"],["ma-prod","produs","Produs"],["ma-model","model","Tip"],["ma-mf","model_fizic","Model"],["ma-um","um","UM"],["ma-cant","cant","Cantitate"],["ma-pret","pret","Preț"],["ma-moneda","moneda","Monedă"],["ma-scad","scadent","Scadent (zile)"],
-  ["ma-dliv","data_livrarii","Data amplasării"],["ma-drid","data_ridicarii","Data ridicării"],
+  ["ma-dliv","data_livrarii","Data amplasării"],["ma-drid","data_ridicarii","Data ridicării"],["ma-evde","ev_de","Eveniment de la"],["ma-evpana","ev_pana","Eveniment până la"],
   ["ma-pers","pers_contact","Persoană contact șantier"],["ma-tel","telefon","Telefon"],["ma-dep","depozit",""],["ma-ctrdep","contract_depozit",""],["ma-status","status",""]];
 const maDate = () => { const d = Object.fromEntries(MA_CAMPURI.map(([el, c]) => [c, ($(el).value || "").trim()])); d.accesorii = accCitite("ma-acc") || "";
   if(!MA_SCURT && MA_RAND.length > 1){ maRandPastreaza(); d.randuri = MA_RAND.map(r => { const o = { ...r }; delete o.id; return o; }); d.rand_i = MA_I; d.fact_un_rand = MA_UN_RAND; }   // v5.11
@@ -3928,7 +4002,7 @@ function maCiornaIa(id){
   const d = x.date || {};
   MA_CAMPURI.forEach(([el, c]) => { if(el !== "ma-model" && el !== "ma-mf") $(el).value = d[c] || ""; });
   umpleModele("ma-prod", "ma-model", d.model || "", d.accesorii || ""); umpleMF("ma-prod", "ma-model", d.model_fizic || "");
-  ziSet(d.zi_servisare || "");
+  ziSet(d.zi_servisare || ""); maEvArata();
   MA_STERSE = [];
   MA_UN_RAND = !!d.fact_un_rand;
   if(Array.isArray(d.randuri) && d.randuri.length){ MA_RAND = d.randuri.map(r => ({ ...r })); maRandArata(Math.min(+d.rand_i || 0, MA_RAND.length - 1)); }   // v5.11
@@ -3970,7 +4044,7 @@ function maVerifica(){
   $("ma-conf-t").textContent = nou ? "Creați această anexă?" : "Salvați modificările anexei?";
   $("ma-conf-ok").textContent = nou ? "Creează anexa" : "Salvează modificările";
   const v = c => /^data_/.test(c) ? (d[c] ? fmtD(d[c]) : (c === "data_ridicarii" ? "NEDETERMINAT" : "")) : c === "zi_servisare" ? d[c].replace(/,/g, ", ") : d[c];
-  const r = MA_CAMPURI.filter(x => x[2]).map(([, c, l]) => [l, v(c)]);
+  const r = MA_CAMPURI.filter(x => x[2] && (!/^ev_/.test(x[1]) || String(d.forma).toUpperCase() === "EVENIMENT")).map(([, c, l]) => [l, v(c)]);
   r.splice(9, 0, ["Accesorii", d.accesorii]);
   $("ma-conf-date").innerHTML = `<p class="muted" style="margin:0 0 8px">${esc($("ma-ctx").textContent)}</p><table>` +
     r.filter(([, x]) => !MA_SCURT || x).map(([l, x]) => `<tr><td>${esc(l)}</td><td><b>${esc(x || "—")}</b></td></tr>`).join("") + "</table>" + maConfRanduri();
@@ -3997,6 +4071,7 @@ async function saveAnexa(dupa){
 async function saveAnexa_(dupa){
   if(!MA_SCURT){ maRandPastreaza(); if(MA_RAND.length > 1) return saveAnexaDoc(); }   // v5.11
   const rec = maRecForm();
+  if(!MA_SCURT && !maEvVerifica(rec)) return;   // v6.71
   if(!MA_SCURT){ rec.doc_id = null; rec.fact_un_rand = false; }   // a rămas un singur rând
   const id=$("ma-id").value; let noulId = id ? +id : null;
   if(!id && !rec.status) rec.status = "AMPLASARE";
@@ -4042,6 +4117,7 @@ async function saveAnexaDoc(){
   for(let i = 0; i < MA_RAND.length; i++){
     const r = MA_RAND[i];
     if(!r.produs){ maRandArata(i); toast("Produsul " + (i + 1) + ": alege produsul", true); return; }
+    if(!maEvVerifica({ ...r, anexa: ($("ma-an").value || "anexa") + " · produsul " + (i + 1) })){ maRandArata(i); return; }   // v6.71
     if(false && r.frecv_servisare && !/^(zilnic|suspend)/i.test(r.frecv_servisare.trim()) && !r.zi_servisare){ maRandArata(i); toast("Produsul " + (i + 1) + ": bifează ziua de servisare (frecvența e " + r.frecv_servisare + ")", true); return; }
     const fs = /^\s*(\d+)\s*\/\s*Sap/i.exec(r.frecv_servisare || ""), nz = r.zi_servisare ? r.zi_servisare.split(",").length : 0;
     if(false && fs && nz && nz !== +fs[1] && !confirm("Produsul " + (i + 1) + " (" + r.produs + "): frecvența e " + r.frecv_servisare + ", dar ai bifat " + nz + (nz === 1 ? " zi" : " zile") + ". Salvezi așa?")){ maRandArata(i); return; }
@@ -4882,7 +4958,10 @@ function randuriFacturare(){
       }
     }
     const exC = dtz(ctrExp(g.c));
-    for(const b of bucati){
+    for(const b0 of bucati){
+      const ev = evPerioada(b0.a);   // v6.71: anexa de eveniment — doar zilele evenimentului (în intervalul în care e la client)
+      const b = !ev ? b0 : Object.assign({}, b0, { start: (!b0.start || ev.de > b0.start) ? ev.de : b0.start, end: (!b0.end || ev.pana < b0.end) ? ev.pana : b0.end, faraData: false });
+      if(ev && b.end < b.start) continue;
       if(b.start && b.start > pN) continue;   // nu începuse încă
       if(b.end && b.end < p1) continue;       // ridicată într-o lună dinainte
       const de = (b.start && b.start > p1) ? b.start : p1;
@@ -4893,6 +4972,13 @@ function randuriFacturare(){
     }
   }
   return factUnRand(out).sort((x, y) => (x.k.nume || "").localeCompare(y.k.nume || "") || (x.c.id - y.c.id) || String(x.lin).localeCompare(String(y.lin), undefined, { numeric: true }) || (x.de - y.de) || (y.la - x.la) || (x.a.anexa || "").localeCompare(y.a.anexa || ""));
+}
+// v6.71: perioada evenimentului de pe anexă (sau de pe anexa inițială a liniei), doar la Forma EVENIMENT
+function evPerioada(a){
+  if(!a) return null;
+  const b = a.ev_de ? a : ANX.find(x => x.id === a.linie_id);
+  if(!b || !b.ev_de || String(b.forma || "").toUpperCase() !== "EVENIMENT") return null;
+  return { de: dtz(b.ev_de), pana: dtz(b.ev_pana || b.ev_de) };
 }
 // v5.12 (cazul Primăriei, 09.10): anexa cu „La facturare: un singur rând” — rândurile ei cu același produs, preț, monedă
 // și aceeași perioadă se adună (cantitățile); o locație cu altă perioadă rămâne pe rândul ei, ca valoarea să fie corectă.
@@ -5453,7 +5539,7 @@ async function verSalveaza(val){
   [MISC, CMA, R_MIS].forEach(L => (L || []).forEach(m => { if(m.id === id || (tot && m.grup_id === id)) m[f] = v; }));
   toast(f.toUpperCase() + " → " + v);
   verInapoi(true);
-  if(f === "act" && v === "V") await actSpreRegistru(id);   // ca la bifa din anexă: se deschide Registrul completat, nesalvat
+  if(f === "act" && v === "V" && !actFaraRegistru(VER.m)) await actSpreRegistru(id);   // ca la bifa din anexă; v6.71: se deschide Registrul completat, nesalvat
 }
 // v5.14: bifele care țin de toată comanda (PV-ul șoferului, mesajul WhatsApp) — pe comanda principală se pun pe toate produsele ei
 function grupTot(id, f){
@@ -6065,6 +6151,14 @@ function docRenunta(){ closeModal("mod-doc"); docUrmator(); }
 // Dacă registrul are deja un rând pentru anexa asta, doar avertizează — decide el.
 let DOC_COADA = [];
 function docUrmator(){ if(DOC_COADA.length) docDeschide(null, DOC_COADA.shift()); }
+// v6.71: ACT = comanda clientului (servisare fără anexă, comandă cu „Comanda clientului”) sau contract intern → fără Registru
+function actFaraRegistru(m){
+  if(!m) return false;
+  if(m.tip_miscare === "SERVISARE" && !m.anexa_id) return true;
+  if(m.cmd_data || m.cmd_canal) return true;
+  const a = ANX.find(x => x.id === m.anexa_id), k = CTR.find(x => x.id === ((a && a.contract_id) || m.contract_id));
+  return ctrIntern(k);
+}
 async function actSpreRegistru(mid){
   const m = [MISC, CMA, R_MIS].map(L => (L || []).find(x => x.id === mid)).find(Boolean);
   const a = m && ANX.find(x => x.id === m.anexa_id);
@@ -7931,7 +8025,7 @@ async function flagClic(el){
   if(MISC.some(m => m.id === id)) renderMiscari();
   toast(f.toUpperCase() + " → " + v);
   if(f === "act" && v === "V"){ const mm = [MISC, CMA, R_MIS].map(L => (L || []).find(x => x.id === id)).find(Boolean);
-    if(!(mm && mm.tip_miscare === "SERVISARE" && !mm.anexa_id)) await actSpreRegistru(id); }   // v6.46
+    if(!actFaraRegistru(mm)) await actSpreRegistru(id); }   // v6.46; v6.71
 }
 
 // ================= COMANDA → PUNCT DE RUTĂ =================
