@@ -745,6 +745,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
     #tz-w{display:inline-flex;align-items:center;gap:4px;font-size:12px;user-select:none}
     #tz-w .pictograma{width:26px;height:26px;font-size:15px;line-height:1;padding:0;display:grid;place-items:center}
     #tz-w b{min-width:40px;text-align:center;font-weight:600;cursor:pointer;opacity:.9}
+    #tz-w #tz-in{width:58px;height:26px;padding:1px 4px;font-size:12px;text-align:center;border-radius:5px}
   }
   [data-info]{display:none !important}
   .info-b{width:38px;padding:8px 0 !important;font-size:17px !important;line-height:1;color:var(--blue,#1d4ed8) !important;border-color:currentColor !important}
@@ -802,8 +803,8 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <div class="hd-mij"><div id="titlu-sus"></div><span id="azi-sus" title="Data de azi (calculatorul)"></span></div>
   <button id="btn-mob" class="btn sec" style="padding:5px 10px;font-size:12px" onclick="mobPC(false)" title="Înapoi la varianta de telefon">📱 Telefon</button>
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
-  <span id="tz-w" title="Mărimea tabelului (doar tabelul, restul rămâne la fel). Merge și cu Ctrl + rotița mausului, Ctrl + / Ctrl − / Ctrl 0"><button class="pictograma" onclick="tzPas(-1)" aria-label="Micșorează tabelul">−</button><b id="tz-v" ondblclick="tzPune(1)">100%</b><button class="pictograma" onclick="tzPas(1)" aria-label="Mărește tabelul">+</button></span>
-  <span class="ver">v6.69</span>
+  <span id="tz-w" title="Mărimea tabelului (doar tabelul, restul rămâne la fel), din 5 în 5%. Merge și cu Ctrl + rotița mausului, Ctrl + / Ctrl − / Ctrl 0. Dublu clic pe procent = scrii tu valoarea."><button class="pictograma" onclick="tzPas(-1)" aria-label="Micșorează tabelul">−</button><b id="tz-v" ondblclick="tzScrie()" title="Dublu clic = scrii mărimea (ex. 87), Enter">100%</b><input id="tz-in" type="number" min="30" max="300" step="5" style="display:none"><button class="pictograma" onclick="tzPas(1)" aria-label="Mărește tabelul">+</button></span>
+  <span class="ver">v6.70</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -10034,12 +10035,21 @@ document.addEventListener("keydown", e => { if(e.key === "Escape"){ const m = do
 let TZ = 1;
 try { TZ = +localStorage.getItem("tz") || 1; } catch(e){}
 function tzPune(v){
-  TZ = Math.min(2, Math.max(.5, Math.round(v * 10) / 10));
+  TZ = Math.min(3, Math.max(.3, Math.round(v * 100) / 100));   // v6.70: orice procent între 30 și 300
   document.documentElement.style.setProperty("--tz", TZ);
   const e = document.getElementById("tz-v"); if(e) e.textContent = Math.round(TZ * 100) + "%";
   try { localStorage.setItem("tz", TZ); } catch(e){}
 }
-function tzPas(d){ tzPune(TZ + d * .1); }
+function tzPas(d){ tzPune(Math.round((TZ * 100 + d * 5) / 5) * 5 / 100); }   // v6.70 (cerut de Ovidiu, 23.10): din 5 în 5%
+// v6.70: dublu clic pe procent → casetă în care scrii valoarea (Enter / clic în altă parte = aplică, Esc = renunți)
+function tzScrie(){
+  const b = document.getElementById("tz-v"), i = document.getElementById("tz-in"); if(!b || !i) return;
+  i.value = Math.round(TZ * 100); b.style.display = "none"; i.style.display = ""; i.focus(); i.select();
+  const gata = ok => { i.onblur = i.onkeydown = null; if(ok){ const v = parseFloat(String(i.value).replace(",", ".")); if(v > 0) tzPune(v / 100); }
+    i.style.display = "none"; b.style.display = ""; };
+  i.onkeydown = e => { if(e.key === "Enter"){ e.preventDefault(); gata(true); } else if(e.key === "Escape"){ e.preventDefault(); e.stopPropagation(); gata(false); } };
+  i.onblur = () => gata(true);
+}
 tzPune(TZ);
 const tzAre = () => window.innerWidth >= 900 && !!document.querySelector("main .page.on .tw > table");
 window.addEventListener("wheel", e => {
