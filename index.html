@@ -94,6 +94,14 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   @media screen{ #a-tbl.pflat{table-layout:fixed;width:var(--p-lat,auto);min-width:100%} #a-tbl.pflat td{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
     #a-tbl.pflat th{overflow:hidden;text-overflow:ellipsis;white-space:normal;vertical-align:bottom} #a-tbl.pflat td.acc-c{text-align:center}
     #r-tbl.flat td.noprint{overflow:visible} }
+  /* v6.93 (cerut de Ovidiu, 24.10): lățimea coloanelor se trage cu mouse-ul din „|” din antet; ținută minte pe calculator (localStorage) */
+  th.rz-th{background-clip:padding-box}
+  .rz-h{position:absolute;top:0;right:0;width:7px;height:100%;cursor:col-resize;z-index:3;user-select:none}
+  .rz-h::after{content:"";position:absolute;right:3px;top:22%;bottom:22%;width:1px;background:var(--mut);opacity:.45}
+  .rz-h:hover::after,.rz-h.on::after{background:var(--blue);opacity:1;width:2px;top:0;bottom:0}
+  table.rz-fix th,table.rz-fix td{overflow:hidden;text-overflow:ellipsis}
+  body.rz-trag,body.rz-trag *{cursor:col-resize!important;user-select:none!important}
+  @media print{.rz-h,.rz-reset{display:none!important}}
   /* v6.72: Comenzi — pătrățelul de accesorii și cardul contract / anexă de la numele clientului */
   .acc-ic{display:inline-block;min-width:18px;height:18px;line-height:16px;padding:0 3px;border:1px solid var(--blue);color:var(--blue);border-radius:4px;font-size:11px;font-weight:700;cursor:help}
   #m-tbl .cl-pop{cursor:pointer}
@@ -857,7 +865,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <button id="btn-mob" class="btn sec" style="padding:5px 10px;font-size:12px" onclick="mobPC(false)" title="Înapoi la varianta de telefon">📱 Telefon</button>
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
   <span id="tz-w" title="Mărimea tabelului (doar tabelul, restul rămâne la fel), din 5 în 5%. Merge și cu Ctrl + rotița mausului, Ctrl + / Ctrl − / Ctrl 0. Dublu clic pe procent = scrii tu valoarea."><button class="pictograma" onclick="tzPas(-1)" aria-label="Micșorează tabelul">−</button><b id="tz-v" ondblclick="tzScrie()" title="Dublu clic = scrii mărimea (ex. 87), Enter">100%</b><input id="tz-in" type="number" min="30" max="300" step="5" style="display:none"><button class="pictograma" onclick="tzPas(1)" aria-label="Mărește tabelul">+</button></span>
-  <span class="ver">v6.92</span>
+  <span class="ver">v6.93</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -10925,6 +10933,142 @@ porneste();
   const pg = document.getElementById("p-miscari");
   if(pg) new MutationObserver(() => setTimeout(potriveste, 0)).observe(pg, { attributes: true, attributeFilter: ["class"] });
   setTimeout(potriveste, 300);
+})();
+// v6.93 (cerut de Ovidiu, 24.10): „|” între coloane în antetul fiecărui tabel — tragi = altă lățime, dublu clic = lățimea implicită.
+// Ținut minte pe calculator (localStorage „lat:<tabel>”), pe numele coloanei. „↔ Lățimi implicite” în bara filei le pune pe toate la loc. Doar afișare.
+(function(){
+  const SEL = "main section.page .tw > table[id]";
+  let trag = null;
+  const cheie = t => "lat:" + t.id + "|" + (t.id === "a-tbl" ? A_TBL : "") + "|" + [...t.classList].filter(c => !c.startsWith("rz")).sort().join(".");
+  const citeste = k => { try { return JSON.parse(localStorage.getItem(k) || "{}") || {}; } catch(e){ return {}; } };
+  const scrie = (k, m) => { try { Object.keys(m).length ? localStorage.setItem(k, JSON.stringify(m)) : localStorage.removeItem(k); } catch(e){} };
+  const antet = t => [...t.rows].find(r => r.querySelector("th"));
+  const colsDe = t => { const cg = t.querySelector(":scope > colgroup"); return cg ? [...cg.children] : null; };
+  const zoom = t => t.closest("main .page.on .tw") ? (TZ || 1) : 1;
+  function harta(tr){
+    const out = [], nr = {}; let i = 0, ok = true;
+    [...tr.cells].forEach(c => {
+      const sp = c.colSpan || 1;
+      if(c.tagName === "TH" && sp === 1){
+        const n = String(c.textContent || "").replace(/[^\p{L}\p{N}]/gu, "").toUpperCase(); nr[n] = (nr[n] || 0) + 1;
+        out.push({ th: c, idx: i, name: n + "#" + nr[n] });
+      } else if(sp > 1) ok = false;
+      i += sp;
+    });
+    out.total = i; out.simplu = ok; return out;
+  }
+  function total(t, cols){
+    const s = cols.reduce((a, c) => a + (parseFloat(c.style.width) || 0), 0);
+    if(cols.every(c => parseFloat(c.style.width) > 0)) t.style.width = s + "px";
+  }
+  function ingheata(t, cel){
+    if(!cel.simplu || t.offsetParent === null) return null;
+    const w = cel.map(c => Math.max(24, Math.round(c.th.offsetWidth)));
+    const cg = document.createElement("colgroup"); cg.dataset.rz = "1";
+    cel.forEach((c, j) => { const col = document.createElement("col"); col.style.width = w[j] + "px"; col.dataset.w0 = w[j]; cg.appendChild(col); });
+    t.classList.add("rz-fix"); t.style.tableLayout = "fixed"; t.dataset.rzFrozen = "1";
+    t.insertBefore(cg, t.firstChild); return [...cg.children];
+  }
+  function dezgheata(t){
+    const cg = t.querySelector(":scope > colgroup[data-rz]"); if(cg) cg.remove();
+    t.classList.remove("rz-fix"); t.style.removeProperty("table-layout"); t.style.removeProperty("width"); delete t.dataset.rzFrozen;
+  }
+  function aplica(t){
+    if(window.innerWidth < 900 || (trag && trag.t === t)) return;   // în timp ce tragi, nimic nu se pune la loc
+    const tr = antet(t); if(!tr) return;
+    const cel = harta(tr);
+    cel.forEach(c => {
+      if(!c.th.querySelector(":scope > .rz-h")){
+        const h = document.createElement("span"); h.className = "rz-h"; h.title = "Trage ca să schimbi lățimea · dublu clic = lățimea implicită";
+        c.th.appendChild(h);
+      }
+      c.th.classList.add("rz-th"); if(getComputedStyle(c.th).position === "static") c.th.style.position = "relative";
+    });
+    const m = citeste(cheie(t));
+    let cols = colsDe(t);
+    if(t.dataset.rzFrozen === "1" && !(cols && cols[0] && cols[0].parentNode.dataset.rz)) { delete t.dataset.rzFrozen; t.classList.remove("rz-fix"); }
+    if(!Object.keys(m).length){
+      if(t.dataset.rzFrozen === "1") dezgheata(t);
+      else if(cols){ cols.forEach(c => { if(c.dataset.w0) c.style.width = c.dataset.w0 + "px"; }); t.style.removeProperty("width"); }
+      return;
+    }
+    if(!cols){ cols = ingheata(t, cel); if(!cols){ t.dataset.rzPend = "1"; return; } }
+    if(cols.length !== cel.total) return;
+    delete t.dataset.rzPend;
+    cols.forEach(c => { if(!c.dataset.w0) c.dataset.w0 = parseFloat(c.style.width) || 0; });
+    cel.forEach(c => { const col = cols[c.idx]; if(!col) return; const w = m[c.name]; if(w) col.style.width = w + "px"; else if(+col.dataset.w0) col.style.width = col.dataset.w0 + "px"; });
+    total(t, cols);
+  }
+  function butoane(){
+    document.querySelectorAll("main section.page").forEach(pg => {
+      const tb = [...pg.querySelectorAll(".tw > table[id]")]; if(!tb.length) return;
+      const rand = pg.querySelector(".row"); if(!rand) return;
+      let w = rand.querySelector(":scope > .rz-reset");
+      const are = tb.some(t => { try { return Object.keys(localStorage).some(k => k.startsWith("lat:" + t.id + "|")); } catch(e){ return false; } });
+      if(!w){
+        if(!are) return;
+        w = document.createElement("div"); w.className = "rz-reset"; w.style.flex = "0";
+        w.innerHTML = '<label>&nbsp;</label><button type="button" class="btn sec" title="Pune lățimile coloanelor din tabelele acestei file înapoi cum erau">↔ Lățimi implicite</button>';
+        w.querySelector("button").onclick = () => {
+          if(!confirm("Pun lățimile coloanelor din această filă înapoi la cele implicite?")) return;
+          try { tb.forEach(t => Object.keys(localStorage).filter(k => k.startsWith("lat:" + t.id + "|")).forEach(k => localStorage.removeItem(k))); } catch(e){}
+          tb.forEach(aplica); butoane();
+        };
+        rand.appendChild(w);
+      }
+      w.style.display = are ? "" : "none";
+    });
+  }
+  document.addEventListener("mousedown", e => {
+    const h = e.target.closest && e.target.closest(".rz-h"); if(!h || e.button !== 0) return;
+    const th = h.parentElement, t = th.closest("table"); if(!t || !t.matches(SEL)) return;
+    e.preventDefault(); e.stopPropagation();
+    const cel = harta(antet(t)), c = cel.find(x => x.th === th); if(!c) return;
+    let cols = colsDe(t) || ingheata(t, cel); if(!cols || cols.length !== cel.total) return;
+    cols.forEach(x => { if(!x.dataset.w0) x.dataset.w0 = parseFloat(x.style.width) || 0; });
+    const col = cols[c.idx];
+    trag = { t, col, cols, name: c.name, x0: e.clientX, w0: parseFloat(col.style.width) || th.offsetWidth, z: zoom(t), h, mutat: false };
+    h.classList.add("on"); document.body.classList.add("rz-trag");
+  }, true);
+  document.addEventListener("mousemove", e => {
+    if(!trag) return;
+    const w = Math.max(24, Math.round(trag.w0 + (e.clientX - trag.x0) / trag.z));
+    if(Math.abs(e.clientX - trag.x0) > 2) trag.mutat = true;
+    trag.col.style.width = w + "px"; total(trag.t, trag.cols);
+  });
+  document.addEventListener("mouseup", () => {
+    if(!trag) return;
+    const d = trag; trag = null; d.h.classList.remove("on"); document.body.classList.remove("rz-trag");
+    if(d.mutat){
+      const k = cheie(d.t), m = citeste(k); m[d.name] = Math.round(parseFloat(d.col.style.width)); scrie(k, m); butoane();
+      const opreste = ev => { ev.stopPropagation(); ev.preventDefault(); };
+      window.addEventListener("click", opreste, { capture: true, once: true }); setTimeout(() => window.removeEventListener("click", opreste, true), 0);
+    } else aplica(d.t);
+  });
+  document.addEventListener("click", e => { if(e.target.closest && e.target.closest(".rz-h")){ e.stopPropagation(); e.preventDefault(); } }, true);
+  document.addEventListener("dblclick", e => {
+    const h = e.target.closest && e.target.closest(".rz-h"); if(!h) return;
+    e.stopPropagation(); e.preventDefault();
+    const th = h.parentElement, t = th.closest("table"); if(!t) return;
+    const c = harta(antet(t)).find(x => x.th === th); if(!c) return;
+    const k = cheie(t), m = citeste(k); delete m[c.name]; scrie(k, m); aplica(t); butoane();
+  }, true);
+  // titlul întreg la mouse pe celulele tăiate cu „…” din tabelele îngustate
+  document.addEventListener("mouseover", e => {
+    const td = e.target.closest && e.target.closest("table.rz-fix td"); if(!td || td.title) return;
+    if(td.scrollWidth > td.clientWidth + 1 && !td.querySelector("button,select,input")) td.title = td.textContent.trim();
+  });
+  const tabele = [...document.querySelectorAll(SEL)];
+  tabele.forEach(t => {
+    let p = false;
+    new MutationObserver(() => { if(p) return; p = true; requestAnimationFrame(() => { p = false; aplica(t); }); }).observe(t, { childList: true });
+    aplica(t);
+  });
+  document.querySelectorAll("main section.page").forEach(pg => new MutationObserver(() => {
+    if(pg.classList.contains("on")) pg.querySelectorAll(".tw > table[id]").forEach(t => { if(t.dataset.rzPend || !t.querySelector(".rz-h")) aplica(t); });
+  }).observe(pg, { attributes: true, attributeFilter: ["class"] }));
+  window.addEventListener("resize", () => tabele.forEach(t => { if(!t.querySelector(".rz-h")) aplica(t); }));
+  butoane();
 })();
 </script>
 </body>
