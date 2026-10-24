@@ -87,6 +87,9 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   /* v6.65 (cerut de Ovidiu, 22.10): Comenzi — coloane cu lățime fixă (M_LAT); textul care nu încape se taie cu „…”, întreg la mouse */
   @media screen{ #m-tbl{table-layout:fixed;width:var(--m-lat,auto);min-width:100%} #m-tbl th,#m-tbl td{overflow:hidden;text-overflow:ellipsis} }
   #mm-flags .flag.NCF{opacity:.38}
+  /* v6.89 (cerut de Ovidiu, 24.10): Facturare „În lucru” — coloane cu lățime fixă (F_LAT); textul care nu încape „…”, întreg la mouse */
+  @media screen{ #r-tbl.flat{table-layout:fixed;width:var(--f-lat,auto);min-width:100%} #r-tbl.flat td{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    #r-tbl.flat th{overflow:hidden;text-overflow:ellipsis;white-space:normal;vertical-align:bottom} #r-tbl.flat td.acc-c{text-align:center} #r-tbl.flat td .fs-sel{width:100%} }
   /* v6.72: Comenzi — pătrățelul de accesorii și cardul contract / anexă de la numele clientului */
   .acc-ic{display:inline-block;min-width:18px;height:18px;line-height:16px;padding:0 3px;border:1px solid var(--blue);color:var(--blue);border-radius:4px;font-size:11px;font-weight:700;cursor:help}
   #m-tbl .cl-pop{cursor:pointer}
@@ -846,7 +849,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <button id="btn-mob" class="btn sec" style="padding:5px 10px;font-size:12px" onclick="mobPC(false)" title="Înapoi la varianta de telefon">📱 Telefon</button>
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
   <span id="tz-w" title="Mărimea tabelului (doar tabelul, restul rămâne la fel), din 5 în 5%. Merge și cu Ctrl + rotița mausului, Ctrl + / Ctrl − / Ctrl 0. Dublu clic pe procent = scrii tu valoarea."><button class="pictograma" onclick="tzPas(-1)" aria-label="Micșorează tabelul">−</button><b id="tz-v" ondblclick="tzScrie()" title="Dublu clic = scrii mărimea (ex. 87), Enter">100%</b><input id="tz-in" type="number" min="30" max="300" step="5" style="display:none"><button class="pictograma" onclick="tzPas(1)" aria-label="Mărește tabelul">+</button></span>
-  <span class="ver">v6.88</span>
+  <span class="ver">v6.89</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -2572,6 +2575,9 @@ const TIP_PIERD = /^(DAUNA|FURT)$/;
 // v6.47 (cerut de Ovidiu, 19.10): STARE LUNA — și FACTURA AVANS / FACTURA PROFORMA (păstrează valoarea, intră la „Gata de trimis”)
 const FACT_STARI = ["ACTIV","FACTURAT","FACTURA AVANS","FACTURA PROFORMA","INACTIV","NU FACTURAM"];
 const FACT_VAL = st => ["ACTIV","FACTURAT","FACTURA AVANS","FACTURA PROFORMA"].includes(st);
+let R_ACC = [];   // v6.89: accesoriile pe rândurile din Facturare (coloana ACC., doar la „În lucru”)
+// v6.89: lățimile coloanelor din Facturare „În lucru” (cele 28 de coloane; ACC. după TIP; FAC la final)
+const F_LAT = [150,80,92,100,220,44,44,100,110,96,96,40,110,200,84,90,170,44,90,64,60,130,96,96,50,100,100,64], F_LAT_ACC = 48, F_LAT_FAC = 100;
 let R_SC = new Map(), FACT_SC = {}, FSC = null, FACT_LOC = [], FLO = null;   // v6.88: FACT_LOC = facturare_locatii   // v6.86: rândurile „servisare la cerere” pe anexă (index rând → anexa) + zilele lunii
 let R_SERV = new Map();   // v6.44: rândurile de servisare fără anexă din Facturare (index rând → id comandă)
 const tipLit = t => /AMPLASARE|EVENIMENT-A|SUPLIMENTARE/.test(t)?"A":/RIDICARE|EVENIMENT-R|REDUCERE|DAUNA|FURT/.test(t)?"R":/SERVISARE/.test(t)?"S":/Transfer|VANZARE/.test(t)?"T":"X";
@@ -5360,7 +5366,7 @@ function modFactButoane(){
   st("r-mod-lucru", R_MOD === "lucru", "#D97706"); st("r-mod-gata", R_MOD === "gata", "#2E8B3C");
 }
 async function genereazaRaport(){
-  modFactButoane(); R_FMT2 = new Set(); R_DESP = new Set(); R_SERV = new Map(); R_SC = new Map();
+  modFactButoane(); R_FMT2 = new Set(); R_DESP = new Set(); R_SERV = new Map(); R_SC = new Map(); R_ACC = [];
   if(!ANX.length){ return; }
   if($("r-tip").value === "facturare") await raportFacturare(); else await raportLuna();
 }
@@ -5439,18 +5445,19 @@ async function raportFacturare(){
              dRO(dtz(factAnxEm(x.a))),
              dRO(dtz(x.a.data_livrarii || x.a.data_emitere)),
              x.a.jud || "", x.a.loc || "", x.loc || x.a.sat || "", x.a.forma || "", prodN(x.a.produs || "", cant),
-             modelAcc(x.a), x.a.um || "", cant, pret, x.a.moneda || "", stInfo(x),
+             [x.a.model, x.a.model_fizic].filter(Boolean).join(" "), x.a.um || "", cant, pret, x.a.moneda || "", stInfo(x),   // v6.89: accesoriile în ACC.
              dRO(x.de), dRO(x.la), x.zile, fara, Math.round(fara * (1 + tva) * 100) / 100,
              x.a.scadent === null || x.a.scadent === undefined ? "" : x.a.scadent ];
   });
   // v6.86 (cerut de Ovidiu, 24.10 — VITAL BERRY): anexa cu „Servisare la cerere” bifată are sub ultimul ei rând un rând
   // „SERVISARE LA CERERE”: zilele servisărilor din luna aceasta + bucățile servisate, trecute de mână (dublu clic / „Zile”).
   // Valoare = total bucăți servisate × prețul pe servisare / produs. Fără zile = INACTIV, 0. Anexa nu se schimbă.
+  R_ACC = r.map(x => x.a.accesorii || "");   // v6.89
   R_SC = new Map();
   { const ult = new Map(); r.forEach((x, j) => ult.set(x.a.id, j));
-    const N = { rr: [], aid: [], av: [], ex: [], ro: [], fc: [], fx: [] };
+    const N = { rr: [], aid: [], av: [], ex: [], ro: [], fc: [], fx: [], acc: [] };
     r.forEach((x, j) => {
-      N.rr.push(R_RANDURI[j]); N.aid.push(R_AID[j]); N.av.push(R_AVERT[j]); N.ex.push(R_EXTRA[j]); N.ro.push(R_ROSU[j]); N.fc.push(R_FCOL[j]); N.fx.push(x);
+      N.acc.push(R_ACC[j]); N.rr.push(R_RANDURI[j]); N.aid.push(R_AID[j]); N.av.push(R_AVERT[j]); N.ex.push(R_EXTRA[j]); N.ro.push(R_ROSU[j]); N.fc.push(R_FCOL[j]); N.fx.push(x);
       const a = x.a; if(!a.serv_cerere || ult.get(a.id) !== j) return;
       const rec = FACT_SC[a.id] || {}, zile = scZile(rec);
       const buc = zile.reduce((t, z) => t + (+z.buc || 0), 0), pret = +a.serv_pret || 0;
@@ -5458,12 +5465,12 @@ async function raportFacturare(){
       const fara = FACT_VAL(st) ? Math.round(buc * pret * 100) / 100 : 0;
       R_SC.set(N.rr.length, a.id);
       N.rr.push([ st ].concat(R_RANDURI[j].slice(1, 10), [ "" ], R_RANDURI[j].slice(11, 14),
-        [ "SERVISARE", prodN(a.produs || "", buc || 2), modelAcc(a), "BUC", buc, pret, a.serv_moneda || a.moneda || "", "SERVISARE LA CERERE",
+        [ "SERVISARE", prodN(a.produs || "", buc || 2), [a.model, a.model_fizic].filter(Boolean).join(" "), "BUC", buc, pret, a.serv_moneda || a.moneda || "", "SERVISARE LA CERERE",
           scZileText(zile), "", zile.length, fara, Math.round(fara * (1 + tva) * 100) / 100, a.scadent === null || a.scadent === undefined ? "" : a.scadent ]));
-      N.aid.push(null); N.av.push({}); N.ro.push(false); N.fc.push({}); N.fx.push(null);
+      N.aid.push(null); N.av.push({}); N.ro.push(false); N.fc.push({}); N.fx.push(null); N.acc.push(a.accesorii || "");
       N.ex.push(`<button class="btn sm sec" title="Zilele servisărilor la cerere din luna aceasta (data + câte produse)" onclick="fscDeschide(${a.id})">🧽 Zile${zile.length ? " (" + zile.length + ")" : ""}</button>`);
     });
-    R_RANDURI = N.rr; R_AID = N.aid; R_AVERT = N.av; R_EXTRA = N.ex; R_ROSU = N.ro; R_FCOL = N.fc; R_FX = N.fx; }
+    R_ACC = N.acc; R_RANDURI = N.rr; R_AID = N.aid; R_AVERT = N.av; R_EXTRA = N.ex; R_ROSU = N.ro; R_FCOL = N.fc; R_FX = N.fx; }
   // v6.33 (cerut de Ovidiu, 17.10): despăgubirea la DAUNA / FURT — rând separat, doar dacă e bifată pe comandă (în luna comenzii);
   // valoare pe bucată, fără zile. Se scoate debifând „Se facturează” pe comandă.
   R_DESP = new Set();
@@ -5480,7 +5487,7 @@ async function raportFacturare(){
         m.jud || "", m.loc || "", m.sat || "", "DESPAGUBIRE " + m.tip_miscare, prodN(m.produs || "", cant), [m.model, m.model_fizic].filter(Boolean).join(" "),
         a.um || "BUC", cant, pret, a.moneda || "RON", m.tip_miscare, dRO(dtz(m.data)), "", "", fara, Math.round(fara * (1 + tva) * 100) / 100,
         a.scadent === null || a.scadent === undefined ? "" : a.scadent ]);
-      R_AID.push(null); R_AVERT.push({}); R_EXTRA.push(""); R_ROSU.push(false); R_FCOL.push({});
+      R_AID.push(null); R_AVERT.push({}); R_EXTRA.push(""); R_ROSU.push(false); R_FCOL.push({}); R_ACC.push("");
     }); }
   // v6.44 (cerut de Ovidiu, 19.10): servisarea fără anexă (GLS) — un rând pe servisare, în luna ei, doar cu PV = V și „Se facturează”
   // bifat pe comandă; preț pe servisare, fără zile. STARE = FACTURAT când FAC = V pe comandă (bifa din coloana FAC).
@@ -5499,7 +5506,7 @@ async function raportFacturare(){
         k.nume || m.client || "", k.id_tip || "", k.atr || "", k.cui || "", cda === "CDA" ? "" : cda, "", dRO(dtz(m.data)),
         m.jud || "", m.loc || "", m.sat || "", "SERVISARE", prodN(m.produs || "", cant), [m.model, m.model_fizic].filter(Boolean).join(" "),
         "BUC", cant, pret, m.desp_moneda || "RON", "SERVISARE", dRO(dtz(m.data)), dRO(dtz(m.data)), "", fara, Math.round(fara * (1 + tva) * 100) / 100, m.desp_scadent == null ? "" : m.desp_scadent ]);
-      R_AID.push(null); R_AVERT.push({}); R_ROSU.push(false); R_FCOL.push({});
+      R_AID.push(null); R_AVERT.push({}); R_ROSU.push(false); R_FCOL.push({}); R_ACC.push(m.accesorii || "");
       R_EXTRA.push(flagBtn(m, "fac") + ` <button class="btn sm sec" title="Copiază textul pentru departamentul de facturare (client, comanda, servisarea, PV, preț)" onclick="servText(${m.id})">📋</button>`);
     }); }
   R_NUME = "Facturare";
@@ -5998,8 +6005,12 @@ async function raportLuna(){
 }
 
 function deseneazaRaport(){
-  $("r-tbl").innerHTML =
-    "<thead><tr>" + R_ANTET.map(h => `<th>${esc(h)}</th>`).join("") +
+  const fl = R_NUME === "Facturare";   // v6.89: lățimi fixe + ACC. doar la Facturare „În lucru”
+  const lat = fl ? F_LAT.slice(0, 17).concat([F_LAT_ACC], F_LAT.slice(17), R_EXTRA_T ? [F_LAT_FAC] : []) : null;
+  $("r-tbl").classList.toggle("flat", fl);
+  if(fl) $("r-tbl").style.setProperty("--f-lat", lat.reduce((t, w) => t + w, 0) + "px"); else $("r-tbl").style.removeProperty("--f-lat");
+  $("r-tbl").innerHTML = (fl ? `<colgroup>${lat.map(w => `<col style="width:${w}px">`).join("")}</colgroup>` : "") +
+    "<thead><tr>" + R_ANTET.map((h, i) => `<th title="${esc(h)}">${esc(h)}</th>` + (fl && i === 16 ? '<th title="Accesorii">ACC.</th>' : "")).join("") +
     (R_EXTRA_T ? `<th class="noprint" title="Se bifează de mână: - → V → L → X">${esc(R_EXTRA_T)}</th>` : "") + "</tr></thead><tbody>" +
     R_RANDURI.map((f, j) => {
       const fact = R_NUME === "Facturare" , av = fact ? (R_AVERT[j] || {}) : {};
@@ -6045,7 +6056,9 @@ function deseneazaRaport(){
         if(R_ROSU[j] && ((fact && (i === 1 || i === 4)) || (R_NUME === "Facturare_de_trimis" && (i === 0 || i === 1))))
           t = `<span style="color:var(--red);font-weight:700">${t}</span>`;
         const rl = R_NUME === "Raport_luna" && R_CEL[j] ? R_CEL[j][i] : "";
-        return `<td${rl ? ` class="rl-${rl}"` : ""}${R_NUM.has(i) ? ' style="text-align:right"' : ''}>${rl ? `<span class="rl-b">${t}</span>` : t}</td>`;
+        const tl = fl && typeof v === "string" && v.length > 10 ? ` title="${esc(v)}"` : "";   // v6.89: textul întreg la mouse
+        return `<td${rl ? ` class="rl-${rl}"` : ""}${tl}${R_NUM.has(i) ? ' style="text-align:right"' : ''}>${rl ? `<span class="rl-b">${t}</span>` : t}</td>` +
+          (fl && i === 16 ? `<td class="acc-c">${accIcon(R_ACC[j] || "")}</td>` : "");
       }).join("") + (R_EXTRA_T ? `<td class="noprint">${R_EXTRA[j] || ""}</td>` : "") + "</tr>"; }).join("") + "</tbody>";
   verBanda();
 }
@@ -6281,7 +6294,8 @@ function verInapoi(salvat){
 
 function exportRaport(){
   if(!R_RANDURI.length){ toast("Nu e nimic de exportat", true); return; }
-  const ws = XLSX.utils.aoa_to_sheet([R_ANTET, ...R_RANDURI]);
+  const fAcc = R_NUME === "Facturare" && R_ACC.length === R_RANDURI.length;   // v6.89: accesoriile ca ultimă coloană (doar „În lucru”)
+  const ws = XLSX.utils.aoa_to_sheet(fAcc ? [R_ANTET.concat(["ACCESORII"]), ...R_RANDURI.map((f, j) => f.concat([R_ACC[j] || ""]))] : [R_ANTET, ...R_RANDURI]);
   // coloanele cu două zecimale (prețul 10.00) rămân numere în Excel, doar afișate cu două zecimale
   R_RANDURI.forEach((f, r) => R_FMT2.forEach(c => { const cel = ws[XLSX.utils.encode_cell({ r: r + 1, c })]; if(cel && cel.t === "n") cel.z = "0.00"; }));
   const wb = XLSX.utils.book_new();
