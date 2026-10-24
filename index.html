@@ -90,6 +90,10 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   /* v6.89 (cerut de Ovidiu, 24.10): Facturare „În lucru” — coloane cu lățime fixă (F_LAT); textul care nu încape „…”, întreg la mouse */
   @media screen{ #r-tbl.flat{table-layout:fixed;width:var(--f-lat,auto);min-width:100%} #r-tbl.flat td{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
     #r-tbl.flat th{overflow:hidden;text-overflow:ellipsis;white-space:normal;vertical-align:bottom} #r-tbl.flat td.acc-c{text-align:center} #r-tbl.flat td .fs-sel{width:100%} }
+  /* v6.91 (cerut de Ovidiu, 24.10): Puncte de rută — lățimi fixe + ACC. cu pătrățel; textul care nu încape „…”, întreg la mouse */
+  @media screen{ #a-tbl.pflat{table-layout:fixed;width:var(--p-lat,auto);min-width:100%} #a-tbl.pflat td{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    #a-tbl.pflat th{overflow:hidden;text-overflow:ellipsis;white-space:normal;vertical-align:bottom} #a-tbl.pflat td.acc-c{text-align:center}
+    #r-tbl.flat td.noprint{overflow:visible} }
   /* v6.72: Comenzi — pătrățelul de accesorii și cardul contract / anexă de la numele clientului */
   .acc-ic{display:inline-block;min-width:18px;height:18px;line-height:16px;padding:0 3px;border:1px solid var(--blue);color:var(--blue);border-radius:4px;font-size:11px;font-weight:700;cursor:help}
   #m-tbl .cl-pop{cursor:pointer}
@@ -853,7 +857,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <button id="btn-mob" class="btn sec" style="padding:5px 10px;font-size:12px" onclick="mobPC(false)" title="Înapoi la varianta de telefon">📱 Telefon</button>
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
   <span id="tz-w" title="Mărimea tabelului (doar tabelul, restul rămâne la fel), din 5 în 5%. Merge și cu Ctrl + rotița mausului, Ctrl + / Ctrl − / Ctrl 0. Dublu clic pe procent = scrii tu valoarea."><button class="pictograma" onclick="tzPas(-1)" aria-label="Micșorează tabelul">−</button><b id="tz-v" ondblclick="tzScrie()" title="Dublu clic = scrii mărimea (ex. 87), Enter">100%</b><input id="tz-in" type="number" min="30" max="300" step="5" style="display:none"><button class="pictograma" onclick="tzPas(1)" aria-label="Mărește tabelul">+</button></span>
-  <span class="ver">v6.90</span>
+  <span class="ver">v6.91</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -2072,9 +2076,12 @@ let M_SORT = { camp: "data", dir: -1 };
 const $ = id => document.getElementById(id);
 // Accesoriile, prescurtate (cerut 03.10): L.I. / D.S. / D.P.H. — în Comenzi, Facturare, Raport lună, Raport rute.
 const ACC_SCURT = { "LAVOAR INTERIOR":"L.I.", "LAVOAR INT.":"L.I.", "DOZATOR SAPUN":"D.S.", "DISPENSER PROSOP":"D.P.H.", "DISPENSER PROSOP HARTIE":"D.P.H.",
-  "AER CONDITIONAT":"AC", "RADIATOR INCALZIRE":"RI", "BOILER APA CALDA":"BAC" };   // v5.78: și accesoriile containerelor (cerut de Ovidiu, 13.10)
+  "AER CONDITIONAT":"AC", "RADIATOR INCALZIRE":"RI", "BOILER APA CALDA":"BAC",
+  "DISPENCER PROSOP HARTIE":"D.P.H.", "DISPENSER PROSOP TIP Z":"D.P.Z.", "DISPENCER HARTIE IG. JUMBO":"D.H.J.", "LAVOAR EXTERIOR":"L.E." };   // v6.91 (24.10): + D.P.Z., D.H.J., L.E.   // v5.78: și accesoriile containerelor (cerut de Ovidiu, 13.10)
 const accLista = t => String(t || "").split(",").map(x => x.trim()).filter(Boolean);
 const accScurt = t => accLista(t).map(x => ACC_SCURT[x.toUpperCase()] || x).join(", ");
+// v6.91: echipamentele de pe punct („1 LAVOAR EXTERIOR”) prescurtate ca accesoriile („1 L.E.”); listă goală = nimic
+const echScurt = e => (Array.isArray(e) ? e : e ? [e] : []).filter(Boolean).map(x => { const m = /^(\d+)\s+(.+)$/.exec(String(x).trim()); return m ? m[1] + " " + (ACC_SCURT[m[2].toUpperCase()] || m[2]) : (ACC_SCURT[String(x).trim().toUpperCase()] || String(x).trim()); }).join(" · ");
 const modelAcc = a => [a.model || "", a.model_fizic || "", a.accesorii ? "[" + accScurt(a.accesorii) + "]" : ""].filter(Boolean).join(" ");
 // pe rute: 2 T.[LI+DS+DPH] = toaletă cu lavoar interior, dozator săpun, dispenser prosop hârtie
 const accToaleta = c => { const l = accLista(c.accesorii).map(x => ACC_SCURT[x.toUpperCase()]).filter(Boolean).map(x => x.replace(/\./g, "")); return l.length ? ".[" + l.join("+") + "]" : ""; };
@@ -2581,6 +2588,11 @@ const FACT_STARI = ["ACTIV","FACTURAT","FACTURA AVANS","FACTURA PROFORMA","INACT
 const FACT_VAL = st => ["ACTIV","FACTURAT","FACTURA AVANS","FACTURA PROFORMA"].includes(st);
 let R_ACC = [];   // v6.89: accesoriile pe rândurile din Facturare (coloana ACC., doar la „În lucru”)
 // v6.89: lățimile coloanelor din Facturare „În lucru” (cele 28 de coloane; ACC. după TIP; FAC la final)
+// v6.91: lățimile din Raport lună (NR. CTR … „0”; ACC. după TIP), apoi zilele și Rpt
+let A_COLG = "";
+const RL_LAT = [90,220,240,100,96,90,170,110,110,44], RL_ZI = 36, RL_RPT = 110;
+// v6.91: lățimile din Puncte de rută (pe câmp; ACC. după Produse, apoi RT și butoanele)
+const P_LAT = { client_key:120, client:230, jud:46, localitate:130, locatie:300, ziua:84, masina:96, frecventa:84, _produse:150, status:240 }, P_LAT_ACC = 48, P_LAT_RT = 130, P_LAT_BTN = 150;
 const F_LAT = [150,80,92,100,220,44,44,100,110,96,96,40,110,200,84,90,170,44,90,64,60,130,96,96,50,100,100,64], F_LAT_ACC = 48, F_LAT_FAC = 100;
 let R_SC = new Map(), FACT_SC = {}, FSC = null, FACT_LOC = [], FLO = null;   // v6.88: FACT_LOC = facturare_locatii   // v6.86: rândurile „servisare la cerere” pe anexă (index rând → anexa) + zilele lunii
 let R_SERV = new Map();   // v6.44: rândurile de servisare fără anexă din Facturare (index rând → id comandă)
@@ -6004,7 +6016,7 @@ async function raportLuna(){
   const zL = rlZiLimita(an, luna, nz);
   // v5.08: locația la care nu mai e nimic de la începutul lunii și nu se schimbă nimic în lună nu mai apare
   [...grupe.keys()].forEach(ch => { const g = grupe.get(ch); if(!g.reduce((t, p) => t + p.col0, 0) && !g.some(p => p.zile.some(Boolean))) grupe.delete(ch); });
-  R_RANDURI = [...grupe.values()].map(g => {
+  R_ACC = []; R_RANDURI = [...grupe.values()].map(g => {   // v6.91: R_ACC = accesoriile pe rândurile din Raport lună (coloana ACC.)
     const baza = g.find(p => !(p.nx && p.nx.tip)) || g[0];
     const vig = g.filter(p => p.em && p.em <= ref).sort((p, q) => (p.em - q.em) || (p.x.a.id - q.x.a.id)).pop() || baza;
     let acum = g.reduce((t, p) => t + p.col0, 0);
@@ -6017,9 +6029,9 @@ async function raportLuna(){
     R_RIDS.push({ anx: ids, mis: ms.map(m => m.id) });
     R_EXTRA.push(ms.length ? `<span class="fl-grup">${ms.map(m => flagBtn(m, "rpt")).join("")}</span>` : '<span class="muted">—</span>');
     const dep = g.map(p => p.dep).filter(Boolean).pop() || "", ret = g.map(p => p.ret).filter(Boolean).pop() || "";
-    const x = baza.x;
+    const x = baza.x; R_ACC.push(x.a.accesorii || "");
     return [ x.c.nr_ctr || "", x.k.nume || "", [x.a.loc, x.a.sat].filter(Boolean).join(", "),
-             vig.x.a.anexa || "", dRO(baza.em), prodN(x.a.produs || "", acum), modelAcc(x.a), dep, ret, col0, ...zile ];
+             vig.x.a.anexa || "", dRO(baza.em), prodN(x.a.produs || "", acum), [x.a.model, x.a.model_fizic].filter(Boolean).join(" "), dep, ret, col0, ...zile ];   // v6.91: TIP fără accesorii
   });
   // mișcările care nu se potrivesc cu nicio anexă nu trebuie să dispară din raport
   const ramase = mis.filter(m => !folosite.has(m.id));
@@ -6039,6 +6051,7 @@ async function raportLuna(){
         if(b >= 0) dep = m.depozit || dep; else ret = m.depozit || ret;
       }
       R_RANDURI.push([ ctr, cl, [lo, sa].filter(Boolean).join(", "), "— fără anexă —", "", pr, mo, dep, ret, "", ...zile ]);
+      R_ACC.push((gr[cheie].find(m => m.accesorii) || {}).accesorii || "");   // v6.91
       R_CEL.push(Object.fromEntries(zile.map((v, i) => [10 + i, v === "" ? "" : (+v > 0 ? "up" : "down")]).filter(e => e[1])));
       R_EXTRA.push(`<span class="fl-grup">${gr[cheie].map(m => flagBtn(m, "rpt")).join("")}</span>`);
       R_RIDS.push({ anx: [], mis: gr[cheie].map(m => m.id) });
@@ -6055,11 +6068,14 @@ async function raportLuna(){
 
 function deseneazaRaport(){
   const fl = R_NUME === "Facturare";   // v6.89: lățimi fixe + ACC. doar la Facturare „În lucru”
-  const lat = fl ? F_LAT.slice(0, 17).concat([F_LAT_ACC], F_LAT.slice(17), R_EXTRA_T ? [F_LAT_FAC] : []) : null;
-  $("r-tbl").classList.toggle("flat", fl);
-  if(fl) $("r-tbl").style.setProperty("--f-lat", lat.reduce((t, w) => t + w, 0) + "px"); else $("r-tbl").style.removeProperty("--f-lat");
-  $("r-tbl").innerHTML = (fl ? `<colgroup>${lat.map(w => `<col style="width:${w}px">`).join("")}</colgroup>` : "") +
-    "<thead><tr>" + R_ANTET.map((h, i) => `<th title="${esc(h)}">${esc(h)}</th>` + (fl && i === 16 ? '<th title="Accesorii">ACC.</th>' : "")).join("") +
+  const rlf = R_NUME === "Raport_luna" && R_ACC.length === R_RANDURI.length;   // v6.91: la fel în Raport lună (ACC. după TIP)
+  const accI = fl ? 16 : rlf ? 6 : -1, lx = fl || rlf;
+  const lat = fl ? F_LAT.slice(0, 17).concat([F_LAT_ACC], F_LAT.slice(17), R_EXTRA_T ? [F_LAT_FAC] : [])
+    : rlf ? RL_LAT.slice(0, 7).concat([F_LAT_ACC], RL_LAT.slice(7), new Array(Math.max(0, R_ANTET.length - RL_LAT.length)).fill(RL_ZI), R_EXTRA_T ? [RL_RPT] : []) : null;
+  $("r-tbl").classList.toggle("flat", lx);
+  if(lx) $("r-tbl").style.setProperty("--f-lat", lat.reduce((t, w) => t + w, 0) + "px"); else $("r-tbl").style.removeProperty("--f-lat");
+  $("r-tbl").innerHTML = (lx ? `<colgroup>${lat.map(w => `<col style="width:${w}px">`).join("")}</colgroup>` : "") +
+    "<thead><tr>" + R_ANTET.map((h, i) => `<th title="${esc(h)}">${esc(h)}</th>` + (i === accI ? '<th title="Accesorii">ACC.</th>' : "")).join("") +
     (R_EXTRA_T ? `<th class="noprint" title="Se bifează de mână: - → V → L → X">${esc(R_EXTRA_T)}</th>` : "") + "</tr></thead><tbody>" +
     R_RANDURI.map((f, j) => {
       const fact = R_NUME === "Facturare" , av = fact ? (R_AVERT[j] || {}) : {};
@@ -6105,9 +6121,9 @@ function deseneazaRaport(){
         if(R_ROSU[j] && ((fact && (i === 1 || i === 4)) || (R_NUME === "Facturare_de_trimis" && (i === 0 || i === 1))))
           t = `<span style="color:var(--red);font-weight:700">${t}</span>`;
         const rl = R_NUME === "Raport_luna" && R_CEL[j] ? R_CEL[j][i] : "";
-        const tl = fl && typeof v === "string" && v.length > 10 ? ` title="${esc(v)}"` : "";   // v6.89: textul întreg la mouse
+        const tl = lx && typeof v === "string" && v.length > 10 ? ` title="${esc(v)}"` : "";   // v6.89: textul întreg la mouse
         return `<td${rl ? ` class="rl-${rl}"` : ""}${tl}${R_NUM.has(i) ? ' style="text-align:right"' : ''}>${rl ? `<span class="rl-b">${t}</span>` : t}</td>` +
-          (fl && i === 16 ? `<td class="acc-c">${accIcon(R_ACC[j] || "")}</td>` : "");
+          (i === accI ? `<td class="acc-c">${accIcon(R_ACC[j] || "")}</td>` : "");
       }).join("") + (R_EXTRA_T ? `<td class="noprint">${R_EXTRA[j] || ""}</td>` : "") + "</tr>"; }).join("") + "</tbody>";
   verBanda();
 }
@@ -6343,7 +6359,7 @@ function verInapoi(salvat){
 
 function exportRaport(){
   if(!R_RANDURI.length){ toast("Nu e nimic de exportat", true); return; }
-  const fAcc = R_NUME === "Facturare" && R_ACC.length === R_RANDURI.length;   // v6.89: accesoriile ca ultimă coloană (doar „În lucru”)
+  const fAcc = (R_NUME === "Facturare" || R_NUME === "Raport_luna") && R_ACC.length === R_RANDURI.length;   // v6.89: accesoriile ca ultimă coloană (doar „În lucru”)
   const ws = XLSX.utils.aoa_to_sheet(fAcc ? [R_ANTET.concat(["ACCESORII"]), ...R_RANDURI.map((f, j) => f.concat([R_ACC[j] || ""]))] : [R_ANTET, ...R_RANDURI]);
   // coloanele cu două zecimale (prețul 10.00) rămân numere în Excel, doar afișate cu două zecimale
   R_RANDURI.forEach((f, r) => R_FMT2.forEach(c => { const cel = ws[XLSX.utils.encode_cell({ r: r + 1, c })]; if(cel && cel.t === "n") cel.z = "0.00"; }));
@@ -7439,7 +7455,7 @@ function rrAfiseaza(){
   }
   const OBS = { O:"Omis", LA:"Lipsă acces" };
   const hm = t => { if(!t) return "—"; const d = new Date(t); return zi2(d.getHours()) + ":" + zi2(d.getMinutes()); };
-  const produse = c => [c.toalete ? c.toalete + " T" + accToaleta(c) : "", c.containere ? c.containere + " C" : "", c.garduri ? c.garduri + " G" : "", c.echipamente || ""].filter(Boolean).join(" · ");
+  const produse = c => [c.toalete ? c.toalete + " T" + accToaleta(c) : "", c.containere ? c.containere + " C" : "", c.garduri ? c.garduri + " G" : "", echScurt(c.echipamente)].filter(Boolean).join(" · ");   // v6.91: echScurt
   const tot = $("rr-col").value === "toate";
   const th = t => `<th>${t}</th>`;
   const cap = tot
@@ -8170,8 +8186,8 @@ function adminCelula(r,c){
   if(A_TBL==="clients" && c==="status" && r.schimbare) return (r.status||"") + " · " + schText(r.schimbare);
   if(A_TBL==="clients" && c==="_produse"){   // v4.58: produsele de pe punct, fără să intri în Editează
     const p=[]; if(+r.toalete) p.push(r.toalete+(+r.toalete===1?" toaletă":" toalete")); if(+r.containere) p.push(r.containere+(+r.containere===1?" container":" containere")); if(+r.garduri) p.push(r.garduri+(+r.garduri===1?" gard":" garduri"));
-    const alte = Array.isArray(r.echipamente) ? r.echipamente.filter(Boolean) : [];   // v5.89: lavoare, cub IBC, fosă septică…
-    return [p.join(" · ") + (r.accesorii && +r.toalete ? " ["+accScurt(r.accesorii)+"]" : "")].concat(alte).filter(Boolean).join(" · ");   // v5.61: accesoriile țin de toalete — fără toalete nu se afișează
+    // v6.91: accesoriile în coloana ACC. (pătrățel); echipamentele prescurtate (1 L.E.)
+    return [p.join(" · "), echScurt(r.echipamente)].filter(Boolean).join(" · ");   // v5.61: accesoriile țin de toalete — fără toalete nu se afișează
   }
   const v=r[c];
   if(v===true) return "Da"; if(v===false) return "Nu";
@@ -8237,13 +8253,18 @@ function renderAdmin(){
   { const bn = $("a-btn-nou"); if(bn){ const pr = A_TBL === "clients";   // v5.89 (cerut de Ovidiu, 14.10)
     bn.textContent = pr ? "+ Punct fără anexă" : "+ Adaugă";
     bn.title = pr ? "Punct de rută făcut de mână, fără anexă (ex. eveniment pe Traseu-EV, o oprire internă). Nu se facturează, nu are serii și nu intră la verificarea RT. Punctele clienților cu anexă se fac din comandă, cu „→ Rute”." : ""; } }
-  $("a-tbl").innerHTML =
-    "<thead><tr>"+(pbOn()?`<th><input type="checkbox" style="width:auto;height:auto" title="Bifează / debifează toate rândurile afișate" ${(A_VAZUTE||[]).length&&(A_VAZUTE||[]).every(x=>PB_SEL.has(String(x.id)))?"checked":""} onchange="pbToate(this.checked)"></th>`:"")+d.lista.map(([,e])=>`<th>${esc(e)}</th>`).join("")+(A_TBL==="clients"?'<th title="RT pe comenzile legate de acest punct — se bifează de mână">RT</th>':"")+"<th></th></tr></thead><tbody>"+
+  const pf = A_TBL === "clients";   // v6.91: Puncte de rută — lățimi fixe + ACC.
+  if(pf){ const lat = (pbOn() ? [34] : []).concat(...d.lista.map(([c]) => c === "_produse" ? [P_LAT[c] || 120, P_LAT_ACC] : [P_LAT[c] || 120]), [P_LAT_RT, P_LAT_BTN]);
+    $("a-tbl").classList.add("pflat"); $("a-tbl").style.setProperty("--p-lat", lat.reduce((t, w) => t + w, 0) + "px");
+    A_COLG = `<colgroup>${lat.map(w => `<col style="width:${w}px">`).join("")}</colgroup>`; }
+  else { $("a-tbl").classList.remove("pflat"); $("a-tbl").style.removeProperty("--p-lat"); A_COLG = ""; }
+  $("a-tbl").innerHTML = A_COLG +
+    "<thead><tr>"+(pbOn()?`<th><input type="checkbox" style="width:auto;height:auto" title="Bifează / debifează toate rândurile afișate" ${(A_VAZUTE||[]).length&&(A_VAZUTE||[]).every(x=>PB_SEL.has(String(x.id)))?"checked":""} onchange="pbToate(this.checked)"></th>`:"")+d.lista.map(([c,e])=>`<th title="${esc(e)}">${esc(e)}</th>`+(pf && c==="_produse" ? '<th title="Accesorii">ACC.</th>' : "")).join("")+(A_TBL==="clients"?'<th title="RT pe comenzile legate de acest punct — se bifează de mână">RT</th>':"")+"<th></th></tr></thead><tbody>"+
     rows.map(r=>{
       const inactiv = (r.activ===false || r.active===false);
       const vr = A_TBL==="clients" && VER && VER.f==="rt" && (VER.chei||[]).includes(r.client_key);
       return `<tr${inactiv?' style="opacity:.45"':''}${vr?' class="r-ver"':''}>`+(pbOn()?`<td><input type="checkbox" style="width:auto;height:auto" ${PB_SEL.has(String(r.id))?"checked":""} onchange="pbBifa('${String(r.id).replace(/'/g,"")}',this.checked)"></td>`:"")+
-        d.lista.map(([c])=>`<td>${A_TBL==="clients" && c==="status" && r.schimbare ? statusIstoric(r) : esc(adminCelula(r,c))}${A_TBL==="clients" && c==="client" && r.cartela===true ? ' <span title="Necesită cartelă — clientul semnează cartonul A4 la fiecare servisare" style="cursor:help">📇</span>' : ""}${A_TBL==="clients" && c==="client" && r.gps_stare ? (r.gps_stare==="CONFIRMAT" ? ' <span title="Coordonata GPS confirmată din vizite" style="cursor:help;color:#2E8B3C">📍✓</span>' : ' <span title="Coordonata GPS de verificat (vizitele sunt împrăștiate)" style="cursor:help;color:#D97706">📍?</span>') : ""}</td>`).join("")+
+        d.lista.map(([c])=>`<td${pf && c!=="status" && String(adminCelula(r,c)).length > 10 ? ` title="${esc(adminCelula(r,c))}"` : ""}>${A_TBL==="clients" && c==="status" && r.schimbare ? statusIstoric(r) : esc(adminCelula(r,c))}${A_TBL==="clients" && c==="client" && r.cartela===true ? ' <span title="Necesită cartelă — clientul semnează cartonul A4 la fiecare servisare" style="cursor:help">📇</span>' : ""}${A_TBL==="clients" && c==="client" && r.gps_stare ? (r.gps_stare==="CONFIRMAT" ? ' <span title="Coordonata GPS confirmată din vizite" style="cursor:help;color:#2E8B3C">📍✓</span>' : ' <span title="Coordonata GPS de verificat (vizitele sunt împrăștiate)" style="cursor:help;color:#D97706">📍?</span>') : ""}</td>` + (pf && c==="_produse" ? `<td class="acc-c">${+r.toalete ? accIcon(r.accesorii || "") : ""}</td>` : "")).join("")+
         (A_TBL==="clients" ? `<td>${/^A\d+(-\d+)?(-[A-Z]{2})?$/.test(r.client_key||"") ? pvAnexa(parseInt(r.client_key.slice(1))) + flaguriAnexa(parseInt(r.client_key.slice(1)),"rt") : rtComandaPunct(r)}</td>` : "")+
         // v5.17 (cerut de Ovidiu, 09.10): Editează = creion; la puncte de rută și butonul GPS → Google Maps
         `<td class="actions" style="white-space:nowrap"><button class="btn sm sec" title="Editează" onclick="adminEdit('${String(r.id).replace(/'/g,"")}')">✎</button>` +
