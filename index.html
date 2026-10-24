@@ -857,7 +857,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <button id="btn-mob" class="btn sec" style="padding:5px 10px;font-size:12px" onclick="mobPC(false)" title="Înapoi la varianta de telefon">📱 Telefon</button>
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
   <span id="tz-w" title="Mărimea tabelului (doar tabelul, restul rămâne la fel), din 5 în 5%. Merge și cu Ctrl + rotița mausului, Ctrl + / Ctrl − / Ctrl 0. Dublu clic pe procent = scrii tu valoarea."><button class="pictograma" onclick="tzPas(-1)" aria-label="Micșorează tabelul">−</button><b id="tz-v" ondblclick="tzScrie()" title="Dublu clic = scrii mărimea (ex. 87), Enter">100%</b><input id="tz-in" type="number" min="30" max="300" step="5" style="display:none"><button class="pictograma" onclick="tzPas(1)" aria-label="Mărește tabelul">+</button></span>
-  <span class="ver">v6.91</span>
+  <span class="ver">v6.92</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -2521,7 +2521,7 @@ async function schAnuleaza(){
 }
 async function incarcaPct(){
   await aplicaSchimbariRute();
-  const { data, error } = await db.from("clients").select("client_key,lat,lon,anexe_ids,schimbare,masina,status,toalete,containere,garduri,ziua,client,jud,localitate,locatie").limit(5000);
+  const { data, error } = await db.from("clients").select("client_key,lat,lon,anexe_ids,schimbare,masina,status,toalete,containere,garduri,ziua,client,jud,localitate,locatie,gps_stare").limit(5000);
   if(error) return;
   PCT = data || []; if(MISC.length) renderMiscari();
 }
@@ -2546,7 +2546,8 @@ function ruteStil(r){
   const baza = r.anexa_id ? "A" + r.anexa_id : "C" + r.id;
   const p = PCT.filter(x => x.client_key === baza || String(x.client_key || "").startsWith(baza + "-") || extLaLoc(x, r) ||
     (r.anexa_id && [...(x.anexe_ids || []), ...schLista(x.schimbare).flatMap(e => e.anexe_ids || [])].map(Number).includes(r.anexa_id)));   // v4.64: și anexele din schimbarea programată
-  const ok = p.length && p.every(x => x.lat != null && x.lon != null && +x.lat && +x.lon);
+  // v6.92 (cerut de Ovidiu, 24.10): punctele MOBIL (remorci, fără pin intenționat) contează ca având GPS
+  const ok = p.length && p.every(x => x.gps_stare === "MOBIL" || (x.lat != null && x.lon != null && +x.lat && +x.lon));
   // v6.37 (cerut de Ovidiu, 18.10): verde doar când comanda e trecută pe rută (RT = V) ȘI punctul are GPS — altfel portocaliu
   const rt = String(r.rt || "").toUpperCase() === "V";
   const c = ok && rt ? "#2E8B3C" : "#D97706";
@@ -7284,6 +7285,7 @@ function rrDist(a1, o1, a2, o2){
 // v6.38 (cerut de Ovidiu, 18.10): starea GPS a vizitei față de locație — raza locației = clients.raza_m (gol = 100 m)
 function gpsStareViz(v, c){
   if(!v || v.lat == null || v.lon == null) return { k:"nv", t:"neverificabil", tip:"vizita n-are GPS" };
+  if(c && c.gps_stare === "MOBIL") return { k:"nv", t:"mobil", tip:"punct mobil (remorcă) — fără pin, intenționat" };   // v6.92
   if(!c || !(+c.lat) || !(+c.lon)) return { k:"nv", t:"neverificabil", tip:"punctul de rută n-are coordonate" };
   const d = rrDist(v.lat, v.lon, c.lat, c.lon), r = +c.raza_m || 100;
   if(d <= r) return { k:"ok", t:"pe locație", d, tip:`în raza locației (${r} m)` };
@@ -8126,7 +8128,7 @@ const A_DEF = {
       {c:"lat",e:"Latitudine",t:"num"},
       {c:"lon",e:"Longitudine",t:"num"},
       {c:"raza_m",e:"Rază locație (m) — gol = 100",t:"num"},
-      {c:"gps_stare",e:"Stare coordonată",t:"sel",op:["","CONFIRMAT","DE VERIFICAT"]},
+      {c:"gps_stare",e:"Stare coordonată",t:"sel",op:["","CONFIRMAT","DE VERIFICAT","MOBIL"]},
       {c:"cartela",e:"Cartelă",t:"bool"},
       {c:"status",e:"Status",t:"sel",op:["ACTIV","INACTIV"]},
       {c:"observatii",e:"Observații",t:"ta"}
@@ -8264,7 +8266,7 @@ function renderAdmin(){
       const inactiv = (r.activ===false || r.active===false);
       const vr = A_TBL==="clients" && VER && VER.f==="rt" && (VER.chei||[]).includes(r.client_key);
       return `<tr${inactiv?' style="opacity:.45"':''}${vr?' class="r-ver"':''}>`+(pbOn()?`<td><input type="checkbox" style="width:auto;height:auto" ${PB_SEL.has(String(r.id))?"checked":""} onchange="pbBifa('${String(r.id).replace(/'/g,"")}',this.checked)"></td>`:"")+
-        d.lista.map(([c])=>`<td${pf && c!=="status" && String(adminCelula(r,c)).length > 10 ? ` title="${esc(adminCelula(r,c))}"` : ""}>${A_TBL==="clients" && c==="status" && r.schimbare ? statusIstoric(r) : esc(adminCelula(r,c))}${A_TBL==="clients" && c==="client" && r.cartela===true ? ' <span title="Necesită cartelă — clientul semnează cartonul A4 la fiecare servisare" style="cursor:help">📇</span>' : ""}${A_TBL==="clients" && c==="client" && r.gps_stare ? (r.gps_stare==="CONFIRMAT" ? ' <span title="Coordonata GPS confirmată din vizite" style="cursor:help;color:#2E8B3C">📍✓</span>' : ' <span title="Coordonata GPS de verificat (vizitele sunt împrăștiate)" style="cursor:help;color:#D97706">📍?</span>') : ""}</td>` + (pf && c==="_produse" ? `<td class="acc-c">${+r.toalete ? accIcon(r.accesorii || "") : ""}</td>` : "")).join("")+
+        d.lista.map(([c])=>`<td${pf && c!=="status" && String(adminCelula(r,c)).length > 10 ? ` title="${esc(adminCelula(r,c))}"` : ""}>${A_TBL==="clients" && c==="status" && r.schimbare ? statusIstoric(r) : esc(adminCelula(r,c))}${A_TBL==="clients" && c==="client" && r.cartela===true ? ' <span title="Necesită cartelă — clientul semnează cartonul A4 la fiecare servisare" style="cursor:help">📇</span>' : ""}${A_TBL==="clients" && c==="client" && r.gps_stare ? (r.gps_stare==="CONFIRMAT" ? ' <span title="Coordonata GPS confirmată din vizite" style="cursor:help;color:#2E8B3C">📍✓</span>' : r.gps_stare==="MOBIL" ? ' <span title="Punct mobil (ex. remorcă) — fără pin GPS, intenționat; pe telefon apare la „Fără coordonate GPS”" style="cursor:help">🚚</span>' : ' <span title="Coordonata GPS de verificat (vizitele sunt împrăștiate)" style="cursor:help;color:#D97706">📍?</span>') : ""}</td>` + (pf && c==="_produse" ? `<td class="acc-c">${+r.toalete ? accIcon(r.accesorii || "") : ""}</td>` : "")).join("")+
         (A_TBL==="clients" ? `<td>${/^A\d+(-\d+)?(-[A-Z]{2})?$/.test(r.client_key||"") ? pvAnexa(parseInt(r.client_key.slice(1))) + flaguriAnexa(parseInt(r.client_key.slice(1)),"rt") : rtComandaPunct(r)}</td>` : "")+
         // v5.17 (cerut de Ovidiu, 09.10): Editează = creion; la puncte de rută și butonul GPS → Google Maps
         `<td class="actions" style="white-space:nowrap"><button class="btn sm sec" title="Editează" onclick="adminEdit('${String(r.id).replace(/'/g,"")}')">✎</button>` +
@@ -8799,7 +8801,7 @@ const GV_ZI = /-(LU|MA|MI|JO|VI|SA|DU)$/;
 const gvBaza = k => String(k || "").replace(GV_ZI, "");
 function gvCalcul(puncte, vizite){
   const loc = {};
-  puncte.forEach(p => { if(!p.client_key) return; const b = gvBaza(p.client_key); (loc[b] = loc[b] || { baza: b, puncte: [], viz: [] }).puncte.push(p); });
+  puncte.forEach(p => { if(!p.client_key || p.gps_stare === "MOBIL") return; const b = gvBaza(p.client_key); (loc[b] = loc[b] || { baza: b, puncte: [], viz: [] }).puncte.push(p); });
   vizite.forEach(v => { const b = gvBaza(v.client_key); if(loc[b]) loc[b].viz.push(v); });
   return Object.values(loc).filter(l => l.viz.length).map(l => {
     l.viz.sort((a, b) => String(b.arrive_time || "").localeCompare(String(a.arrive_time || ""))); l.viz = l.viz.slice(0, 10);
