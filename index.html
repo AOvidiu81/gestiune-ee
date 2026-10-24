@@ -829,7 +829,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <button id="btn-mob" class="btn sec" style="padding:5px 10px;font-size:12px" onclick="mobPC(false)" title="Înapoi la varianta de telefon">📱 Telefon</button>
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
   <span id="tz-w" title="Mărimea tabelului (doar tabelul, restul rămâne la fel), din 5 în 5%. Merge și cu Ctrl + rotița mausului, Ctrl + / Ctrl − / Ctrl 0. Dublu clic pe procent = scrii tu valoarea."><button class="pictograma" onclick="tzPas(-1)" aria-label="Micșorează tabelul">−</button><b id="tz-v" ondblclick="tzScrie()" title="Dublu clic = scrii mărimea (ex. 87), Enter">100%</b><input id="tz-in" type="number" min="30" max="300" step="5" style="display:none"><button class="pictograma" onclick="tzPas(1)" aria-label="Mărește tabelul">+</button></span>
-  <span class="ver">v6.85</span>
+  <span class="ver">v6.86</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -1775,6 +1775,10 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
         <div class="maf"><label>Monedă</label><select id="ma-moneda"></select></div>
         <div class="maf"><label>Scadent (zile)</label><input type="number" id="ma-scad" value="30"></div>
       </div>
+      <div class="ma-g c2"><!-- v6.86: servisare la cerere pe anexă (VITAL BERRY) — rând separat în Facturare, cu zilele trecute de mână -->
+        <div class="maf"><label>Servisare la cerere</label><label style="display:inline-flex;gap:6px;align-items:center;cursor:pointer;text-transform:none;letter-spacing:0;font-size:13px"><input type="checkbox" id="ma-sc" onchange="maScArata()"> există și servisare la cerere pe această anexă</label></div>
+        <div class="maf" id="ma-scp-w" style="display:none"><label>Preț / servisare / produs <span class="hint" style="text-transform:none;letter-spacing:0">moneda anexei</span></label><input type="number" step="0.01" min="0" id="ma-scp" onblur="pret2(this)"></div>
+      </div>
       <div class="ma-g c2">
         <div class="maf"><label id="ma-dliv-l">Data amplasării</label><input type="date" id="ma-dliv"></div>
         <div class="maf"><label>Data ridicării <span class="hint" style="text-transform:none;letter-spacing:0">goală = nedeterminat</span></label><input type="date" id="ma-drid" placeholder="NEDETERMINAT"></div>
@@ -1868,6 +1872,20 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   </div>
 </div></div>
 
+<div class="modal" id="mod-fsc"><div class="box" style="max-width:560px"><!-- v6.86: servisare la cerere pe anexă -->
+  <h3 class="lux-cap cap-mut">🧽 Servisări la cerere</h3>
+  <div id="fsc-cap" class="muted" style="margin-bottom:10px;line-height:1.5"></div>
+  <div class="row" style="gap:8px;margin-bottom:2px"><div style="flex:0 0 170px"><label>Data servisării</label></div><div style="flex:0 0 110px"><label>Produse servisate</label></div></div>
+  <div id="fsc-zile"></div>
+  <div style="margin-top:6px"><button class="btn sm sec" onclick="fscAdauga()" title="Încă o zi (propune aceeași zi din săptămâna următoare)">+ Zi</button></div>
+  <div style="margin-top:8px"><label>Observații</label><input id="fsc-obs" placeholder="ex. cerut pe WhatsApp, ce s-a discutat cu clientul"></div>
+  <div id="fsc-info" style="margin-top:10px;line-height:1.5"></div>
+  <div class="row" style="justify-content:flex-end;margin-top:12px">
+    <div style="flex:0" id="fsc-gol-w"><button class="btn sec" style="border-color:#C0392B;color:#C0392B" onclick="fscGoleste()">Șterge zilele</button></div>
+    <div style="flex:0"><button class="btn sec" onclick="closeModal('mod-fsc')">Renunță</button></div>
+    <div style="flex:0"><button class="btn" onclick="fscSalveaza()">Salvează</button></div>
+  </div>
+</div></div>
 <div class="modal" id="mod-fper"><div class="box" style="max-width:620px">
   <h3 class="lux-cap cap-mut">📅 Perioada de facturare</h3>
   <div id="fper-cap" class="muted" style="margin-bottom:10px;line-height:1.5"></div>
@@ -2495,6 +2513,7 @@ const TIP_PIERD = /^(DAUNA|FURT)$/;
 // v6.47 (cerut de Ovidiu, 19.10): STARE LUNA — și FACTURA AVANS / FACTURA PROFORMA (păstrează valoarea, intră la „Gata de trimis”)
 const FACT_STARI = ["ACTIV","FACTURAT","FACTURA AVANS","FACTURA PROFORMA","INACTIV","NU FACTURAM"];
 const FACT_VAL = st => ["ACTIV","FACTURAT","FACTURA AVANS","FACTURA PROFORMA"].includes(st);
+let R_SC = new Map(), FACT_SC = {}, FSC = null;   // v6.86: rândurile „servisare la cerere” pe anexă (index rând → anexa) + zilele lunii
 let R_SERV = new Map();   // v6.44: rândurile de servisare fără anexă din Facturare (index rând → id comandă)
 const tipLit = t => /AMPLASARE|EVENIMENT-A|SUPLIMENTARE/.test(t)?"A":/RIDICARE|EVENIMENT-R|REDUCERE|DAUNA|FURT/.test(t)?"R":/SERVISARE/.test(t)?"S":/Transfer|VANZARE/.test(t)?"T":"X";
 const tipTxt = t => `<span class="tc tc-${tipLit(t)}">${esc(t)}</span>`;
@@ -3676,7 +3695,7 @@ function renderClienti(){
       ks.map(k=>{ const an=ANX.filter(a=>a.contract_id===k.id);
         return `<div style="margin:8px 0 4px;padding-left:8px;border-left:3px solid var(--gl)"><b>CTR ${esc(k.nr_ctr)}</b>${k.intern ? '<span class="tag-int" title="Fără contract semnat — doar comenzi">INTERN</span>' : ""} <span class="muted">${fmtD(k.data_emitere)} → ${esc(ctrExpText(k))}${k.prelungire_tacita && k.prelungire_tacita_din ? " (tacit din " + fmtD(k.prelungire_tacita_din) + ")" : ""} · ${esc(k.stare)}</span> <button class="btn sm sec noprint" onclick="openContract(${k.id})">Edit</button> <button class="btn sm noprint" onclick="openAnexa(null,${k.id})">+ Anexă</button>
         <div class="tw" style="max-height:none;margin-top:4px"><table><tr><th>Anexa</th><th>Emitere</th><th>Expirare</th><th>Jud</th><th>Loc.</th><th>Locație</th><th>Forma</th><th>Produs</th><th>Tip</th><th>Cant</th><th>Preț</th><th>Status</th><th>Depozit</th><th class="noprint" title="ACT pe comenzile acestei anexe">ACT</th><th class="noprint"></th></tr>`+
-        an.map(a=>`<tr${VER&&VER.f==="act"&&VER.m.anexa_id===a.id?' class="r-ver"':''}><td>${esc(a.anexa)}</td><td>${fmtD(a.data_emitere)}</td><td>${a.data_expirare?fmtD(a.data_expirare):esc(a.expirare_text)}</td><td>${esc(a.jud)}</td><td>${esc(a.loc)}</td><td>${esc(a.sat)}</td><td>${esc(a.forma)}</td><td>${esc(prodN(a.produs, a.cant))}</td><td>${esc([a.model, a.model_fizic].filter(Boolean).join(" "))}</td><td>${a.cant}</td><td>${fmtPret(a.pret)} ${esc(a.moneda)}${actLista(a).map(u => `<div class="muted" style="font-size:11px;white-space:nowrap">→ ${u.pret != null ? esc(fmtPret(u.pret) + " " + (a.moneda || "")) : ""}${u.model ? " " + esc(u.model) : ""} din ${esc(fmtD(u.de_la))}${u.act_nr ? " (AA " + esc(u.act_nr) + ")" : ""}</div>`).join("")}</td><td>${esc(a.status)}</td><td>${esc(a.depozit)}</td><td class="noprint">${flaguriAnexa(a.id,"act")}</td><td class="noprint"><button class="btn sm sec" onclick="openAnexa(${a.id})">Edit</button> ${butonSerii(a)} ${a.tip_anexa === "R" ? "" : `<button class="btn sm sec" title="Act adițional: preț / tip nou de la o dată (facturarea desparte luna)" onclick="openAct(${a.id})">Actualizare${actLista(a).length ? " (" + actLista(a).length + ")" : ""}</button>`}</td></tr>`).join("")+`</table></div></div>`; }).join("")+`</details></div>`;
+        an.map(a=>`<tr${VER&&VER.f==="act"&&VER.m.anexa_id===a.id?' class="r-ver"':''}><td>${esc(a.anexa)}</td><td>${fmtD(a.data_emitere)}</td><td>${a.data_expirare?fmtD(a.data_expirare):esc(a.expirare_text)}</td><td>${esc(a.jud)}</td><td>${esc(a.loc)}</td><td>${esc(a.sat)}</td><td>${esc(a.forma)}</td><td>${esc(prodN(a.produs, a.cant))}</td><td>${esc([a.model, a.model_fizic].filter(Boolean).join(" "))}</td><td>${a.cant}</td><td>${fmtPret(a.pret)} ${esc(a.moneda)}${a.serv_cerere ? `<div class="muted" style="font-size:11px;white-space:nowrap" title="Servisare la cerere: preț pe servisare / produs (rând separat în Facturare)">+ serv. la cerere ${esc(fmtPret(a.serv_pret))} ${esc(a.moneda || "")}</div>` : ""}${actLista(a).map(u => `<div class="muted" style="font-size:11px;white-space:nowrap">→ ${u.pret != null ? esc(fmtPret(u.pret) + " " + (a.moneda || "")) : ""}${u.model ? " " + esc(u.model) : ""} din ${esc(fmtD(u.de_la))}${u.act_nr ? " (AA " + esc(u.act_nr) + ")" : ""}</div>`).join("")}</td><td>${esc(a.status)}</td><td>${esc(a.depozit)}</td><td class="noprint">${flaguriAnexa(a.id,"act")}</td><td class="noprint"><button class="btn sm sec" onclick="openAnexa(${a.id})">Edit</button> ${butonSerii(a)} ${a.tip_anexa === "R" ? "" : `<button class="btn sm sec" title="Act adițional: preț / tip nou de la o dată (facturarea desparte luna)" onclick="openAct(${a.id})">Actualizare${actLista(a).length ? " (" + actLista(a).length + ")" : ""}</button>`}</td></tr>`).join("")+`</table></div></div>`; }).join("")+`</details></div>`;
   }).join("")||'<p class="muted">Niciun client.</p>';
   verBandaAct();
 }
@@ -4170,6 +4189,7 @@ function maUmpleRand(a){
   $("ma-ctrdep").value=g("contract_depozit", depPrincipal());
   $("ma-dliv").value=g("data_livrarii", ($("mod-m").classList.contains("on") && $("mm-data").value) || today()); $("ma-drid").value=g("data_ridicarii","");
   $("ma-evde").value=g("ev_de",""); $("ma-evpana").value=g("ev_pana",""); maEvArata();   // v6.71
+  $("ma-sc").checked=!!(a && a.serv_cerere); $("ma-scp").value=a && a.serv_pret!=null ? fmtPret(a.serv_pret) : ""; maScArata();   // v6.86
   $("ma-transp").value=g("transport",0); $("ma-frecv").value=g("frecv_servisare","");
   ziSet(g("zi_servisare","")); $("ma-pers").value=g("pers_contact",""); $("ma-tel").value=g("telefon","");
   $("ma-status").closest("div").style.display = a && a.id ? "" : "none";   // la un rând nou starea se pune singură
@@ -4179,7 +4199,9 @@ function maUmpleRand(a){
 // perioada evenimentului se pune pe anexă și Facturare numără doar zilele ei (prețul rămâne pe zi).
 const maEsteEv = () => String($("ma-forma").value || "").toUpperCase() === "EVENIMENT";
 function maEvArata(){ const g = $("ma-ev-g"); if(g) g.style.display = maEsteEv() ? "" : "none"; }
+function maScArata(){ const w = $("ma-scp-w"); if(w) w.style.display = $("ma-sc").checked ? "" : "none"; }   // v6.86
 function maEvVerifica(r){
+  if(r.serv_cerere && !(+r.serv_pret > 0)){ toast("Scrie prețul pe servisare / produs (sau debifează „Servisare la cerere”)", true); return false; }   // v6.86
   if(String(r.forma || "").toUpperCase() !== "EVENIMENT" || (+r.cant || 0) < 0) return true;
   const nume = r.anexa || "anexa";
   if(!r.ev_de) return confirm("⚠ " + nume + ": nu ai pus perioada evenimentului (Eveniment de la / până la).\n\nFără ea, Facturare numără toate zilele de la amplasare până la ridicare.\n\nSalvezi așa?");
@@ -4194,7 +4216,8 @@ function maRecForm(){
     contract_depozit:$("ma-ctrdep").value||null,data_livrarii:$("ma-dliv").value||null,
     data_ridicarii:$("ma-drid").value||null,transport:+$("ma-transp").value||0,
     pers_contact:$("ma-pers").value||null,telefon:$("ma-tel").value||null,
-    ev_de:maEsteEv()&&$("ma-evde").value||null,ev_pana:maEsteEv()&&($("ma-evpana").value||$("ma-evde").value)||null};   // v6.71
+    ev_de:maEsteEv()&&$("ma-evde").value||null,ev_pana:maEsteEv()&&($("ma-evpana").value||$("ma-evde").value)||null,   // v6.71
+    serv_cerere:$("ma-sc").checked,serv_pret:$("ma-sc").checked?(Math.round((+String($("ma-scp").value).replace(",",".")||0)*100)/100||null):null};   // v6.86
 }
 function maRandPastreaza(){ const r = MA_RAND[MA_I] || {}; MA_RAND[MA_I] = { ...r, ...maRecForm(), id: r.id }; }
 function maRandArata(i){ MA_I = i; const r = MA_RAND[i] || {}; $("ma-id").value = r.id || ""; maUmpleRand(r); maRanduri(); }
@@ -5272,7 +5295,7 @@ function modFactButoane(){
   st("r-mod-lucru", R_MOD === "lucru", "#D97706"); st("r-mod-gata", R_MOD === "gata", "#2E8B3C");
 }
 async function genereazaRaport(){
-  modFactButoane(); R_FMT2 = new Set(); R_DESP = new Set(); R_SERV = new Map();
+  modFactButoane(); R_FMT2 = new Set(); R_DESP = new Set(); R_SERV = new Map(); R_SC = new Map();
   if(!ANX.length){ return; }
   if($("r-tip").value === "facturare") await raportFacturare(); else await raportLuna();
 }
@@ -5292,9 +5315,12 @@ async function raportFacturare(){
   // v6.81 (cerut de Ovidiu, 23.10): anexa evenimentului cu „Comanda clientului” pe amplasare → ANEXA NR = comanda clientului, EMITERE ANEXA = data ei
   { const { data: cm } = await db.from("miscari").select("id,anexa_id,cmd_nr,cmd_data").eq("tip_miscare", "EVENIMENT-A").not("anexa_id", "is", null).or("cmd_nr.not.is.null,cmd_data.not.is.null").limit(5000);
     FACT_CMD = {}; (cm || []).sort((x, y) => x.id - y.id).forEach(m => { FACT_CMD[m.anexa_id] = m; }); }
-  const [misF, fsR, fpR] = await Promise.all([ miscariLuna(anF, lunaF),
+  const [misF, fsR, fpR, scR] = await Promise.all([ miscariLuna(anF, lunaF),
     db.from("facturare_stare").select("anexa_id,stare").eq("an", anF).eq("luna", lunaF),
-    db.from("facturare_perioada").select("*") ]);
+    db.from("facturare_perioada").select("*"),
+    db.from("facturare_servisari").select("*").eq("an", anF).eq("luna", lunaF) ]);   // v6.86
+  if(scR.error) toast("Servisări la cerere: " + scR.error.message, true);
+  FACT_SC = {}; (scR.data || []).forEach(z => FACT_SC[z.anexa_id] = z);
   const FS = {}; (fsR.data || []).forEach(z => FS[z.anexa_id] = z.stare);
   if(fpR.error) toast("Perioade de facturare: " + fpR.error.message, true);
   FACT_PER = fpR.data || [];
@@ -5349,6 +5375,27 @@ async function raportFacturare(){
              dRO(x.de), dRO(x.la), x.zile, fara, Math.round(fara * (1 + tva) * 100) / 100,
              x.a.scadent === null || x.a.scadent === undefined ? "" : x.a.scadent ];
   });
+  // v6.86 (cerut de Ovidiu, 24.10 — VITAL BERRY): anexa cu „Servisare la cerere” bifată are sub ultimul ei rând un rând
+  // „SERVISARE LA CERERE”: zilele servisărilor din luna aceasta + bucățile servisate, trecute de mână (dublu clic / „Zile”).
+  // Valoare = total bucăți servisate × prețul pe servisare / produs. Fără zile = INACTIV, 0. Anexa nu se schimbă.
+  R_SC = new Map();
+  { const ult = new Map(); r.forEach((x, j) => ult.set(x.a.id, j));
+    const N = { rr: [], aid: [], av: [], ex: [], ro: [], fc: [], fx: [] };
+    r.forEach((x, j) => {
+      N.rr.push(R_RANDURI[j]); N.aid.push(R_AID[j]); N.av.push(R_AVERT[j]); N.ex.push(R_EXTRA[j]); N.ro.push(R_ROSU[j]); N.fc.push(R_FCOL[j]); N.fx.push(x);
+      const a = x.a; if(!a.serv_cerere || ult.get(a.id) !== j) return;
+      const rec = FACT_SC[a.id] || {}, zile = scZile(rec);
+      const buc = zile.reduce((t, z) => t + (+z.buc || 0), 0), pret = +a.serv_pret || 0;
+      const st = rec.stare || (buc ? "ACTIV" : "INACTIV");
+      const fara = FACT_VAL(st) ? Math.round(buc * pret * 100) / 100 : 0;
+      R_SC.set(N.rr.length, a.id);
+      N.rr.push([ st ].concat(R_RANDURI[j].slice(1, 10), [ "" ], R_RANDURI[j].slice(11, 14),
+        [ "SERVISARE", prodN(a.produs || "", buc || 2), modelAcc(a), "BUC", buc, pret, a.moneda || "", "SERVISARE LA CERERE",
+          scZileText(zile), "", zile.length, fara, Math.round(fara * (1 + tva) * 100) / 100, a.scadent === null || a.scadent === undefined ? "" : a.scadent ]));
+      N.aid.push(null); N.av.push({}); N.ro.push(false); N.fc.push({}); N.fx.push(null);
+      N.ex.push(`<button class="btn sm sec" title="Zilele servisărilor la cerere din luna aceasta (data + câte produse)" onclick="fscDeschide(${a.id})">🧽 Zile${zile.length ? " (" + zile.length + ")" : ""}</button>`);
+    });
+    R_RANDURI = N.rr; R_AID = N.aid; R_AVERT = N.av; R_EXTRA = N.ex; R_ROSU = N.ro; R_FCOL = N.fc; R_FX = N.fx; }
   // v6.33 (cerut de Ovidiu, 17.10): despăgubirea la DAUNA / FURT — rând separat, doar dacă e bifată pe comandă (în luna comenzii);
   // valoare pe bucată, fără zile. Se scoate debifând „Se facturează” pe comandă.
   R_DESP = new Set();
@@ -5525,6 +5572,76 @@ async function fperScoate(){
 }
 // v6.46 (cerut de Ovidiu, 19.10): STARE LUNA pe servisarea fără anexă — pe comandă (miscari.fact_stare; gol = ACTIV).
 // FACTURAT / INACTIV / NU FACTURAM pun și FAC = V (s-a hotărât ce se face cu ea); ACTIV pune FAC înapoi pe „-”.
+// v6.86: servisarea la cerere pe anexă — zilele lunii (facturare_servisari: anexa + an + lună, zile = [{data, buc}])
+const scZile = rec => (Array.isArray(rec && rec.zile) ? rec.zile : []).filter(z => z && z.data).sort((p, q) => String(p.data).localeCompare(String(q.data)));
+const scZileText = zile => zile.map(z => String(z.data).slice(8, 10) + "." + String(z.data).slice(5, 7) + " (" + (+z.buc || 0) + ")").join(", ");
+async function setStareSC(aid, v){
+  const an = +$("r-an").value, luna = +$("r-luna").value;
+  const { error } = await db.from("facturare_servisari").upsert({ anexa_id: aid, an, luna, stare: v, actualizat_la: new Date().toISOString() }, { onConflict: "anexa_id,an,luna" });
+  if(error){ toast(error.message, true); return; }
+  toast("Servisare la cerere " + zi2(luna) + "." + an + ": " + v);
+  await raportFacturare();
+}
+function fscDeschide(aid){
+  const a = ANX.find(x => x.id === aid); if(!a) return;
+  const an = +$("r-an").value, luna = +$("r-luna").value, rec = FACT_SC[aid] || null;
+  const c = CTR.find(x => x.id === a.contract_id) || {}, k = CLI.find(x => x.id === c.client_id) || {};
+  FSC = { a, an, luna, rec, zile: scZile(rec).map(z => ({ data: z.data, buc: +z.buc || 0 })) };
+  $("fsc-cap").innerHTML = `<b>${esc(k.nume || "")}</b> · ${esc(c.nr_ctr || "")} · ${esc(a.anexa || "")} · ${esc([a.loc, a.sat].filter(Boolean).join(", "))}<br>` +
+    `Luna <b>${zi2(luna)}.${an}</b> · ${(+a.serv_pret || 0).toFixed(2)} ${esc(a.moneda || "RON")} pe servisare / produs · pe anexă: ${Math.abs(+a.cant || 0)} ${esc(prodN(a.produs || "", Math.abs(+a.cant || 0)))}` +
+    `<br><span class="muted">Anexa nu se schimbă — zilele se țin separat și contează doar în Facturare.</span>`;
+  $("fsc-obs").value = rec ? (rec.observatii || "") : "";
+  $("fsc-gol-w").style.display = rec ? "" : "none";
+  fscDeseneaza(); $("mod-fsc").classList.add("on");
+}
+function fscCiteste(){ if(!FSC) return; document.querySelectorAll("#fsc-zile [data-i]").forEach(el => { const z = FSC.zile[+el.dataset.i]; if(!z) return;
+  z.data = el.querySelector(".fsc-d").value; z.buc = Math.max(0, Math.round(+el.querySelector(".fsc-b").value || 0)); }); }
+function fscDeseneaza(){
+  if(!FSC) return;
+  $("fsc-zile").innerHTML = FSC.zile.length ? FSC.zile.map((z, i) => `<div class="row" data-i="${i}" style="gap:8px;align-items:flex-end;margin-bottom:4px">
+      <div style="flex:0 0 170px"><input type="date" class="fsc-d" value="${esc(z.data || "")}" oninput="fscCiteste();fscTotal()"></div>
+      <div style="flex:0 0 110px"><input type="number" min="0" class="fsc-b" value="${z.buc}" title="Câte produse s-au servisat în ziua aceasta" oninput="fscCiteste();fscTotal()"></div>
+      <div style="flex:0"><button class="btn sm sec" title="Scoate ziua" onclick="fscScoate(${i})">✕</button></div></div>`).join("")
+    : '<div class="muted">Nicio servisare trecută în luna aceasta.</div>';
+  fscTotal();
+}
+function fscAdauga(){
+  if(!FSC) return; fscCiteste();
+  const u = FSC.zile[FSC.zile.length - 1], p1 = FSC.an + "-" + zi2(FSC.luna) + "-01";
+  let d = p1; if(u && u.data){ const t = dtz(u.data); t.setDate(t.getDate() + 7); d = fpIso(t); }
+  const ultZ = FSC.an + "-" + zi2(FSC.luna) + "-" + zi2(zileInLuna(FSC.an, FSC.luna)); if(d > ultZ) d = ultZ;
+  FSC.zile.push({ data: d, buc: u ? u.buc : Math.abs(+FSC.a.cant || 0) }); fscDeseneaza();
+}
+function fscScoate(i){ fscCiteste(); FSC.zile.splice(i, 1); fscDeseneaza(); }
+function fscTotal(){
+  if(!FSC) return;
+  const buc = FSC.zile.reduce((t, z) => t + (+z.buc || 0), 0), v = Math.round(buc * (+FSC.a.serv_pret || 0) * 100) / 100;
+  const p = FSC.an + "-" + zi2(FSC.luna) + "-", afara = FSC.zile.filter(z => z.data && !String(z.data).startsWith(p)).length;
+  $("fsc-info").innerHTML = `<b>${FSC.zile.length} servisări · ${buc} produse servisate</b> · valoare fără TVA <b>${bani(v)} ${esc(FSC.a.moneda || "RON")}</b>` +
+    (afara ? ` <span class="warn-pill">⚠ ${afara} zile în afara lunii ${zi2(FSC.luna)}.${FSC.an}</span>` : "");
+}
+async function fscSalveaza(){
+  if(!FSC) return; fscCiteste();
+  const zile = FSC.zile.filter(z => z.data).sort((p, q) => p.data.localeCompare(q.data));
+  if(zile.length !== FSC.zile.length){ toast("O zi nu are dată — complet-o sau scoate-o", true); return; }
+  const p = FSC.an + "-" + zi2(FSC.luna) + "-";
+  if(zile.some(z => !z.data.startsWith(p)) && !confirm("Unele zile nu sunt în luna " + zi2(FSC.luna) + "." + FSC.an + ". Se facturează totuși în luna aceasta.\n\nSalvezi așa?")) return;
+  const buc = zile.reduce((t, z) => t + z.buc, 0);
+  let stare = FSC.rec ? FSC.rec.stare || null : null;
+  if(buc && stare === "INACTIV") stare = null;   // au apărut servisări → ACTIV singur
+  const rec = { anexa_id: FSC.a.id, an: FSC.an, luna: FSC.luna, zile, stare, observatii: $("fsc-obs").value.trim() || null, actualizat_la: new Date().toISOString() };
+  const { error } = await db.from("facturare_servisari").upsert(rec, { onConflict: "anexa_id,an,luna" });
+  if(error){ toast(error.message, true); return; }
+  closeModal("mod-fsc"); toast(`${zile.length} servisări salvate (${buc} produse) — anexa nu s-a schimbat`);
+  await raportFacturare();
+}
+async function fscGoleste(){
+  if(!FSC || !FSC.rec) return;
+  if(!confirm("Ștergi toate zilele de servisare din luna " + zi2(FSC.luna) + "." + FSC.an + " pentru " + (FSC.a.anexa || "anexă") + "? Rândul revine pe INACTIV, 0.")) return;
+  const { error } = await db.from("facturare_servisari").delete().eq("id", FSC.rec.id);
+  if(error){ toast(error.message, true); return; }
+  closeModal("mod-fsc"); toast("Zilele de servisare scoase"); await raportFacturare();
+}
 async function setStareServ(mid, v){
   const rec = { fact_stare: v === "ACTIV" ? null : v, fac: v === "ACTIV" ? "-" : "V" };
   const { error } = await db.from("miscari").update(rec).eq("id", mid);
@@ -5721,6 +5838,9 @@ function deseneazaRaport(){
         if(fact && i === 0 && R_SERV.has(j))   // v6.46: STARE LUNA și pe servisarea fără anexă (ținută pe comandă, miscari.fact_stare)
           t = `<select class="fs-sel ${esc(String(v).split(" ")[0])}" title="Servisare fără anexă — starea se ține pe comandă" onchange="setStareServ(${R_SERV.get(j)}, this.value)">` +
               FACT_STARI.map(o => `<option${o === v ? " selected" : ""}>${o}</option>`).join("") + "</select>";
+        else if(fact && i === 0 && R_SC.has(j))   // v6.86: servisare la cerere pe anexă — starea pe anexă + lună (facturare_servisari)
+          t = `<select class="fs-sel ${esc(String(v).split(" ")[0])}" title="Servisare la cerere — fără zile = INACTIV" onchange="setStareSC(${R_SC.get(j)}, this.value)">` +
+              FACT_STARI.map(o => `<option${o === v ? " selected" : ""}>${o}</option>`).join("") + "</select>";
         else if(fact && i === 0 && R_DESP.has(j)) t = `<span class="muted" title="Despăgubire DAUNA / FURT — se scoate debifând „Se facturează” pe comandă">DESPĂGUBIRE</span>`;   // v6.33
         else if(fact && i === 0 && v === "ACOPERIT DE AVANS")   // v6.50
           t = `<span class="muted" title="Perioada a fost facturată în avans în altă lună — aici rândul doar se arată, cu valoare 0">ACOPERIT DE AVANS</span>`;
@@ -5735,6 +5855,8 @@ function deseneazaRaport(){
           if(i === 23 && av.per) t += ` <span class="warn-pill" title="${esc(av.per)}">⚠ ${esc(av.per.split(" — ")[0])}</span>`;
           t = `<span class="fper-c" title="Dublu clic: schimbă perioada de facturare (avans / proformă / altă perioadă)" ondblclick="fperDeschide(${j})">${t}</span>`;
         }
+        if(fact && (i === 22 || i === 24) && R_SC.has(j))   // v6.86: dublu clic = zilele servisărilor
+          t = `<span class="fper-c" title="Dublu clic: zilele servisărilor la cerere din luna aceasta" ondblclick="fscDeschide(${R_SC.get(j)})">${t || "—"}</span>`;
         if(fact && i === 3 && av.ctr)  t += ` <span class="warn-pill" title="Contractul a expirat la ${esc(fmtD(av.ctr))} — e nevoie de act adițional">⚠ act adițional</span>`;
         if(fact && i === 10 && av.anx) t += ` <span class="warn-pill" title="Anexa a expirat la ${esc(fmtD(av.anx))}; echipamentul nu e trecut pe RIDICARE, deci se facturează mai departe">⚠ act adițional</span>`;
         if(R_ROSU[j] && ((fact && (i === 1 || i === 4)) || (R_NUME === "Facturare_de_trimis" && (i === 0 || i === 1))))
@@ -6204,7 +6326,7 @@ const TB_NUME = { clients: "Puncte de rută", visit_logs: "Vizite (rute)", clien
   week_meta: "Note săptămâni (rute)", miscari: "Comenzi", anexe: "Anexe", contracte: "Contracte", clienti: "Clienți", serii: "Serii",
   pv_records: "PV-uri / cereri (înregistrări)", documente: "Registru documente", inceput_zi: "Începutul zilei", prezenta_depozit: "Prezență la depozit", atentie_note: "Note De urmărit",
   ciorne: "Ciorne", profiles: "Conturi", nomenclatoare: "Nomenclatoare", products: "Produse (PV)", stoc_initial: "Stoc inițial",
-  depozite: "Depozite", masini: "Mașini", soferi: "Șoferi", company_info: "Date firmă", facturare_stare: "Stare facturare", facturare_perioada: "Perioade facturare (avans)" };
+  depozite: "Depozite", masini: "Mașini", soferi: "Șoferi", company_info: "Date firmă", facturare_stare: "Stare facturare", facturare_perioada: "Perioade facturare (avans)", facturare_servisari: "Servisări la cerere (facturare)" };
 const tbMB = b => { b = +b || 0; return b < 1048576 ? (b / 1024).toFixed(0) + " KB" : (b / 1048576).toFixed(1).replace(".", ",") + " MB"; };
 function tbBara(et, b, lim){
   const pr = Math.min(100, (+b || 0) / lim * 100), cul = pr > 80 ? "#b3261e" : pr > 60 ? "#D97706" : "#2E8B3C";
