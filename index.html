@@ -829,7 +829,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <button id="btn-mob" class="btn sec" style="padding:5px 10px;font-size:12px" onclick="mobPC(false)" title="Înapoi la varianta de telefon">📱 Telefon</button>
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
   <span id="tz-w" title="Mărimea tabelului (doar tabelul, restul rămâne la fel), din 5 în 5%. Merge și cu Ctrl + rotița mausului, Ctrl + / Ctrl − / Ctrl 0. Dublu clic pe procent = scrii tu valoarea."><button class="pictograma" onclick="tzPas(-1)" aria-label="Micșorează tabelul">−</button><b id="tz-v" ondblclick="tzScrie()" title="Dublu clic = scrii mărimea (ex. 87), Enter">100%</b><input id="tz-in" type="number" min="30" max="300" step="5" style="display:none"><button class="pictograma" onclick="tzPas(1)" aria-label="Mărește tabelul">+</button></span>
-  <span class="ver">v6.86</span>
+  <span class="ver">v6.87</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -1711,6 +1711,24 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   #mod-a .ma-sect>h4{margin:12px 0 8px;font-size:11px;letter-spacing:.09em;text-transform:uppercase;color:var(--mut);font-weight:700;display:flex;gap:10px;align-items:center}
   #mod-a .ma-sect>h4:after{content:"";flex:1;height:1px;background:var(--bd)}
   #mod-a .ma-g{display:grid;gap:10px;margin-bottom:10px}
+  /* v6.87: panoul „Servisare la cerere” din anexă */
+  #mod-a .sc-box{border:1px solid var(--bd);border-radius:10px;padding:10px 12px;margin:2px 0 12px;background:var(--card2,transparent);transition:border-color .15s}
+  #mod-a .sc-box.on{border-color:var(--acc,var(--g2));box-shadow:inset 3px 0 0 var(--acc,var(--g2))}
+  #mod-a .sc-sw{display:flex;gap:12px;align-items:center;cursor:pointer;margin:0;text-transform:none;letter-spacing:0;font-weight:400;color:var(--tx)}
+  #mod-a .sc-sw input{position:absolute;opacity:0;width:0;height:0}
+  #mod-a .sc-tr{flex:0 0 38px;height:22px;border-radius:11px;background:var(--bd);position:relative;transition:background .15s}
+  #mod-a .sc-tr:after{content:"";position:absolute;top:3px;left:3px;width:16px;height:16px;border-radius:50%;background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.3);transition:left .15s}
+  #mod-a .sc-sw input:checked+.sc-tr{background:var(--acc,var(--g2))}
+  #mod-a .sc-sw input:checked+.sc-tr:after{left:19px}
+  #mod-a .sc-sw input:focus-visible+.sc-tr{outline:2px solid var(--acc,var(--g2));outline-offset:2px}
+  #mod-a .sc-tx{display:flex;flex-direction:column;gap:1px;font-size:13px}
+  #mod-a .sc-tx small{color:var(--mut);font-size:11.5px}
+  #mod-a .sc-campuri{display:none;grid-template-columns:170px 120px 1fr;gap:10px;align-items:end;margin-top:10px;padding-top:10px;border-top:1px dashed var(--bd)}
+  #mod-a .sc-box.on .sc-campuri{display:grid}
+  #mod-a .sc-campuri input{text-align:right;font-variant-numeric:tabular-nums}
+  #mod-a .sc-ex{font-size:12px;color:var(--mut);padding-bottom:8px;line-height:1.35}
+  #mod-a .sc-ex b{color:var(--tx);font-variant-numeric:tabular-nums}
+  @media(max-width:640px){ #mod-a .sc-campuri{grid-template-columns:1fr 1fr} #mod-a .sc-ex{grid-column:1/-1} }
   #mod-a .c2{grid-template-columns:1fr 1fr} #mod-a .c3{grid-template-columns:1fr 1fr 1fr} #mod-a .c3a{grid-template-columns:110px 1fr 1.4fr}
   #mod-a .c5{grid-template-columns:1fr 1.2fr 1.1fr 1.1fr .7fr .7fr}
   @media(max-width:640px){ #mod-a .c2,#mod-a .c3,#mod-a .c3a,#mod-a .c5{grid-template-columns:1fr} }
@@ -1775,9 +1793,15 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
         <div class="maf"><label>Monedă</label><select id="ma-moneda"></select></div>
         <div class="maf"><label>Scadent (zile)</label><input type="number" id="ma-scad" value="30"></div>
       </div>
-      <div class="ma-g c2"><!-- v6.86: servisare la cerere pe anexă (VITAL BERRY) — rând separat în Facturare, cu zilele trecute de mână -->
-        <div class="maf"><label>Servisare la cerere</label><label style="display:inline-flex;gap:6px;align-items:center;cursor:pointer;text-transform:none;letter-spacing:0;font-size:13px"><input type="checkbox" id="ma-sc" onchange="maScArata()"> există și servisare la cerere pe această anexă</label></div>
-        <div class="maf" id="ma-scp-w" style="display:none"><label>Preț / servisare / produs <span class="hint" style="text-transform:none;letter-spacing:0">moneda anexei</span></label><input type="number" step="0.01" min="0" id="ma-scp" onblur="pret2(this)"></div>
+      <!-- v6.86 / v6.87: servisare la cerere pe anexă (VITAL BERRY) — rând separat în Facturare, cu zilele trecute de mână -->
+      <div class="maf sc-box" id="ma-sc-box">
+        <label class="sc-sw"><input type="checkbox" id="ma-sc" onchange="maScArata()"><span class="sc-tr"></span>
+          <span class="sc-tx"><b>Servisare la cerere</b><small>Servisări în plus, facturate separat: pe fiecare servisare și pe fiecare produs servisat</small></span></label>
+        <div class="sc-campuri" id="ma-scp-w">
+          <div><label>Preț / servisare / produs</label><input type="number" step="0.01" min="0" id="ma-scp" placeholder="0.00" oninput="maScExemplu()" onblur="pret2(this);maScExemplu()"></div>
+          <div><label>Monedă</label><select id="ma-scm" onchange="maScExemplu()"></select></div>
+          <div class="sc-ex" id="ma-sc-ex"></div>
+        </div>
       </div>
       <div class="ma-g c2">
         <div class="maf"><label id="ma-dliv-l">Data amplasării</label><input type="date" id="ma-dliv"></div>
@@ -2195,7 +2219,7 @@ function fillAll(){
   umpleModele("mm-prod","mm-model"); umpleModele("ma-prod","ma-model");
   fill("mm-frecv",nomv("frecv_servisare"),""); fill("ma-frecv",nomv("frecv_servisare"),"");
   fill("mc-idtip",nomv("id_tip")); fill("mc-atr",nomv("atr"),"");
-  fill("mk-stare",nomv("stare")); fill("ma-forma",nomv("forma")); fill("ma-um",nomv("um")); fill("ma-moneda",nomv("moneda")); fill("mm-sv-moneda",nomv("moneda"));   // v6.45
+  fill("mk-stare",nomv("stare")); fill("ma-forma",nomv("forma")); fill("ma-um",nomv("um")); fill("ma-moneda",nomv("moneda")); fill("ma-scm",nomv("moneda")); fill("mm-sv-moneda",nomv("moneda"));   // v6.45
   const y=new Date().getFullYear(); const yrs=[]; for(let i=y;i>=2023;i--) yrs.push(i); fill("f-an",yrs,"Toți"); $("f-an").value="";   /* v6.12 (cerut de Ovidiu, 15.10): Comenzi pornesc pe „Toți” anii */
   $("f-luna").innerHTML='<option value="">Toate</option>'+LUNI.map((l,i)=>`<option value="${i+1}">${l}</option>`).join("");
   $("dl-clienti").innerHTML=CLI.map(c=>`<option value="${esc(c.nume)}">`).join("");
@@ -3695,7 +3719,7 @@ function renderClienti(){
       ks.map(k=>{ const an=ANX.filter(a=>a.contract_id===k.id);
         return `<div style="margin:8px 0 4px;padding-left:8px;border-left:3px solid var(--gl)"><b>CTR ${esc(k.nr_ctr)}</b>${k.intern ? '<span class="tag-int" title="Fără contract semnat — doar comenzi">INTERN</span>' : ""} <span class="muted">${fmtD(k.data_emitere)} → ${esc(ctrExpText(k))}${k.prelungire_tacita && k.prelungire_tacita_din ? " (tacit din " + fmtD(k.prelungire_tacita_din) + ")" : ""} · ${esc(k.stare)}</span> <button class="btn sm sec noprint" onclick="openContract(${k.id})">Edit</button> <button class="btn sm noprint" onclick="openAnexa(null,${k.id})">+ Anexă</button>
         <div class="tw" style="max-height:none;margin-top:4px"><table><tr><th>Anexa</th><th>Emitere</th><th>Expirare</th><th>Jud</th><th>Loc.</th><th>Locație</th><th>Forma</th><th>Produs</th><th>Tip</th><th>Cant</th><th>Preț</th><th>Status</th><th>Depozit</th><th class="noprint" title="ACT pe comenzile acestei anexe">ACT</th><th class="noprint"></th></tr>`+
-        an.map(a=>`<tr${VER&&VER.f==="act"&&VER.m.anexa_id===a.id?' class="r-ver"':''}><td>${esc(a.anexa)}</td><td>${fmtD(a.data_emitere)}</td><td>${a.data_expirare?fmtD(a.data_expirare):esc(a.expirare_text)}</td><td>${esc(a.jud)}</td><td>${esc(a.loc)}</td><td>${esc(a.sat)}</td><td>${esc(a.forma)}</td><td>${esc(prodN(a.produs, a.cant))}</td><td>${esc([a.model, a.model_fizic].filter(Boolean).join(" "))}</td><td>${a.cant}</td><td>${fmtPret(a.pret)} ${esc(a.moneda)}${a.serv_cerere ? `<div class="muted" style="font-size:11px;white-space:nowrap" title="Servisare la cerere: preț pe servisare / produs (rând separat în Facturare)">+ serv. la cerere ${esc(fmtPret(a.serv_pret))} ${esc(a.moneda || "")}</div>` : ""}${actLista(a).map(u => `<div class="muted" style="font-size:11px;white-space:nowrap">→ ${u.pret != null ? esc(fmtPret(u.pret) + " " + (a.moneda || "")) : ""}${u.model ? " " + esc(u.model) : ""} din ${esc(fmtD(u.de_la))}${u.act_nr ? " (AA " + esc(u.act_nr) + ")" : ""}</div>`).join("")}</td><td>${esc(a.status)}</td><td>${esc(a.depozit)}</td><td class="noprint">${flaguriAnexa(a.id,"act")}</td><td class="noprint"><button class="btn sm sec" onclick="openAnexa(${a.id})">Edit</button> ${butonSerii(a)} ${a.tip_anexa === "R" ? "" : `<button class="btn sm sec" title="Act adițional: preț / tip nou de la o dată (facturarea desparte luna)" onclick="openAct(${a.id})">Actualizare${actLista(a).length ? " (" + actLista(a).length + ")" : ""}</button>`}</td></tr>`).join("")+`</table></div></div>`; }).join("")+`</details></div>`;
+        an.map(a=>`<tr${VER&&VER.f==="act"&&VER.m.anexa_id===a.id?' class="r-ver"':''}><td>${esc(a.anexa)}</td><td>${fmtD(a.data_emitere)}</td><td>${a.data_expirare?fmtD(a.data_expirare):esc(a.expirare_text)}</td><td>${esc(a.jud)}</td><td>${esc(a.loc)}</td><td>${esc(a.sat)}</td><td>${esc(a.forma)}</td><td>${esc(prodN(a.produs, a.cant))}</td><td>${esc([a.model, a.model_fizic].filter(Boolean).join(" "))}</td><td>${a.cant}</td><td>${fmtPret(a.pret)} ${esc(a.moneda)}${a.serv_cerere ? `<div class="muted" style="font-size:11px;white-space:nowrap" title="Servisare la cerere: preț pe servisare / produs (rând separat în Facturare)">+ serv. la cerere ${esc(fmtPret(a.serv_pret))} ${esc(a.serv_moneda || a.moneda || "")}</div>` : ""}${actLista(a).map(u => `<div class="muted" style="font-size:11px;white-space:nowrap">→ ${u.pret != null ? esc(fmtPret(u.pret) + " " + (a.moneda || "")) : ""}${u.model ? " " + esc(u.model) : ""} din ${esc(fmtD(u.de_la))}${u.act_nr ? " (AA " + esc(u.act_nr) + ")" : ""}</div>`).join("")}</td><td>${esc(a.status)}</td><td>${esc(a.depozit)}</td><td class="noprint">${flaguriAnexa(a.id,"act")}</td><td class="noprint"><button class="btn sm sec" onclick="openAnexa(${a.id})">Edit</button> ${butonSerii(a)} ${a.tip_anexa === "R" ? "" : `<button class="btn sm sec" title="Act adițional: preț / tip nou de la o dată (facturarea desparte luna)" onclick="openAct(${a.id})">Actualizare${actLista(a).length ? " (" + actLista(a).length + ")" : ""}</button>`}</td></tr>`).join("")+`</table></div></div>`; }).join("")+`</details></div>`;
   }).join("")||'<p class="muted">Niciun client.</p>';
   verBandaAct();
 }
@@ -4189,7 +4213,8 @@ function maUmpleRand(a){
   $("ma-ctrdep").value=g("contract_depozit", depPrincipal());
   $("ma-dliv").value=g("data_livrarii", ($("mod-m").classList.contains("on") && $("mm-data").value) || today()); $("ma-drid").value=g("data_ridicarii","");
   $("ma-evde").value=g("ev_de",""); $("ma-evpana").value=g("ev_pana",""); maEvArata();   // v6.71
-  $("ma-sc").checked=!!(a && a.serv_cerere); $("ma-scp").value=a && a.serv_pret!=null ? fmtPret(a.serv_pret) : ""; maScArata();   // v6.86
+  $("ma-sc").checked=!!(a && a.serv_cerere); $("ma-scp").value=a && a.serv_pret!=null ? fmtPret(a.serv_pret) : "";   // v6.86
+  $("ma-scm").value=(a && (a.serv_moneda || a.moneda)) || $("ma-moneda").value || "RON"; maScArata();   // v6.87: moneda servisării, separată
   $("ma-transp").value=g("transport",0); $("ma-frecv").value=g("frecv_servisare","");
   ziSet(g("zi_servisare","")); $("ma-pers").value=g("pers_contact",""); $("ma-tel").value=g("telefon","");
   $("ma-status").closest("div").style.display = a && a.id ? "" : "none";   // la un rând nou starea se pune singură
@@ -4199,7 +4224,11 @@ function maUmpleRand(a){
 // perioada evenimentului se pune pe anexă și Facturare numără doar zilele ei (prețul rămâne pe zi).
 const maEsteEv = () => String($("ma-forma").value || "").toUpperCase() === "EVENIMENT";
 function maEvArata(){ const g = $("ma-ev-g"); if(g) g.style.display = maEsteEv() ? "" : "none"; }
-function maScArata(){ const w = $("ma-scp-w"); if(w) w.style.display = $("ma-sc").checked ? "" : "none"; }   // v6.86
+function maScArata(){ const b = $("ma-sc-box"); if(!b) return; const on = $("ma-sc").checked; b.classList.toggle("on", on);   // v6.86 / v6.87
+  if(on && !$("ma-scp").value) setTimeout(() => $("ma-scp").focus(), 0); maScExemplu(); }
+function maScExemplu(){ const el = $("ma-sc-ex"); if(!el) return;
+  const p = +String($("ma-scp").value || "").replace(",", ".") || 0, m = $("ma-scm").value || "RON", n = 10;
+  el.innerHTML = p ? `Ex.: ${n} produse servisate × ${fmtPret(p)} = <b>${fmtPret(p * n)} ${esc(m)}</b> fără TVA` : "Scrie prețul pentru o servisare a unui produs."; }
 function maEvVerifica(r){
   if(r.serv_cerere && !(+r.serv_pret > 0)){ toast("Scrie prețul pe servisare / produs (sau debifează „Servisare la cerere”)", true); return false; }   // v6.86
   if(String(r.forma || "").toUpperCase() !== "EVENIMENT" || (+r.cant || 0) < 0) return true;
@@ -4217,7 +4246,8 @@ function maRecForm(){
     data_ridicarii:$("ma-drid").value||null,transport:+$("ma-transp").value||0,
     pers_contact:$("ma-pers").value||null,telefon:$("ma-tel").value||null,
     ev_de:maEsteEv()&&$("ma-evde").value||null,ev_pana:maEsteEv()&&($("ma-evpana").value||$("ma-evde").value)||null,   // v6.71
-    serv_cerere:$("ma-sc").checked,serv_pret:$("ma-sc").checked?(Math.round((+String($("ma-scp").value).replace(",",".")||0)*100)/100||null):null};   // v6.86
+    serv_cerere:$("ma-sc").checked,serv_pret:$("ma-sc").checked?(Math.round((+String($("ma-scp").value).replace(",",".")||0)*100)/100||null):null,
+    serv_moneda:$("ma-sc").checked?($("ma-scm").value||null):null};   // v6.86 / v6.87
 }
 function maRandPastreaza(){ const r = MA_RAND[MA_I] || {}; MA_RAND[MA_I] = { ...r, ...maRecForm(), id: r.id }; }
 function maRandArata(i){ MA_I = i; const r = MA_RAND[i] || {}; $("ma-id").value = r.id || ""; maUmpleRand(r); maRanduri(); }
@@ -5390,7 +5420,7 @@ async function raportFacturare(){
       const fara = FACT_VAL(st) ? Math.round(buc * pret * 100) / 100 : 0;
       R_SC.set(N.rr.length, a.id);
       N.rr.push([ st ].concat(R_RANDURI[j].slice(1, 10), [ "" ], R_RANDURI[j].slice(11, 14),
-        [ "SERVISARE", prodN(a.produs || "", buc || 2), modelAcc(a), "BUC", buc, pret, a.moneda || "", "SERVISARE LA CERERE",
+        [ "SERVISARE", prodN(a.produs || "", buc || 2), modelAcc(a), "BUC", buc, pret, a.serv_moneda || a.moneda || "", "SERVISARE LA CERERE",
           scZileText(zile), "", zile.length, fara, Math.round(fara * (1 + tva) * 100) / 100, a.scadent === null || a.scadent === undefined ? "" : a.scadent ]));
       N.aid.push(null); N.av.push({}); N.ro.push(false); N.fc.push({}); N.fx.push(null);
       N.ex.push(`<button class="btn sm sec" title="Zilele servisărilor la cerere din luna aceasta (data + câte produse)" onclick="fscDeschide(${a.id})">🧽 Zile${zile.length ? " (" + zile.length + ")" : ""}</button>`);
@@ -5588,7 +5618,7 @@ function fscDeschide(aid){
   const c = CTR.find(x => x.id === a.contract_id) || {}, k = CLI.find(x => x.id === c.client_id) || {};
   FSC = { a, an, luna, rec, zile: scZile(rec).map(z => ({ data: z.data, buc: +z.buc || 0 })) };
   $("fsc-cap").innerHTML = `<b>${esc(k.nume || "")}</b> · ${esc(c.nr_ctr || "")} · ${esc(a.anexa || "")} · ${esc([a.loc, a.sat].filter(Boolean).join(", "))}<br>` +
-    `Luna <b>${zi2(luna)}.${an}</b> · ${(+a.serv_pret || 0).toFixed(2)} ${esc(a.moneda || "RON")} pe servisare / produs · pe anexă: ${Math.abs(+a.cant || 0)} ${esc(prodN(a.produs || "", Math.abs(+a.cant || 0)))}` +
+    `Luna <b>${zi2(luna)}.${an}</b> · ${(+a.serv_pret || 0).toFixed(2)} ${esc(a.serv_moneda || a.moneda || "RON")} pe servisare / produs · pe anexă: ${Math.abs(+a.cant || 0)} ${esc(prodN(a.produs || "", Math.abs(+a.cant || 0)))}` +
     `<br><span class="muted">Anexa nu se schimbă — zilele se țin separat și contează doar în Facturare.</span>`;
   $("fsc-obs").value = rec ? (rec.observatii || "") : "";
   $("fsc-gol-w").style.display = rec ? "" : "none";
@@ -5617,7 +5647,7 @@ function fscTotal(){
   if(!FSC) return;
   const buc = FSC.zile.reduce((t, z) => t + (+z.buc || 0), 0), v = Math.round(buc * (+FSC.a.serv_pret || 0) * 100) / 100;
   const p = FSC.an + "-" + zi2(FSC.luna) + "-", afara = FSC.zile.filter(z => z.data && !String(z.data).startsWith(p)).length;
-  $("fsc-info").innerHTML = `<b>${FSC.zile.length} servisări · ${buc} produse servisate</b> · valoare fără TVA <b>${bani(v)} ${esc(FSC.a.moneda || "RON")}</b>` +
+  $("fsc-info").innerHTML = `<b>${FSC.zile.length} servisări · ${buc} produse servisate</b> · valoare fără TVA <b>${bani(v)} ${esc(FSC.a.serv_moneda || FSC.a.moneda || "RON")}</b>` +
     (afara ? ` <span class="warn-pill">⚠ ${afara} zile în afara lunii ${zi2(FSC.luna)}.${FSC.an}</span>` : "");
 }
 async function fscSalveaza(){
