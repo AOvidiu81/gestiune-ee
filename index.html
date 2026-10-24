@@ -140,6 +140,10 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   .flo-j .ch{font-variant-numeric:tabular-nums}
   .flo-j .cine{color:var(--mut);font-size:11px}
   .flo-j .x{margin-left:auto;background:none;border:0;color:var(--mut);cursor:pointer;font-size:12px}
+  .flo-j .xs{margin-left:auto;display:flex;gap:6px} .flo-j .xs .x{margin-left:0} .flo-j .x:hover,.flo-h .x:hover{color:var(--acc,var(--g2))}
+  .flo-h .x{background:none;border:0;color:var(--mut);cursor:pointer;font-size:13px;padding:0 2px}
+  .flo-j li.ed{display:block} .flo-j li.ed .flo-add{grid-template-columns:150px 90px 1fr auto auto}
+  .flo-ren{display:flex;gap:6px;align-items:center;flex:1 1 320px} .flo-ren input{flex:1}
   .flo-add{display:grid;grid-template-columns:150px 90px 1fr auto;gap:8px;align-items:end}
   .flo-add label{margin-bottom:2px}
   @media(max-width:640px){ .flo-add{grid-template-columns:1fr 1fr} }
@@ -849,7 +853,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <button id="btn-mob" class="btn sec" style="padding:5px 10px;font-size:12px" onclick="mobPC(false)" title="Înapoi la varianta de telefon">📱 Telefon</button>
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
   <span id="tz-w" title="Mărimea tabelului (doar tabelul, restul rămâne la fel), din 5 în 5%. Merge și cu Ctrl + rotița mausului, Ctrl + / Ctrl − / Ctrl 0. Dublu clic pe procent = scrii tu valoarea."><button class="pictograma" onclick="tzPas(-1)" aria-label="Micșorează tabelul">−</button><b id="tz-v" ondblclick="tzScrie()" title="Dublu clic = scrii mărimea (ex. 87), Enter">100%</b><input id="tz-in" type="number" min="30" max="300" step="5" style="display:none"><button class="pictograma" onclick="tzPas(1)" aria-label="Mărește tabelul">+</button></span>
-  <span class="ver">v6.89</span>
+  <span class="ver">v6.90</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -5683,7 +5687,7 @@ function factPeLocatii(r){
 }
 async function floDeschide(aid){
   const a = ANX.find(x => x.id === aid); if(!a) return;
-  FLO = { a, rows: [], schimbat: false };
+  FLO = { a, rows: [], schimbat: false, ed: null, ren: null };
   $("flo-nl").value = ""; $("flo-nc").value = ""; $("flo-nd").value = a.data_livrarii || a.data_emitere || today();
   await floIncarca(); $("mod-floc").classList.add("on");
 }
@@ -5702,13 +5706,23 @@ function floDeseneaza(){
     const ch = ist.get(loc), ini = +ch[0].cant, acum = locCantLa(ch, azi);
     const st = acum === null ? '<span class="muted">începe mai târziu</span>' : acum === ini ? '<span class="flo-ok">✓ ca la început</span>'
       : `<span class="warn-pill" style="background:${acum < ini ? "#C0392B" : "#2E8B3C"}">${acum - ini > 0 ? "+" : ""}${acum - ini} față de inițial</span>`;
-    return `<div class="flo-loc"><div class="flo-h"><b>${esc(loc)}</b><span class="muted">inițial ${ini} buc · azi ${acum === null ? "—" : acum + " buc"}</span>${st}</div>
+    const hNume = FLO.ren === loc
+      ? `<span class="flo-ren"><input id="flo-ren-in" value="${esc(loc)}" onkeydown="if(event.key==='Enter'){event.preventDefault();floRenSalveaza();}else if(event.key==='Escape'){event.stopPropagation();floRen(null);}">` +
+        `<button class="btn sm" onclick="floRenSalveaza()">Salvează</button><button class="btn sm sec" onclick="floRen(null)">Renunță</button></span>`
+      : `<b>${esc(loc)}</b><button class="x" title="Redenumește locația (pe toate rândurile ei)" onclick="floRen(${li})">✎</button>`;
+    return `<div class="flo-loc"><div class="flo-h">${hNume}<span class="muted">inițial ${ini} buc · azi ${acum === null ? "—" : acum + " buc"}</span>${st}</div>
       <ul class="flo-j">${ch.map((z, i) => { const p = i ? +ch[i - 1].cant : null, d = i ? +z.cant - p : 0;
+        if(FLO.ed === z.id) return `<li class="ed"><div class="flo-add">` +
+          `<div><label>${i ? "De la data" : "De la (inițial)"}</label><input type="date" id="flo-ed-d" value="${esc(z.de)}"></div>` +
+          `<div><label>Buc facturate</label><input type="number" min="0" id="flo-ed-c" value="${+z.cant}"></div>` +
+          `<div><label>Observații</label><input id="flo-ed-o" value="${esc(z.observatii || "")}" onkeydown="if(event.key==='Enter'){event.preventDefault();floEdSalveaza();}else if(event.key==='Escape'){event.stopPropagation();floEd(null);}"></div>` +
+          `<div><button class="btn sm" onclick="floEdSalveaza()">Salvează</button></div><div><button class="btn sm sec" onclick="floEd(null)">Renunță</button></div></div></li>`;
         return `<li class="${!i ? "ini" : d < 0 ? "jos" : "sus"}"><span class="d">${esc(fmtD(z.de))}</span>` +
           `<span class="ch">${!i ? "inițial <b>" + (+z.cant) + "</b> buc" : p + " → <b>" + (+z.cant) + "</b> buc (" + (d > 0 ? "+" : "") + d + ")"}${+z.cant === 0 ? " · nu se facturează" : ""}</span>` +
           (z.observatii ? `<span class="muted">${esc(z.observatii)}</span>` : "") +
           `<span class="cine">${esc((z.creat_de || "").split("@")[0])}${z.creat_la ? " · " + esc(fmtD(String(z.creat_la).slice(0, 10))) : ""}</span>` +
-          `<button class="x" title="Șterge rândul din jurnal (doar pentru greșeli)" onclick="floSterge(${z.id})">✕</button></li>`; }).join("")}</ul>
+          `<span class="xs"><button class="x" title="Corectează rândul (data, bucățile, observațiile)" onclick="floEd(${z.id})">✎</button>` +
+          `<button class="x" title="Șterge rândul din jurnal (doar pentru greșeli)" onclick="floSterge(${z.id})">✕</button></span></li>`; }).join("")}</ul>
       <div class="flo-add">
         <div><label>De la data</label><input type="date" id="flo-d-${li}" value="${today()}"></div>
         <div><label>Buc facturate</label><input type="number" min="0" id="flo-c-${li}" placeholder="${acum === null ? "" : acum}"></div>
@@ -5752,6 +5766,41 @@ async function floSterge(id){
   const { error } = await db.from("facturare_locatii").delete().eq("id", id);
   if(error){ toast(error.message, true); return; }
   FLO.schimbat = true; await floIncarca();
+}
+// v6.90 (cerut de Ovidiu, 24.10): corectarea unui rând din jurnal (✎) și redenumirea locației (✎ lângă nume)
+function floEd(id){
+  FLO.ed = id; FLO.ren = null; floDeseneaza();
+  if(id){ const e = $("flo-ed-c"); if(e){ e.focus(); e.select(); } }
+}
+async function floEdSalveaza(){
+  const z = FLO.rows.find(x => x.id === FLO.ed); if(!z) return;
+  const de = $("flo-ed-d").value, v = $("flo-ed-c").value, obs = $("flo-ed-o").value.trim() || null;
+  if(!de || v === ""){ toast("Scrie data și numărul de bucăți", true); return; }
+  const cant = Math.round(+v); if(!(cant >= 0)){ toast("Bucățile trebuie să fie 0 sau mai mult", true); return; }
+  const ch = locIstoric(FLO.a.id, FLO.rows).get(z.locatie) || [], i = ch.findIndex(x => x.id === z.id);
+  if(ch.some(x => x.id !== z.id && String(x.de) === de)){ toast("Pe " + fmtD(de) + " există deja un rând la această locație", true); return; }
+  if(i === 0 && ch.length > 1 && dtz(de) >= dtz(ch[1].de)){ toast("Data inițială trebuie să fie înaintea primei schimbări (" + fmtD(ch[1].de) + ")", true); return; }
+  if(i > 0 && dtz(de) <= dtz(ch[0].de)){ toast("Data trebuie să fie după începutul locației (" + fmtD(ch[0].de) + ")", true); return; }
+  if(de === String(z.de) && cant === +z.cant && obs === (z.observatii || null)){ floEd(null); return; }
+  const { error } = await db.from("facturare_locatii").update({ de, cant, observatii: obs }).eq("id", z.id);
+  if(error){ toast(error.message, true); return; }
+  FLO.schimbat = true; FLO.ed = null; toast("Corectat: " + z.locatie + " · " + fmtD(de) + " · " + cant + " buc");
+  await floIncarca();
+}
+function floRen(li){
+  FLO.ren = li === null ? null : FLO.locs[li]; FLO.ed = null; floDeseneaza();
+  const e = $("flo-ren-in"); if(e){ e.focus(); e.select(); }
+}
+async function floRenSalveaza(){
+  const vechi = FLO.ren; if(!vechi) return;
+  const nou = ($("flo-ren-in").value || "").trim().toUpperCase().replace(/\s+/g, " ");
+  if(!nou){ toast("Scrie numele locației", true); return; }
+  if(nou === vechi){ floRen(null); return; }
+  if(FLO.rows.some(z => z.locatie === nou)){ toast("Locația „" + nou + "” există deja pe anexă", true); return; }
+  const { error } = await db.from("facturare_locatii").update({ locatie: nou }).eq("anexa_id", FLO.a.id).eq("locatie", vechi);
+  if(error){ toast(error.message, true); return; }
+  FLO.schimbat = true; FLO.ren = null; toast("Redenumit: " + vechi + " → " + nou);
+  await floIncarca();
 }
 async function floInchide(){ closeModal("mod-floc"); if(FLO && FLO.schimbat) await raportFacturare(); }
 // v6.86: servisarea la cerere pe anexă — zilele lunii (facturare_servisari: anexa + an + lună, zile = [{data, buc}])
