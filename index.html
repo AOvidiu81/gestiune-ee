@@ -885,7 +885,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
   <span id="rz-w"><button id="rz-reset" class="pictograma" title="Lățimi implicite — pune coloanele din tabelele acestei file înapoi cum erau">↺ Reset layout</button><i class="rz-sep">|</i></span>
   <span id="tz-w" title="Mărimea tabelului (doar tabelul, restul rămâne la fel), din 5 în 5%. Merge și cu Ctrl + rotița mausului, Ctrl + / Ctrl − / Ctrl 0. Dublu clic pe procent = scrii tu valoarea."><button class="pictograma" onclick="tzPas(-1)" aria-label="Micșorează tabelul">−</button><b id="tz-v" ondblclick="tzScrie()" title="Dublu clic = scrii mărimea (ex. 87), Enter">100%</b><input id="tz-in" type="number" min="30" max="300" step="5" style="display:none"><button class="pictograma" onclick="tzPas(1)" aria-label="Mărește tabelul">+</button></span>
-  <span class="ver">v6.97</span>
+  <span class="ver">v6.99</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -2744,7 +2744,7 @@ document.addEventListener("mouseover", e => { const b = e.target.closest && e.ta
 document.addEventListener("mousedown", e => { if(!(e.target.closest && e.target.closest("#cl-pop"))) clPopAscunde(); });
 document.addEventListener("keydown", e => { if(e.key === "Escape") clPopAscunde(); });
 document.addEventListener("scroll", clPopAscunde, true);
-// v6.97 (cerut de Ovidiu, 25.10): Comenzi — Contract / Depozit: HUNEDOARA semi-bold, celelalte depozite italic (se văd clar ale mele)
+// v6.98 (cerut de Ovidiu, 25.10): Comenzi — Contract / Depozit: HUNEDOARA semi-bold, celelalte depozite italic (se văd clar ale mele)
 const depCls = v => !String(v || "").trim() ? "" : /^HUNEDOARA$/i.test(String(v).trim()) ? ' class="dep-hd"' : ' class="dep-alt"';
 function renderMiscari(){
   aplicaSortarea();
@@ -3351,6 +3351,13 @@ async function saveMiscare(genereaza){
     : "Comandă salvată");
   if(textDeCopiat !== null){ $("cmd-text").value = textDeCopiat; cmdDoi(textRid); $("mod-cmd").classList.add("on"); }
   await loadMiscari(); loadStoc();
+  // v6.99 (cerut de Ovidiu, 25.10): ACT = V pus din formular → ca la bifa din listă: dacă anexa n-are încă rând în Registru,
+  // se deschide Registrul completat (alegi PRIMIT / IN ASTEPTARE și apeși Salvează). Ex.: ACOMIN ANEXA NR 50, comanda 174.
+  if(rec.act === "V" && rec.anexa_id && !FARA_ACT(rec.tip_miscare)){
+    const r2 = Object.assign({}, rec, { id: salvat.id });
+    await incarcaDocAct();
+    if(!actFaraRegistru(r2) && !actDoc(r2)) await actSpreRegistru(salvat.id);
+  }
   return true;
 }
 // ── Serii în comanda de ridicare / reducere (etapa 2) ──
