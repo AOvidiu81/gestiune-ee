@@ -885,7 +885,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
   <span id="rz-w"><button id="rz-reset" class="pictograma" title="Lățimi implicite — pune coloanele din tabelele acestei file înapoi cum erau">↺ Reset layout</button><i class="rz-sep">|</i></span>
   <span id="tz-w" title="Mărimea tabelului (doar tabelul, restul rămâne la fel), din 5 în 5%. Merge și cu Ctrl + rotița mausului, Ctrl + / Ctrl − / Ctrl 0. Dublu clic pe procent = scrii tu valoarea."><button class="pictograma" onclick="tzPas(-1)" aria-label="Micșorează tabelul">−</button><b id="tz-v" ondblclick="tzScrie()" title="Dublu clic = scrii mărimea (ex. 87), Enter">100%</b><input id="tz-in" type="number" min="30" max="300" step="5" style="display:none"><button class="pictograma" onclick="tzPas(1)" aria-label="Mărește tabelul">+</button></span>
-  <span class="ver">v6.99</span>
+  <span class="ver">v7.00</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -3353,10 +3353,16 @@ async function saveMiscare(genereaza){
   await loadMiscari(); loadStoc();
   // v6.99 (cerut de Ovidiu, 25.10): ACT = V pus din formular → ca la bifa din listă: dacă anexa n-are încă rând în Registru,
   // se deschide Registrul completat (alegi PRIMIT / IN ASTEPTARE și apeși Salvează). Ex.: ACOMIN ANEXA NR 50, comanda 174.
+  // v7.00: robust — se deschide Registrul și dacă listele nu au comanda / anexa; altfel spune de ce nu
   if(rec.act === "V" && rec.anexa_id && !FARA_ACT(rec.tip_miscare)){
-    const r2 = Object.assign({}, rec, { id: salvat.id });
-    await incarcaDocAct();
-    if(!actFaraRegistru(r2) && !actDoc(r2)) await actSpreRegistru(salvat.id);
+    try{
+      const r2 = Object.assign({}, rec, { id: salvat.id });
+      await incarcaDocAct();
+      const d = actDoc(r2);
+      if(actFaraRegistru(r2)) toast("ACT = V fără Registru: comanda clientului / contract intern", false);
+      else if(d) toast("Anexa are deja rând în Registru (" + (d.tip_document || "") + ", " + (d.status_prim || "fără status") + ")", false);
+      else await actSpreRegistru(salvat.id, r2);
+    }catch(e){ console.error(e); toast("Registrul nu s-a putut deschide: " + (e.message || e), true); }
   }
   return true;
 }
@@ -6848,12 +6854,19 @@ function actFaraRegistru(m){
   const a = ANX.find(x => x.id === m.anexa_id), k = CTR.find(x => x.id === ((a && a.contract_id) || m.contract_id));
   return ctrIntern(k);
 }
-async function actSpreRegistru(mid){
-  const m = [MISC, CMA, R_MIS].map(L => (L || []).find(x => x.id === mid)).find(Boolean);
-  const a = m && ANX.find(x => x.id === m.anexa_id);
+async function actSpreRegistru(mid, m0){
+  // v7.00: comanda / anexa / contractul se iau și direct din bază dacă nu sunt în listele încărcate (ex. client nou, comandă din altă lună)
+  let m = [MISC, CMA, R_MIS].map(L => (L || []).find(x => x.id === mid)).find(Boolean) || m0;
+  if(!m || !m.anexa_id){ const r = await db.from("miscari").select("*").eq("id", mid).maybeSingle(); if(r.data) m = r.data; }
+  let a = m && m.anexa_id ? ANX.find(x => x.id === m.anexa_id) : null;
+  if(!a && m && m.anexa_id){ const r = await db.from("anexe").select("*").eq("id", m.anexa_id).maybeSingle(); if(r.data){ a = r.data; ANX.push(a); } }
   if(!a){ toast("Comanda nu e legată de o anexă — nu am ce trece în registru", true); return; }
-  const c = CTR.find(x => x.id === a.contract_id) || {};
-  const k = CLI.find(x => x.id === c.client_id) || {};
+  let c = CTR.find(x => x.id === a.contract_id);
+  if(!c){ const r = await db.from("contracte").select("*").eq("id", a.contract_id).maybeSingle(); if(r.data){ c = r.data; CTR.push(c); } }
+  c = c || {};
+  let k = CLI.find(x => x.id === c.client_id);
+  if(!k && c.client_id){ const r = await db.from("clienti").select("*").eq("id", c.client_id).maybeSingle(); if(r.data){ k = r.data; CLI.push(k); } }
+  k = k || {};
   const ref = (c.nr_ctr || "").toUpperCase(), numeAnx = (a.anexa || "").trim();
   const { data: ex, error } = await db.from("documente").select("tip_document,data_trimitere,observatii").eq("referinta", ref);
   if(error){ toast(error.message, true); return; }
