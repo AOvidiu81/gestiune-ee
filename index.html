@@ -885,7 +885,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
   <span id="rz-w"><button id="rz-reset" class="pictograma" title="Lățimi implicite — pune coloanele din tabelele acestei file înapoi cum erau">↺ Reset layout</button><i class="rz-sep">|</i></span>
   <span id="tz-w" title="Mărimea tabelului (doar tabelul, restul rămâne la fel), din 5 în 5%. Merge și cu Ctrl + rotița mausului, Ctrl + / Ctrl − / Ctrl 0. Dublu clic pe procent = scrii tu valoarea."><button class="pictograma" onclick="tzPas(-1)" aria-label="Micșorează tabelul">−</button><b id="tz-v" ondblclick="tzScrie()" title="Dublu clic = scrii mărimea (ex. 87), Enter">100%</b><input id="tz-in" type="number" min="30" max="300" step="5" style="display:none"><button class="pictograma" onclick="tzPas(1)" aria-label="Mărește tabelul">+</button></span>
-  <span class="ver">v7.01</span>
+  <span class="ver">v7.02</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -1848,6 +1848,11 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
         <div class="maf"><label>Preț</label><input type="number" step="0.01" min="0" id="ma-pret" value="0.00" onblur="pret2(this)"></div>
         <div class="maf"><label>Monedă</label><select id="ma-moneda"></select></div>
         <div class="maf"><label>Scadent (zile)</label><input type="number" id="ma-scad" value="30"></div>
+      </div>
+      <!-- v7.02 (cerut de Ovidiu, 25.10): facturare în avans — în Facturare rândul pornește în fiecare lună ca FACTURA AVANS (implicit la persoane fizice) -->
+      <div class="maf sc-box" id="ma-fa-box">
+        <label class="sc-sw"><input type="checkbox" id="ma-fa" onchange="$('ma-fa-box').classList.toggle('on', this.checked)"><span class="sc-tr"></span>
+          <span class="sc-tx"><b>Facturare în avans</b><small>În Facturare rândul pornește în fiecare lună ca FACTURA AVANS (luna calendaristică). Prima perioadă, dacă e alta: dublu clic pe INCEPUT / SFARSIT LUNA. Implicit la persoane fizice (CNP).</small></span></label>
       </div>
       <!-- v6.86 / v6.87: servisare la cerere pe anexă (VITAL BERRY) — rând separat în Facturare, cu zilele trecute de mână -->
       <div class="maf sc-box" id="ma-sc-box">
@@ -4316,6 +4321,8 @@ function maUmpleRand(a){
   $("ma-ctrdep").value=g("contract_depozit", depPrincipal());
   $("ma-dliv").value=g("data_livrarii", ($("mod-m").classList.contains("on") && $("mm-data").value) || today()); $("ma-drid").value=g("data_ridicarii","");
   $("ma-evde").value=g("ev_de",""); $("ma-evpana").value=g("ev_pana",""); maEvArata();   // v6.71
+  { const k = CTR.find(x => x.id === +$("ma-contract").value), cl = k && CLI.find(x => x.id === k.client_id);   // v7.02: anexă nouă la PF → bifată
+    $("ma-fa").checked = a && a.fact_avans != null ? !!a.fact_avans : !!(cl && cl.id_tip === "CNP"); $("ma-fa-box").classList.toggle("on", $("ma-fa").checked); }
   $("ma-sc").checked=!!(a && a.serv_cerere); $("ma-scp").value=a && a.serv_pret!=null ? fmtPret(a.serv_pret) : "";   // v6.86
   $("ma-scm").value=(a && (a.serv_moneda || a.moneda)) || $("ma-moneda").value || "RON"; maScArata();   // v6.87: moneda servisării, separată
   $("ma-transp").value=g("transport",0); $("ma-frecv").value=g("frecv_servisare","");
@@ -4350,7 +4357,8 @@ function maRecForm(){
     pers_contact:$("ma-pers").value||null,telefon:$("ma-tel").value||null,
     ev_de:maEsteEv()&&$("ma-evde").value||null,ev_pana:maEsteEv()&&($("ma-evpana").value||$("ma-evde").value)||null,   // v6.71
     serv_cerere:$("ma-sc").checked,serv_pret:$("ma-sc").checked?(Math.round((+String($("ma-scp").value).replace(",",".")||0)*100)/100||null):null,
-    serv_moneda:$("ma-sc").checked?($("ma-scm").value||null):null};   // v6.86 / v6.87
+    serv_moneda:$("ma-sc").checked?($("ma-scm").value||null):null,   // v6.86 / v6.87
+    fact_avans:$("ma-fa").checked};   // v7.02
 }
 function maRandPastreaza(){ const r = MA_RAND[MA_I] || {}; MA_RAND[MA_I] = { ...r, ...maRecForm(), id: r.id }; }
 function maRandArata(i){ MA_I = i; const r = MA_RAND[i] || {}; $("ma-id").value = r.id || ""; maUmpleRand(r); maRanduri(); }
@@ -5499,7 +5507,7 @@ async function raportFacturare(){
   R_ROSU = r.map(x => stRid(stInfo(x)));
   R_RANDURI = r.map(x => {
     const cant = x.cant, pret = +x.a.pret || 0;
-    const st = x.acoperit ? "ACOPERIT DE AVANS" : x.locZero ? "INACTIV" : (FS[x.a.id] || (x.per && x.per.document) || "ACTIV");   // v6.88: locația cu 0 = INACTIV
+    const st = x.acoperit ? "ACOPERIT DE AVANS" : x.locZero ? "INACTIV" : (FS[x.a.id] || (x.per && x.per.document) || (x.a.fact_avans ? "FACTURA AVANS" : "ACTIV"));   // v6.88: locația cu 0 = INACTIV; v7.02: anexa „Facturare în avans” pornește ca FACTURA AVANS
     const fara = FACT_VAL(st) ? Math.round(x.zile * pret * cant * 100) / 100 : 0;
     return [ st, x.c.nr_ctr || "", dRO(dtz(x.c.data_emitere)),
              ctrExp(x.c) ? dRO(dtz(ctrExp(x.c))) : ctrExpText(x.c),
@@ -5965,7 +5973,8 @@ async function servText(mid){
 // STARE LUNA din Facturare: se ține pe anexă + lună. ACTIV = rândul lipsește din tabel.
 async function setStareFact(anexaId, v){
   const an = +$("r-an").value, luna = +$("r-luna").value;
-  const q = v === "ACTIV"
+  const ax = ANX.find(x => x.id === anexaId), implicit = ax && ax.fact_avans ? "FACTURA AVANS" : "ACTIV";   // v7.02: la anexa în avans se ține ACTIV ales de mână
+  const q = v === implicit
     ? db.from("facturare_stare").delete().eq("anexa_id", anexaId).eq("an", an).eq("luna", luna)
     : db.from("facturare_stare").upsert({ anexa_id: anexaId, an, luna, stare: v, actualizat_la: new Date().toISOString() });
   const { error } = await q;
