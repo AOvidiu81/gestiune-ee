@@ -314,8 +314,11 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   td.zd-azi{--zc:var(--z-azi)} td.zd-sa{--zc:var(--z-sa)} td.zd-st{--zc:var(--z-st)} td.zd-sv{--zc:var(--z-sv)}
   td[class*="zd-"]{color:var(--zc)}
   /* v6.34: Verificare rute șoferi — rândul vizitei: în lucru (sosit) portocaliu 30%, finalizat (plecat) verde 30% */
-  tr.rr-lucru > td{background:rgba(217,119,6,.3)!important}
-  tr.rr-gata > td{background:rgba(46,139,60,.3)!important}
+  /* v6.96 (cerut de Ovidiu, 25.10): doar culoarea textului — Am ajuns = portocaliu, Am plecat = verde (doar ruta de azi) */
+  :root{--rr-lucru:#C2570C;--rr-gata:#15803d}
+  :root[data-tema="inchis"]{--rr-lucru:#FB923C;--rr-gata:#4ADE80}
+  tr.rr-lucru > td,tr.rr-lucru > td b{color:var(--rr-lucru)}
+  tr.rr-gata > td,tr.rr-gata > td b{color:var(--rr-gata)}
   /* v6.94 (cerut de Ovidiu, 24.10): nevizitatele la același font (13 px) ca vizitatele — diferă doar prin culoarea gri + „nevizitat” roșu */
   tr.rr-nev > td{color:var(--mut)}
   /* v5.38: lista Săptămâna din „Verificare rute șoferi” — aceleași culori ca în Comenzi */
@@ -592,7 +595,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   :root:not([data-tema="inchis"]) button.btn{border-radius:3px;font-weight:600}
   :root:not([data-tema="inchis"]) button.btn.sec{border-color:#BCC7D6}
   :root:not([data-tema="inchis"]) label{text-transform:none;letter-spacing:0;font-size:12px;font-weight:600}
-  :root:not([data-tema="inchis"]) th{background:var(--card);color:var(--mut);text-transform:none;letter-spacing:0;font-size:12px;font-weight:600;border-bottom:1px solid var(--bd)}
+  :root:not([data-tema="inchis"]) th{background:var(--th-bg);color:var(--mut);text-transform:none;letter-spacing:0;font-size:12px;font-weight:600;border-bottom:1px solid var(--bd)}
   :root:not([data-tema="inchis"]) td{border-bottom-color:#D3DBE6;font-variant-numeric:tabular-nums}
   :root:not([data-tema="inchis"]) .tw{border-color:var(--bd)}
   :root:not([data-tema="inchis"]) .pill,:root:not([data-tema="inchis"]) td[class*="zd-"] .zd,:root:not([data-tema="inchis"]) .badge{border-radius:3px}
@@ -645,7 +648,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   :root[data-tema="inchis"] button.btn{border-radius:3px;font-weight:600}
   :root[data-tema="inchis"] button.btn.sec{border-color:#46577A;color:var(--tx)}
   :root[data-tema="inchis"] label{text-transform:none;letter-spacing:0;font-size:12px;font-weight:600}
-  :root[data-tema="inchis"] th{background:var(--card);color:var(--mut);text-transform:none;letter-spacing:0;font-size:12px;font-weight:600;border-bottom:1px solid var(--bd)}
+  :root[data-tema="inchis"] th{background:var(--th-bg);color:var(--mut);text-transform:none;letter-spacing:0;font-size:12px;font-weight:600;border-bottom:1px solid var(--bd)}
   :root[data-tema="inchis"] td{border-bottom-color:#2F3F5E;font-variant-numeric:tabular-nums}
   :root[data-tema="inchis"] .pill,:root[data-tema="inchis"] td[class*="zd-"] .zd,:root[data-tema="inchis"] .badge{border-radius:3px}
   :root[data-tema="inchis"] .p-A{background:#264A3C;color:#A3E3C0}
@@ -839,6 +842,11 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   tbody tr:hover td.acc-c,tbody tr:hover td.noprint,tbody tr.r-ales td.acc-c,tbody tr.r-ales td.noprint{background:color-mix(in srgb, var(--acc) 19%, transparent)!important}
   /* v6.95: capul de tabel deasupra rândurilor (rândurile INACTIV cu opacitate treceau peste el la derulare) */
   thead th{z-index:3}
+  /* v6.96 (cerut de Ovidiu, 25.10): capul de tabel cu 10% mai închis decât rândurile, în toată aplicația */
+  :root{--th-bg:color-mix(in srgb,var(--card) 90%,#000)}
+  :root .st-t th{background:none}
+  /* v6.96: „↔” (lățimi implicite) în bara de sus, lângă zoom — nu mai face rând nou în filă */
+  #rz-reset{display:none}
   #m-tbl:not(.ds-2) tbody tr:hover td[class*="zd-"],#m-tbl tbody tr:hover td.tc,#m-tbl:not(.ds-2) tbody tr.r-ales td[class*="zd-"],#m-tbl tbody tr.r-ales td.tc{background:color-mix(in srgb, var(--acc) 19%, transparent)!important}
   /* v5.86: bara de schimbare în bloc + meniul ⋯ */
   #pb-bara{position:fixed;left:50%;bottom:14px;transform:translateX(-50%);z-index:55;display:none;align-items:center;gap:12px;flex-wrap:wrap;
@@ -871,7 +879,8 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <button id="btn-mob" class="btn sec" style="padding:5px 10px;font-size:12px" onclick="mobPC(false)" title="Înapoi la varianta de telefon">📱 Telefon</button>
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
   <span id="tz-w" title="Mărimea tabelului (doar tabelul, restul rămâne la fel), din 5 în 5%. Merge și cu Ctrl + rotița mausului, Ctrl + / Ctrl − / Ctrl 0. Dublu clic pe procent = scrii tu valoarea."><button class="pictograma" onclick="tzPas(-1)" aria-label="Micșorează tabelul">−</button><b id="tz-v" ondblclick="tzScrie()" title="Dublu clic = scrii mărimea (ex. 87), Enter">100%</b><input id="tz-in" type="number" min="30" max="300" step="5" style="display:none"><button class="pictograma" onclick="tzPas(1)" aria-label="Mărește tabelul">+</button></span>
-  <span class="ver">v6.95</span>
+  <button id="rz-reset" class="pictograma" title="Lățimi implicite — pune coloanele din tabelele acestei file înapoi cum erau">↔</button>
+  <span class="ver">v6.96</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -1077,7 +1086,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
 
 <!-- ================= VERIFICARE RUTE ȘOFERI (fost Raport rute; redenumit v4.90) ================= -->
 <section class="page ecran" id="p-raportrute">
-  <div class="card noprint"><p class="muted" id="rr-nota" style="margin:0">Toate punctele de rută, cu vizita din săptămâna aleasă (sosire, plecare, cod, locul GPS de pe telefon) și codurile ultimelor 6 săptămâni.</p></div>
+  <div class="card noprint"><p class="muted" id="rr-nota" style="margin:0">Toate punctele de rută, cu vizita din săptămâna aleasă (sosire, plecare, cod, locul GPS de pe telefon) și codurile săptămânilor alese (implicit ultimele 3).</p></div>
   <div class="card ecran-t">
     <div class="row noprint">
       <div style="flex:0;min-width:90px"><label>An</label><select id="rr-an" onchange="rrSaptOpt();rrAfiseaza()"></select></div>
@@ -1090,7 +1099,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
       <div style="flex:0;min-width:130px"><label>Vizita</label><select id="rr-viz" onchange="rrAfiseaza()"><option value="">toate</option><option value="da">vizitate</option><option value="nu">nevizitate</option></select></div>
       <div style="flex:0;min-width:170px"><label title="Ordinea sosirii = cum au ajuns șoferii la clienți în săptămâna aleasă (de la primul la ultimul); nevizitatele la sfârșit">Ordine</label><select id="rr-ord" onchange="rrAfiseaza()"><option value="">ca în listă</option><option value="sosire">ordinea sosirii (HHMM)</option></select></div>
       <div style="min-width:160px"><label>Caută</label><input id="rr-caut" placeholder="client, localitate…" oninput="rrAfiseaza()"></div>
-      <div style="flex:0;min-width:120px"><label>Săptămâni</label><select id="rr-nsapt" onchange="rrAfiseaza()"><option value="3">ultimele 3</option><option value="6" selected>ultimele 6</option><option value="12">ultimele 12</option><option value="toate">toate</option></select></div>
+      <div style="flex:0;min-width:120px"><label>Săptămâni</label><select id="rr-nsapt" onchange="rrAfiseaza()"><option value="2">ultimele 2</option><option value="3" selected>ultimele 3</option><option value="4">ultimele 4</option><option value="6">ultimele 6</option><option value="12">ultimele 12</option><option value="toate">toate</option></select></div>
       <div style="flex:0;min-width:140px"><label>Coloane</label><select id="rr-col" onchange="rrAfiseaza()"><option value="">esențiale</option><option value="toate">toate</option></select></div>
       <div style="flex:0"><label>&nbsp;</label><button class="btn sec" onclick="loadRR(true)">Reîncarcă</button></div>
       <div style="flex:0"><label>&nbsp;</label><button class="btn sec" onclick="exportRR()">Export Excel</button></div>
@@ -2088,10 +2097,12 @@ let NOM = {}, DEP = [], SOF = [], MAS = [], CLI = [], CTR = [], ANX = [], MISC =
 // Sortarea listei de comenzi. Pornim de la cea mai nouă în sus, ca până acum.
 let M_SORT = { camp: "data", dir: -1 };
 const $ = id => document.getElementById(id);
-// Accesoriile, prescurtate (cerut 03.10): L.I. / D.S. / D.P.H. — în Comenzi, Facturare, Raport lună, Raport rute.
-const ACC_SCURT = { "LAVOAR INTERIOR":"L.I.", "LAVOAR INT.":"L.I.", "DOZATOR SAPUN":"D.S.", "DISPENSER PROSOP":"D.P.H.", "DISPENSER PROSOP HARTIE":"D.P.H.",
-  "AER CONDITIONAT":"AC", "RADIATOR INCALZIRE":"RI", "BOILER APA CALDA":"BAC",
-  "DISPENCER PROSOP HARTIE":"D.P.H.", "DISPENSER PROSOP TIP Z":"D.P.Z.", "DISPENCER HARTIE IG. JUMBO":"D.H.J.", "LAVOAR EXTERIOR":"L.E." };   // v6.91 (24.10): + D.P.Z., D.H.J., L.E.   // v5.78: și accesoriile containerelor (cerut de Ovidiu, 13.10)
+// Accesoriile, prescurtate (cerut 03.10) — în Comenzi, Facturare, Raport lună, Verificare rute, Puncte de rută.
+// v6.96 (lista lui Ovidiu, 25.10): DS · DP-Z · LI · LE · DH-J · AC · RI · BAC (fără puncte). Noi → se adaugă aici.
+const ACC_SCURT = { "DOZATOR SAPUN":"DS", "LAVOAR INTERIOR":"LI", "LAVOAR INT.":"LI", "LAVOAR EXTERIOR":"LE",
+  "DISPENSER PROSOP TIP Z":"DP-Z", "DISPENCER PROSOP TIP Z":"DP-Z", "DISPENCER HARTIE IG. JUMBO":"DH-J", "DISPENSER HARTIE IG. JUMBO":"DH-J",
+  "AER CONDITIONAT":"AC", "RADIATOR INCALZIRE":"RI", "BOILER APA CALDA":"BAC", "BAILER APA CALDA":"BAC",
+  "DISPENSER PROSOP":"DPH", "DISPENSER PROSOP HARTIE":"DPH", "DISPENCER PROSOP HARTIE":"DPH" };
 const accLista = t => String(t || "").split(",").map(x => x.trim()).filter(Boolean);
 const accScurt = t => accLista(t).map(x => ACC_SCURT[x.toUpperCase()] || x).join(", ");
 // v6.91: echipamentele de pe punct („1 LAVOAR EXTERIOR”) prescurtate ca accesoriile („1 L.E.”); listă goală = nimic
@@ -7391,7 +7402,7 @@ function rrAfiseaza(){
   RR_WEEKS = [];
   if(W){
     if($("rr-nsapt").value === "toate"){ const L = sAn(+$("rr-an").value); RR_WEEKS = L.slice(0, L.indexOf(W) + 1); }
-    else { const n = +$("rr-nsapt").value || 6; for(let i = n - 1; i >= 0; i--) RR_WEEKS.push(sMuta(W, -i)); }
+    else { const n = +$("rr-nsapt").value || 3; /* v6.96: implicit ultimele 3 */ for(let i = n - 1; i >= 0; i--) RR_WEEKS.push(sMuta(W, -i)); }
     if(!RR_WEEKS.length) RR_WEEKS = [W];
   }
   const folosite = new Set();
@@ -7506,7 +7517,7 @@ function rrAfiseaza(){
         "Șofer": esc(sofer), "Mașina": v ? esc([v.s.vehicle_brand, v.s.vehicle_plate].filter(Boolean).join(" ")) : "",
         "GPS telefon": v ? gps : ""
       };
-      // v6.34 (cerut de Ovidiu, 17.10): sosire fără plecare = în lucru (portocaliu 30%), cu plecare = finalizat (verde 30%) —
+      // v6.34 (cerut de Ovidiu, 17.10): sosire fără plecare = în lucru, cu plecare = finalizat; v6.96: text portocaliu / verde (fără fundal) —
       // doar pentru ruta de AZI (vizita făcută azi); zilele trecute rămân fără culoare.
       const rrAzi = v && v.s && v.s.session_date === ziLocala(new Date());
       const rrCls = !v ? "rr-nev" : !rrAzi ? "" : v.leave_time ? "rr-gata" : v.arrive_time ? "rr-lucru" : "";
@@ -10941,7 +10952,7 @@ porneste();
   setTimeout(potriveste, 300);
 })();
 // v6.93 (cerut de Ovidiu, 24.10): „|” între coloane în antetul fiecărui tabel — tragi = altă lățime, dublu clic = lățimea implicită.
-// Ținut minte pe calculator (localStorage „lat:<tabel>”), pe numele coloanei. „↔ Lățimi implicite” în bara filei le pune pe toate la loc. Doar afișare.
+// Ținut minte pe calculator (localStorage „lat:<tabel>”), pe numele coloanei. „↔” din bara de sus (v6.96) le pune pe toate la loc. Doar afișare.
 (function(){
   const SEL = "main section.page .tw > table[id]";
   let trag = null;
@@ -11005,26 +11016,19 @@ porneste();
     cel.forEach(c => { const col = cols[c.idx]; if(!col) return; const w = m[c.name]; if(w) col.style.width = w + "px"; else if(+col.dataset.w0) col.style.width = col.dataset.w0 + "px"; });
     total(t, cols);
   }
+  // v6.96 (cerut de Ovidiu, 25.10): un singur buton „↔” în bara de sus (lângă zoom), vizibil doar când fila deschisă are lățimi salvate
+  const tabeleFila = () => { const pg = document.querySelector("main section.page.on"); return pg ? [...pg.querySelectorAll(".tw > table[id]")] : []; };
+  const areSalvat = tb => tb.some(t => { try { return Object.keys(localStorage).some(k => k.startsWith("lat:" + t.id + "|")); } catch(e){ return false; } });
   function butoane(){
-    document.querySelectorAll("main section.page").forEach(pg => {
-      const tb = [...pg.querySelectorAll(".tw > table[id]")]; if(!tb.length) return;
-      const rand = pg.querySelector(".row"); if(!rand) return;
-      let w = rand.querySelector(":scope > .rz-reset");
-      const are = tb.some(t => { try { return Object.keys(localStorage).some(k => k.startsWith("lat:" + t.id + "|")); } catch(e){ return false; } });
-      if(!w){
-        if(!are) return;
-        w = document.createElement("div"); w.className = "rz-reset"; w.style.flex = "0";
-        w.innerHTML = '<label>&nbsp;</label><button type="button" class="btn sec" title="Pune lățimile coloanelor din tabelele acestei file înapoi cum erau">↔ Lățimi implicite</button>';
-        w.querySelector("button").onclick = () => {
-          if(!confirm("Pun lățimile coloanelor din această filă înapoi la cele implicite?")) return;
-          try { tb.forEach(t => Object.keys(localStorage).filter(k => k.startsWith("lat:" + t.id + "|")).forEach(k => localStorage.removeItem(k))); } catch(e){}
-          tb.forEach(aplica); butoane();
-        };
-        rand.appendChild(w);
-      }
-      w.style.display = are ? "" : "none";
-    });
+    const b = document.getElementById("rz-reset"); if(!b) return;
+    b.style.display = window.innerWidth >= 900 && areSalvat(tabeleFila()) ? "inline-flex" : "none";
   }
+  document.getElementById("rz-reset").onclick = () => {
+    const tb = tabeleFila(); if(!tb.length) return;
+    if(!confirm("Pun lățimile coloanelor din această filă înapoi la cele implicite?")) return;
+    try { tb.forEach(t => Object.keys(localStorage).filter(k => k.startsWith("lat:" + t.id + "|")).forEach(k => localStorage.removeItem(k))); } catch(e){}
+    tb.forEach(aplica); butoane();
+  };
   document.addEventListener("mousedown", e => {
     const h = e.target.closest && e.target.closest(".rz-h"); if(!h || e.button !== 0) return;
     const th = h.parentElement, t = th.closest("table"); if(!t || !t.matches(SEL)) return;
@@ -11072,8 +11076,9 @@ porneste();
   });
   document.querySelectorAll("main section.page").forEach(pg => new MutationObserver(() => {
     if(pg.classList.contains("on")) pg.querySelectorAll(".tw > table[id]").forEach(t => { if(t.dataset.rzPend || !t.querySelector(".rz-h")) aplica(t); });
+    butoane();
   }).observe(pg, { attributes: true, attributeFilter: ["class"] }));
-  window.addEventListener("resize", () => tabele.forEach(t => { if(!t.querySelector(".rz-h")) aplica(t); }));
+  window.addEventListener("resize", () => { tabele.forEach(t => { if(!t.querySelector(".rz-h")) aplica(t); }); butoane(); });
   butoane();
 })();
 </script>
