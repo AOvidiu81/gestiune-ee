@@ -885,7 +885,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
   <span id="rz-w"><button id="rz-reset" class="pictograma" title="Lățimi implicite — pune coloanele din tabelele acestei file înapoi cum erau">↺ Reset layout</button><i class="rz-sep">|</i></span>
   <span id="tz-w" title="Mărimea tabelului (doar tabelul, restul rămâne la fel), din 5 în 5%. Merge și cu Ctrl + rotița mausului, Ctrl + / Ctrl − / Ctrl 0. Dublu clic pe procent = scrii tu valoarea."><button class="pictograma" onclick="tzPas(-1)" aria-label="Micșorează tabelul">−</button><b id="tz-v" ondblclick="tzScrie()" title="Dublu clic = scrii mărimea (ex. 87), Enter">100%</b><input id="tz-in" type="number" min="30" max="300" step="5" style="display:none"><button class="pictograma" onclick="tzPas(1)" aria-label="Mărește tabelul">+</button></span>
-  <span class="ver">v7.00</span>
+  <span class="ver">v7.01</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -6232,8 +6232,14 @@ async function verSalveaza(val){
   if(error){ toast(error.message, true); return; }
   [MISC, CMA, R_MIS].forEach(L => (L || []).forEach(m => { if(m.id === id || (tot && m.grup_id === id)) m[f] = v; }));
   toast(f.toUpperCase() + " → " + v);
+  const mVer = Object.assign({}, VER.m, { [f]: v });   // v7.01: luat ÎNAINTE de verInapoi — acolo VER se golește și Registrul nu se mai deschidea (EURO-IMAGE, 25.10)
   verInapoi(true);
-  if(f === "act" && v === "V" && !actFaraRegistru(VER.m)) await actSpreRegistru(id);   // ca la bifa din anexă; v6.71: se deschide Registrul completat, nesalvat
+  if(f === "act" && v === "V" && !actFaraRegistru(mVer)){   // ca la bifa din anexă; v6.71: se deschide Registrul completat, nesalvat
+    try{ await incarcaDocAct(); const d = actDoc(mVer);
+      if(d) toast("Anexa are deja rând în Registru (" + (d.tip_document || "") + ", " + (d.status_prim || "fără status") + ")");
+      else await actSpreRegistru(id, mVer);
+    }catch(e){ console.error(e); toast("Registrul nu s-a putut deschide: " + (e.message || e), true); }
+  }
 }
 // v5.14: bifele care țin de toată comanda (PV-ul șoferului, mesajul WhatsApp) — pe comanda principală se pun pe toate produsele ei
 function grupTot(id, f){
