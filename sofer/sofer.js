@@ -26,7 +26,7 @@ import { openHistoryScreen } from '../pv/js/screens-history.js';
 import { buildComenziActive } from '../pv/js/screens-comenzi.js';
 import { openSettingsScreen } from '../pv/js/screens-setup.js';
 
-export const SOFER_VERSION = 's55';
+export const SOFER_VERSION = 's56';
 
 const KEY_ZI = 'ee-sofer-zi'; // ziua deschisa: { zi, coleg, carId, km, trasee, zile, zona, ordine, ruta }
 const KEY_ULTIMA = 'ee-sofer-ultima'; // ultimele alegeri (masina, traseu, zona) — precompletare
@@ -592,19 +592,20 @@ function linieAnexa(t) {
   return m ? String(parseInt(m[1], 10)) + '.' + (m[2] == null ? '0' : String(parseInt(m[2], 10))) : null;
 }
 // s36: bucata fara placuta (serie goala sau scrisa „FARA”) apare „MONDO fără serie”
-// s37 (cerut de Ovidiu, 12.10): accesoriile lipite de model — din tipul bucatii (CU LAVOAR INT.) si din accesoriile anexei:
-// lavoar interior = LI, dozator sapun = DS, dispenser prosop (hartie) = DPH → „MONDO-LI EE-5112”
+// s37 (cerut de Ovidiu, 12.10): accesoriile lipite de model — din tipul bucatii (CU LAVOAR INT.) si din accesoriile anexei.
+// s56 (lista lui Ovidiu, 25.10, ca GestiuneEE v6.96): LI · LE · DS · DP-Z · DH-J · DPH · AC · RI · BAC → „ARMAL [LI+DS+DP-Z] EE-7285-2”
+const ACC_COD = [[/LAVOAR\s*INT/, 'LI'], [/LAVOAR\s*EXT/, 'LE'], [/DOZATOR|SAPUN/, 'DS'], [/PROSOP\s*TIP\s*Z/, 'DP-Z'], [/JUMBO|HARTIE\s*IG/, 'DH-J'],
+  [/PROSOP/, 'DPH'], [/AER\s*CONDITIONAT/, 'AC'], [/RADIATOR/, 'RI'], [/B[OA]ILER|APA\s*CALDA/, 'BAC']];
 function accCoduri(...texte) {
-  const t = texte.map((x) => String(x || '')).join(' ').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase();
   const c = [];
-  if (/LAVOAR/.test(t)) c.push('LI');
-  if (/DOZATOR|SAPUN/.test(t)) c.push('DS');
-  if (/DISPENSER|PROSOP/.test(t)) c.push('DPH');
-  return c;
+  texte.flatMap((x) => String(x || '').split(',')).map((x) => x.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase().trim()).filter(Boolean)
+    .forEach((t) => { const g = ACC_COD.find(([r]) => r.test(t)); if (g && !c.includes(g[1])) c.push(g[1]); });
+  return c.sort((x, y) => ACC_COD.findIndex((g) => g[1] === x) - ACC_COD.findIndex((g) => g[1] === y));
 }
 const serieText = (x, a) => { const s = /^(FARA|FĂRĂ|FARA SERIE|FĂRĂ SERIE)$/i.test(String(x.serie || '').trim()) ? '' : String(x.serie || '').trim();
-  const m = [x.model || x.tip || '', ...accCoduri(x.tip, a && a.accesorii)].filter(Boolean).join('-');
-  return [m, s || 'fără serie'].filter(Boolean).join(' '); };
+  const c = accCoduri(x.tip, a && a.accesorii);
+  const m = (x.model || x.tip || '') + (c.length ? ' [' + c.join('+') + ']' : '');
+  return [m.trim(), s || 'fără serie'].filter(Boolean).join(' '); };
 export function hartaSerii(serii, anexe) {
   // s31: ca in GestiuneEE v4.98 — locatia = anexa initiala (linie_id) sau aceeasi adresa pe acelasi contract
   const dupaId = {}; anexe.forEach((a) => { dupaId[a.id] = a; });

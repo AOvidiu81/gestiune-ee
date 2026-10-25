@@ -1054,7 +1054,7 @@ let dayStart = {}; // {brand, plate, kmStart, driver1, driver2, startTime}
 let lastRouteRows = [];
 
 // --- Șofer EE: aplicatia ruleaza in fila „Rută” (../sofer/), care trimite datele zilei ---
-const EE_RUTA_VERSION = 'v36'; // aceeasi cu VERSIUNE din sw.js; Șofer EE o arata langa rotita
+const EE_RUTA_VERSION = 'v37'; // aceeasi cu VERSIUNE din sw.js; Șofer EE o arata langa rotita
 const SOFER_MODE = new URLSearchParams(location.search).get('sofer') === '1';
 let multiZile = null;   // mai multe zile bifate (ruta complementara), altfel null
 let multiTrasee = null; // mai multe trasee bifate, altfel null
@@ -3145,13 +3145,19 @@ function telUrl(tel){
   return `tel:${tel.replace(/\s+/g,'')}`;
 }
 
+// R37 (lista lui Ovidiu, 25.10, ca GestiuneEE v6.96 / Șofer EE s56): „1 LAVOAR EXTERIOR” → „1 LE”
+const ECH_COD = [[/LAVOAR\s*INT/, 'LI'], [/LAVOAR\s*EXT/, 'LE'], [/DOZATOR|SAPUN/, 'DS'], [/PROSOP\s*TIP\s*Z/, 'DP-Z'], [/JUMBO|HARTIE\s*IG/, 'DH-J'],
+  [/PROSOP/, 'DPH'], [/AER\s*CONDITIONAT/, 'AC'], [/RADIATOR/, 'RI'], [/B[OA]ILER|APA\s*CALDA/, 'BAC']];
+function echScurt(x){ const m = /^(\d+)\s+(.+)$/.exec(String(x).trim()); const nume = (m ? m[2] : String(x)).trim();
+  const t = nume.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase(); const g = ECH_COD.find(([r]) => r.test(t));
+  return (m ? m[1] + ' ' : '') + (g ? g[1] : nume); }
 function qtyLabel(r){
   const parts = [];
   if(r.toalete) parts.push(`<span class="qty"><b>${r.toalete}</b> toaletă</span>`);
   if(r.containere) parts.push(`<span class="qty"><b>${r.containere}</b> lavoar</span>`);
   if(r.garduri) parts.push(`<span class="qty"><b>${r.garduri}</b> toaletă proprie</span>`);
   if(r.frecventa) parts.push(`<span>${r.frecventa}</span>`);
-  if(r.echipamente && r.echipamente.length) parts.push(`<span>${r.echipamente.join(', ')}</span>`);
+  if(r.echipamente && r.echipamente.length) parts.push(`<span>${r.echipamente.map(echScurt).join(', ')}</span>`);   // R37: „1 LE”
   const serii = seriiPunct(r);
   if(serii) parts.push(`<span class="ee-serii">🔢 ${escapeHtml(serii)}</span>`);
   return parts.join('');

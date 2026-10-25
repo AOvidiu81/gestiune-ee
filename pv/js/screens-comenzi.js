@@ -165,8 +165,11 @@ function prodN(prod, n) {
   return t.split(/(\s+)/).map((w) => { const k = w.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase(), pl = PL_CUV[k];
     return !pl ? w : (w === w.toLowerCase() ? pl.toLowerCase() : pl); }).join('');
 }
-const ACC_SCURT = { 'LAVOAR INTERIOR': 'L.I.', 'LAVOAR INT.': 'L.I.', 'DOZATOR SAPUN': 'D.S.', 'DISPENSER PROSOP': 'D.P.H.', 'DISPENSER PROSOP HARTIE': 'D.P.H.',
-  'AER CONDITIONAT': 'AC', 'RADIATOR INCALZIRE': 'RI', 'BOILER APA CALDA': 'BAC' };
+// v91 (lista lui Ovidiu, 25.10, ca GestiuneEE v6.96): DS · DP-Z · LI · LE · DH-J · AC · RI · BAC (+ DPH)
+const ACC_SCURT = { 'DOZATOR SAPUN': 'DS', 'LAVOAR INTERIOR': 'LI', 'LAVOAR INT.': 'LI', 'LAVOAR EXTERIOR': 'LE',
+  'DISPENSER PROSOP TIP Z': 'DP-Z', 'DISPENCER PROSOP TIP Z': 'DP-Z', 'DISPENCER HARTIE IG. JUMBO': 'DH-J', 'DISPENSER HARTIE IG. JUMBO': 'DH-J',
+  'AER CONDITIONAT': 'AC', 'RADIATOR INCALZIRE': 'RI', 'BOILER APA CALDA': 'BAC', 'BAILER APA CALDA': 'BAC',
+  'DISPENSER PROSOP': 'DPH', 'DISPENSER PROSOP HARTIE': 'DPH', 'DISPENCER PROSOP HARTIE': 'DPH' };
 // Seriile unei comenzi, grupate pe model: "ARMAL EE-1, EE-2; MONDO EE-3"
 function seriiText(lista) {
   const g = {};
