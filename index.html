@@ -848,6 +848,13 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   /* v6.96: „↔” (lățimi implicite) în bara de sus, lângă zoom — nu mai face rând nou în filă */
   /* v6.97 (cerut de Ovidiu, 25.10): în fața zoom-ului, aceeași înălțime (26 px), cu text, despărțit de zoom prin „|” */
   #r-tbl .fac-per-ok{color:#D97706;font-weight:600} :root[data-tema="inchis"] #r-tbl .fac-per-ok{color:#FB923C}   /* v7.04 */
+  /* v7.05: Facturare → Verificare */
+  :root{--fv-v:#15803d;--fv-g:#C2570C;--fv-n:#C0392B} :root[data-tema="inchis"]{--fv-v:#4ADE80;--fv-g:#FB923C;--fv-n:#F87171}
+  #r-tbl tr.fv-r-V > td{color:var(--fv-v);font-weight:700} #r-tbl tr.fv-r-G > td{color:var(--fv-g);font-weight:600} #r-tbl tr.fv-r-N > td{color:var(--fv-n);font-weight:600}
+  .fv-sq{min-width:30px;height:24px;border:1px solid var(--bd);border-radius:4px;background:transparent;color:var(--mut);font-weight:700;cursor:pointer;line-height:1}
+  .fv-sq.fv-V{background:#2E8B3C;border-color:#2E8B3C;color:#fff} .fv-sq.fv-G{background:#D97706;border-color:#D97706;color:#fff} .fv-sq.fv-N{background:#C0392B;border-color:#C0392B;color:#fff}
+  .fv-in{width:110px;height:24px;padding:1px 6px;font-size:12px} .fv-in.fv-obs{width:220px}
+  #r-kpi .fv-k{cursor:pointer} #r-kpi .fv-k.on{outline:2px solid #2563EB}
   #r-tbl .fac-ac{text-decoration:underline dotted;text-underline-offset:3px;cursor:help}   /* v7.03 */
   #m-tbl td.dep-hd{font-weight:600} #m-tbl td.dep-alt{font-style:italic}
   #m-tbl tbody tr:hover td.dep-hd,#m-tbl tbody tr:hover td.dep-alt,#m-tbl tbody tr.r-ales td.dep-hd,#m-tbl tbody tr.r-ales td.dep-alt{background:color-mix(in srgb, var(--acc) 19%, transparent)!important}
@@ -887,7 +894,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
   <span id="rz-w"><button id="rz-reset" class="pictograma" title="Lățimi implicite — pune coloanele din tabelele acestei file înapoi cum erau">↺ Reset layout</button><i class="rz-sep">|</i></span>
   <span id="tz-w" title="Mărimea tabelului (doar tabelul, restul rămâne la fel), din 5 în 5%. Merge și cu Ctrl + rotița mausului, Ctrl + / Ctrl − / Ctrl 0. Dublu clic pe procent = scrii tu valoarea."><button class="pictograma" onclick="tzPas(-1)" aria-label="Micșorează tabelul">−</button><b id="tz-v" ondblclick="tzScrie()" title="Dublu clic = scrii mărimea (ex. 87), Enter">100%</b><input id="tz-in" type="number" min="30" max="300" step="5" style="display:none"><button class="pictograma" onclick="tzPas(1)" aria-label="Mărește tabelul">+</button></span>
-  <span class="ver">v7.04</span>
+  <span class="ver">v7.05</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -1050,7 +1057,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
       <div style="flex:0"><label>Stare contract</label><select id="r-stare" onchange="genereazaRaport()"></select></div>
       <div style="flex:0"><label>TVA %</label><input id="r-tva" type="number" value="21" step="1" oninput="genereazaRaport()"></div>
       <div style="flex:0 0 auto" id="r-pana-w"><label title="Gol = zilele se completează până azi. Cu o dată (ex. ultima zi a lunii) se completează până la ea și rămâne așa până o golești.">Completat până la</label><div style="display:flex;gap:6px"><input id="r-pana" type="date" onchange="rlPanaSet(this.value)" style="width:150px;flex:0 0 150px"><button class="btn sec" style="flex:0 0 auto" onclick="rlPanaSet('')" title="Golește data — zilele se completează din nou până azi">✕</button></div></div>
-      <div style="flex:0" id="r-mod-wrap"><label>Variantă</label><div style="display:flex;gap:6px"><button class="btn sec" id="r-mod-lucru" onclick="setModFact('lucru')">În lucru</button><button class="btn sec" id="r-mod-gata" onclick="setModFact('gata')">Gata de trimis</button></div></div>
+      <div style="flex:0" id="r-mod-wrap"><label>Variantă</label><div style="display:flex;gap:6px"><button class="btn sec" id="r-mod-lucru" onclick="setModFact('lucru')">În lucru</button><button class="btn sec" id="r-mod-gata" onclick="setModFact('gata')">Gata de trimis</button><button class="btn sec" id="r-mod-verif" onclick="setModFact('verif')" title="Facturile primite de la sediu: verifici rând cu rând înainte să le trimiți la clienți">Verificare</button></div></div>
       <div style="flex:0"><label>&nbsp;</label><button class="btn sec" onclick="exportRaport()">Export Excel</button></div>
       <div style="flex:0"><label>&nbsp;</label><button class="btn sec" onclick="window.print()">PDF / Print</button></div>
     </div>
@@ -5435,10 +5442,10 @@ function modFactButoane(){
   $("r-mod-wrap").style.display = fact ? "" : "none";
   $("r-pana-w").style.display = fact ? "none" : "";
   const st = (id, activ, cul) => { $(id).style.cssText = activ ? "background:" + cul + ";border-color:" + cul + ";color:#fff" : ""; };
-  st("r-mod-lucru", R_MOD === "lucru", "#D97706"); st("r-mod-gata", R_MOD === "gata", "#2E8B3C");
+  st("r-mod-lucru", R_MOD === "lucru", "#D97706"); st("r-mod-gata", R_MOD === "gata", "#2E8B3C"); st("r-mod-verif", R_MOD === "verif", "#2563EB");   // v7.05
 }
 async function genereazaRaport(){
-  modFactButoane(); R_FMT2 = new Set(); R_DESP = new Set(); R_SERV = new Map(); R_SC = new Map(); R_ACC = [];
+  modFactButoane(); R_FMT2 = new Set(); R_DESP = new Set(); R_VKX = new Map(); R_SERV = new Map(); R_SC = new Map(); R_ACC = [];
   if(!ANX.length){ return; }
   if($("r-tip").value === "facturare") await raportFacturare(); else await raportLuna();
 }
@@ -5553,7 +5560,7 @@ async function raportFacturare(){
       if(fcD && !(k.nume || "").toLowerCase().includes(fcD)) return;
       if(fjD && m.jud !== fjD) return;
       const a = ANX.find(x => x.id === m.anexa_id) || {}, cant = Math.abs(+m.buc || 0), pret = +m.desp_pret || 0, fara = Math.round(cant * pret * 100) / 100;
-      R_DESP.add(R_RANDURI.length);
+      R_DESP.add(R_RANDURI.length); R_VKX.set(R_RANDURI.length, "D" + m.id);   // v7.05
       R_RANDURI.push([ "ACTIV", c.nr_ctr || "", dRO(dtz(c.data_emitere)), ctrExp(c) ? dRO(dtz(ctrExp(c))) : ctrExpText(c),
         k.nume || "", k.id_tip || "", k.atr || "", k.cui || "", a.anexa || "", dRO(dtz(a.data_emitere)), dRO(dtz(m.data)),
         m.jud || "", m.loc || "", m.sat || "", "DESPAGUBIRE " + m.tip_miscare, prodN(m.produs || "", cant), [m.model, m.model_fizic].filter(Boolean).join(" "),
@@ -5596,6 +5603,10 @@ async function raportFacturare(){
     "Contractele trecute de termen sunt marcate cu ⚠ (act adițional sau trecere pe nedeterminat). " +
     "STARE LUNA se alege pe fiecare rând, doar pentru luna aceasta: FACTURAT păstrează valoarea și marchează factura făcută; FACTURA AVANS / FACTURA PROFORMA păstrează valoarea și apar la „Gata de trimis” cu documentul cerut; INACTIV și NU FACTURAM trec rândul cu valoare 0. " +
     "Dublu clic pe INCEPUT LUNA / SFARSIT LUNA = perioadă pusă de mână (factură în avans / proformă, ex. 19.10–18.11): în luna facturării rândul are toată perioada și toată valoarea; în celelalte luni apare „ACOPERIT DE AVANS” cu valoare 0, iar ce rămâne din lună se calculează normal. ⚠ cu o săptămână înainte de sfârșit.";
+  // v7.05: cheia fiecărui rând — pentru Verificare (anexă + începutul perioadei + locația; servisare la cerere; servisare fără anexă; despăgubire)
+  R_VK = R_RANDURI.map((f, j) => R_SERV.has(j) ? "S" + R_SERV.get(j) : R_SC.has(j) ? "SC" + R_SC.get(j) : R_VKX.has(j) ? R_VKX.get(j)
+    : R_FX[j] && R_FX[j].a ? "A" + R_FX[j].a.id + "|" + (R_FX[j].de ? fpIso(R_FX[j].de) : "") + "|" + (R_FX[j].loc || "") : "R" + j);
+  if(R_MOD === "verif"){ await factVerifica(anF, lunaF); deseneazaRaport(); return; }
   if(R_MOD === "gata"){
     const idx = [1, 4, 5, 6, 7, 8, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 22, 23, 25, 26, 27];
     R_ROSU = R_ROSU.filter((v, j) => FACT_VAL(R_RANDURI[j][0]));
@@ -5607,6 +5618,73 @@ async function raportFacturare(){
     $("r-nota").textContent = "Varianta de trimis la sediu: doar rândurile de facturat (STARE LUNA = ACTIV, FACTURAT, FACTURA AVANS sau FACTURA PROFORMA; ultima coloană spune dacă e avans / proformă). Schimbările se fac pe „În lucru”. Export Excel scoate exact acest tabel.";
   }
   deseneazaRaport();
+}
+
+// ================= v7.05: FACTURARE → VERIFICARE (cerut de Ovidiu, 25.10) =================
+// Facturile vin de la sediu; înainte să le trimită la clienți, le verifică rând cu rând. Pătratul se rotește:
+// – neverificat → ✓ corect (rând bold verde; STARE LUNA ACTIV → FACTURAT) → ! factură greșită (portocaliu) → ✗ neprimită (roșu) → –.
+// Pe rând: nr. factură + observație. Tabel facturare_verificare (an, lună, cheie rând). Anexele și valorile nu se ating.
+let R_VKX = new Map(), R_VK = [], FVER = {}, FV_FILTRU = "", R_FVJ = [];
+const FV_NUME = { V: "CORECT", G: "GRESITA", N: "NEPRIMITA" }, FV_SIM = { V: "✓", G: "!", N: "✗" }, FV_URM = { "-": "V", V: "G", G: "N", N: "-" };
+const fvSt = k => (FVER[k] && FVER[k].stare) || "-";
+async function factVerifica(an, luna){
+  const { data, error } = await db.from("facturare_verificare").select("*").eq("an", an).eq("luna", luna);
+  if(error) toast("Verificare: " + error.message, true);
+  FVER = {}; (data || []).forEach(z => { FVER[z.cheie] = z; });
+  const idx = [4, 7, 1, 8, 12, 13, 15, 16, 18, 19, 20, 22, 23, 24, 25, 26];
+  const tot = [];
+  R_RANDURI.forEach((f, j) => { if(!FACT_VAL(f[0])) return;
+    tot.push({ f, k: R_VK[j], serv: R_SERV.has(j) ? R_SERV.get(j) : null, sc: R_SC.has(j) ? R_SC.get(j) : null,
+               aid: R_AID[j] != null ? R_AID[j] : (R_SC.has(j) ? R_SC.get(j) : null), anx: R_AID[j] != null }); });
+  const n = { "-": 0, V: 0, G: 0, N: 0 }; tot.forEach(t => n[fvSt(t.k)]++);
+  R_FVJ = FV_FILTRU ? tot.filter(t => fvSt(t.k) === FV_FILTRU) : tot;
+  R_RANDURI = R_FVJ.map(t => { const v = FVER[t.k] || {};
+    return idx.map(i => t.f[i]).concat([/^FACTURA /.test(t.f[0]) ? t.f[0] : "", v.nr_factura || "", v.observatii || "", FV_NUME[fvSt(t.k)] || "-"]); });
+  R_ANTET = ["NUME CLIENT","CUI","NR CTR","ANEXA NR","LOCALITATE","SAT / LOCATIE / STRADA","PRODUS","TIP","CANT.","PRET","MONEDA","INCEPUT","SFARSIT","NR Z.","VALOARE FARA TVA","VALOARE CU TVA","DOCUMENT","NR. FACTURA","OBSERVATIE","VERIFICAT"];
+  R_NUM = new Set([8, 9, 13, 14, 15]); R_FMT2 = new Set([9, 14, 15]);
+  R_EXTRA_T = ""; R_EXTRA = []; R_AID = []; R_AVERT = []; R_ROSU = []; R_FCOL = []; R_ACC = []; R_NUME = "Facturare_verificare";
+  const kp = (v, et) => `<div class="fv-k${FV_FILTRU === v ? " on" : ""}" onclick="fvFiltru('${v}')" title="Clic = doar acestea · încă un clic = toate">${et}<b>${n[v]}</b></div>`;
+  $("r-kpi").innerHTML = `<div>Verificate<b>${n.V + n.G + n.N} din ${tot.length}</b></div>` + kp("V", "✓ Corecte") + kp("G", "! Greșite") + kp("N", "✗ Neprimite") + kp("-", "Neverificate");
+  $("r-nota").textContent = "Verificarea facturilor primite de la sediu, înainte să le trimiți la clienți (doar rândurile de facturat). Pătratul din VERIFICAT se rotește la clic: – → ✓ corect (verde; STARE LUNA ACTIV devine FACTURAT) → ! factură greșită (portocaliu) → ✗ neprimită (roșu) → –. Nr. factură și observația se salvează când ieși din căsuță. Clic pe un card de sus = doar acele rânduri. Export Excel scoate tabelul cu verificarea.";
+}
+function fvFiltru(v){ FV_FILTRU = FV_FILTRU === v ? "" : v; raportFacturare(); }
+async function fvSalveaza(t, patch){
+  const an = +$("r-an").value, luna = +$("r-luna").value, ex = FVER[t.k] || {};
+  const rec = Object.assign({ an, luna, cheie: t.k, anexa_id: t.aid || null, stare: ex.stare || null, nr_factura: ex.nr_factura || null, observatii: ex.observatii || null },
+    patch, { actualizat_la: new Date().toISOString() });
+  const gol = !rec.stare && !rec.nr_factura && !rec.observatii;
+  const { error } = gol ? await db.from("facturare_verificare").delete().eq("an", an).eq("luna", luna).eq("cheie", t.k)
+                        : await db.from("facturare_verificare").upsert(rec, { onConflict: "an,luna,cheie" });
+  if(error){ toast(error.message, true); return false; }
+  if(gol) delete FVER[t.k]; else FVER[t.k] = Object.assign({}, ex, rec);
+  return true;
+}
+async function fvFacturat(t, pune){   // ✓ corect → FACTURAT; din ✓ înapoi → starea de dinainte (implicită)
+  const an = +$("r-an").value, luna = +$("r-luna").value;
+  let r = null;
+  if(t.serv){ const rec = { fact_stare: pune ? "FACTURAT" : null, fac: pune ? "V" : "-" }; r = await db.from("miscari").update(rec).eq("id", t.serv);
+    [MISC, CMA, R_MIS].forEach(L => (L || []).forEach(m => { if(m.id === t.serv) Object.assign(m, rec); })); }
+  else if(t.sc) r = await db.from("facturare_servisari").upsert({ anexa_id: t.sc, an, luna, stare: pune ? "FACTURAT" : null, actualizat_la: new Date().toISOString() }, { onConflict: "anexa_id,an,luna" });
+  else if(t.anx) r = pune ? await db.from("facturare_stare").upsert({ anexa_id: t.aid, an, luna, stare: "FACTURAT", actualizat_la: new Date().toISOString() })
+                          : await db.from("facturare_stare").delete().eq("anexa_id", t.aid).eq("an", an).eq("luna", luna);
+  if(r && r.error) toast("STARE LUNA: " + r.error.message, true);
+}
+async function fvRoteste(j){
+  const t = R_FVJ[j]; if(!t) return;
+  const v0 = fvSt(t.k), v = FV_URM[v0];
+  if(!await fvSalveaza(t, { stare: v === "-" ? null : v })) return;
+  try{
+    if(v === "V" && t.f[0] === "ACTIV") await fvFacturat(t, true);
+    else if(v0 === "V" && t.f[0] === "FACTURAT") await fvFacturat(t, false);
+  }catch(e){ toast("STARE LUNA: " + (e.message || e), true); }
+  toast("Verificare: " + (FV_NUME[v] || "neverificat"));
+  await raportFacturare();
+}
+async function fvScrie(j, camp, val){
+  const t = R_FVJ[j]; if(!t) return;
+  if(await fvSalveaza(t, { [camp]: String(val || "").trim() || null })){
+    if(R_RANDURI[j]) R_RANDURI[j][camp === "nr_factura" ? 17 : 18] = String(val || "").trim();
+    toast(camp === "nr_factura" ? "Nr. factură salvat" : "Observație salvată"); }
 }
 
 // ================= v6.50: PERIOADA DE FACTURARE PUSĂ DE MÂNĂ (cerut de Ovidiu, 19.10) =================
@@ -6144,7 +6222,8 @@ function deseneazaRaport(){
       const rr = R_RIDS[j];
       const vr = VER && ((VER.f === "fac" && fact && (VER.anexe.includes(R_AID[j]) || R_SERV.get(j) === VER.id)) ||
                          (VER.f === "rpt" && R_NUME === "Raport_luna" && rr && (rr.anx.some(id => VER.anexe.includes(id)) || rr.mis.includes(VER.id))));
-      const cls2 = [cls, vr ? "r-ver" : ""].filter(Boolean).join(" ");
+      const fvr = R_NUME === "Facturare_verificare" && R_FVJ[j] ? "fv-r-" + fvSt(R_FVJ[j].k).replace("-", "x") : "";   // v7.05
+      const cls2 = [cls, vr ? "r-ver" : "", fvr].filter(Boolean).join(" ");
       return `<tr${cls2 ? ` class="${cls2}"` : ""}>` + f.map((v, i) => {
         let t = esc(v === null || v === undefined ? "" : (R_FMT2.has(i) && typeof v === "number" ? v.toFixed(2) : v));
         if(fact && i === 0 && R_FX[j] && R_FX[j].locZero)   // v6.88
@@ -6188,6 +6267,12 @@ function deseneazaRaport(){
         if(fact && i === 10 && av.anx) t += ` <span class="warn-pill" title="Anexa a expirat la ${esc(fmtD(av.anx))}; echipamentul nu e trecut pe RIDICARE, deci se facturează mai departe">⚠ act adițional</span>`;
         if(R_ROSU[j] && ((fact && (i === 1 || i === 4)) || (R_NUME === "Facturare_de_trimis" && (i === 0 || i === 1))))
           t = `<span style="color:var(--red);font-weight:700">${t}</span>`;
+        if(R_NUME === "Facturare_verificare"){   // v7.05: nr. factură, observație, pătratul de verificare
+          if(i === 17) t = `<input class="fv-in" value="${esc(v || "")}" placeholder="nr." onchange="fvScrie(${j},'nr_factura',this.value)">`;
+          if(i === 18) t = `<input class="fv-in fv-obs" value="${esc(v || "")}" placeholder="ce e greșit…" onchange="fvScrie(${j},'observatii',this.value)">`;
+          if(i === 19){ const s0 = R_FVJ[j] ? fvSt(R_FVJ[j].k) : "-";
+            t = `<button class="fv-sq fv-${s0.replace("-", "x")}" onclick="fvRoteste(${j})" title="Clic: – → ✓ corect → ! greșită → ✗ neprimită → –">${FV_SIM[s0] || "–"}</button>`; }
+        }
         const rl = R_NUME === "Raport_luna" && R_CEL[j] ? R_CEL[j][i] : "";
         const tl = lx && typeof v === "string" && v.length > 10 ? ` title="${esc(v)}"` : "";   // v6.89: textul întreg la mouse
         return `<td${rl ? ` class="rl-${rl}"` : ""}${tl}${R_NUM.has(i) ? ' style="text-align:right"' : ''}>${rl ? `<span class="rl-b">${t}</span>` : t}</td>` +
@@ -6662,7 +6747,7 @@ const TB_NUME = { clients: "Puncte de rută", visit_logs: "Vizite (rute)", clien
   week_meta: "Note săptămâni (rute)", miscari: "Comenzi", anexe: "Anexe", contracte: "Contracte", clienti: "Clienți", serii: "Serii",
   pv_records: "PV-uri / cereri (înregistrări)", documente: "Registru documente", inceput_zi: "Începutul zilei", prezenta_depozit: "Prezență la depozit", atentie_note: "Note De urmărit",
   ciorne: "Ciorne", profiles: "Conturi", nomenclatoare: "Nomenclatoare", products: "Produse (PV)", stoc_initial: "Stoc inițial",
-  depozite: "Depozite", masini: "Mașini", soferi: "Șoferi", company_info: "Date firmă", facturare_stare: "Stare facturare", facturare_perioada: "Perioade facturare (avans)", facturare_servisari: "Servisări la cerere (facturare)", facturare_locatii: "Facturare pe locații (jurnal)" };
+  depozite: "Depozite", masini: "Mașini", soferi: "Șoferi", company_info: "Date firmă", facturare_stare: "Stare facturare", facturare_perioada: "Perioade facturare (avans)", facturare_servisari: "Servisări la cerere (facturare)", facturare_locatii: "Facturare pe locații (jurnal)", facturare_verificare: "Verificare facturi" };
 const tbMB = b => { b = +b || 0; return b < 1048576 ? (b / 1024).toFixed(0) + " KB" : (b / 1048576).toFixed(1).replace(".", ",") + " MB"; };
 function tbBara(et, b, lim){
   const pr = Math.min(100, (+b || 0) / lim * 100), cul = pr > 80 ? "#b3261e" : pr > 60 ? "#D97706" : "#2E8B3C";
