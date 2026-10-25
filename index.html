@@ -846,7 +846,10 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   :root{--th-bg:color-mix(in srgb,var(--card) 90%,#000)}
   :root .st-t th{background:none}
   /* v6.96: „↔” (lățimi implicite) în bara de sus, lângă zoom — nu mai face rând nou în filă */
-  #rz-reset{display:none}
+  /* v6.97 (cerut de Ovidiu, 25.10): în fața zoom-ului, aceeași înălțime (26 px), cu text, despărțit de zoom prin „|” */
+  #rz-w{display:none;align-items:center;gap:8px;margin-right:2px}
+  header #rz-w #rz-reset{width:auto;height:26px;padding:0 11px;border-radius:13px;font-size:12px;font-weight:600;line-height:1;white-space:nowrap;display:inline-flex;align-items:center;gap:5px}
+  #rz-w .rz-sep{font-style:normal;opacity:.45;font-size:16px;line-height:1}
   #m-tbl:not(.ds-2) tbody tr:hover td[class*="zd-"],#m-tbl tbody tr:hover td.tc,#m-tbl:not(.ds-2) tbody tr.r-ales td[class*="zd-"],#m-tbl tbody tr.r-ales td.tc{background:color-mix(in srgb, var(--acc) 19%, transparent)!important}
   /* v5.86: bara de schimbare în bloc + meniul ⋯ */
   #pb-bara{position:fixed;left:50%;bottom:14px;transform:translateX(-50%);z-index:55;display:none;align-items:center;gap:12px;flex-wrap:wrap;
@@ -878,9 +881,9 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <div class="hd-mij"><div id="titlu-sus"></div><span id="azi-sus" title="Data de azi (calculatorul)"></span></div>
   <button id="btn-mob" class="btn sec" style="padding:5px 10px;font-size:12px" onclick="mobPC(false)" title="Înapoi la varianta de telefon">📱 Telefon</button>
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
+  <span id="rz-w"><button id="rz-reset" class="pictograma" title="Lățimi implicite — pune coloanele din tabelele acestei file înapoi cum erau">↺ Reset layout</button><i class="rz-sep">|</i></span>
   <span id="tz-w" title="Mărimea tabelului (doar tabelul, restul rămâne la fel), din 5 în 5%. Merge și cu Ctrl + rotița mausului, Ctrl + / Ctrl − / Ctrl 0. Dublu clic pe procent = scrii tu valoarea."><button class="pictograma" onclick="tzPas(-1)" aria-label="Micșorează tabelul">−</button><b id="tz-v" ondblclick="tzScrie()" title="Dublu clic = scrii mărimea (ex. 87), Enter">100%</b><input id="tz-in" type="number" min="30" max="300" step="5" style="display:none"><button class="pictograma" onclick="tzPas(1)" aria-label="Mărește tabelul">+</button></span>
-  <button id="rz-reset" class="pictograma" title="Lățimi implicite — pune coloanele din tabelele acestei file înapoi cum erau">↔</button>
-  <span class="ver">v6.96</span>
+  <span class="ver">v6.97</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -11020,7 +11023,7 @@ porneste();
   const tabeleFila = () => { const pg = document.querySelector("main section.page.on"); return pg ? [...pg.querySelectorAll(".tw > table[id]")] : []; };
   const areSalvat = tb => tb.some(t => { try { return Object.keys(localStorage).some(k => k.startsWith("lat:" + t.id + "|")); } catch(e){ return false; } });
   function butoane(){
-    const b = document.getElementById("rz-reset"); if(!b) return;
+    const b = document.getElementById("rz-w"); if(!b) return;   // v6.97: butonul + „|” împreună
     b.style.display = window.innerWidth >= 900 && areSalvat(tabeleFila()) ? "inline-flex" : "none";
   }
   document.getElementById("rz-reset").onclick = () => {
