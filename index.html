@@ -847,6 +847,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   :root .st-t th{background:none}
   /* v6.96: „↔” (lățimi implicite) în bara de sus, lângă zoom — nu mai face rând nou în filă */
   /* v6.97 (cerut de Ovidiu, 25.10): în fața zoom-ului, aceeași înălțime (26 px), cu text, despărțit de zoom prin „|” */
+  #r-tbl .fac-per-ok{color:#D97706;font-weight:600} :root[data-tema="inchis"] #r-tbl .fac-per-ok{color:#FB923C}   /* v7.04 */
   #r-tbl .fac-ac{text-decoration:underline dotted;text-underline-offset:3px;cursor:help}   /* v7.03 */
   #m-tbl td.dep-hd{font-weight:600} #m-tbl td.dep-alt{font-style:italic}
   #m-tbl tbody tr:hover td.dep-hd,#m-tbl tbody tr:hover td.dep-alt,#m-tbl tbody tr.r-ales td.dep-hd,#m-tbl tbody tr.r-ales td.dep-alt{background:color-mix(in srgb, var(--acc) 19%, transparent)!important}
@@ -886,7 +887,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
   <span id="rz-w"><button id="rz-reset" class="pictograma" title="Lățimi implicite — pune coloanele din tabelele acestei file înapoi cum erau">↺ Reset layout</button><i class="rz-sep">|</i></span>
   <span id="tz-w" title="Mărimea tabelului (doar tabelul, restul rămâne la fel), din 5 în 5%. Merge și cu Ctrl + rotița mausului, Ctrl + / Ctrl − / Ctrl 0. Dublu clic pe procent = scrii tu valoarea."><button class="pictograma" onclick="tzPas(-1)" aria-label="Micșorează tabelul">−</button><b id="tz-v" ondblclick="tzScrie()" title="Dublu clic = scrii mărimea (ex. 87), Enter">100%</b><input id="tz-in" type="number" min="30" max="300" step="5" style="display:none"><button class="pictograma" onclick="tzPas(1)" aria-label="Mărește tabelul">+</button></span>
-  <span class="ver">v7.03</span>
+  <span class="ver">v7.04</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -6164,6 +6165,11 @@ function deseneazaRaport(){
           if(fc && t) t = `<span style="color:var(${fc === "up" ? "--ok" : "--red"})">${t}</span>`; }
         if(fact && (i === 22 || i === 23) && R_AID[j] != null){   // v6.50: dublu clic = perioada de facturare
           const p = R_FX[j] && R_FX[j].per;
+          // v7.04 (cerut de Ovidiu, 25.10, varianta B): FACTURA AVANS / PROFORMA — perioada pusă de mână = text portocaliu; fără perioadă = pastilă roșie „⚠ fără perioadă”
+          if(/^FACTURA /.test(String(f[0] || ""))){
+            if(p) t = `<span class="fac-per-ok">${t}</span>`;
+            else if(i === 23) t += ` <span class="warn-pill" style="background:#C0392B" title="Rândul e ${esc(f[0])}, dar perioada de facturare nu e pusă — dublu clic pe INCEPUT / SFARSIT LUNA și pune perioada (ex. luna următoare)">⚠ fără perioadă</span>`;
+          }
           if(p && i === 22) t = `<span title="Perioadă pusă de mână${p.document ? " · " + esc(p.document) : ""}${p.observatii ? " · " + esc(p.observatii) : ""}">📅 </span>` + t;
           if(i === 23 && av.per) t += ` <span class="warn-pill" title="${esc(av.per)}">⚠ ${esc(av.per.split(" — ")[0])}</span>`;
           t = `<span class="fper-c" title="Dublu clic: schimbă perioada de facturare (avans / proformă / altă perioadă)" ondblclick="fperDeschide(${j})">${t}</span>`;
