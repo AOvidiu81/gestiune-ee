@@ -13,7 +13,7 @@
 // retea, iar fiecare functie de mai jos are o cale de rezerva pe date
 // cachuite local cand reteaua lipseste.
 
-import { DriverRepo, CarRepo, DepotRepo, CatalogRepo, MetaRepo } from './db.js';
+import { DriverRepo, CarRepo, DepotRepo, CatalogRepo, MetaRepo, CounterRepo } from './db.js';
 import { DEFAULT_AUXILIARY_BY_CATEGORY, COMPANY_INFO } from './catalog-defaults.js';
 
 /** Cheie de comparatie insensibila la majuscule/spatii, folosita ca sa
@@ -320,6 +320,23 @@ async function trimiteDocument(meta, blob) {
   return true;
 }
 
+/** v92 (cerut de Ovidiu, 26.10): contorul PV pe sofer, tinut in baza (pv_contor). Telefonul trimite
+ * ultimul numar folosit, baza pastreaza maximul si il intoarce — la telefon nou / reinstalare numerotarea
+ * continua de unde a ramas soferul. Fara semnal (sau fara tabel) ramane contorul din telefon. */
+export async function syncPvCounter() {
+  try {
+    const session = await getSession();
+    if (!session) return;
+    const supabase = await getSupabase();
+    const local = await CounterRepo.peek('pv_counter_value');
+    const { data, error } = await supabase.rpc('pv_contor_urca', { n: local });
+    if (error) { console.warn('[pv-contor]', error.message || error); return; }
+    if (typeof data === 'number' && data > local) await CounterRepo.raiseTo('pv_counter_value', data);
+  } catch (e) {
+    // fara retea — ramane contorul local
+  }
+}
+
 /** Incearca sa trimita tot ce a ramas in coada. Se cheama dupa fiecare
  * salvare, la revenirea internetului, la revenirea in aplicatie si periodic. */
 export async function flushPvQueue() {
@@ -340,6 +357,7 @@ export async function flushPvQueue() {
   } finally {
     pvFlushRunning = false;
   }
+  syncPvCounter();   // v92
 }
 
 if (typeof window !== 'undefined') {
@@ -355,6 +373,7 @@ if (typeof window !== 'undefined') {
  * Best-effort: daca nu exista semnal, pastreaza ce era deja sincronizat. */
 export async function syncMasterData(profile) {
   if (!profile) return;
+  await syncPvCounter();   // v92: intai contorul PV din baza
   try {
     const ci = [profile.ci_serie, profile.ci_numar].filter(Boolean).join(' ');
     await DriverRepo.save({

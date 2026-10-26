@@ -225,7 +225,7 @@ export async function openProcessVerbalForm({ driver, car, depot, processType, p
       seriiPunct: [],        // s30: seriile de la client (din comanda) — butoane deasupra campurilor de serie
       mentiuneComanda: '',   // s29: "SUPLIMENTARE - ANEXA NR 1-S1" (din comanda), apare la Mentiuni pe PV
       productEntries: [newProductEntry()],
-      confirmationPhotos: [], // { rawBlob, previewUrl }
+      confirmationPhotos: [], // { rawBlob, previewUrl, gps, gpsAddress, time, serii } — v92: GPS / ora / seriile pe fiecare poza
       gps: '',
       // Adresa dedusa din coordonatele GPS (Jud./Localitate/Strada, via
       // Nominatim — vezi gpsAccuracyGate in components.js), folosita DOAR in
@@ -561,6 +561,7 @@ export async function openProcessVerbalForm({ driver, car, depot, processType, p
             el('div', { class: 'photo-item' }, [
               el('div', { class: 'photo-item-head' }, [el('div', { class: 'grow' }, [`ANEXA FOTO ${idx + 1}`]), el('button', { class: 'photo-remove-btn', onclick: () => { state.confirmationPhotos.splice(idx, 1); render(); } }, ['Sterge'])]),
               el('img', { class: 'photo-thumb', src: photo.previewUrl }),
+              ...pozaDetalii(photo, idx),
             ])
           );
         });
@@ -717,7 +718,7 @@ export async function openProcessVerbalForm({ driver, car, depot, processType, p
         state.gpsAddress = gpsAddressLabel;
         state.confirmationTime = formatDateTimeRo();
         const previewUrl = await blobToDataUrl(file);
-        state.confirmationPhotos.push({ rawBlob: file, previewUrl });
+        state.confirmationPhotos.push({ rawBlob: file, previewUrl, gps: coordsLabel, gpsAddress: gpsAddressLabel, time: state.confirmationTime, serii: null });
         missing.delete('confirmationPhoto');
         showToast(`Poza a fost adaugata (${state.confirmationPhotos.length}/5).`);
       } finally {
@@ -766,16 +767,56 @@ export async function openProcessVerbalForm({ driver, car, depot, processType, p
       };
     }
 
-    function photoOverlayLines({ pvNumber, avizNumber }) {
+    // v92 (cerut de Ovidiu, 26.10): fiecare poza cu GPS-ul, adresa, ora si seriile ei (ex. 2 toalete pe 2 locatii).
+    // Implicit: tot atatea poze cate serii → poza 1 = seria 1, poza 2 = seria 2; altfel toate seriile pe fiecare poza.
+    // Soferul schimba din butoanele de sub poza.
+    const cuEE = (s) => (/^EE-/i.test(s) ? s : `EE-${s}`);
+    function toateSeriile() {
+      if (state.noSeriesMode) return [];
+      return state.productEntries.filter((e) => e.model.trim()).flatMap((e) => e.series.map((s) => s.trim()).filter(Boolean));
+    }
+    function seriiPoza(idx) {
+      const toate = toateSeriile(), p = state.confirmationPhotos[idx], n = state.confirmationPhotos.length;
+      if (p && Array.isArray(p.serii)) return p.serii.filter((s) => toate.includes(s));
+      return n > 1 && n === toate.length ? [toate[idx]] : toate;
+    }
+    function pozaDetalii(photo, idx) {
+      const out = [];
+      if (photo.gps) out.push(el('div', { class: 'checkbox-sub', style: 'margin:6px 0 0' }, [`📍 ${photo.gps}${photo.time ? ' · ' + photo.time : ''}`]));
+      const toate = toateSeriile();
+      if (toate.length > 1) {
+        const alese = new Set(seriiPoza(idx));
+        const chips = toate.map((s) => el('button', {
+          class: 'btn ' + (alese.has(s) ? 'btn-primary' : 'btn-outline'),
+          style: 'width:auto;padding:8px 12px;margin:0;min-height:0',
+          onclick: (ev) => {
+            ev.preventDefault();
+            const cur = new Set(seriiPoza(idx));
+            if (cur.has(s)) cur.delete(s); else cur.add(s);
+            photo.serii = toate.filter((x) => cur.has(x));
+            render();
+          },
+        }, [(alese.has(s) ? '✓ ' : '') + cuEE(s)]));
+        out.push(el('div', { class: 'field', style: 'margin-top:8px' }, [
+          el('label', { class: 'field-label' }, ['Seriile din aceasta poza']),
+          el('div', { style: 'display:flex;flex-wrap:wrap;gap:8px' }, chips),
+        ]));
+      }
+      return out;
+    }
+
+    function photoOverlayLines({ pvNumber, avizNumber, photo, idx }) {
       const productLines = state.productEntries.filter((e) => e.model.trim()).map((e) => (e.type.trim() ? `${e.model.trim()} (${e.type.trim()})` : e.model.trim()));
       const pvLabel = displayPvNumber(pvNumber);
+      const sToate = toateSeriile(), sPoza = idx == null ? sToate : seriiPoza(idx), nPoze = state.confirmationPhotos.length;
       const avzLabel = avizNumber ? displayAvizNumber(avizNumber) : '';
       const lines = [
         `Client: ${state.clientName.trim()}`,
-        `Cantitate: ${state.productQuantity.trim()}`,
+        sPoza.length && sPoza.length < sToate.length ? `Cantitate: ${sPoza.length} din ${state.productQuantity.trim()}` : `Cantitate: ${state.productQuantity.trim()}`,
         productLines.length ? `Produse: ${productLines.join(', ')}` : null,
-        `Data: ${formatDateTimeRo()}`,
-        state.gps ? `GPS: ${state.gps}` : null,
+        sPoza.length ? `Serie: ${sPoza.map(cuEE).join(', ')}` : null,
+        `Data: ${(photo && photo.time) || formatDateTimeRo()}`,
+        (photo && photo.gps) || state.gps ? `GPS: ${(photo && photo.gps) || state.gps}` : null,
         // In banner adresa vine din pozitia GPS reala a telefonului la
         // momentul pozei (dedusa via Nominatim, vezi gpsAccuracyGate) — NU
         // din adresa scrisa de sofer in comanda. Cade inapoi pe adresa
@@ -783,9 +824,9 @@ export async function openProcessVerbalForm({ driver, car, depot, processType, p
         // semnal/internet in acel moment. Peste tot altundeva in PV
         // (Locatia ceruta, Anexa Foto, Aviz, fisier, admin) adresa ramane
         // exact cea scrisa in comanda, neschimbata.
-        `Adresa: ${state.gpsAddress || state.field1.trim()}`,
+        `Adresa: ${(photo && photo.gps ? photo.gpsAddress : state.gpsAddress) || state.field1.trim()}`,
         `Sofer: ${driver.name} | Auto: ${car.numar}`,
-        avzLabel ? `Nr PV: ${pvLabel} | Nr AVZ: ${avzLabel}` : `Nr PV: ${pvLabel}`,
+        (avzLabel ? `Nr PV: ${pvLabel} | Nr AVZ: ${avzLabel}` : `Nr PV: ${pvLabel}`) + (nPoze > 1 ? ` | Poza ${idx + 1}/${nPoze}` : ''),
       ];
       return lines.filter(Boolean);
     }
@@ -793,9 +834,9 @@ export async function openProcessVerbalForm({ driver, car, depot, processType, p
     async function annotateAllPhotos({ pvNumber, avizNumber }) {
       if (!state.confirmationPhotos.length) return [];
       const logo = await loadLogoImage();
-      const lines = photoOverlayLines({ pvNumber, avizNumber });
       const results = [];
-      for (const photo of state.confirmationPhotos) {
+      for (const [idx, photo] of state.confirmationPhotos.entries()) {
+        const lines = photoOverlayLines({ pvNumber, avizNumber, photo, idx });   // v92: banda proprie pe fiecare poza
         try {
           const annotatedBlob = await annotatePhotoWithMetadata(photo.rawBlob, lines, (depot.name || '').toUpperCase(), logo);
           results.push(await blobToDataUrl(annotatedBlob));
@@ -817,7 +858,7 @@ export async function openProcessVerbalForm({ driver, car, depot, processType, p
       }
       isBusy = true;
       try {
-        const previewPvNumber = `${prefixForType(processType)}_00000`;
+        const previewPvNumber = `${prefixForType(processType)}_0`;
         const previewAvizNumber = needsAviz ? `AVZ-EE_${new Date().getFullYear()}_000` : '';
         const annotatedPhotoUrls = await annotateAllPhotos({ pvNumber: previewPvNumber, avizNumber: previewAvizNumber });
         const model = buildModel({ id: 'preview', pvNumber: previewPvNumber, avizNumber: previewAvizNumber, createdAt: new Date().toISOString(), annotatedPhotoUrls });

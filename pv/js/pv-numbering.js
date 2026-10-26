@@ -23,7 +23,7 @@ export function prefixForType(processType) {
 export async function nextPvNumber(processType) {
   const counter = await CounterRepo.next('pv_counter_value');
   const prefix = prefixForType(processType);
-  return `${prefix}_${String(counter).padStart(5, '0')}`;
+  return `${prefix}_${counter}`;   // v92 (cerut de Ovidiu, 26.10): fara zerourile din fata (PVS_1, nu PVS_00001)
 }
 
 export async function nextAvizNumber() {
@@ -35,9 +35,9 @@ export async function nextAvizNumber() {
 }
 
 export function displayPvNumber(value) {
-  const match = /^(PV[A-Z]*)_(\d{5})$/.exec(value || '');
+  const match = /^(PV[A-Z]*)_(\d+)$/.exec(value || '');
   if (!match) return value || '';
-  return `${match[1]} - ${match[2]}`;
+  return `${match[1]} - ${parseInt(match[2], 10)}`;   // v92: si PV-urile vechi (00001) se arata fara zerouri
 }
 
 export function displayAvizNumber(value) {

@@ -141,6 +141,18 @@ export const CounterRepo = {
     await reqToPromise(store.put(record));
     return value;
   },
+  // v92: valoarea curenta (fara sa o creasca) si ridicarea la o valoare din baza (nu scade niciodata)
+  async peek(key) {
+    const record = await get(STORES.counters, key);
+    return record ? record.value || 0 : 0;
+  },
+  async raiseTo(key, n) {
+    const store = await tx(STORES.counters, 'readwrite');
+    const current = await reqToPromise(store.get(key));
+    const value = current ? current.value || 0 : 0;
+    if (+n > value) await reqToPromise(store.put({ ...(current || { key }), key, value: +n }));
+    return Math.max(value, +n || 0);
+  },
   async peekYear(key) {
     const record = await get(STORES.counters, key);
     return record ? record.year : null;
