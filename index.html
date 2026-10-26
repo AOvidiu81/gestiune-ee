@@ -103,6 +103,8 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   body.rz-trag,body.rz-trag *{cursor:col-resize!important;user-select:none!important}
   @media print{.rz-h,.rz-reset{display:none!important}}
   /* v6.72: Comenzi — pătrățelul de accesorii și cardul contract / anexă de la numele clientului */
+  /* v7.06 (cerut de Ovidiu, 26.10): Comenzi + Facturare — TIP îngroșat cu subliniere punctată = are accesorii; lista la mouse (fără coloana ACC.) */
+  .tip-acc{font-weight:700;text-decoration:underline dotted;text-underline-offset:3px;cursor:help}
   .acc-ic{display:inline-block;min-width:18px;height:18px;line-height:16px;padding:0 3px;border:1px solid var(--blue);color:var(--blue);border-radius:4px;font-size:11px;font-weight:700;cursor:help}
   #m-tbl .cl-pop{cursor:pointer}
   #cl-pop{display:none;position:fixed;z-index:9999;min-width:220px;max-width:360px;background:var(--card);color:var(--tx);border:1px solid var(--bd);border-radius:8px;box-shadow:0 6px 24px rgba(0,0,0,.25);padding:8px}
@@ -894,7 +896,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
   <span id="rz-w"><button id="rz-reset" class="pictograma" title="Lățimi implicite — pune coloanele din tabelele acestei file înapoi cum erau">↺ Reset layout</button><i class="rz-sep">|</i></span>
   <span id="tz-w" title="Mărimea tabelului (doar tabelul, restul rămâne la fel), din 5 în 5%. Merge și cu Ctrl + rotița mausului, Ctrl + / Ctrl − / Ctrl 0. Dublu clic pe procent = scrii tu valoarea."><button class="pictograma" onclick="tzPas(-1)" aria-label="Micșorează tabelul">−</button><b id="tz-v" ondblclick="tzScrie()" title="Dublu clic = scrii mărimea (ex. 87), Enter">100%</b><input id="tz-in" type="number" min="30" max="300" step="5" style="display:none"><button class="pictograma" onclick="tzPas(1)" aria-label="Mărește tabelul">+</button></span>
-  <span class="ver">v7.05</span>
+  <span class="ver">v7.06</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -2006,6 +2008,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
     <div><label>Până la</label><input type="date" id="fper-pana" oninput="fperInfo()"></div>
   </div>
   <div class="row" style="justify-content:flex-start;gap:6px;margin-top:6px">
+    <div style="flex:0"><button class="btn sm sec" onclick="fperRapid('lu')" title="Toată luna de după luna aleasă în Facturare (ex. în octombrie → 01.11 – 30.11)">Luna următoare</button></div>
     <div style="flex:0"><button class="btn sm sec" onclick="fperRapid('l1')" title="De la aceeași zi până în ziua dinainte, luna următoare (ex. 19.10 → 18.11)">1 lună</button></div>
     <div style="flex:0"><button class="btn sm sec" onclick="fperRapid('sfl')">Până la sfârșitul lunii</button></div>
     <div style="flex:0"><button class="btn sm sec" onclick="fperRapid('sflu')" title="Ex. 26.10 → 30.11, ca de acum să fie luni întregi">Până la sfârșitul lunii următoare</button></div>
@@ -2712,7 +2715,7 @@ function aplicaSortarea(){
 // v6.82 (cerut de Ovidiu, 23.10): data în Comenzi cu ziua săptămânii în față: „MA, 27-10-2026”
 const ZI_SCURT = ["DU","LU","MA","MI","JO","VI","SA"];
 const ziScurtData = d => d ? ZI_SCURT[new Date(d + "T12:00:00").getDay()] + ", " + fmtD(d) : "";
-const M_LAT = [140,110,40,84,110,44,230,40,130,280,100,100,150,112,38,38,38,38,38,48,80,116];   // v6.78: PV și ACT la 38, ca Rpt / RT / FAC (distanțe egale)
+const M_LAT = [140,110,40,84,130,230,40,130,280,100,100,150,112,38,38,38,38,38,48,80,116];   // v6.78: PV și ACT la 38, ca Rpt / RT / FAC (distanțe egale)
 // textul tăiat cu „…” se vede întreg când ții mouse-ul pe celulă
 document.addEventListener("mouseover", e => {
   const c = e.target.closest && e.target.closest("#m-tbl td, #m-tbl th"); if(!c) return;
@@ -2721,6 +2724,11 @@ document.addEventListener("mouseover", e => {
 });
 // v6.72: la nivel de script (nu în renderMiscari), ca butoanele din card să găsească funcțiile și ascultătorii să fie puși o singură dată
 // v6.72: pătrățel cu numărul accesoriilor; lista întreagă la mouse
+// v7.06: TIP cu accesorii = bold + subliniere punctată, lista la mouse
+function tipAcc(txt, acc){
+  const L = accLista(acc), e = esc(txt || ""); if(!L.length) return e;
+  return `<span class="tip-acc" title="Accesorii:&#10;${L.map(x => "• " + esc(x)).join("&#10;")}">${e || "—"}</span>`;
+}
 function accIcon(t){
   const L = accLista(t); if(!L.length) return "";
   return `<span class="acc-ic" title="Accesorii:&#10;${L.map(x => "• " + esc(x)).join("&#10;")}">${L.length}</span>`;
@@ -2775,8 +2783,8 @@ function renderMiscari(){
   // v5.21: clientul verde = toate cele 6 bife pe V; normal = toate goale („-”); orice altă combinație (V, X, L, -) = portocaliu
   const clCls = clStare;   // v5.75: doar bifele care contează la comanda asta
   const sTit = M_SORT.camp === "data" ? (M_SORT.dir < 0 ? "Acum: nou → vechi. Apasă: vechi → nou" : M_SORT.dir > 0 ? "Acum: vechi → nou. Apasă: pe grupe (Azi, săptămâna asta, trecută, viitoare)" : "Acum: pe grupe (Azi, săptămâna asta, trecută, viitoare, apoi restul). Apasă: nou → vechi") : "Apasă ca să sortezi după dată";
-  let h=`<tr><th class="sortabil" onclick="sorteazaComenzi('data')" title="${sTit}">Data${sg("data")}</th><th>Comandă</th><th>Buc</th><th>Produs</th><th>Tip</th><th title="Accesorii — ține mouse-ul pe pătrățel">Acc.</th><th title="Dublu clic pe nume (sau ține mouse-ul 1,5 s) → contractul și anexa">Client</th><th>Jud</th><th>Loc./Com.</th><th>Sat/Str./Locație</th><th>Contract</th><th>Depozit</th><th>Resp. șantier</th><th>Telefon</th><th>Rpt</th><th>RT</th><th>FAC</th><th>PV</th><th>ACT</th><th>WaAp</th><th>Frecv.</th><th class="noprint"></th></tr>`;
-  h+=MISC.map(r=>{const sr=subReferinta(r); const gz=grupaZilei(r.data); return `<tr><td${gz?` class="zd-${gz}"`:""}><span class="zd">${ziScurtData(r.data)}</span>${sr?` <span class="pill p-T" title="Mai veche decât data de referință a stocului (${fmtD(sr)}) — nu intră în stoc">sub referință</span>`:""}</td><td>${r.grup_id&&r.grup_id!==r.id?'<span class="muted" title="Produs din aceeași comandă cu #'+r.grup_id+'">↳ </span>':""}${tipTxt(r.tip_miscare)}${r.grup_id===r.id?' <span class="muted" title="Comanda are mai multe produse">+'+MISC.filter(x=>x.grup_id===r.id&&x.id!==r.id).length+'</span>':""}</td><td class="tc tc-${tipLit(r.tip_miscare)}">${r.buc}</td><td>${esc(prodN(r.produs, r.buc))}</td><td>${esc([r.model, r.model_fizic].filter(Boolean).join(" "))}</td><td style="text-align:center">${accIcon(r.accesorii)}</td><td><b class="${clCls(r)} cl-pop" data-mid="${r.id}">${esc(r.client)}</b>${r.din_telefon?' <span class="tel-v" title="Făcută pe telefon — deschide cu Edit, verifică și apasă Salvează pe PC">📱 de verificat</span>':""}</td><td>${esc(r.jud)}</td><td>${esc(r.loc)}</td><td>${esc(r.sat)}</td><td${depCls(r.contract)}>${esc(r.contract)}</td><td${depCls(r.depozit)}>${esc(r.depozit)}</td><td>${esc(r.pers_resp)}</td><td>${esc(r.telefon)}</td><td>${flNC(r, "rpt", flVer(r, "rpt"))}</td><td>${flNC(r, "rt", flVer(r, "rt"))}</td><td>${flNC(r, "fac", flVer(r, "fac"))}</td><td>${flNC(pvR(r), "pv", pvFlag(r))}</td><td>${flNC(actR(r), "act", flVer(actR(r), "act"))}</td><td>${flNC(r, "waap", flVer(r, "waap"))}</td><td>${esc(r.frecv_serv)}</td><td class="noprint actions"><button class="btn sm sec" onclick="openMiscare(${r.id})">Edit</button> ${livrExterior(r) ? `<button class="btn sm sec" disabled style="opacity:.45;cursor:default" title="Livrat din depozitul ${esc(r.depozit)} — fără punct de rută la tine (rămân Facturare și Raport lună)">→ Rute</button>` : `<button class="btn sm" ${ruteStil(r)} onclick="spreRute(${r.id})" title="Verde = comanda e trecută pe rută (RT = V) și punctul are GPS; portocaliu = mai ai de făcut (RT nu e V, fără punct sau fără GPS). Deschide punctul de rută completat din comandă. Nu se salvează nimic până nu verifici și apeși Salvează.">→ Rute</button>`}</td></tr>`;}).join("");
+  let h=`<tr><th class="sortabil" onclick="sorteazaComenzi('data')" title="${sTit}">Data${sg("data")}</th><th>Comandă</th><th>Buc</th><th>Produs</th><th title="Tip îngroșat și subliniat = are accesorii (lista la mouse)">Tip</th><th title="Dublu clic pe nume (sau ține mouse-ul 1,5 s) → contractul și anexa">Client</th><th>Jud</th><th>Loc./Com.</th><th>Sat/Str./Locație</th><th>Contract</th><th>Depozit</th><th>Resp. șantier</th><th>Telefon</th><th>Rpt</th><th>RT</th><th>FAC</th><th>PV</th><th>ACT</th><th>WaAp</th><th>Frecv.</th><th class="noprint"></th></tr>`;
+  h+=MISC.map(r=>{const sr=subReferinta(r); const gz=grupaZilei(r.data); return `<tr><td${gz?` class="zd-${gz}"`:""}><span class="zd">${ziScurtData(r.data)}</span>${sr?` <span class="pill p-T" title="Mai veche decât data de referință a stocului (${fmtD(sr)}) — nu intră în stoc">sub referință</span>`:""}</td><td>${r.grup_id&&r.grup_id!==r.id?'<span class="muted" title="Produs din aceeași comandă cu #'+r.grup_id+'">↳ </span>':""}${tipTxt(r.tip_miscare)}${r.grup_id===r.id?' <span class="muted" title="Comanda are mai multe produse">+'+MISC.filter(x=>x.grup_id===r.id&&x.id!==r.id).length+'</span>':""}</td><td class="tc tc-${tipLit(r.tip_miscare)}">${r.buc}</td><td>${esc(prodN(r.produs, r.buc))}</td><td>${tipAcc([r.model, r.model_fizic].filter(Boolean).join(" "), r.accesorii)}</td><td><b class="${clCls(r)} cl-pop" data-mid="${r.id}">${esc(r.client)}</b>${r.din_telefon?' <span class="tel-v" title="Făcută pe telefon — deschide cu Edit, verifică și apasă Salvează pe PC">📱 de verificat</span>':""}</td><td>${esc(r.jud)}</td><td>${esc(r.loc)}</td><td>${esc(r.sat)}</td><td${depCls(r.contract)}>${esc(r.contract)}</td><td${depCls(r.depozit)}>${esc(r.depozit)}</td><td>${esc(r.pers_resp)}</td><td>${esc(r.telefon)}</td><td>${flNC(r, "rpt", flVer(r, "rpt"))}</td><td>${flNC(r, "rt", flVer(r, "rt"))}</td><td>${flNC(r, "fac", flVer(r, "fac"))}</td><td>${flNC(pvR(r), "pv", pvFlag(r))}</td><td>${flNC(actR(r), "act", flVer(actR(r), "act"))}</td><td>${flNC(r, "waap", flVer(r, "waap"))}</td><td>${esc(r.frecv_serv)}</td><td class="noprint actions"><button class="btn sm sec" onclick="openMiscare(${r.id})">Edit</button> ${livrExterior(r) ? `<button class="btn sm sec" disabled style="opacity:.45;cursor:default" title="Livrat din depozitul ${esc(r.depozit)} — fără punct de rută la tine (rămân Facturare și Raport lună)">→ Rute</button>` : `<button class="btn sm" ${ruteStil(r)} onclick="spreRute(${r.id})" title="Verde = comanda e trecută pe rută (RT = V) și punctul are GPS; portocaliu = mai ai de făcut (RT nu e V, fără punct sau fără GPS). Deschide punctul de rută completat din comandă. Nu se salvează nimic până nu verifici și apeși Salvează.">→ Rute</button>`}</td></tr>`;}).join("");
   $("m-tbl").innerHTML=(h?`<colgroup>${M_LAT.map(w=>`<col style="width:${w}px">`).join("")}</colgroup>`+h:"<tr><td>Nicio comandă.</td></tr>");   // v6.65
   $("m-tbl").style.setProperty("--m-lat", M_LAT.reduce((t,w)=>t+w,0)+"px");
   $("m-tbl").className = "ds-" + DATA_STIL;
@@ -5759,6 +5767,9 @@ function fperDeschide(j){
   $("mod-fper").classList.add("on");
 }
 function fperRapid(tip){
+  if(tip === "lu"){   // v7.06: luna calendaristică de după luna aleasă în Facturare
+    const an = +$("r-an").value, luna = +$("r-luna").value;
+    $("fper-de").value = fpIso(new Date(an, luna, 1)); $("fper-pana").value = fpIso(new Date(an, luna + 1, 0)); fperInfo(); return; }
   const de = dtz($("fper-de").value); if(!de){ toast("Alege întâi data „De la”", true); return; }
   let la;
   if(tip === "l1"){ const ult = new Date(de.getFullYear(), de.getMonth() + 2, 0).getDate();
@@ -6065,6 +6076,11 @@ async function setStareFact(anexaId, v){
   if(error){ toast(error.message, true); return; }
   toast("Stare " + zi2(luna) + "." + an + ": " + v);
   await raportFacturare();
+  // v7.06 (cerut de Ovidiu, 26.10): ai ales FACTURA AVANS / PROFORMA → se deschide fereastra perioadei, o pui tu (nimic propus singur)
+  if(/^FACTURA (AVANS|PROFORMA)/.test(v)){
+    const j = R_AID.findIndex((id, k) => id === anexaId && R_FX[k] && !R_FX[k].per);
+    if(j >= 0){ fperDeschide(j); $("fper-doc").value = v; fperInfo(); }
+  }
 }
 
 async function miscariLuna(an, luna){
@@ -6208,8 +6224,8 @@ async function raportLuna(){
 function deseneazaRaport(){
   const fl = R_NUME === "Facturare";   // v6.89: lățimi fixe + ACC. doar la Facturare „În lucru”
   const rlf = R_NUME === "Raport_luna" && R_ACC.length === R_RANDURI.length;   // v6.91: la fel în Raport lună (ACC. după TIP)
-  const accI = fl ? 16 : rlf ? 6 : -1, lx = fl || rlf;
-  const lat = fl ? F_LAT.slice(0, 17).concat([F_LAT_ACC], F_LAT.slice(17), R_EXTRA_T ? [F_LAT_FAC] : [])
+  const accI = rlf ? 6 : -1, lx = fl || rlf;   // v7.06: Facturare fără coloana ACC. (TIP îngroșat)
+  const lat = fl ? F_LAT.concat(R_EXTRA_T ? [F_LAT_FAC] : [])
     : rlf ? RL_LAT.slice(0, 7).concat([F_LAT_ACC], RL_LAT.slice(7), new Array(Math.max(0, R_ANTET.length - RL_LAT.length)).fill(RL_ZI), R_EXTRA_T ? [RL_RPT] : []) : null;
   $("r-tbl").classList.toggle("flat", lx);
   if(lx) $("r-tbl").style.setProperty("--f-lat", lat.reduce((t, w) => t + w, 0) + "px"); else $("r-tbl").style.removeProperty("--f-lat");
@@ -6247,7 +6263,7 @@ function deseneazaRaport(){
           // v7.04 (cerut de Ovidiu, 25.10, varianta B): FACTURA AVANS / PROFORMA — perioada pusă de mână = text portocaliu; fără perioadă = pastilă roșie „⚠ fără perioadă”
           if(/^FACTURA /.test(String(f[0] || ""))){
             if(p) t = `<span class="fac-per-ok">${t}</span>`;
-            else if(i === 23) t += ` <span class="warn-pill" style="background:#C0392B" title="Rândul e ${esc(f[0])}, dar perioada de facturare nu e pusă — dublu clic pe INCEPUT / SFARSIT LUNA și pune perioada (ex. luna următoare)">⚠ fără perioadă</span>`;
+            else if(i === 23) t += ` <span class="warn-pill" style="background:#C0392B;cursor:pointer" onclick="event.stopPropagation();fperDeschide(${j})" title="Rândul e ${esc(f[0])}, dar perioada de facturare nu e pusă — clic aici și pune tu perioada (ex. luna următoare)">⚠ fără perioadă</span>`;
           }
           if(p && i === 22) t = `<span title="Perioadă pusă de mână${p.document ? " · " + esc(p.document) : ""}${p.observatii ? " · " + esc(p.observatii) : ""}">📅 </span>` + t;
           if(i === 23 && av.per) t += ` <span class="warn-pill" title="${esc(av.per)}">⚠ ${esc(av.per.split(" — ")[0])}</span>`;
@@ -6273,8 +6289,10 @@ function deseneazaRaport(){
           if(i === 19){ const s0 = R_FVJ[j] ? fvSt(R_FVJ[j].k) : "-";
             t = `<button class="fv-sq fv-${s0.replace("-", "x")}" onclick="fvRoteste(${j})" title="Clic: – → ✓ corect → ! greșită → ✗ neprimită → –">${FV_SIM[s0] || "–"}</button>`; }
         }
+        const ta = fl && i === 16 && accLista(R_ACC[j] || "").length;   // v7.06
+        if(ta) t = `<span class="tip-acc" title="Accesorii:&#10;${accLista(R_ACC[j]).map(x => "• " + esc(x)).join("&#10;")}">${t || "—"}</span>`;
         const rl = R_NUME === "Raport_luna" && R_CEL[j] ? R_CEL[j][i] : "";
-        const tl = lx && typeof v === "string" && v.length > 10 ? ` title="${esc(v)}"` : "";   // v6.89: textul întreg la mouse
+        const tl = !ta && lx && typeof v === "string" && v.length > 10 ? ` title="${esc(v)}"` : "";   // v6.89: textul întreg la mouse
         return `<td${rl ? ` class="rl-${rl}"` : ""}${tl}${R_NUM.has(i) ? ' style="text-align:right"' : ''}>${rl ? `<span class="rl-b">${t}</span>` : t}</td>` +
           (i === accI ? `<td class="acc-c">${accIcon(R_ACC[j] || "")}</td>` : "");
       }).join("") + (R_EXTRA_T ? `<td class="noprint">${R_EXTRA[j] || ""}</td>` : "") + "</tr>"; }).join("") + "</tbody>";
