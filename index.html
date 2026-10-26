@@ -896,7 +896,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
   <span id="rz-w"><button id="rz-reset" class="pictograma" title="Lățimi implicite — pune coloanele din tabelele acestei file înapoi cum erau">↺ Reset layout</button><i class="rz-sep">|</i></span>
   <span id="tz-w" title="Mărimea tabelului (doar tabelul, restul rămâne la fel), din 5 în 5%. Merge și cu Ctrl + rotița mausului, Ctrl + / Ctrl − / Ctrl 0. Dublu clic pe procent = scrii tu valoarea."><button class="pictograma" onclick="tzPas(-1)" aria-label="Micșorează tabelul">−</button><b id="tz-v" ondblclick="tzScrie()" title="Dublu clic = scrii mărimea (ex. 87), Enter">100%</b><input id="tz-in" type="number" min="30" max="300" step="5" style="display:none"><button class="pictograma" onclick="tzPas(1)" aria-label="Mărește tabelul">+</button></span>
-  <span class="ver">v7.07</span>
+  <span class="ver">v7.08</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -1060,6 +1060,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
       <div style="flex:0"><label>TVA %</label><input id="r-tva" type="number" value="21" step="1" oninput="genereazaRaport()"></div>
       <div style="flex:0 0 auto" id="r-pana-w"><label title="Gol = zilele se completează până azi. Cu o dată (ex. ultima zi a lunii) se completează până la ea și rămâne așa până o golești.">Completat până la</label><div style="display:flex;gap:6px"><input id="r-pana" type="date" onchange="rlPanaSet(this.value)" style="width:150px;flex:0 0 150px"><button class="btn sec" style="flex:0 0 auto" onclick="rlPanaSet('')" title="Golește data — zilele se completează din nou până azi">✕</button></div></div>
       <div style="flex:0" id="r-mod-wrap"><label>Variantă</label><div style="display:flex;gap:6px"><button class="btn sec" id="r-mod-lucru" onclick="setModFact('lucru')">În lucru</button><button class="btn sec" id="r-mod-gata" onclick="setModFact('gata')">Gata de trimis</button><button class="btn sec" id="r-mod-verif" onclick="setModFact('verif')" title="Facturile primite de la sediu: verifici rând cu rând înainte să le trimiți la clienți">Verificare</button></div></div>
+      <div style="flex:0;align-self:flex-end;padding-bottom:9px;white-space:nowrap"><label style="display:flex;align-items:center;gap:6px;cursor:pointer;margin:0" title="Arată și rândurile din lunile plătite deja în avans (gri, valoare 0, „facturat în …”) — bun când cauți ceva în urmă. Nu intră la Gata de trimis."><input type="checkbox" id="r-ac" onchange="factAcSchimba(this.checked)"> Arată și cele acoperite de avans</label></div>
       <div style="flex:0"><label>&nbsp;</label><button class="btn sec" onclick="exportRaport()">Export Excel</button></div>
       <div style="flex:0"><label>&nbsp;</label><button class="btn sec" onclick="window.print()">PDF / Print</button></div>
     </div>
@@ -5701,6 +5702,10 @@ async function fvScrie(j, camp, val){
 // toată perioada și toată valoarea; în celelalte luni din perioadă apare cu perioada întreagă, „ACOPERIT DE AVANS”, valoare 0
 // (nu intră la „Gata de trimis”); restul lunii, neacoperit, se calculează normal (ex. 19.11–30.11 = diferența). Anexa nu se atinge.
 let FACT_PER = [], R_FX = [], FPER = null;
+// v7.08 (cerut de Ovidiu, 26.10): bifă „Arată și cele acoperite de avans” — rândurile ascunse din v7.03 se pot arăta (gri, 0), ca să vezi istoricul
+let FACT_AC = (() => { try { return localStorage.getItem("fact_ac") === "1"; } catch(e){ return false; } })();
+function factAcSchimba(v){ FACT_AC = !!v; try { localStorage.setItem("fact_ac", v ? "1" : "0"); } catch(e){} genereazaRaport(); }
+document.addEventListener("DOMContentLoaded", () => { const c = $("r-ac"); if(c) c.checked = FACT_AC; });
 const fpZi = (d, k) => new Date(d.getFullYear(), d.getMonth(), d.getDate() + k);
 const fpNrZ = (a, b) => Math.round((b - a) / 864e5) + 1;
 const fpIso = d => d.getFullYear() + "-" + zi2(d.getMonth() + 1) + "-" + zi2(d.getDate());
@@ -5715,7 +5720,10 @@ function factAplicaPerioade(r, an, luna, P){
       .forEach(p => { const de = dtz(p.de), la = dtz(p.pana), fact = p.an_fact === an && p.luna_fact === luna;
         // v7.03 (cerut de Ovidiu, 25.10): rândul „ACOPERIT DE AVANS” nu se mai arată — informația e la mouse pe numele clientului
         if(!fact){ (ac[x.a.id] = ac[x.a.id] || []).push("ACOPERIT DE AVANS: " + dRO(de) + " – " + dRO(la) + " · facturat în " + zi2(p.luna_fact) + "." + p.an_fact +
-          (p.document ? " · " + p.document : "") + (p.observatii ? " · " + p.observatii : "")); return; }
+          (p.document ? " · " + p.document : "") + (p.observatii ? " · " + p.observatii : ""));
+          if(FACT_AC && x.de && x.la){ const a1 = de > x.de ? de : x.de, b1 = la < x.la ? la : x.la;   // v7.08: zilele de la client din luna asta, acoperite
+            if(b1 >= a1) out.push(Object.assign({}, x, { de: a1, la: b1, zile: fpNrZ(a1, b1), acoperit: true, acPer: p })); }
+          return; }
         out.push(Object.assign({}, x, { de, la, zile: fpNrZ(de, la), per: p, acoperit: false })); });
     if(!x.de || !x.la || x.la < x.de) continue;
     let seg = [[x.de, x.la]];   // ce rămâne din lună neacoperit de nicio perioadă → calcul normal
@@ -5740,6 +5748,10 @@ function factPerAvert(x, an, luna){
   const p = x.per, la = dtz(p.pana), azi = dtz(today()), pN = new Date(an, luna, 0), p1 = new Date(an, luna - 1, 1);
   const urm = FACT_PER.some(q => q.anexa_id === p.anexa_id && q.id !== p.id && dtz(q.de) > la);
   const rid = stRid(x.a.status) && x.a.data_ridicarii ? dtz(x.a.data_ridicarii) : null;
+  // v7.08 (cerut de Ovidiu, 26.10): perioadă de avans care începe DUPĂ ridicare (confirmată sau anexa -R FINAL) → nu mai e chirie
+  { const fin = anexeLinie(x.a.id).find(y => /FINAL/i.test(y.anexa || "") && (anexaNr(y) || {}).tip === "R");
+    const rz = rid || (fin ? dtz(fin.data_livrarii || fin.data_emitere) : null);
+    if(rz && dtz(p.de) > rz) return `după ridicare — perioada începe pe ${dRO(dtz(p.de))}, dar ridicarea e pe ${dRO(rz)}: scoate perioada (dublu clic → Scoate perioada) sau stornează factura`; }
   if(rid && rid < la) return `ridicat pe ${dRO(rid)} — înainte de sfârșitul perioadei facturate (${dRO(la)})`;
   if(urm) return null;
   const pana = Math.round((la - azi) / 864e5);
