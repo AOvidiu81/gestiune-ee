@@ -6765,7 +6765,7 @@ const TB_NUME = { clients: "Puncte de rută", visit_logs: "Vizite (rute)", clien
   week_meta: "Note săptămâni (rute)", miscari: "Comenzi", anexe: "Anexe", contracte: "Contracte", clienti: "Clienți", serii: "Serii",
   pv_records: "PV-uri / cereri (înregistrări)", documente: "Registru documente", inceput_zi: "Începutul zilei", prezenta_depozit: "Prezență la depozit", atentie_note: "Note De urmărit",
   ciorne: "Ciorne", profiles: "Conturi", nomenclatoare: "Nomenclatoare", products: "Produse (PV)", stoc_initial: "Stoc inițial",
-  depozite: "Depozite", masini: "Mașini", soferi: "Șoferi", company_info: "Date firmă", facturare_stare: "Stare facturare", facturare_perioada: "Perioade facturare (avans)", facturare_servisari: "Servisări la cerere (facturare)", facturare_locatii: "Facturare pe locații (jurnal)", facturare_verificare: "Verificare facturi" };
+  depozite: "Depozite", masini: "Mașini", soferi: "Șoferi", company_info: "Date firmă", facturare_stare: "Stare facturare", facturare_perioada: "Perioade facturare (avans)", facturare_servisari: "Servisări la cerere (facturare)", facturare_locatii: "Facturare pe locații (jurnal)", facturare_verificare: "Verificare facturi", pv_contor: "Contor PV pe șofer" };
 const tbMB = b => { b = +b || 0; return b < 1048576 ? (b / 1024).toFixed(0) + " KB" : (b / 1048576).toFixed(1).replace(".", ",") + " MB"; };
 function tbBara(et, b, lim){
   const pr = Math.min(100, (+b || 0) / lim * 100), cul = pr > 80 ? "#b3261e" : pr > 60 ? "#D97706" : "#2E8B3C";
