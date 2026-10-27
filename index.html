@@ -901,7 +901,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
   <span id="rz-w"><button id="rz-reset" class="pictograma" title="Lățimi implicite — pune coloanele din tabelele acestei file înapoi cum erau">↺ Reset layout</button><i class="rz-sep">|</i></span>
   <span id="tz-w" title="Mărimea tabelului (doar tabelul, restul rămâne la fel), din 5 în 5%. Merge și cu Ctrl + rotița mausului, Ctrl + / Ctrl − / Ctrl 0. Dublu clic pe procent = scrii tu valoarea."><button class="pictograma" onclick="tzPas(-1)" aria-label="Micșorează tabelul">−</button><b id="tz-v" ondblclick="tzScrie()" title="Dublu clic = scrii mărimea (ex. 87), Enter">100%</b><input id="tz-in" type="number" min="30" max="300" step="5" style="display:none"><button class="pictograma" onclick="tzPas(1)" aria-label="Mărește tabelul">+</button></span>
-  <span class="ver">v7.16</span>
+  <span class="ver">v7.17</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -5627,7 +5627,7 @@ async function raportFacturare(){
     const fara = FACT_VAL(st) ? Math.round(x.zile * pret * cant * 100) / 100 : 0;
     // v7.13: cod client pe factură — „În lucru”: codul + anexa + până la; „Gata de trimis” / Verificare: doar codul (f._cod), EMITERE = data codului sau „-”
     const cc = codClient(x.a, anF, lunaF);
-    const anxT = !cc ? factAnxNr(x.a) : (cc.lipsa ? "⚠ fără prelungire · ultimul " + cc.cod : cc.cod) + " · " + (x.a.anexa || "") + (cc.pana ? " · până la " + dRO(dtz(cc.pana)) : "");
+    const anxT = !cc ? factAnxNr(x.a) : (cc.lipsa ? "⚠ fără prelungire · ultimul " + cc.cod : cc.cod);   // v7.17 (cerut de Ovidiu): doar codul, fără „· ANEXA NR · până la”
     const emT = !cc ? dRO(dtz(factAnxEm(x.a))) : (cc.data ? dRO(dtz(cc.data)) : "-");
     const rand = [ st, x.c.nr_ctr || "", dRO(dtz(x.c.data_emitere)),
              ctrExp(x.c) ? dRO(dtz(ctrExp(x.c))) : ctrExpText(x.c),
