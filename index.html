@@ -899,7 +899,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
   <span id="rz-w"><button id="rz-reset" class="pictograma" title="Lățimi implicite — pune coloanele din tabelele acestei file înapoi cum erau">↺ Reset layout</button><i class="rz-sep">|</i></span>
   <span id="tz-w" title="Mărimea tabelului (doar tabelul, restul rămâne la fel), din 5 în 5%. Merge și cu Ctrl + rotița mausului, Ctrl + / Ctrl − / Ctrl 0. Dublu clic pe procent = scrii tu valoarea."><button class="pictograma" onclick="tzPas(-1)" aria-label="Micșorează tabelul">−</button><b id="tz-v" ondblclick="tzScrie()" title="Dublu clic = scrii mărimea (ex. 87), Enter">100%</b><input id="tz-in" type="number" min="30" max="300" step="5" style="display:none"><button class="pictograma" onclick="tzPas(1)" aria-label="Mărește tabelul">+</button></span>
-  <span class="ver">v7.11</span>
+  <span class="ver">v7.12</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -9709,6 +9709,8 @@ function textComandaDin(d){
   // v5.91 (cerut de Ovidiu, 14.10): comanda ajunge la șoferi cu frecvența, zilele și traseul
   if(Array.isArray(d.evServ) && d.evServ.length){   // v6.79: servisările evenimentului, pe date exacte
     L.push(""); L.push("SERVISARE  :  " + d.evServ.map(dz).join(", ")); L.push("TRASEU  :  " + (d.traseu || "Traseu-EV"));
+  } else if(FARA_ACT(d.tip)){   // v7.12 (cerut de Ovidiu, 27.10): la RIDICARE / EVENIMENT-R fără „SERVISARE”, doar traseul
+    if(d.traseu){ L.push(""); L.push("TRASEU  :  " + d.traseu); }
   } else { const zl = String(d.zile || "").split(",").filter(Boolean).join(", ");
     if(d.frecv || zl){ L.push(""); L.push("SERVISARE  :  " + [d.frecv, zl].filter(Boolean).join(" · ")); }
     if(d.traseu) L.push("TRASEU  :  " + d.traseu); }
