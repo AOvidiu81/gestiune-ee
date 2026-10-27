@@ -845,9 +845,9 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   /* v6.95: capul de tabel deasupra rândurilor (rândurile INACTIV cu opacitate treceau peste el la derulare) */
   thead th{z-index:3}
   /* v7.09: celula marcată (săgeți) — chenar subțire în culoarea accentului, fără să schimbe fundalul */
-  tbody td.c-ales{outline:2px solid color-mix(in srgb, var(--acc) 70%, transparent);outline-offset:-2px}
-  tbody td{scroll-margin-top:44px;scroll-margin-left:8px}
-  @media print{ tbody td.c-ales{outline:none} }
+  /* marcajul e pe atribut (data-tc), nu pe clasă — altfel celula ieșea din regula „td:not([class])” și își pierdea fundalul rândului */
+  tbody td[data-tc]{outline:2px solid color-mix(in srgb, var(--acc) 70%, transparent);outline-offset:-2px}
+  @media print{ tbody td[data-tc]{outline:none} }
   /* v6.96 (cerut de Ovidiu, 25.10): capul de tabel cu 10% mai închis decât rândurile, în toată aplicația */
   :root{--th-bg:color-mix(in srgb,var(--card) 90%,#000)}
   :root .st-t th{background:none}
@@ -900,7 +900,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
   <span id="rz-w"><button id="rz-reset" class="pictograma" title="Lățimi implicite — pune coloanele din tabelele acestei file înapoi cum erau">↺ Reset layout</button><i class="rz-sep">|</i></span>
   <span id="tz-w" title="Mărimea tabelului (doar tabelul, restul rămâne la fel), din 5 în 5%. Merge și cu Ctrl + rotița mausului, Ctrl + / Ctrl − / Ctrl 0. Dublu clic pe procent = scrii tu valoarea."><button class="pictograma" onclick="tzPas(-1)" aria-label="Micșorează tabelul">−</button><b id="tz-v" ondblclick="tzScrie()" title="Dublu clic = scrii mărimea (ex. 87), Enter">100%</b><input id="tz-in" type="number" min="30" max="300" step="5" style="display:none"><button class="pictograma" onclick="tzPas(1)" aria-label="Mărește tabelul">+</button></span>
-  <span class="ver">v7.09</span>
+  <span class="ver">v7.10</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -7761,7 +7761,7 @@ async function rrSalveazaCod(el){
 // v7.09: re-desenează tabelul păstrând rândul / celula marcată (după poziție) și căsuța activă (după data-i)
 function tcPastreaza(id, fn){
   const tb = $(id); if(!tb){ fn(); return; }
-  const tr = tb.querySelector("tbody tr.r-ales"), td = tb.querySelector("tbody td.c-ales");
+  const tr = tb.querySelector("tbody tr.r-ales"), td = tb.querySelector("tbody td[data-tc]");
   const ri = tr ? tcRanduri(tb).indexOf(tr) : -1, ci = td ? td.cellIndex : -1;
   const act = document.activeElement, di = act && tb.contains(act) && act.dataset ? act.dataset.i : null;
   fn();
@@ -11049,14 +11049,14 @@ $("ma-model").addEventListener("change", () => umpleMF("ma-prod","ma-model"));
 $("ma-model").addEventListener("change", () => umpleAcc("ma-prod","ma-model"));
 // v5.84: clic pe un rând de tabel = îl marchează (un singur rând marcat pe tabel); încă un clic = demarchează.
 // Clicurile pe butoane, linkuri, câmpuri nu marchează.
-// v7.09 (cerut de Ovidiu, 27.10): pe lângă rând se marchează și celula (chenar subțire, .c-ales); săgețile ↑ ↓ ← → mută rândul / celula,
+// v7.09 (cerut de Ovidiu, 27.10): pe lângă rând se marchează și celula (chenar subțire, atribut data-tc); săgețile ↑ ↓ ← → mută rândul / celula,
 // Enter = intră în căsuța din celulă (dacă are), Esc = demarchează. În căsuțele de text ↑ ↓ trec la aceeași căsuță pe rândul de sus / jos.
 function tcMarcheaza(tr, td){
   const tb = tr.closest("table"); if(!tb) return;
   tb.querySelectorAll("tr.r-ales").forEach(x => x.classList.remove("r-ales"));
-  tb.querySelectorAll("td.c-ales").forEach(x => x.classList.remove("c-ales"));
+  tb.querySelectorAll("td[data-tc]").forEach(x => x.removeAttribute("data-tc"));
   tr.classList.add("r-ales");
-  if(td) td.classList.add("c-ales");
+  if(td) td.setAttribute("data-tc", "");
 }
 document.addEventListener("click", e => {
   const tr = e.target.closest && e.target.closest("tbody tr"); if(!tr) return;
@@ -11064,12 +11064,30 @@ document.addEventListener("click", e => {
   const tb = tr.closest("table"); if(!tb) return;
   const td = e.target.closest("td"); const inp = e.target.closest("input,select,textarea");
   if(inp){ tcMarcheaza(tr, td); return; }   // clic în căsuță: marchează, fără demarcare
-  const era = tr.classList.contains("r-ales"), celEra = td && td.classList.contains("c-ales");
-  if(era && (celEra || !td)){ tr.classList.remove("r-ales"); if(td) td.classList.remove("c-ales"); return; }
+  const era = tr.classList.contains("r-ales"), celEra = td && td.hasAttribute("data-tc");
+  if(era && (celEra || !td)){ tr.classList.remove("r-ales"); if(td) td.removeAttribute("data-tc"); return; }
   tcMarcheaza(tr, td);
 });
 function tcRanduri(tb){ return [...tb.tBodies].flatMap(b => [...b.rows]).filter(r => r.cells.length && r.offsetParent !== null); }
-function tcArata(td){ try{ td.scrollIntoView({ block: "nearest", inline: "nearest" }); }catch(_){} }
+// v7.10 (cerut de Ovidiu, 27.10): tabelul stă pe loc, se mută doar marcajul; derulează abia când rândul ajunge la 4 rânduri de margine (sus / jos)
+function tcScroller(el){
+  for(let p = el.parentElement; p && p !== document.body; p = p.parentElement){
+    const o = getComputedStyle(p); if(/(auto|scroll)/.test(o.overflowY + o.overflowX) && (p.scrollHeight > p.clientHeight + 1 || p.scrollWidth > p.clientWidth + 1)) return p;
+  }
+  return document.scrollingElement;
+}
+function tcArata(td){
+  const tr = td.parentElement, tb = tr.closest("table"), sc = tcScroller(tb); if(!sc) return;
+  const rs = sc === document.scrollingElement ? { top: 0, bottom: innerHeight, left: 0, right: innerWidth } : sc.getBoundingClientRect();
+  const r = tr.getBoundingClientRect(), h = r.height || 28, th = tb.tHead ? tb.tHead.getBoundingClientRect().height : 0;
+  const bara = sc === document.scrollingElement ? 0 : (sc.offsetHeight - sc.clientHeight);
+  const sus = rs.top + th + 4 * h, jos = rs.bottom - bara - 4 * h;
+  if(r.top < sus) sc.scrollTop -= (sus - r.top);
+  else if(r.bottom > jos) sc.scrollTop += (r.bottom - jos);
+  const c = td.getBoundingClientRect();
+  if(c.left < rs.left) sc.scrollLeft -= (rs.left - c.left + 8);
+  else if(c.right > rs.right - 16) sc.scrollLeft += (c.right - rs.right + 24);
+}
 function tcModalDeschis(){ return !!document.querySelector(".modal.on") || !!(document.getElementById("info-mod") && document.getElementById("info-mod").offsetParent !== null); }
 function tcMuta(tr, td, dr, dc){
   const tb = tr.closest("table"), rr = tcRanduri(tb);
@@ -11102,9 +11120,9 @@ document.addEventListener("keydown", e => {
     return;
   }
   const pag = document.querySelector("main .page.on") || document;
-  const td = pag.querySelector("tbody td.c-ales"), tr = td ? td.parentElement : pag.querySelector("tbody tr.r-ales");
+  const td = pag.querySelector("tbody td[data-tc]"), tr = td ? td.parentElement : pag.querySelector("tbody tr.r-ales");
   if(!tr || tr.offsetParent === null) return;   // nimic marcat → săgețile derulează ca înainte
-  if(k === "Escape"){ tr.classList.remove("r-ales"); if(td) td.classList.remove("c-ales"); e.preventDefault(); return; }
+  if(k === "Escape"){ tr.classList.remove("r-ales"); if(td) td.removeAttribute("data-tc"); e.preventDefault(); return; }
   if(k === "Enter"){
     const c = td && td.querySelector("input,select,textarea"); if(!c) return;
     e.preventDefault(); c.focus(); try{ c.select && c.select(); }catch(_){} return;
