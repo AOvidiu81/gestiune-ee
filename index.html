@@ -835,13 +835,14 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
 <style>
   /* v5.84 (cerut de Ovidiu, 13.10): rândul de sub mouse mai vizibil; clic pe rând = rămâne marcat (urmărești același rând pe ecran).
      Celulele cu culoare proprie (stare, tip, dată) își păstrează culoarea — se văd doar liniile de margine. */
-  tbody tr:hover td:not([class]){background:color-mix(in srgb, var(--acc) 19%, transparent)!important}   /* v6.85: 9% → 19% (cerut de Ovidiu, 23.10) */
-  tbody tr:hover td{box-shadow:inset 0 1px 0 color-mix(in srgb, var(--acc) 45%, transparent), inset 0 -1px 0 color-mix(in srgb, var(--acc) 45%, transparent)}
-  /* v5.85: rândul marcat = doar fundalul de la mouse (fără linii, fără text îngroșat) */
-  tbody tr.r-ales td:not([class]){background:color-mix(in srgb, var(--acc) 19%, transparent)!important}
+  /* v7.11 (cerut de Ovidiu, 27.10): fundalul rândului (mouse / marcat) se pune ca STRAT peste FIECARE celulă (box-shadow inset),
+     nu ca background doar pe celulele fără clasă — înainte celulele cu clasă (Jud, Loc., Client, Contract…) rămâneau „goale”.
+     Celulele cu culoare proprie își păstrează culoarea, doar ușor nuanțată. Mouse = mai deschis (10%), rând marcat cu clic = 19%. */
+  tbody tr:hover td{box-shadow:inset 0 1px 0 color-mix(in srgb, var(--acc) 45%, transparent), inset 0 -1px 0 color-mix(in srgb, var(--acc) 45%, transparent), inset 0 0 0 9999px color-mix(in srgb, var(--acc) 10%, transparent)}
+  tbody tr.r-ales td{box-shadow:inset 0 0 0 9999px color-mix(in srgb, var(--acc) 19%, transparent)}
+  tbody tr.r-ales:hover td{box-shadow:inset 0 1px 0 color-mix(in srgb, var(--acc) 45%, transparent), inset 0 -1px 0 color-mix(in srgb, var(--acc) 45%, transparent), inset 0 0 0 9999px color-mix(in srgb, var(--acc) 19%, transparent)}
   /* v6.85: în Comenzi și Data / Buc (au clasă doar pentru culoarea textului) primesc fundalul rândului — fără „goluri” la mouse / la rândul marcat */
   /* v6.95 (cerut de Ovidiu, 24.10): ACC. și coloana de la final (FAC, butoane) primesc și ele fundalul rândului — fără goluri la mouse / la rândul marcat */
-  tbody tr:hover td.acc-c,tbody tr:hover td.noprint,tbody tr.r-ales td.acc-c,tbody tr.r-ales td.noprint{background:color-mix(in srgb, var(--acc) 19%, transparent)!important}
   /* v6.95: capul de tabel deasupra rândurilor (rândurile INACTIV cu opacitate treceau peste el la derulare) */
   thead th{z-index:3}
   /* v7.09: celula marcată (săgeți) — chenar subțire în culoarea accentului, fără să schimbe fundalul */
@@ -863,11 +864,9 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   #r-kpi .fv-k{cursor:pointer} #r-kpi .fv-k.on{outline:2px solid #2563EB}
   #r-tbl .fac-ac{text-decoration:underline dotted;text-underline-offset:3px;cursor:help}   /* v7.03 */
   #m-tbl td.dep-hd{font-weight:600} #m-tbl td.dep-alt{font-style:italic}
-  #m-tbl tbody tr:hover td.dep-hd,#m-tbl tbody tr:hover td.dep-alt,#m-tbl tbody tr.r-ales td.dep-hd,#m-tbl tbody tr.r-ales td.dep-alt{background:color-mix(in srgb, var(--acc) 19%, transparent)!important}
   #rz-w{display:none;align-items:center;gap:8px;margin-right:2px}
   header #rz-w #rz-reset{width:auto;height:26px;padding:0 11px;border-radius:13px;font-size:12px;font-weight:600;line-height:1;white-space:nowrap;display:inline-flex;align-items:center;gap:5px}
   #rz-w .rz-sep{font-style:normal;opacity:.45;font-size:16px;line-height:1}
-  #m-tbl:not(.ds-2) tbody tr:hover td[class*="zd-"],#m-tbl tbody tr:hover td.tc,#m-tbl:not(.ds-2) tbody tr.r-ales td[class*="zd-"],#m-tbl tbody tr.r-ales td.tc{background:color-mix(in srgb, var(--acc) 19%, transparent)!important}
   /* v5.86: bara de schimbare în bloc + meniul ⋯ */
   #pb-bara{position:fixed;left:50%;bottom:14px;transform:translateX(-50%);z-index:55;display:none;align-items:center;gap:12px;flex-wrap:wrap;
     background:var(--card);border:1px solid var(--acc);border-radius:8px;padding:10px 14px;box-shadow:0 6px 24px rgba(0,0,0,.25);max-width:calc(100vw - 32px)}
@@ -900,7 +899,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
   <span id="rz-w"><button id="rz-reset" class="pictograma" title="Lățimi implicite — pune coloanele din tabelele acestei file înapoi cum erau">↺ Reset layout</button><i class="rz-sep">|</i></span>
   <span id="tz-w" title="Mărimea tabelului (doar tabelul, restul rămâne la fel), din 5 în 5%. Merge și cu Ctrl + rotița mausului, Ctrl + / Ctrl − / Ctrl 0. Dublu clic pe procent = scrii tu valoarea."><button class="pictograma" onclick="tzPas(-1)" aria-label="Micșorează tabelul">−</button><b id="tz-v" ondblclick="tzScrie()" title="Dublu clic = scrii mărimea (ex. 87), Enter">100%</b><input id="tz-in" type="number" min="30" max="300" step="5" style="display:none"><button class="pictograma" onclick="tzPas(1)" aria-label="Mărește tabelul">+</button></span>
-  <span class="ver">v7.10</span>
+  <span class="ver">v7.11</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
