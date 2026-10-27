@@ -899,7 +899,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
   <span id="rz-w"><button id="rz-reset" class="pictograma" title="Lățimi implicite — pune coloanele din tabelele acestei file înapoi cum erau">↺ Reset layout</button><i class="rz-sep">|</i></span>
   <span id="tz-w" title="Mărimea tabelului (doar tabelul, restul rămâne la fel), din 5 în 5%. Merge și cu Ctrl + rotița mausului, Ctrl + / Ctrl − / Ctrl 0. Dublu clic pe procent = scrii tu valoarea."><button class="pictograma" onclick="tzPas(-1)" aria-label="Micșorează tabelul">−</button><b id="tz-v" ondblclick="tzScrie()" title="Dublu clic = scrii mărimea (ex. 87), Enter">100%</b><input id="tz-in" type="number" min="30" max="300" step="5" style="display:none"><button class="pictograma" onclick="tzPas(1)" aria-label="Mărește tabelul">+</button></span>
-  <span class="ver">v7.12</span>
+  <span class="ver">v7.13</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -1785,6 +1785,9 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   /* v6.87: panoul „Servisare la cerere” din anexă */
   #mod-a .sc-box{border:1px solid var(--bd);border-radius:10px;padding:10px 12px;margin:2px 0 12px;background:var(--card2,transparent);transition:border-color .15s}
   #mod-a .sc-box.on{border-color:var(--acc,var(--g2));box-shadow:inset 3px 0 0 var(--acc,var(--g2))}
+  #ma-cc-l .cc-r{display:grid;grid-template-columns:minmax(150px,1fr) 150px 150px 34px;gap:8px;align-items:end;margin-bottom:6px}
+  #ma-cc-l .cc-r label{font-size:11px} #ma-cc-l .cc-r input{width:100%}
+  @media(max-width:640px){ #ma-cc-l .cc-r{grid-template-columns:1fr 1fr} }
   #mod-a .sc-sw{display:flex;gap:12px;align-items:center;cursor:pointer;margin:0;text-transform:none;letter-spacing:0;font-weight:400;color:var(--tx)}
   #mod-a .sc-sw input{position:absolute;opacity:0;width:0;height:0}
   #mod-a .sc-tr{flex:0 0 38px;height:22px;border-radius:11px;background:var(--bd);position:relative;transition:background .15s}
@@ -1868,6 +1871,12 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
       <div class="maf sc-box" id="ma-fa-box">
         <label class="sc-sw"><input type="checkbox" id="ma-fa" onchange="$('ma-fa-box').classList.toggle('on', this.checked)"><span class="sc-tr"></span>
           <span class="sc-tx"><b>Facturare în avans</b><small>În Facturare rândul pornește în fiecare lună ca FACTURA AVANS (luna calendaristică). Prima perioadă, dacă e alta: dublu clic pe INCEPUT / SFARSIT LUNA. Implicit la persoane fizice (CNP).</small></span></label>
+      </div>
+      <!-- v7.13 (cerut de Ovidiu, 27.10 — CTP INVEST, ARL CLUJ): codul cerut de client pe factură, în loc de ANEXA NR -->
+      <div class="maf sc-box" id="ma-cc-box">
+        <div class="sc-tx" style="display:block"><b>Cod client pe factură</b><small style="display:block">În Facturare apare codul în loc de numele anexei („Gata de trimis”: doar codul). Mai multe coduri (prelungiri): fiecare cu „valabil până la” — apare cel valabil în luna aleasă. Un singur cod fără dată de sfârșit = mereu.</small></div>
+        <div id="ma-cc-l" style="margin-top:8px"></div>
+        <button type="button" class="btn sm sec" style="margin-top:6px" onclick="maCcAdauga()">+ Cod</button>
       </div>
       <!-- v6.86 / v6.87: servisare la cerere pe anexă (VITAL BERRY) — rând separat în Facturare, cu zilele trecute de mână -->
       <div class="maf sc-box" id="ma-sc-box">
@@ -4344,12 +4353,33 @@ function maUmpleRand(a){
   $("ma-evde").value=g("ev_de",""); $("ma-evpana").value=g("ev_pana",""); maEvArata();   // v6.71
   { const k = CTR.find(x => x.id === +$("ma-contract").value), cl = k && CLI.find(x => x.id === k.client_id);   // v7.02: anexă nouă la PF → bifată
     $("ma-fa").checked = a && a.fact_avans != null ? !!a.fact_avans : !!(cl && cl.id_tip === "CNP"); $("ma-fa-box").classList.toggle("on", $("ma-fa").checked); }
+  maCcSet(a && Array.isArray(a.coduri_client) ? a.coduri_client : []);   // v7.13
   $("ma-sc").checked=!!(a && a.serv_cerere); $("ma-scp").value=a && a.serv_pret!=null ? fmtPret(a.serv_pret) : "";   // v6.86
   $("ma-scm").value=(a && (a.serv_moneda || a.moneda)) || $("ma-moneda").value || "RON"; maScArata();   // v6.87: moneda servisării, separată
   $("ma-transp").value=g("transport",0); $("ma-frecv").value=g("frecv_servisare","");
   ziSet(g("zi_servisare","")); $("ma-pers").value=g("pers_contact",""); $("ma-tel").value=g("telefon","");
   $("ma-status").closest("div").style.display = a && a.id ? "" : "none";   // la un rând nou starea se pune singură
   $("ma-del").style.display = MA_RAND.some(r => r.id) ? "" : "none";
+}
+// v7.13 (cerut de Ovidiu, 27.10): coduri client pe factură (CTP INVEST: prelungiri PORO…; ARL CLUJ: RC-KST-RO-…) — comune pe toată anexa
+function maCcRand(c){ c = c || {};
+  return `<div class="cc-r"><div><label>Cod</label><input class="cc-cod" value="${esc(c.cod || "")}" placeholder="ex. PORO2604006"></div>`
+    + `<div><label>Valabil până la</label><input type="date" class="cc-pana" value="${esc(c.pana || "")}"></div>`
+    + `<div><label>Data documentului</label><input type="date" class="cc-data" value="${esc(c.data || "")}"></div>`
+    + `<button type="button" class="btn sm sec" title="Scoate codul" onclick="this.closest('.cc-r').remove();maCcBox()">✕</button></div>`; }
+function maCcSet(L){ const el = $("ma-cc-l"); if(!el) return; el.innerHTML = (L || []).map(maCcRand).join(""); maCcBox(); }
+function maCcAdauga(){ $("ma-cc-l").insertAdjacentHTML("beforeend", maCcRand({})); maCcBox(); const i = $("ma-cc-l").querySelectorAll(".cc-cod"); i[i.length - 1].focus(); }
+function maCcBox(){ const b = $("ma-cc-box"); if(b) b.classList.toggle("on", !!$("ma-cc-l").querySelector(".cc-r")); }
+function maCcCitite(){ return [...document.querySelectorAll("#ma-cc-l .cc-r")].map(r => ({ cod: r.querySelector(".cc-cod").value.trim(), pana: r.querySelector(".cc-pana").value || null, data: r.querySelector(".cc-data").value || null })).filter(c => c.cod); }
+// codul valabil în luna aleasă: primul (după „până la”) care nu s-a terminat înainte de 1 ale lunii; fără „până la” = mereu.
+// Toate terminate → { lipsa: true, ultim } (în „Gata de trimis” rămâne ultimul cod, în „În lucru” ⚠ fără prelungire).
+function codClient(a, an, luna){
+  const L = (a && Array.isArray(a.coduri_client) ? a.coduri_client : []).filter(c => c && c.cod);
+  if(!L.length) return null;
+  const s = L.slice().sort((x, y) => (x.pana || "9999") < (y.pana || "9999") ? -1 : (x.pana || "9999") > (y.pana || "9999") ? 1 : 0);
+  const prima = an + "-" + String(luna).padStart(2, "0") + "-01";
+  const c = s.find(x => !x.pana || x.pana >= prima);
+  return c ? c : { ...s[s.length - 1], lipsa: true };
 }
 // v6.71 (cerut de Ovidiu, 23.10 — PRIMĂRIA CĂLAN): la Forma EVENIMENT, amplasarea / ridicarea nu sunt zilele evenimentului;
 // perioada evenimentului se pune pe anexă și Facturare numără doar zilele ei (prețul rămâne pe zi).
@@ -4379,10 +4409,11 @@ function maRecForm(){
     ev_de:maEsteEv()&&$("ma-evde").value||null,ev_pana:maEsteEv()&&($("ma-evpana").value||$("ma-evde").value)||null,   // v6.71
     serv_cerere:$("ma-sc").checked,serv_pret:$("ma-sc").checked?(Math.round((+String($("ma-scp").value).replace(",",".")||0)*100)/100||null):null,
     serv_moneda:$("ma-sc").checked?($("ma-scm").value||null):null,   // v6.86 / v6.87
-    fact_avans:$("ma-fa").checked};   // v7.02
+    fact_avans:$("ma-fa").checked,   // v7.02
+    coduri_client:maCcCitite()};   // v7.13
 }
 function maRandPastreaza(){ const r = MA_RAND[MA_I] || {}; MA_RAND[MA_I] = { ...r, ...maRecForm(), id: r.id }; }
-function maRandArata(i){ MA_I = i; const r = MA_RAND[i] || {}; $("ma-id").value = r.id || ""; maUmpleRand(r); maRanduri(); }
+function maRandArata(i){ MA_I = i; const r = MA_RAND[i] || {}; $("ma-id").value = r.id || ""; const cc = $("ma-cc-l") ? maCcCitite() : null; maUmpleRand(r); if(cc) maCcSet(cc); maRanduri(); }   // v7.13: codurile sunt ale anexei, nu ale rândului
 function maRandEticheta(r, i, multiLoc){ return (i + 1) + ". " + Math.abs(+r.cant || 0) + " " + (r.produs || "?") + (r.model ? " " + r.model : "") + (r.model_fizic ? " " + r.model_fizic : "") + (multiLoc ? " · " + (r.sat || r.loc || "") : ""); }
 function maRanduri(){
   const el = $("ma-randuri");
@@ -4551,7 +4582,7 @@ async function saveAnexa_(dupa){
 // v5.11: anexa cu mai multe produse — fiecare produs e un rând în `anexe`, toate cu același doc_id (= id-ul primului rând).
 // Antetul (numele anexei, data emiterii, contractul) e comun; restul (locație, produs, preț, servisare) e pe rând.
 async function saveAnexaDoc(){
-  const hdr = { contract_id: +$("ma-contract").value, anexa: $("ma-an").value || null, data_emitere: $("ma-de").value || null, fact_un_rand: MA_UN_RAND };
+  const hdr = { contract_id: +$("ma-contract").value, anexa: $("ma-an").value || null, data_emitere: $("ma-de").value || null, fact_un_rand: MA_UN_RAND, coduri_client: maCcCitite() };   // v7.13
   for(let i = 0; i < MA_RAND.length; i++){
     const r = MA_RAND[i];
     if(!r.produs){ maRandArata(i); toast("Produsul " + (i + 1) + ": alege produsul", true); return; }
@@ -5530,15 +5561,21 @@ async function raportFacturare(){
     const cant = x.cant, pret = +x.a.pret || 0;
     const st = x.acoperit ? "ACOPERIT DE AVANS" : x.locZero ? "INACTIV" : (FS[x.a.id] || (x.per && x.per.document) || (x.a.fact_avans ? "FACTURA AVANS" : "ACTIV"));   // v6.88: locația cu 0 = INACTIV; v7.02: anexa „Facturare în avans” pornește ca FACTURA AVANS
     const fara = FACT_VAL(st) ? Math.round(x.zile * pret * cant * 100) / 100 : 0;
-    return [ st, x.c.nr_ctr || "", dRO(dtz(x.c.data_emitere)),
+    // v7.13: cod client pe factură — „În lucru”: codul + anexa + până la; „Gata de trimis” / Verificare: doar codul (f._cod), EMITERE = data codului sau „-”
+    const cc = codClient(x.a, anF, lunaF);
+    const anxT = !cc ? factAnxNr(x.a) : (cc.lipsa ? "⚠ fără prelungire · ultimul " + cc.cod : cc.cod) + " · " + (x.a.anexa || "") + (cc.pana ? " · până la " + dRO(dtz(cc.pana)) : "");
+    const emT = !cc ? dRO(dtz(factAnxEm(x.a))) : (cc.data ? dRO(dtz(cc.data)) : "-");
+    const rand = [ st, x.c.nr_ctr || "", dRO(dtz(x.c.data_emitere)),
              ctrExp(x.c) ? dRO(dtz(ctrExp(x.c))) : ctrExpText(x.c),
-             x.k.nume || "", x.k.id_tip || "", x.k.atr || "", x.k.cui || "", factAnxNr(x.a),
-             dRO(dtz(factAnxEm(x.a))),
+             x.k.nume || "", x.k.id_tip || "", x.k.atr || "", x.k.cui || "", anxT,
+             emT,
              dRO(dtz(x.a.data_livrarii || x.a.data_emitere)),
              x.a.jud || "", x.a.loc || "", x.loc || x.a.sat || "", x.a.forma || "", prodN(x.a.produs || "", cant),
              [x.a.model, x.a.model_fizic].filter(Boolean).join(" "), x.a.um || "", cant, pret, x.a.moneda || "", stInfo(x),   // v6.89: accesoriile în ACC.
              dRO(x.de), dRO(x.la), x.zile, fara, Math.round(fara * (1 + tva) * 100) / 100,
              x.a.scadent === null || x.a.scadent === undefined ? "" : x.a.scadent ];
+    if(cc) rand._cod = cc.cod;
+    return rand;
   });
   // v6.86 (cerut de Ovidiu, 24.10 — VITAL BERRY): anexa cu „Servisare la cerere” bifată are sub ultimul ei rând un rând
   // „SERVISARE LA CERERE”: zilele servisărilor din luna aceasta + bucățile servisate, trecute de mână (dublu clic / „Zile”).
@@ -5559,6 +5596,7 @@ async function raportFacturare(){
         [ "SERVISARE", prodN(a.produs || "", buc || 2), [a.model, a.model_fizic].filter(Boolean).join(" "), "BUC", buc, pret, a.serv_moneda || a.moneda || "", "SERVISARE LA CERERE",
           scZileText(zile), "", zile.length, fara, Math.round(fara * (1 + tva) * 100) / 100, a.scadent === null || a.scadent === undefined ? "" : a.scadent ]));
       N.aid.push(null); N.av.push({}); N.ro.push(false); N.fc.push({}); N.fx.push(null); N.acc.push(a.accesorii || "");
+      if(R_RANDURI[j]._cod) N.rr[N.rr.length - 1]._cod = R_RANDURI[j]._cod;   // v7.13: și rândul de servisare la cerere ia codul clientului
       N.ex.push(`<button class="btn sm sec" title="Zilele servisărilor la cerere din luna aceasta (data + câte produse)" onclick="fscDeschide(${a.id})">🧽 Zile${zile.length ? " (" + zile.length + ")" : ""}</button>`);
     });
     R_ACC = N.acc; R_RANDURI = N.rr; R_AID = N.aid; R_AVERT = N.av; R_EXTRA = N.ex; R_ROSU = N.ro; R_FCOL = N.fc; R_FX = N.fx; }
@@ -5623,7 +5661,7 @@ async function raportFacturare(){
     const idx = [1, 4, 5, 6, 7, 8, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 22, 23, 25, 26, 27];
     R_ROSU = R_ROSU.filter((v, j) => FACT_VAL(R_RANDURI[j][0]));
     // v6.47: ultima coloană „DOCUMENT” = FACTURA AVANS / FACTURA PROFORMA (gol la factura obișnuită)
-    R_RANDURI = R_RANDURI.filter(f => FACT_VAL(f[0])).map(f => idx.map(i => f[i]).concat([/^FACTURA /.test(f[0]) ? f[0] : ""]));
+    R_RANDURI = R_RANDURI.filter(f => FACT_VAL(f[0])).map(f => idx.map(i => i === 8 && f._cod ? f._cod : f[i]).concat([/^FACTURA /.test(f[0]) ? f[0] : ""]));   // v7.13: doar codul clientului
     R_ANTET = ["NR CTR","NUME CLIENT","ID","ATR.","NUMAR","ANEXA NR","JUD.","LOCALITATE","SAT / LOCATIE / STRADA","FORMA","PRODUS","TIP","UM","CANT.","PRET","MONEDA","INCEPUT LUNA","SFARSIT LUNA","VALOARE FARA TVA","VALOARE CU TVA","SCADENT","DOCUMENT"];
     R_NUM = new Set([13, 14, 18, 19]); R_FMT2 = new Set([14, 18, 19]);
     R_EXTRA_T = ""; R_EXTRA = []; R_AID = []; R_AVERT = []; R_NUME = "Facturare_de_trimis";
@@ -5651,7 +5689,7 @@ async function factVerifica(an, luna){
   const n = { "-": 0, V: 0, G: 0, N: 0 }; tot.forEach(t => n[fvSt(t.k)]++);
   R_FVJ = FV_FILTRU ? tot.filter(t => fvSt(t.k) === FV_FILTRU) : tot;
   R_RANDURI = R_FVJ.map(t => { const v = FVER[t.k] || {};
-    return idx.map(i => t.f[i]).concat([/^FACTURA /.test(t.f[0]) ? t.f[0] : "", v.nr_factura || "", v.observatii || "", FV_NUME[fvSt(t.k)] || "-"]); });
+    return idx.map(i => i === 8 && t.f._cod ? t.f._cod : t.f[i]).concat([/^FACTURA /.test(t.f[0]) ? t.f[0] : "", v.nr_factura || "", v.observatii || "", FV_NUME[fvSt(t.k)] || "-"]); });   // v7.13
   R_ANTET = ["NUME CLIENT","CUI","NR CTR","ANEXA NR","LOCALITATE","SAT / LOCATIE / STRADA","PRODUS","TIP","CANT.","PRET","MONEDA","INCEPUT","SFARSIT","NR Z.","VALOARE FARA TVA","VALOARE CU TVA","DOCUMENT","NR. FACTURA","OBSERVATIE","VERIFICAT"];
   R_NUM = new Set([8, 9, 13, 14, 15]); R_FMT2 = new Set([9, 14, 15]);
   R_EXTRA_T = ""; R_EXTRA = []; R_AID = []; R_AVERT = []; R_ROSU = []; R_FCOL = []; R_ACC = []; R_NUME = "Facturare_verificare";
