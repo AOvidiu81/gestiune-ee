@@ -1054,7 +1054,7 @@ let dayStart = {}; // {brand, plate, kmStart, driver1, driver2, startTime}
 let lastRouteRows = [];
 
 // --- Șofer EE: aplicatia ruleaza in fila „Rută” (../sofer/), care trimite datele zilei ---
-const EE_RUTA_VERSION = 'v37'; // aceeasi cu VERSIUNE din sw.js; Șofer EE o arata langa rotita
+const EE_RUTA_VERSION = 'v38'; // aceeasi cu VERSIUNE din sw.js; Șofer EE o arata langa rotita
 const SOFER_MODE = new URLSearchParams(location.search).get('sofer') === '1';
 let multiZile = null;   // mai multe zile bifate (ruta complementara), altfel null
 let multiTrasee = null; // mai multe trasee bifate, altfel null
@@ -1665,7 +1665,12 @@ function pad2(n){ return String(n).padStart(2,'0'); }
 function fmtHHMM(d){ return pad2(d.getHours()) + pad2(d.getMinutes()); }
 function fmtCode(v){
   if(v.obs === 'O') return 'O';
-  if(v.obs === 'LA') return (v.arrive ? fmtHHMM(v.arrive) : '····') + '-LA';
+  // R38 (cerut de Ovidiu, 27.10): „Am ajuns” + „Lipsă acces” → „1028-03 LA” (ora sosirii + minutele de staționare);
+  // „Lipsă acces” apăsat direct (fără Am ajuns) → „1028-LA”, ca înainte.
+  if(v.obs === 'LA'){
+    if(v.arrive && v.leave){ const m = Math.max(0, Math.round((v.leave - v.arrive) / 60000)); return fmtHHMM(v.arrive) + '-' + (m < 100 ? pad2(m) : String(m)) + ' LA'; }
+    return (v.arrive ? fmtHHMM(v.arrive) : '····') + '-LA';
+  }
   if(v.arrive && v.leave){
     let mins = Math.round((v.leave - v.arrive) / 60000);
     if(mins < 0) mins = 0;
@@ -1837,7 +1842,9 @@ listEl.addEventListener('click', (e)=>{
     const r = dataById[key];
     visitLog[key] = visitLog[key] || {};
     if(type === 'LA'){
+      // R38: după „Am ajuns”, ora apăsării LA = ora plecării (staționarea); direct → doar ora sosirii, fără plecare
       if(!visitLog[key].arrive) visitLog[key].arrive = new Date();
+      else if(!visitLog[key].leave) visitLog[key].leave = new Date();
       visitLog[key].obs = 'LA';
     } else {
       visitLog[key].arrive = null;
@@ -2805,7 +2812,7 @@ populateHistorySel();
 
 function parseWeekCell(raw){
   if(raw === undefined || raw === null || raw === '') return null;
-  const m = /^(\d{3,4})-([0-9]{1,3}|[A-Za-z]+)$/.exec(raw.trim());
+  const m = /^(\d{3,4})-([0-9]{1,3}|[A-Za-z]+)(?:\s+LA)?$/i.exec(raw.trim());   // R38: și „1028-03 LA”
   if(m){
     const t = m[1].padStart(4,'0');
     const hh = t.slice(0,2), mm = t.slice(2,4);
@@ -2823,6 +2830,7 @@ function classifyWeekCell(raw){
 
   // Codes can appear either bare (e.g. "A", "X", "R") or with an HHMM- time
   // prefix (e.g. "0944-L", "0838-A"). Extract the meaningful code either way.
+  if(/^\d{3,4}-\d{1,3}\s+LA$/.test(upper)) return 'yellow';   // R38: „1028-03 LA” = lipsă acces cu staționare
   const m = /^(\d{3,4})-([A-Za-z0-9]+)$/.exec(v);
   const code = m ? m[2].toUpperCase() : upper;
 
@@ -3192,7 +3200,7 @@ function visitRowHtml(r){
   if(v.obs === 'LA'){
     const arriveStr = v.arrive ? (pad2(v.arrive.getHours())+':'+pad2(v.arrive.getMinutes())) : '--:--';
     return `<div class="visit-row">
-      <div class="visit-info">⚠️ <b>Lipsă acces</b> — sosit ${arriveStr}</div>
+      <div class="visit-info">⚠️ <b>Lipsă acces</b> — sosit ${arriveStr}${(v.arrive && v.leave) ? ' · ' + Math.max(0, Math.round((v.leave - v.arrive) / 60000)) + ' min' : ''}</div>
       <div class="visit-reset" data-key="${escapeHtml(key)}">✖ Resetează</div>
     </div>`;
   }
@@ -3430,15 +3438,19 @@ function render(){
       if(i>0) html += `<div class="leg-dist">↓ <span>${r._legDist.toFixed(1)} km</span></div>`;
       html += cardHtml(r, i+1);
     });
-    if(doneOrdered.length){
-      html += `<div class="group-title">✅ Deja vizitați (${doneOrdered.length})</div>`;
+    // R38 (cerut de Ovidiu, 27.10): punctele fără coordonate (ex. remorcile VITAL, MOBIL) stau la coadă, dar ÎNAINTE de „Deja vizitați”
+    // — altfel ajungeau sub toate punctele vizitate și șoferii nu le vedeau. Cele vizitate intră la „Deja vizitați”.
+    const noCoordsNe = noCoords.filter(r=>!isVisitDone(r)), noCoordsGata = noCoords.filter(r=>isVisitDone(r));
+    if(noCoordsNe.length){
+      html += `<div class="group-title">🚚 Fără pin GPS — remorci / puncte mobile (${noCoordsNe.length})</div>`;
+      html += noCoordsNe.map(r=>cardHtml(r)).join('');
+    }
+    if(doneOrdered.length || noCoordsGata.length){
+      html += `<div class="group-title">✅ Deja vizitați (${doneOrdered.length + noCoordsGata.length})</div>`;
       doneOrdered.forEach((r,i)=>{
         html += cardHtml(r, notDoneOrdered.length+i+1);
       });
-    }
-    if(noCoords.length){
-      html += `<div class="group-title">Fără coordonate GPS (nu pot fi ordonate)</div>`;
-      html += noCoords.map(r=>cardHtml(r)).join('');
+      html += noCoordsGata.map(r=>cardHtml(r)).join('');
     }
     html += finishBtnHtml(rows);
     listEl.innerHTML = html;
