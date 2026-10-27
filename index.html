@@ -275,6 +275,8 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   .fs-sel.INACTIV{background:rgba(107,114,128,.14);border-color:rgba(107,114,128,.4);color:var(--mut)}
   .fs-sel.FACTURA{background:rgba(59,130,246,.12);border-color:rgba(59,130,246,.45);color:#3b82f6}   /* v6.47: avans / proformă */
   .fs-sel.NU{background:rgba(217,83,79,.12);border-color:rgba(217,83,79,.4);color:#d9534f}
+  .fs-sel.IN{background:rgba(234,179,8,.18);border-color:rgba(202,138,4,.55);color:#a16207}   /* v7.16: IN ASTEPTARE FACTURA */
+  :root[data-tema="inchis"] .fs-sel.IN{color:#FACC15}
   .fs-sel option{background:var(--card,#fff);color:var(--tx)}
   .cx-w{position:relative;display:block} .cx-w>input{padding-right:30px}   /* v5.98: ✕ în căsuțele de căutare */
   .cx-b{position:absolute;right:4px;top:50%;transform:translateY(-50%);border:0;background:none;color:var(--mut);font-size:16px;line-height:1;padding:4px 6px;cursor:pointer}
@@ -899,7 +901,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
   <span id="rz-w"><button id="rz-reset" class="pictograma" title="Lățimi implicite — pune coloanele din tabelele acestei file înapoi cum erau">↺ Reset layout</button><i class="rz-sep">|</i></span>
   <span id="tz-w" title="Mărimea tabelului (doar tabelul, restul rămâne la fel), din 5 în 5%. Merge și cu Ctrl + rotița mausului, Ctrl + / Ctrl − / Ctrl 0. Dublu clic pe procent = scrii tu valoarea."><button class="pictograma" onclick="tzPas(-1)" aria-label="Micșorează tabelul">−</button><b id="tz-v" ondblclick="tzScrie()" title="Dublu clic = scrii mărimea (ex. 87), Enter">100%</b><input id="tz-in" type="number" min="30" max="300" step="5" style="display:none"><button class="pictograma" onclick="tzPas(1)" aria-label="Mărește tabelul">+</button></span>
-  <span class="ver">v7.15</span>
+  <span class="ver">v7.16</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -2645,8 +2647,10 @@ const DATA_STIL = 1;   // v5.39: ales de Ovidiu (12.10) — „1 pastilă”; bu
 // v6.33 (cerut de Ovidiu, 17.10): DAUNA / FURT — produsul iese din chirie, dar nu se întoarce în depozit (ca o reducere fără PV)
 const TIP_PIERD = /^(DAUNA|FURT)$/;
 // v6.47 (cerut de Ovidiu, 19.10): STARE LUNA — și FACTURA AVANS / FACTURA PROFORMA (păstrează valoarea, intră la „Gata de trimis”)
-const FACT_STARI = ["ACTIV","FACTURAT","FACTURA AVANS","FACTURA PROFORMA","INACTIV","NU FACTURAM"];
-const FACT_VAL = st => ["ACTIV","FACTURAT","FACTURA AVANS","FACTURA PROFORMA"].includes(st);
+// v7.16 (cerut de Ovidiu, 27.10): IN ASTEPTARE FACTURA = cererea de factură trimisă (✉), factura nu a venit încă — valoarea rămâne,
+// nu intră în „Gata de trimis”, apare în Verificare; ✓ acolo → FACTURAT.
+const FACT_STARI = ["ACTIV","IN ASTEPTARE FACTURA","FACTURAT","FACTURA AVANS","FACTURA PROFORMA","INACTIV","NU FACTURAM"];
+const FACT_VAL = st => ["ACTIV","IN ASTEPTARE FACTURA","FACTURAT","FACTURA AVANS","FACTURA PROFORMA"].includes(st);
 let R_ACC = [];   // v6.89: accesoriile pe rândurile din Facturare (coloana ACC., doar la „În lucru”)
 // v6.89: lățimile coloanelor din Facturare „În lucru” (cele 28 de coloane; ACC. după TIP; FAC la final)
 // v6.91: lățimile din Raport lună (NR. CTR … „0”; ACC. după TIP), apoi zilele și Rpt
@@ -5523,7 +5527,7 @@ function ftDeschide(j){
   if(!m){
     m = document.createElement("div"); m.id = "mod-ft"; m.className = "modal";
     m.innerHTML = `<div class="box" style="max-width:600px"><h3>✉ Text pentru facturare</h3>
-      <div class="muted" style="font-size:12px;margin-bottom:6px">Scrie direct în text (ex. la „Mențiuni”; gol = nu se trimite). *Textul între steluțe* iese îngroșat. <b>E-mail</b> = copiază textul formatat și deschide mesajul (Către + subiect) → lipește cu Ctrl+V. După ce primești factura: STARE LUNA = FACTURAT, apoi Verificare → ✓ + nr. factură.</div>
+      <div class="muted" style="font-size:12px;margin-bottom:6px">Scrie direct în text (ex. la „Mențiuni”; gol = nu se trimite). *Textul între steluțe* iese îngroșat. <b>E-mail</b> = copiază textul formatat și deschide mesajul (Către + subiect) → lipește cu Ctrl+V. După trimitere: STARE LUNA = IN ASTEPTARE FACTURA; când vine factura: Verificare → ✓ (trece pe FACTURAT) + nr. factură.</div>
       <div style="display:flex;gap:8px;margin-bottom:6px"><label style="flex:1">Către<input id="ft-dest"></label><label style="flex:1">Subiect<input id="ft-sub"></label></div>
       <textarea id="ft-t" rows="18" style="width:100%;font-family:inherit;font-size:13px"></textarea>
       <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:10px;flex-wrap:wrap">
@@ -5725,14 +5729,14 @@ async function raportFacturare(){
   if(R_MOD === "gata"){
     const idx = [1, 4, 5, 6, 7, 8, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 22, 23, 25, 26, 27];
     // v7.14 (cerut de Ovidiu, 27.10): ce e deja FACTURAT în luna aleasă (factură făcută separat) nu mai intră în „Gata de trimis”; rămâne în Verificare
-    const deTrimis = f => FACT_VAL(f[0]) && f[0] !== "FACTURAT";
+    const deTrimis = f => FACT_VAL(f[0]) && f[0] !== "FACTURAT" && f[0] !== "IN ASTEPTARE FACTURA";   // v7.16: nici cele cerute deja
     R_ROSU = R_ROSU.filter((v, j) => deTrimis(R_RANDURI[j]));
     // v6.47: ultima coloană „DOCUMENT” = FACTURA AVANS / FACTURA PROFORMA (gol la factura obișnuită)
     R_RANDURI = R_RANDURI.filter(deTrimis).map(f => idx.map(i => i === 8 && f._cod ? f._cod : f[i]).concat([/^FACTURA /.test(f[0]) ? f[0] : ""]));   // v7.13: doar codul clientului
     R_ANTET = ["NR CTR","NUME CLIENT","ID","ATR.","NUMAR","ANEXA NR","JUD.","LOCALITATE","SAT / LOCATIE / STRADA","FORMA","PRODUS","TIP","UM","CANT.","PRET","MONEDA","INCEPUT LUNA","SFARSIT LUNA","VALOARE FARA TVA","VALOARE CU TVA","SCADENT","DOCUMENT"];
     R_NUM = new Set([13, 14, 18, 19]); R_FMT2 = new Set([14, 18, 19]);
     R_EXTRA_T = ""; R_EXTRA = []; R_AID = []; R_AVERT = []; R_NUME = "Facturare_de_trimis";
-    $("r-nota").textContent = "Varianta de trimis la sediu: doar rândurile de facturat (STARE LUNA = ACTIV, FACTURA AVANS sau FACTURA PROFORMA; ultima coloană spune dacă e avans / proformă). Rândurile deja FACTURAT în luna aceasta (factură făcută separat, ex. eveniment) nu mai apar aici — rămân în Verificare. Schimbările se fac pe „În lucru”. Export Excel scoate exact acest tabel.";
+    $("r-nota").textContent = "Varianta de trimis la sediu: doar rândurile de facturat (STARE LUNA = ACTIV, FACTURA AVANS sau FACTURA PROFORMA; ultima coloană spune dacă e avans / proformă). Rândurile deja FACTURAT sau IN ASTEPTARE FACTURA în luna aceasta (factură cerută / făcută separat, ex. eveniment) nu mai apar aici — rămân în Verificare. Schimbările se fac pe „În lucru”. Export Excel scoate exact acest tabel.";
   }
   deseneazaRaport();
 }
@@ -5791,7 +5795,7 @@ async function fvRoteste(j){
   const v0 = fvSt(t.k), v = FV_URM[v0];
   if(!await fvSalveaza(t, { stare: v === "-" ? null : v })) return;
   try{
-    if(v === "V" && t.f[0] === "ACTIV") await fvFacturat(t, true);
+    if(v === "V" && (t.f[0] === "ACTIV" || t.f[0] === "IN ASTEPTARE FACTURA")) await fvFacturat(t, true);   // v7.16
     else if(v0 === "V" && t.f[0] === "FACTURAT") await fvFacturat(t, false);
   }catch(e){ toast("STARE LUNA: " + (e.message || e), true); }
   toast("Verificare: " + (FV_NUME[v] || "neverificat"));
