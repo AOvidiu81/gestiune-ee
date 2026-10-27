@@ -899,7 +899,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
   <span id="rz-w"><button id="rz-reset" class="pictograma" title="Lățimi implicite — pune coloanele din tabelele acestei file înapoi cum erau">↺ Reset layout</button><i class="rz-sep">|</i></span>
   <span id="tz-w" title="Mărimea tabelului (doar tabelul, restul rămâne la fel), din 5 în 5%. Merge și cu Ctrl + rotița mausului, Ctrl + / Ctrl − / Ctrl 0. Dublu clic pe procent = scrii tu valoarea."><button class="pictograma" onclick="tzPas(-1)" aria-label="Micșorează tabelul">−</button><b id="tz-v" ondblclick="tzScrie()" title="Dublu clic = scrii mărimea (ex. 87), Enter">100%</b><input id="tz-in" type="number" min="30" max="300" step="5" style="display:none"><button class="pictograma" onclick="tzPas(1)" aria-label="Mărește tabelul">+</button></span>
-  <span class="ver">v7.13</span>
+  <span class="ver">v7.14</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -5493,6 +5493,46 @@ async function genereazaRaport(){
   if($("r-tip").value === "facturare") await raportFacturare(); else await raportLuna();
 }
 
+// v7.14: textul de cerere factură pentru un rând din Facturare
+let FT_TXT = new Map();
+const ftBani = v => (+v || 0).toLocaleString("ro-RO", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+function factText(x, f, tva){
+  const a = x.a, k = x.k || {}, c = x.c || {};
+  const cant = f[18], pret = f[19], mon = f[20] || "", fara = f[25], cu = f[26];
+  const anx = f._cod || String(f[8] || "").split(" · ")[0];
+  const L = ["CERERE FACTURĂ — " + dRO(new Date()), "",
+    "Client: " + (k.nume || "") + (k.cui ? " · " + (k.id_tip || "CUI") + " " + [k.atr, k.cui].filter(Boolean).join("") : ""),
+    "Contract: " + (c.nr_ctr || "") + (anx ? " · " + anx : "") + (f[9] && f[9] !== "-" ? " din " + f[9] : ""),
+    "Locație: " + [a.jud, a.loc, x.loc || a.sat].filter(Boolean).join(", "),
+    "Produs: " + cant + " " + (f[15] || "") + (f[16] ? " " + f[16] : "") + (a.forma ? " · " + a.forma : ""),
+    "Perioada: " + (f[22] || "") + " – " + (f[23] || "") + " · " + f[24] + (+f[24] === 1 ? " zi" : " zile"),
+    "Preț: " + ftBani(pret) + " " + mon + " / buc / zi",
+    "Valoare fără TVA: " + ftBani(fara) + " " + mon + " · cu TVA (" + Math.round(tva * 100) + "%): " + ftBani(cu) + " " + mon ];
+  if(/^FACTURA /.test(f[0])) L.push("Document: " + f[0]);
+  if(f[27] !== "" && f[27] != null) L.push("Scadent: " + f[27] + " zile");
+  L.push("", "Mențiuni: ");
+  return L.join("\n");
+}
+function ftDeschide(j){
+  const t = FT_TXT.get(j); if(t == null){ toast("Rândul nu mai e în listă — reîncarcă Facturare", true); return; }
+  let m = document.getElementById("mod-ft");
+  if(!m){
+    m = document.createElement("div"); m.id = "mod-ft"; m.className = "modal";
+    m.innerHTML = `<div class="box" style="max-width:560px"><h3>✉ Text pentru facturare</h3>
+      <div class="muted" style="font-size:12px;margin-bottom:6px">Poți scrie direct în text (ex. la „Mențiuni”). După ce primești factura: STARE LUNA = FACTURAT (nu mai intră în „Gata de trimis”), apoi Verificare → ✓ + nr. factură.</div>
+      <textarea id="ft-t" rows="14" style="width:100%;font-family:inherit;font-size:13px"></textarea>
+      <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:10px">
+        <button class="btn sec" onclick="closeModal('mod-ft')">Închide</button>
+        <button class="btn sec" onclick="ftCopiaza()">Copiază</button>
+        <button class="btn" onclick="ftWa()">WhatsApp</button></div></div>`;
+    m.addEventListener("mousedown", e => { if(e.target === m) closeModal("mod-ft"); });
+    document.body.appendChild(m);
+  }
+  $("ft-t").value = t; m.classList.add("on");
+  setTimeout(() => { const el = $("ft-t"); el.focus(); el.setSelectionRange(el.value.length, el.value.length); }, 0);
+}
+async function ftCopiaza(){ const v = $("ft-t").value; try{ await navigator.clipboard.writeText(v); toast("Text copiat"); }catch(e){ $("ft-t").select(); document.execCommand("copy"); toast("Text copiat"); } }
+function ftWa(){ window.open("https://wa.me/?text=" + encodeURIComponent($("ft-t").value), "_blank", "noopener"); }
 let FACT_CMD = {};
 function factCmd(a){   // v6.81: comanda clientului de pe amplasarea evenimentului (aceeași linie de anexă)
   if(!a) return null; const ids = [a.id, a.linie_id].filter(Boolean);
@@ -5577,6 +5617,11 @@ async function raportFacturare(){
     if(cc) rand._cod = cc.cod;
     return rand;
   });
+  // v7.14 (cerut de Ovidiu, 27.10 — ORAȘUL CĂLAN): ✉ pe rând = textul pentru departamentul de facturare (Copiază / WhatsApp)
+  FT_TXT = new Map();
+  r.forEach((x, j) => { const f = R_RANDURI[j]; if(!f || !x || !x.a) return;
+    FT_TXT.set(j, factText(x, f, tva));
+    R_EXTRA[j] = (R_EXTRA[j] || "") + ` <button class="btn sm sec" title="Text pentru departamentul de facturare (copiază / WhatsApp)" onclick="ftDeschide(${j})">✉</button>`; });
   // v6.86 (cerut de Ovidiu, 24.10 — VITAL BERRY): anexa cu „Servisare la cerere” bifată are sub ultimul ei rând un rând
   // „SERVISARE LA CERERE”: zilele servisărilor din luna aceasta + bucățile servisate, trecute de mână (dublu clic / „Zile”).
   // Valoare = total bucăți servisate × prețul pe servisare / produs. Fără zile = INACTIV, 0. Anexa nu se schimbă.
@@ -5659,13 +5704,15 @@ async function raportFacturare(){
   if(R_MOD === "verif"){ await factVerifica(anF, lunaF); deseneazaRaport(); return; }
   if(R_MOD === "gata"){
     const idx = [1, 4, 5, 6, 7, 8, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 22, 23, 25, 26, 27];
-    R_ROSU = R_ROSU.filter((v, j) => FACT_VAL(R_RANDURI[j][0]));
+    // v7.14 (cerut de Ovidiu, 27.10): ce e deja FACTURAT în luna aleasă (factură făcută separat) nu mai intră în „Gata de trimis”; rămâne în Verificare
+    const deTrimis = f => FACT_VAL(f[0]) && f[0] !== "FACTURAT";
+    R_ROSU = R_ROSU.filter((v, j) => deTrimis(R_RANDURI[j]));
     // v6.47: ultima coloană „DOCUMENT” = FACTURA AVANS / FACTURA PROFORMA (gol la factura obișnuită)
-    R_RANDURI = R_RANDURI.filter(f => FACT_VAL(f[0])).map(f => idx.map(i => i === 8 && f._cod ? f._cod : f[i]).concat([/^FACTURA /.test(f[0]) ? f[0] : ""]));   // v7.13: doar codul clientului
+    R_RANDURI = R_RANDURI.filter(deTrimis).map(f => idx.map(i => i === 8 && f._cod ? f._cod : f[i]).concat([/^FACTURA /.test(f[0]) ? f[0] : ""]));   // v7.13: doar codul clientului
     R_ANTET = ["NR CTR","NUME CLIENT","ID","ATR.","NUMAR","ANEXA NR","JUD.","LOCALITATE","SAT / LOCATIE / STRADA","FORMA","PRODUS","TIP","UM","CANT.","PRET","MONEDA","INCEPUT LUNA","SFARSIT LUNA","VALOARE FARA TVA","VALOARE CU TVA","SCADENT","DOCUMENT"];
     R_NUM = new Set([13, 14, 18, 19]); R_FMT2 = new Set([14, 18, 19]);
     R_EXTRA_T = ""; R_EXTRA = []; R_AID = []; R_AVERT = []; R_NUME = "Facturare_de_trimis";
-    $("r-nota").textContent = "Varianta de trimis la sediu: doar rândurile de facturat (STARE LUNA = ACTIV, FACTURAT, FACTURA AVANS sau FACTURA PROFORMA; ultima coloană spune dacă e avans / proformă). Schimbările se fac pe „În lucru”. Export Excel scoate exact acest tabel.";
+    $("r-nota").textContent = "Varianta de trimis la sediu: doar rândurile de facturat (STARE LUNA = ACTIV, FACTURA AVANS sau FACTURA PROFORMA; ultima coloană spune dacă e avans / proformă). Rândurile deja FACTURAT în luna aceasta (factură făcută separat, ex. eveniment) nu mai apar aici — rămân în Verificare. Schimbările se fac pe „În lucru”. Export Excel scoate exact acest tabel.";
   }
   deseneazaRaport();
 }
