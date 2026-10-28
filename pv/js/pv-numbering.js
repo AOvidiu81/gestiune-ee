@@ -3,12 +3,13 @@
 
 import { CounterRepo } from './db.js';
 
-export function prefixForType(processType) {
+// v93 (cerut de Ovidiu, 28.10): la evenimente PVA-EV / PVR-EV (SUPLIMENTARE intra la PVA, REDUCERE la PVR)
+export function prefixForType(processType, ev = false) {
   switch ((processType || '').trim().toUpperCase()) {
     case 'AMPLASARE':
-      return 'PVA';
+      return ev ? 'PVA-EV' : 'PVA';
     case 'RIDICARE':
-      return 'PVR';
+      return ev ? 'PVR-EV' : 'PVR';
     case 'SERVISARE':
       return 'PVS';
     case 'VANZARE':
@@ -20,10 +21,15 @@ export function prefixForType(processType) {
   }
 }
 
-export async function nextPvNumber(processType) {
-  const counter = await CounterRepo.next('pv_counter_value');
-  const prefix = prefixForType(processType);
-  return `${prefix}_${counter}`;   // v92 (cerut de Ovidiu, 26.10): fara zerourile din fata (PVS_1, nu PVS_00001)
+// v93 (cerut de Ovidiu, 28.10): numarul PV e unic si crescator PE DEPOZIT (indiferent de sofer si de tip),
+// luat din baza (pv_numar_urmator). Fara semnal: unul din numerele rezervate dinainte pe telefon.
+// Daca nu exista nici rezervare (rar): numar local „L<n>” (nu se amesteca cu cele din baza).
+export async function nextPvNumber(processType, { depot = '', ev = false } = {}) {
+  const prefix = prefixForType(processType, ev);
+  let n = null;
+  try { const { iaPvNumar } = await import('./auth.js'); n = await iaPvNumar(depot); } catch (e) { n = null; }
+  if (n == null) return `${prefix}_L${await CounterRepo.next('pv_counter_value')}`;
+  return `${prefix}_${n}`;
 }
 
 export async function nextAvizNumber() {
@@ -35,9 +41,9 @@ export async function nextAvizNumber() {
 }
 
 export function displayPvNumber(value) {
-  const match = /^(PV[A-Z]*)_(\d+)$/.exec(value || '');
+  const match = /^(PV[A-Z]*(?:-EV)?)_(L?)(\d+)$/.exec(value || '');
   if (!match) return value || '';
-  return `${match[1]} - ${parseInt(match[2], 10)}`;   // v92: si PV-urile vechi (00001) se arata fara zerouri
+  return `${match[1]} - ${match[2]}${parseInt(match[3], 10)}`;   // v92: fara zerouri; v93: PVA-EV / PVR-EV, L = numar local
 }
 
 export function displayAvizNumber(value) {

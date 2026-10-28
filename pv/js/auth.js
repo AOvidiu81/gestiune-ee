@@ -320,10 +320,49 @@ async function trimiteDocument(meta, blob) {
   return true;
 }
 
+/** v93 (cerut de Ovidiu, 28.10): numarul PV unic pe DEPOZIT — din baza (pv_numar_urmator). Telefonul tine
+ * 2 numere rezervate (localStorage pv_rezervate) pentru PV-urile facute fara semnal. */
+const PV_REZ = 'pv_rezervate', PV_DEP = 'pv_dep', PV_REZ_N = 2;
+const citesteRez = () => { try { return JSON.parse(localStorage.getItem(PV_REZ) || '{}') || {}; } catch (e) { return {}; } };
+const scrieRez = (o) => { try { localStorage.setItem(PV_REZ, JSON.stringify(o)); } catch (e) {} };
+const cuTimp = (p, ms) => Promise.race([p, new Promise((_, r) => setTimeout(() => r(new Error('timeout')), ms))]);
+async function numarDinBaza(dep) {
+  if (typeof navigator !== 'undefined' && navigator.onLine === false) return null;
+  const session = await getSession(); if (!session) return null;
+  const supabase = await getSupabase();
+  const { data, error } = await cuTimp(supabase.rpc('pv_numar_urmator', { dep }), 5000);
+  if (error) { console.warn('[pv-numar]', error.message || error); return null; }
+  return typeof data === 'number' ? data : null;
+}
+let pvRezInLucru = false;
+export async function rezervaPvNumere(depot) {
+  const D = String(depot || (() => { try { return localStorage.getItem(PV_DEP) || ''; } catch (e) { return ''; } })()).trim().toUpperCase();
+  if (!D || pvRezInLucru) return;
+  pvRezInLucru = true;
+  try {
+    const o = citesteRez(); const L = Array.isArray(o[D]) ? o[D] : [];
+    while (L.length < PV_REZ_N) { const n = await numarDinBaza(D); if (n == null) break; L.push(n); o[D] = L; scrieRez(o); }
+  } catch (e) { /* fara semnal */ } finally { pvRezInLucru = false; }
+}
+/** Numarul pentru PV-ul care se salveaza acum: cu semnal = urmatorul din baza; fara = cel mai mic rezervat. */
+export async function iaPvNumar(depot) {
+  const D = String(depot || '').trim().toUpperCase(); if (!D) return null;
+  try { localStorage.setItem(PV_DEP, D); } catch (e) {}
+  let n = null;
+  try { n = await numarDinBaza(D); } catch (e) { n = null; }
+  if (n == null) {
+    const o = citesteRez(); const L = (Array.isArray(o[D]) ? o[D] : []).sort((a, b) => a - b);
+    if (L.length) { n = L.shift(); o[D] = L; scrieRez(o); }
+  }
+  setTimeout(() => rezervaPvNumere(D), 1500);
+  return n;
+}
+
 /** v92 (cerut de Ovidiu, 26.10): contorul PV pe sofer, tinut in baza (pv_contor). Telefonul trimite
  * ultimul numar folosit, baza pastreaza maximul si il intoarce — la telefon nou / reinstalare numerotarea
  * continua de unde a ramas soferul. Fara semnal (sau fara tabel) ramane contorul din telefon. */
 export async function syncPvCounter() {
+  rezervaPvNumere();   // v93: numerele rezervate pe depozit (contorul pe sofer de mai jos ramane doar pentru numerele locale „L”)
   try {
     const session = await getSession();
     if (!session) return;

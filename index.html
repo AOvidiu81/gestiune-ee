@@ -901,7 +901,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
   <span id="rz-w"><button id="rz-reset" class="pictograma" title="Lățimi implicite — pune coloanele din tabelele acestei file înapoi cum erau">↺ Reset layout</button><i class="rz-sep">|</i></span>
   <span id="tz-w" title="Mărimea tabelului (doar tabelul, restul rămâne la fel), din 5 în 5%. Merge și cu Ctrl + rotița mausului, Ctrl + / Ctrl − / Ctrl 0. Dublu clic pe procent = scrii tu valoarea."><button class="pictograma" onclick="tzPas(-1)" aria-label="Micșorează tabelul">−</button><b id="tz-v" ondblclick="tzScrie()" title="Dublu clic = scrii mărimea (ex. 87), Enter">100%</b><input id="tz-in" type="number" min="30" max="300" step="5" style="display:none"><button class="pictograma" onclick="tzPas(1)" aria-label="Mărește tabelul">+</button></span>
-  <span class="ver">v7.18</span>
+  <span class="ver">v7.19</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -7401,7 +7401,8 @@ function pvTip(r){
   return c ? t + " (" + c.charAt(0) + c.slice(1).toLowerCase() + ")" : t;
 }
 const PV_TIPURI = { AMPLASARE:"Amplasare", RIDICARE:"Ridicare", SERVISARE:"Servisare", "LIPSA ACCES":"Lipsă acces", VANZARE:"Vânzare", "CERERE CONCEDIU":"Cerere concediu", "CERERE INVOIRE":"Cerere învoire", "CERERE DEMISIE":"Cerere demisie" };
-const pvNumar = v => { const m = /^(PV[A-Z]*)_(\d+)$/.exec(v || ""); return m ? m[1] + " - " + parseInt(m[2], 10) : (v || "—"); };   // v7.07: fără zerourile din față
+const pvNumar = v => { const m = /^(PV[A-Z]*(?:-EV)?)_(L?)(\d+)$/.exec(v || ""); return m ? m[1] + " - " + m[2] + parseInt(m[3], 10) : (v || "—"); };   // v7.19: PVA-EV / PVR-EV, L = număr local (fără semnal)
+const pvPrefix = v => { const m = /^(PV[A-Z]*(?:-EV)?)_/.exec(v || ""); return m ? m[1] : "PV"; };   // v7.19: doar tipul (pentru numele fișierului)
 const pvMarime = b => { if(!b) return "—"; const k = b / 1024; return k < 1024 ? Math.round(k) + " KB" : (k / 1024).toFixed(1) + " MB"; };
 
 async function loadPV(){
@@ -7473,7 +7474,7 @@ async function pvDescarca(id){
   if(error || !data){ toast(error ? error.message : "Nu am putut descărca documentul", true); return; }
   const curat = t => String(t || "").replace(/[\\/:*?"<>|]+/g, " ").replace(/\s+/g, " ").trim();
   const loc = curat([r.county, r.location].filter(Boolean).join(" ")).slice(0, 60);
-  const nume = [curat(pvNumar(r.pv_number)).replace(/ - /, "-"), curat(r.client_name) || "CLIENT", loc, dRO(new Date(r.created_at))]
+  const nume = [pvPrefix(r.pv_number), curat(r.client_name) || "CLIENT", loc, dRO(new Date(r.created_at))]   // v7.19 (cerut de Ovidiu, 28.10): fără numărul PV în numele fișierului
     .filter(Boolean).join(" - ") + ".pdf";
   const url = URL.createObjectURL(data);
   const a = document.createElement("a"); a.href = url; a.download = nume;

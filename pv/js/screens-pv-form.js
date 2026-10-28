@@ -858,7 +858,7 @@ export async function openProcessVerbalForm({ driver, car, depot, processType, p
       }
       isBusy = true;
       try {
-        const previewPvNumber = `${prefixForType(processType)}_0`;
+        const previewPvNumber = `${prefixForType(processType, /^EVENIMENT/i.test(state.mentiuneComanda || ''))}_0`;
         const previewAvizNumber = needsAviz ? `AVZ-EE_${new Date().getFullYear()}_000` : '';
         const annotatedPhotoUrls = await annotateAllPhotos({ pvNumber: previewPvNumber, avizNumber: previewAvizNumber });
         const model = buildModel({ id: 'preview', pvNumber: previewPvNumber, avizNumber: previewAvizNumber, createdAt: new Date().toISOString(), annotatedPhotoUrls });
@@ -881,7 +881,8 @@ export async function openProcessVerbalForm({ driver, car, depot, processType, p
       isBusy = true;
       render();
       try {
-        const pvNumber = await nextPvNumber(processType);
+        const pvEv = /^EVENIMENT/i.test(state.mentiuneComanda || '');   // v93: comanda EVENIMENT-A / EVENIMENT-R → PVA-EV / PVR-EV
+        const pvNumber = await nextPvNumber(processType, { depot: depot.name, ev: pvEv });
         const avizNumber = needsAviz ? await nextAvizNumber() : '';
         const createdAt = new Date().toISOString();
         const id = uuid();
@@ -914,7 +915,7 @@ export async function openProcessVerbalForm({ driver, car, depot, processType, p
         const countyCode = countyAbbreviation(countyRaw);
         const fileToken = (v) => (v || '').toUpperCase().replace(/[^A-Z0-9]+/g, '-').replace(/^-+|-+$/g, '');
         const locationForFile = `${countyCode} ${addressWithoutCounty(model.field1)}`.trim();
-        const fileName = `${fileToken(prefixForType(processType))} - ${fileToken(model.clientName) || 'CLIENT'} - ${fileToken(locationForFile) || 'ADRESA'} - ${new Date(createdAt).toLocaleDateString('ro-RO')}`;
+        const fileName = `${fileToken(prefixForType(processType, pvEv))} - ${fileToken(model.clientName) || 'CLIENT'} - ${fileToken(locationForFile) || 'ADRESA'} - ${new Date(createdAt).toLocaleDateString('ro-RO')}`;
 
         const html = buildDocumentHtml({ model, isPreview: false, photoUrls: annotatedPhotoUrls, beneficiarySignatureUrl: model.beneficiarySignatureUrl, driverSignatureUrl: model.driverSignatureUrl, stampAvailable: true });
         showToast('Proces verbal salvat in istoric.');
