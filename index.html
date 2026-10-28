@@ -237,6 +237,15 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   #mod-ri .ri-ser{display:flex;gap:6px 18px;flex-wrap:wrap;margin-bottom:6px}
   #mod-ri .ri-ser label{display:flex;align-items:center;gap:6px;margin:0}
   #mod-ri .ri-ser input{width:auto}
+  /* v7.22 locația din șantier la suplimentare / reducere */
+  .mm-ls{margin-top:10px}
+  .mm-ls .ls-l{display:flex;flex-wrap:wrap;gap:8px;margin-top:4px}
+  .mm-ls .ls-b{border:1px solid var(--bd);background:var(--card);color:var(--tx);border-radius:8px;padding:6px 12px;text-align:left;cursor:pointer;font-size:12px;line-height:1.35}
+  .mm-ls .ls-b:hover{border-color:var(--g)}
+  .mm-ls .ls-b.on{border-color:#2f9e44;box-shadow:0 0 0 2px rgba(47,158,68,.35)}
+  .mm-ls .ls-b.nou{border-style:dashed}
+  .mm-ls .ls-b .mu{color:var(--mut);font-size:11px}
+  .mm-ls .ls-h{color:var(--mut);font-size:12px;margin-top:6px}
   .btn.sm.ri-de{background:#fff3bf;border-color:#e0b400;color:#5c4400;font-weight:600}
   .btn.sm.ri-de:hover{background:#ffe680}
   .lux-cap h3{margin:0;color:#fff;font-size:18px;font-weight:600;letter-spacing:.01em}
@@ -911,7 +920,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
   <span id="rz-w"><button id="rz-reset" class="pictograma" title="Lățimi implicite — pune coloanele din tabelele acestei file înapoi cum erau">↺ Reset layout</button><i class="rz-sep">|</i></span>
   <span id="tz-w" title="Mărimea tabelului (doar tabelul, restul rămâne la fel), din 5 în 5%. Merge și cu Ctrl + rotița mausului, Ctrl + / Ctrl − / Ctrl 0. Dublu clic pe procent = scrii tu valoarea."><button class="pictograma" onclick="tzPas(-1)" aria-label="Micșorează tabelul">−</button><b id="tz-v" ondblclick="tzScrie()" title="Dublu clic = scrii mărimea (ex. 87), Enter">100%</b><input id="tz-in" type="number" min="30" max="300" step="5" style="display:none"><button class="pictograma" onclick="tzPas(1)" aria-label="Mărește tabelul">+</button></span>
-  <span class="ver">v7.21</span>
+  <span class="ver">v7.22</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -1446,6 +1455,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
           <div><label>Responsabil șantier / locație</label><input id="mm-pers" placeholder="cine primește marfa la fața locului"></div>
           <div><label>Telefon responsabil</label><input id="mm-tel"></div>
         </div>
+        <div id="mm-ls" class="mm-ls" style="display:none"></div>
       </div>
 
       <div class="sect" id="mm-doc-sect" style="display:none">
@@ -2982,7 +2992,7 @@ function mmCardExtAlege(id){
   $("mm-pers").value = x.pers_resp || ""; $("mm-tel").value = x.telefon || ""; if(x.frecv_serv) $("mm-frecv").value = x.frecv_serv;
   if(x.produs){ $("mm-prod").value = x.produs; umpleModele("mm-prod", "mm-model", x.model || "", x.accesorii || ""); umpleMF("mm-prod", "mm-model", x.model_fizic || ""); }
   document.querySelectorAll("#mm-carduri .mm-card").forEach(e => e.classList.toggle("sel", e.getAttribute("onclick") === "mmCardExtAlege(" + id + ")"));
-  mmSchimbat();
+  mmLsArata(); mmSchimbat();
 }
 // Ultima anexă a liniei: după data amplasării (sau emiterii), apoi după id.
 function anexaUltima(anexaId){
@@ -3189,7 +3199,7 @@ function openMiscare(id){
   MM_FRATI = []; mmDoc(true); if(r && r.grup_id === r.id) mmFratiIncarca(r.id);   // v5.13
   mmZile();
   mmAntet(); $("mod-m").classList.add("on");
-  mmModClient(); mmExtIncarca(); mmEvpArata(); mmRiArata();   // v6.79 / v7.20
+  mmModClient(); mmExtIncarca(); mmEvpArata(); mmRiArata(); MM_LS = null; mmLsArata();   // v6.79 / v7.20 / v7.22
   MM_CIORNA = null; $("mm-ciorne").innerHTML = ""; if(!r) mmCiorne();
 }
 // v4.80 (cerut de Ovidiu, 08.10): ciornele comenzilor noi nesalvate (tabel `ciorne`, tip 'comanda').
@@ -3355,6 +3365,10 @@ async function saveMiscare(genereaza){
     pers_resp:$("mm-pers").value||null,telefon:$("mm-tel").value||null,frecv_serv:$("mm-frecv").value||null,zi_serv:$("mm-zi").value||null,traseu:$("mm-traseu").value||null,observatii:$("mm-obs").value||null,
     contract_id:+$("mm-ctr").value||null, anexa_id:+$("mm-anexa").value||null};
   if(mmExterior()){ rec.client_id = null; rec.contract_id = null; rec.anexa_id = null; }   // v4.78: clientul exterior nu e în baza lui
+  if(mmExterior() && LS_TIP.test(tip) && $("mm-ls").style.display !== "none" && !$("mm-ls").dataset.multi){ mmLsArata();   // v7.22: locația din șantier → miscari.locatii
+    const r = MM_LS && !MM_LS.nou ? mmLsLocuri().find(x => x.cod === MM_LS.cod) : null;
+    if(MM_LS) rec.locatii = [{ jud: rec.jud, localitate: rec.loc || "", locatie: rec.sat || "", buc: Math.abs(buc), lat: r ? r.lat : null, lon: r ? r.lon : null, cod: r ? r.cod : "" }];
+  }
   { const evp = tip === "EVENIMENT-A" && !mmExterior(), sv = evp ? evServLista() : [];   // v6.79: programul evenimentului
     rec.ev_rid = evp ? ($("mm-ev-rid").value || null) : null; rec.ev_serv = sv.length ? sv : null;
     if(sv.length && !rec.traseu) rec.traseu = "Traseu-EV"; }
@@ -3785,6 +3799,64 @@ function mmRiArata(){
   const id = +$("mm-id").value || 0, m = id ? MISC.find(x => x.id === id) : null;
   b.style.display = m && RI_TIP.test(m.tip_miscare) && RI_TIP.test($("mm-tip").value) ? "" : "none";
 }
+// ================= v7.22 (cerut de Ovidiu, 28.10 — CLEVERVOLT): la SUPLIMENTARE / REDUCERE din exterior alegi locația din șantier =================
+// Locațiile = punctele de rută C… ale clientului (pe adresă). Clic pe una → adresa se completează EXACT ca pe punct (o literă diferită
+// făcea punct nou). „+ Locație nouă în același șantier” → adresa de bază + „- LOC n”, o corectezi. La Salvează comanda primește
+// miscari.locatii (o locație, cu bucățile) → „→ Rute” deschide tabelul pe locații cu bucățile puse acolo (punct nou C<comandă>-01 la locația nouă).
+const LS_TIP = /^(SUPLIMENTARE|REDUCERE)$/;
+let MM_LS = null;   // { cod } locație existentă · { nou: true } locație nouă · null = nealeasă
+function mmLsLocuri(){
+  const n = extNorm($("mm-client").value); if(!n) return [];
+  const g = new Map();
+  (PCT || []).filter(p => /^C\d+/.test(p.client_key || "") && extNorm(p.client) === n).forEach(p => {
+    const k = extCheie(p.jud, p.localitate, p.locatie), b = peBaza(p.client_key);
+    const r = g.get(k) || { key: k, jud: p.jud || "", localitate: p.localitate || "", locatie: p.locatie || "", cod: b, activ: false, buc: 0, zile: new Set(), masini: new Set(), lat: null, lon: null };
+    if(peNrBaza(b) < peNrBaza(r.cod)) r.cod = b;
+    if(p.status !== "INACTIV"){ r.activ = true; r.buc = Math.max(r.buc, prodPunct(p)); if(p.ziua) r.zile.add(p.ziua); if(p.masina) r.masini.add(p.masina); }
+    if(r.lat == null && +p.lat){ r.lat = p.lat; r.lon = p.lon; }
+    g.set(k, r);
+  });
+  return [...g.values()].filter(r => r.activ).sort((a, b) => peNrBaza(a.cod) - peNrBaza(b.cod));
+}
+function mmLsArata(){
+  const box = $("mm-ls"); if(!box) return;
+  const tip = $("mm-tip").value, ok = LS_TIP.test(tip) && mmExterior();
+  const L = ok ? mmLsLocuri() : [];
+  if(!ok || !L.length){ box.style.display = "none"; box.innerHTML = ""; return; }
+  const m0 = MISC.find(x => x.id === (+$("mm-id").value || 0));
+  if(m0 && Array.isArray(m0.locatii) && m0.locatii.length > 1){   // comanda e deja împărțită pe locații din „→ Rute” — nu se atinge de aici
+    box.style.display = ""; box.dataset.multi = "1";
+    box.innerHTML = `<div class="ls-h">Comanda e pe ${m0.locatii.length} locații (${esc(m0.locatii.map(l => l.cod).join(", "))}) — se schimbă din „→ Rute” (tabelul pe locații).</div>`; return;
+  }
+  box.dataset.multi = "";
+  const k = extCheie($("mm-jud").value, $("mm-loc").value, $("mm-sat").value), f = L.find(r => r.key === k);
+  if(f) MM_LS = { cod: f.cod };                                            // adresa scrisă = o locație cunoscută
+  else if(MM_LS && !MM_LS.nou) MM_LS = $("mm-sat").value.trim() ? { nou: true } : null;   // adresa schimbată de mână = locație nouă
+  const supl = tip === "SUPLIMENTARE";
+  box.style.display = "";
+  box.innerHTML = `<label>Pe ce locație din șantier? <span class="hint">${supl ? "unde se pune" : "de unde pleacă"} — adresa se completează exact ca pe punctul de rută</span></label><div class="ls-l">` +
+    L.map(r => `<button type="button" class="ls-b${MM_LS && MM_LS.cod === r.cod ? " on" : ""}" onclick="mmLsAlege('${r.cod}')"><b>${esc(r.cod)}</b> · ${esc(r.locatie || r.localitate)}<br><span class="mu">${r.buc} buc acum · ${esc([[...r.zile].join(", "), [...r.masini].join(", ")].filter(Boolean).join(" · "))}</span></button>`).join("") +
+    (supl ? `<button type="button" class="ls-b nou${MM_LS && MM_LS.nou ? " on" : ""}" onclick="mmLsNou()"><b>+ Locație nouă</b><br><span class="mu">în același șantier</span></button>` : "") + `</div>` +
+    (MM_LS && MM_LS.nou ? `<div class="ls-h">Locație nouă: corectează la Sat / Str. / Locație ce e diferit. La „→ Rute” se face punctul nou (pui acolo GPS-ul din poza PV-ului).</div>`
+      : !MM_LS ? `<div class="ls-h" style="color:var(--t-warn)">Alege locația — altfel „→ Rute” caută după adresa scrisă.</div>` : "");
+}
+function mmLsAlege(cod){
+  const r = mmLsLocuri().find(x => x.cod === cod); if(!r) return;
+  MM_LS = { cod }; $("mm-jud").value = r.jud; $("mm-loc").value = r.localitate; $("mm-sat").value = r.locatie;
+  mmLsArata(); mmSchimbat();
+}
+function mmLsNou(){
+  const L = mmLsLocuri(), r = L[0]; MM_LS = { nou: true };
+  if(r){
+    $("mm-jud").value = r.jud; $("mm-loc").value = r.localitate;
+    const b = String(r.locatie || "").replace(/\s*-\s*LOC\s*\d+\s*(?=\]\s*$)/i, "").trim(), n = " - LOC " + (L.length + 1);
+    $("mm-sat").value = /\]\s*$/.test(b) ? b.replace(/\s*\]\s*$/, n + " ]") : b + n;
+  }
+  mmLsArata(); $("mm-sat").focus(); mmSchimbat();
+}
+["mm-jud", "mm-loc", "mm-sat", "mm-client"].forEach(i => { const e = $(i); if(e) e.addEventListener("change", () => mmLsArata()); });
+$("mm-tip").addEventListener("change", () => mmLsArata());
+$("mm-contract").addEventListener("change", () => mmLsArata());
 // v7.21 (cerut de Ovidiu, 28.10): ce mai e de făcut la o ridicare DUPĂ PV → Edit pe galben în Comenzi, cu lista la mouse.
 // Înainte de PV nu se aprinde (nu ai ce face încă). Exteriorul (seriile pe comandă, punct C…) nu intră.
 function riDeFacut(r){
