@@ -229,6 +229,14 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
                   max-height:calc(100vh - 40px);overflow:hidden;box-shadow:0 26px 64px rgba(0,0,0,.3)}
   .lux-cap{background:linear-gradient(135deg,var(--g) 0%,var(--g2) 100%);color:#fff;
            padding:15px 20px;display:flex;align-items:center;gap:12px;flex:0 0 auto}
+  /* v7.20 „✓ Închide ridicarea” */
+  #mod-ri .ri-s{border-top:1px solid var(--line,#e5e7eb);padding:8px 0 4px}
+  #mod-ri .ri-s h4{margin:0 0 6px;font-size:13px}
+  #mod-ri .ri-r{display:flex;gap:8px;align-items:flex-start;margin:0 0 8px}
+  #mod-ri .ri-r input[type=checkbox]{width:auto;margin-top:3px}
+  #mod-ri .ri-ser{display:flex;gap:6px 18px;flex-wrap:wrap;margin-bottom:6px}
+  #mod-ri .ri-ser label{display:flex;align-items:center;gap:6px;margin:0}
+  #mod-ri .ri-ser input{width:auto}
   .lux-cap h3{margin:0;color:#fff;font-size:18px;font-weight:600;letter-spacing:.01em}
   .lux-cap .sub{font-size:12px;opacity:.82;margin-top:3px;overflow:hidden;
                 text-overflow:ellipsis;white-space:nowrap}
@@ -901,7 +909,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
   <span id="rz-w"><button id="rz-reset" class="pictograma" title="Lățimi implicite — pune coloanele din tabelele acestei file înapoi cum erau">↺ Reset layout</button><i class="rz-sep">|</i></span>
   <span id="tz-w" title="Mărimea tabelului (doar tabelul, restul rămâne la fel), din 5 în 5%. Merge și cu Ctrl + rotița mausului, Ctrl + / Ctrl − / Ctrl 0. Dublu clic pe procent = scrii tu valoarea."><button class="pictograma" onclick="tzPas(-1)" aria-label="Micșorează tabelul">−</button><b id="tz-v" ondblclick="tzScrie()" title="Dublu clic = scrii mărimea (ex. 87), Enter">100%</b><input id="tz-in" type="number" min="30" max="300" step="5" style="display:none"><button class="pictograma" onclick="tzPas(1)" aria-label="Mărește tabelul">+</button></span>
-  <span class="ver">v7.19</span>
+  <span class="ver">v7.20</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -1519,6 +1527,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
     <div class="lux-jos">
       <button class="btn danger" id="mm-del" onclick="deleteMiscare()" style="display:none">Șterge</button>
       <div style="flex:1"></div>
+      <button class="btn" id="mm-ri" onclick="riDeschide()" style="display:none;background:#2f9e44;border-color:#2f9e44" title="După PV: punctul de rută + RT, seriile, anexa — într-un singur pas">✓ Închide ridicarea</button>
       <button class="btn sec" onclick="mmAnuleaza()" title="Închide; o comandă nouă nesalvată rămâne în ciorne">Anulează</button>
       <button class="btn" id="mm-gen" onclick="saveMiscare(true)">Salvează și generează</button>
       <button class="btn" id="mm-save" onclick="saveMiscare()">Salvează</button>
@@ -1692,6 +1701,18 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
       <div style="flex:1"></div>
       <div style="flex:0"><button class="btn sec" onclick="closeModal('mod-inch')">Nu acum</button></div>
       <div style="flex:0"><button class="btn" onclick="inchSalveaza()">Salvează ce am bifat</button></div>
+    </div>
+  </div>
+</div>
+<div class="modal" id="mod-ri">
+  <div class="box" style="max-width:780px">
+    <h3 id="ri-title" class="lux-cap cap-mut" title="Trage de aici ca să muți fereastra; dublu-clic = înapoi la loc">✓ Închide ridicarea</h3>
+    <p class="muted" id="ri-sub" style="margin:0 0 10px"></p>
+    <div id="ri-corp"></div>
+    <div class="row" style="margin-top:14px;justify-content:flex-end">
+      <div style="flex:1"></div>
+      <div style="flex:0"><button class="btn sec" onclick="closeModal('mod-ri')">Nu acum</button></div>
+      <div style="flex:0"><button class="btn" id="ri-ok" style="background:#2f9e44;border-color:#2f9e44" onclick="riSalveaza()">✓ Închide ridicarea</button></div>
     </div>
   </div>
 </div>
@@ -3166,7 +3187,7 @@ function openMiscare(id){
   MM_FRATI = []; mmDoc(true); if(r && r.grup_id === r.id) mmFratiIncarca(r.id);   // v5.13
   mmZile();
   mmAntet(); $("mod-m").classList.add("on");
-  mmModClient(); mmExtIncarca(); mmEvpArata();   // v6.79
+  mmModClient(); mmExtIncarca(); mmEvpArata(); mmRiArata();   // v6.79 / v7.20
   MM_CIORNA = null; $("mm-ciorne").innerHTML = ""; if(!r) mmCiorne();
 }
 // v4.80 (cerut de Ovidiu, 08.10): ciornele comenzilor noi nesalvate (tabel `ciorne`, tip 'comanda').
@@ -3541,7 +3562,7 @@ function mmEvInfo(){
     '<li><b>Contract + anexă pe eveniment:</b> contract → anexă Forma EVENIMENT (preț / zi + perioada evenimentului) → EVENIMENT-A. ACT din Registru.</li>' +
     '<li><b>Contract-cadru + comenzi:</b> contractul-cadru o singură dată; la fiecare eveniment o <b>anexă internă</b> pe el (ex. „ANEXA EV 1”, nu se trimite) → EVENIMENT-A cu „Comanda clientului” = ACT.</li>' +
     '<li><b>Doar comenzi (fără contract):</b> o singură dată un contract cu bifa <b>„Contract intern”</b> (nr. propus CMD-…); la fiecare eveniment anexă internă → EVENIMENT-A cu „Comanda clientului” = ACT.</li>' +
-    '</ol>Ridicarea (toate cazurile): EVENIMENT-R → „+” → -R FINAL → Salvează și generează → PV → „Confirmă ridicarea”.</details>';
+    '</ol>Ridicarea (toate cazurile): EVENIMENT-R → „+” → -R FINAL → Salvează și generează → PV → „✓ Închide ridicarea”.</details>';
   el.style.display = "";
 }
 ["mm-ctr", "mm-anexa"].forEach(id => { const e = $(id); if(e) e.addEventListener("change", mmEvInfo); });
@@ -3682,6 +3703,7 @@ function mmCmdAct(){   // data + canalul completate → ACT trece pe V (se vede 
   if(f && f.textContent === "-" && $("mm-cmd-data").value && $("mm-cmd-canal").value){ setFlag(f, "V"); mmSchimbat(); }
 }
 $("mm-tip").addEventListener("change", mmCmdArata);
+$("mm-tip").addEventListener("change", () => mmRiArata());   // v7.20
 function mmDespArata(){   // v6.33
   $("mm-desp-sect").style.display = TIP_PIERD.test($("mm-tip").value) ? "" : "none";
   const on = $("mm-desp-f").checked, p = +$("mm-desp-pret").value || 0, b = Math.abs(+$("mm-buc").value || 0);
@@ -3746,6 +3768,197 @@ async function inchSalveaza(){
   }
   if(vCli){ const {error}=await db.from("clienti").update({activ:false}).eq("id",p.c.id); if(error){toast(error.message,true);return;} facute.push("clientul"); }
   INCH=null; closeModal("mod-inch"); await reloadClienti(); toast("Închis: "+facute.join(", "));
+}
+// ================= v7.20 (cerut de Ovidiu, 28.10): „✓ Închide ridicarea” — un singur pas după PV =================
+// Pe comanda de RIDICARE / REDUCERE / EVENIMENT-R, o fereastră care arată tot și face într-un pas ce se făcea în cinci
+// (→ Rute, RT, Edit, Confirmă ridicarea, Ultima ridicare — închidere): PV = V (dacă PV-ul e făcut în aplicație) ·
+// punctul de rută scăzut (INACTIV la 0) + RT = V · seriile din PV → ridicate · la ultima ridicare: anexa → RIDICARE
+// (contractul FINALIZAT / clientul inactiv rămân nebifate implicit, ca înainte). Calculul punctelor = cel din „→ Rute”
+// (spreRute(id, true)). „→ Rute”, „Confirmă ridicarea” și fereastra veche rămân pentru cazurile speciale.
+const RI_TIP = /^(RIDICARE|REDUCERE|EVENIMENT-R)$/;
+const RI_MULTILOC = /^A\d+-\d+(-[A-Z]{2})?$/;
+let RI = null;
+function mmRiArata(){
+  const b = $("mm-ri"); if(!b) return;
+  const id = +$("mm-id").value || 0, m = id ? MISC.find(x => x.id === id) : null;
+  b.style.display = m && RI_TIP.test(m.tip_miscare) && RI_TIP.test($("mm-tip").value) ? "" : "none";
+}
+async function riDeschide(id){
+  id = id || +$("mm-id").value || 0;
+  const m = MISC.find(x => x.id === id); if(!m || !RI_TIP.test(m.tip_miscare)) return;
+  const pvOk = ["V", "W"].includes(m.pv || "-");
+  if(!pvOk && !m.pv_facut_de && !confirm("Comanda nu are PV făcut în aplicație și PV nu e bifat.\n\nÎnchizi ridicarea oricum (ai PV-ul pe hârtie / la sediu)?")) return;
+  toast("Pregătesc închiderea…");
+  await incarcaPct();
+  const rows = MISC.filter(x => x.id === m.id || (m.grup_id === m.id && x.grup_id === m.id && x.id !== m.id));
+  const { data: pvs } = await db.from("pv_records").select("serii,pv_number,created_at").eq("miscare_id", m.id).order("created_at", { ascending: false });
+  const pvSerii = (pvs || []).map(x => x.serii || "").join(",").split(",").map(s => s.trim()).filter(Boolean);
+  const R = [];
+  for(const r of rows){
+    const o = { r, ser: [], bif: new Set(), rute: true, ev: true, anexa: true, ctr: false, cli: false, zi: r.data || today(), evPct: [] };
+    let c = null;
+    try{ c = await spreRute(r.id, true); }catch(e){ console.error(e); }
+    o.calc = c || { nu: "nu am putut calcula punctul de rută (vezi mesajul de sus)" };
+    if(o.calc.coada && r.tip_miscare === "REDUCERE" && o.calc.coada.some(x => RI_MULTILOC.test(x.orig.client_key || "")) && o.calc.coada.some(x => x.rec.status !== "INACTIV")){ o.rute = false; o.multiLoc = true; }
+    if(r.anexa_id){
+      const loc = serLocIds(r.anexa_id);
+      if(o.calc.ev){
+        const { data: pe } = await db.from("clients").select("id,client_key,status,ziua,anexe_ids").like("client_key", "A%");
+        o.evPct = (pe || []).filter(p => p.status !== "INACTIV" && (loc.some(i => punctAlAnexei(p.client_key, i)) || (p.anexe_ids || []).map(Number).some(i => loc.includes(i))));
+      }
+      o.ser = SER.filter(x => loc.includes(x.anexa_id) && (x.stare === "LA CLIENT" || x.miscare_ridicare_id === r.id));
+      const lc = o.ser.filter(x => x.stare === "LA CLIENT");
+      const leg = lc.filter(x => x.miscare_ridicare_id === r.id);
+      const din = lc.filter(x => pvSerii.some(s => serN(s) === serN(x.serie)));
+      o.bif = new Set((leg.length ? leg : din.length ? din : (r.tip_miscare === "REDUCERE" ? [] : lc)).map(x => x.id));
+      o.dinPv = din.length > 0;
+    }
+    R.push(o);
+  }
+  RI = { m, R, pvOk, pvSet: !pvOk, pvNr: pvs && pvs.length ? pvs[0].pv_number : "", pvSerii };
+  $("ri-sub").textContent = [m.client, m.tip_miscare + " " + fmtD(m.data), "comanda " + m.id].filter(Boolean).join(" · ");
+  riRender();
+  $("mod-ri").classList.add("on");
+}
+// Ce se închide la ultima ridicare (fără să ceară serii: merge și la produsele fără serie)
+function riPlan(o){
+  const r = o.r, a = ANX.find(x => x.id === r.anexa_id); if(!a) return null;
+  const loc = serLocIds(a.id), serLoc = SER.filter(x => loc.includes(x.anexa_id));
+  const ramanSer = serLoc.filter(x => x.stare === "LA CLIENT" && !o.bif.has(x.id)).length;
+  const ultima = serLoc.length ? ramanSer === 0
+    : o.calc.coada ? o.calc.coada.every(x => x.rec.status === "INACTIV")
+    : (a.tip_anexa === "R" && /FINAL/i.test(a.anexa || "")) || r.tip_miscare === "EVENIMENT-R";
+  const k = CTR.find(x => x.id === a.contract_id) || null, c = k ? CLI.find(x => x.id === k.client_id) || null : null;
+  const anexeLoc = ANX.filter(x => loc.includes(x.id) && anexaActiva(x) && (x.id === a.id || (x.linie_id || x.id) === (a.linie_id || a.id) || areSerie(x.produs))).map(x => x.id);
+  return { a, k, c, loc, ultima, ramanSer, anexeLoc, anexaDeja: !anexeLoc.length };
+}
+function riCiteste(){
+  if(!RI) return;
+  const v = id => { const e = $(id); return e ? !!e.checked : null; };
+  if($("ri-pv")) RI.pvSet = v("ri-pv");
+  RI.R.forEach((o, k) => {
+    if($("ri-rt-" + k)) o.rute = v("ri-rt-" + k);
+    if($("ri-ev-" + k)) o.ev = v("ri-ev-" + k);
+    if($("ri-an-" + k)) o.anexa = v("ri-an-" + k);
+    if($("ri-ctr-" + k)) o.ctr = v("ri-ctr-" + k);
+    if($("ri-cli-" + k)) o.cli = v("ri-cli-" + k);
+    if($("ri-zi-" + k) && $("ri-zi-" + k).value) o.zi = $("ri-zi-" + k).value;
+  });
+}
+function riSer(k, id, on){ riCiteste(); const o = RI.R[k]; if(on) o.bif.add(id); else o.bif.delete(id); riRender(); }
+function riRender(){
+  const P = RI; if(!P) return;
+  const m = P.m;
+  const cb = (id, on, blocat, txt, nota) => `<label class="ri-r" style="${blocat ? "opacity:.55" : ""}"><input type="checkbox" id="${id}" ${on ? "checked" : ""} ${blocat ? "disabled" : ""} onchange="riCiteste();riRender()"><span>${txt}${nota ? `<br><span class="muted">${nota}</span>` : ""}</span></label>`;
+  const H = [];
+  // 1. PV
+  const pvBtn = `<button type="button" class="btn sm sec" onclick="pvDinComanda(${m.id})">📄 Deschide PV-ul</button>`;
+  if(P.pvOk) H.push(`<div class="ri-s"><h4>1. PV</h4><div class="ri-r"><span>✓ PV = ${esc(m.pv)} ${pvBtn}</span></div></div>`);
+  else H.push(`<div class="ri-s"><h4>1. PV</h4>` + cb("ri-pv", P.pvSet, false, `<b>PV = V</b> ${pvBtn}`,
+    m.pv_facut_de ? "PV " + esc(pvNumar(P.pvNr)) + " făcut în aplicație de " + esc(m.pv_facut_de) + " — bifează după ce l-ai citit" : "fără PV în aplicație — PV pe hârtie / la sediu") + `</div>`);
+  // închiderea: anexele care se închid acum nu se mai socotesc „alte anexe active”
+  const planuri = P.R.map(riPlan);
+  const seInchid = new Set(); planuri.forEach((p, k) => { if(p && p.ultima && P.R[k].anexa) p.anexeLoc.forEach(i => seInchid.add(i)); });
+  P.R.forEach((o, k) => {
+    const r = o.r, p = planuri[k];
+    const cap = P.R.length > 1 ? ` — ${Math.abs(+r.buc || 0)} ${esc(prodN(r.produs || "", r.buc))}${p ? " · " + esc(p.a.anexa || "") : ""}` : "";
+    // 2. punctul de rută
+    let rt = "";
+    if(o.calc.coada){
+      rt = cb("ri-rt-" + k, o.rute, false, `<b>Punctul de rută</b> + <b>RT = V</b>` + (r.rt === "V" ? ' <span class="muted">(RT era deja V — se recalculează din anexe, nu scade de două ori)</span>' : ""),
+        o.calc.coada.map(x => x.nota).join("<br>") + (o.multiLoc ? '<br><span style="color:var(--t-warn)">⚠ Puncte pe locații: la reducere nu știu de pe care locație pleacă — scade de mână din „→ Rute” (nebifat).</span>' : ""));
+    } else if(o.calc.ev){
+      rt = o.evPct.length ? cb("ri-ev-" + k, o.ev && !!(p && p.ultima), false, `<b>Punctele evenimentului → INACTIV</b> acum`, o.evPct.map(x => esc(x.client_key)).join(", ") + " — altfel se sting singure din ziua de după ridicarea programată")
+        : '<div class="ri-r muted">Punctele evenimentului sunt deja inactive. RT nu contează la EVENIMENT-R.</div>';
+    } else {
+      rt = `<div class="ri-r"><span class="muted">Punct de rută: ${esc(o.calc.nu)}.</span>` + (o.calc.rute ? ` <button type="button" class="btn sm" style="background:#f08c00;border-color:#f08c00" onclick="closeModal('mod-ri');spreRute(${r.id})">→ Rute</button>` : "") + `</div>`;
+    }
+    // 3. seriile
+    let se;
+    if(!o.ser.length) se = `<div class="ri-r muted">${r.anexa_id ? "Nicio serie pe locație — nimic de confirmat." : "Comandă din exterior: seriile stau pe comandă (🔢 din comandă)."}</div>`;
+    else {
+      const lc = o.ser.filter(x => x.stare === "LA CLIENT"), nb = lc.filter(x => o.bif.has(x.id)).length, buc = Math.abs(+r.buc || 0);
+      se = '<div class="ri-ser">' + o.ser.map(x => { const gata = x.stare !== "LA CLIENT";
+        return `<label><input type="checkbox" ${o.bif.has(x.id) || gata ? "checked" : ""} ${gata ? "disabled" : ""} onchange="riSer(${k},${x.id},this.checked)"> <b>${esc(x.serie || "fără serie")}</b> ${esc(x.model || x.produs || "")}${gata ? ` <span class="muted">· ${esc(String(x.stare).toLowerCase())} ${fmtD(x.data_ridicarii)}</span>` : ""}</label>`; }).join("") + "</div>" +
+        `<div class="muted">Bifate ${nb} din ${lc.length} la client · comanda are ${buc} buc` + (o.dinPv ? " · bifele vin din PV" : P.pvSerii.length ? ' · <span style="color:var(--t-warn)">seriile din PV nu se potrivesc: ' + esc(P.pvSerii.join(", ")) + "</span>" : "") +
+        (nb && nb !== buc && r.tip_miscare !== "EVENIMENT-R" ? ' · <span style="color:var(--t-warn)">nu se potrivesc cu bucățile</span>' : "") + ` → trec în „ridicată” cu data ${fmtD(r.data)}</div>`;
+    }
+    // 4. închiderea (doar la ultima ridicare)
+    let inch = "";
+    if(p && p.ultima){
+      const alteAnexe = p.k ? ANX.filter(x => x.contract_id === p.k.id && !p.anexeLoc.includes(x.id) && !seInchid.has(x.id) && anexaActiva(x)) : [];
+      const alteCtr = p.c ? CTR.filter(x => x.client_id === p.c.id && x.id !== p.k.id && x.stare === "ACTIV") : [];
+      inch = cb("ri-an-" + k, o.anexa && !p.anexaDeja, p.anexaDeja, `<b>Anexa → RIDICARE</b>, data <input type="date" id="ri-zi-${k}" value="${esc(o.zi)}" style="width:auto;display:inline-block" onclick="event.stopPropagation()">`,
+          p.anexaDeja ? "e deja pe RIDICARE" : "se facturează până în ziua ridicării; punctele rămase active ale locației trec pe INACTIV") +
+        (p.k ? cb("ri-ctr-" + k, o.ctr, alteAnexe.length > 0 || p.k.stare !== "ACTIV", `<b>Contractul ${esc(p.k.nr_ctr)}</b> → FINALIZAT`,
+          p.k.stare !== "ACTIV" ? "e deja " + esc(p.k.stare) : alteAnexe.length ? "nu se poate: mai are anexe active — " + alteAnexe.map(x => esc(x.anexa || "anexă")).join(", ") : "nu mai are altă anexă activă") : "") +
+        (p.c ? cb("ri-cli-" + k, o.cli, alteAnexe.length > 0 || alteCtr.length > 0 || p.c.activ === false, `<b>Clientul ${esc(p.c.nume)}</b> → inactiv`,
+          p.c.activ === false ? "e deja inactiv" : alteCtr.length ? "nu se poate: mai are contracte active — " + alteCtr.map(x => esc(x.nr_ctr)).join(", ") : alteAnexe.length ? "nu se poate: contractul mai are anexe active" : "nu se șterge; îl poți reactiva din „Contracte și anexe clienți”") : "");
+    } else if(p) inch = `<div class="ri-r muted">Nu e ultima ridicare${p.ramanSer ? " — mai rămân " + p.ramanSer + " buc. la client" : ""}: anexa rămâne activă.</div>`;
+    else inch = `<div class="ri-r muted">Comandă fără anexă — nimic de închis.</div>`;
+    H.push(`<div class="ri-s"><h4>2. Punct de rută${cap}</h4>${rt}</div><div class="ri-s"><h4>3. Serii</h4>${se}</div><div class="ri-s"><h4>4. Închidere</h4>${inch}</div>`);
+  });
+  $("ri-corp").innerHTML = H.join("");
+  calendarActiveaza($("mod-ri"));
+}
+async function riSalveaza(){
+  riCiteste(); const P = RI; if(!P) return;
+  const m = P.m, facute = [];
+  const gres = e => { toast((e && e.message) || String(e), true); return false; };
+  const pune = (id, f, v, grup) => [MISC, CMA, R_MIS].forEach(L => (L || []).forEach(x => { if(x.id === id || (grup && x.grup_id === id)) x[f] = v; }));
+  const planuri = P.R.map(riPlan);
+  const btn = $("ri-ok"); btn.disabled = true;
+  try{
+    if(!P.pvOk && P.pvSet){
+      const { error } = await db.from("miscari").update({ pv: "V" }).or(`id.eq.${m.id},grup_id.eq.${m.id}`); if(error) return gres(error);
+      pune(m.id, "pv", "V", true); facute.push("PV = V");
+    }
+    const ctrDone = new Set(), cliDone = new Set();
+    for(let k = 0; k < P.R.length; k++){
+      const o = P.R[k], r = o.r, p = planuri[k];
+      if(o.calc.coada && o.rute){
+        for(const x of o.calc.coada){
+          const rec = {}; A_DEF.clients.campuri.forEach(f => { if(f.c in x.rec) rec[f.c] = x.rec[f.c]; });
+          ruteProgrameaza(rec, x); rec.updated_at = new Date().toISOString();
+          const { error } = await db.from("clients").update(rec).eq("id", x.id); if(error) return gres(error);
+        }
+        const { error } = await db.from("miscari").update({ rt: "V" }).eq("id", r.id); if(error) return gres(error);
+        pune(r.id, "rt", "V"); facute.push(o.calc.coada.length + (o.calc.coada.length === 1 ? " punct de rută" : " puncte de rută") + " + RT");
+      }
+      if(o.calc.ev && o.ev && o.evPct.length && p && p.ultima){
+        const { error } = await db.from("clients").update({ status: "INACTIV", updated_at: new Date().toISOString() }).in("id", o.evPct.map(x => x.id)); if(error) return gres(error);
+        facute.push(o.evPct.length + " puncte eveniment → INACTIV");
+      }
+      const de = o.ser.filter(x => o.bif.has(x.id) && x.stare === "LA CLIENT");
+      if(de.length){
+        const { error } = await db.from("serii").update({ stare: "RIDICATA", data_ridicarii: r.data || today(), miscare_ridicare_id: r.id, updated_at: new Date().toISOString() }).in("id", de.map(x => x.id)); if(error) return gres(error);
+        facute.push(de.length + " serii ridicate");
+      }
+      if(p && p.ultima){
+        if(o.anexa && !p.anexaDeja){
+          const ev = /^EVENIMENT/i.test(String(p.a.status || "")) || String(p.a.forma || "").toUpperCase() === "EVENIMENT" || r.tip_miscare === "EVENIMENT-R";
+          const { error } = await db.from("anexe").update({ status: ev ? "EVENIMENT-R" : "RIDICARE", data_ridicarii: o.zi || r.data || today() }).in("id", p.anexeLoc); if(error) return gres(error);
+          facute.push("anexa → " + (ev ? "EVENIMENT-R" : "RIDICARE"));
+          const { data: ra } = await db.from("clients").select("id,client_key,status,anexe_ids").like("client_key", "A%");
+          const ramase = (ra || []).filter(x => x.status !== "INACTIV" && (p.loc.some(i => punctAlAnexei(x.client_key, i)) || (x.anexe_ids || []).map(Number).some(i => p.loc.includes(i))));
+          if(ramase.length){ const { error: e2 } = await db.from("clients").update({ status: "INACTIV", updated_at: new Date().toISOString() }).in("id", ramase.map(x => x.id)); if(e2) return gres(e2); facute.push(ramase.length + " puncte rămase → INACTIV"); }
+        }
+        if(o.ctr && p.k && !ctrDone.has(p.k.id)){
+          if(!nomv("stare").includes("FINALIZAT")){ const { error } = await db.from("nomenclatoare").insert({ tip: "stare", valoare: "FINALIZAT", ordine: (NOM.stare || []).length }); if(error) return gres(error); await reloadNom(); }
+          const { error } = await db.from("contracte").update({ stare: "FINALIZAT" }).eq("id", p.k.id); if(error) return gres(error);
+          ctrDone.add(p.k.id); facute.push("contractul " + p.k.nr_ctr);
+        }
+        if(o.cli && o.ctr && p.c && !cliDone.has(p.c.id)){
+          const { error } = await db.from("clienti").update({ activ: false }).eq("id", p.c.id); if(error) return gres(error);
+          cliDone.add(p.c.id); facute.push("clientul");
+        }
+      }
+    }
+  } finally { btn.disabled = false; }
+  RI = null; closeModal("mod-ri");
+  if($("mod-m").classList.contains("on") && +$("mm-id").value === m.id) closeModal("mod-m");   // formularul avea bifele vechi — să nu le salveze peste
+  await reloadClienti(); await incarcaPct(); renderMiscari();
+  toast(facute.length ? "Ridicare închisă: " + facute.join(", ") : "Nu ai bifat nimic — nimic schimbat", !facute.length);
 }
 async function clientReactiveaza(id){
   const c=CLI.find(x=>x.id===id); if(!c || !confirm("Reactivezi clientul "+c.nume+"?")) return;
@@ -9613,14 +9826,15 @@ function evProgrameaza(rec, x){
   if(rid1) l.push({ de_la: rid1, status: "INACTIV", ziua: "" });
   rec.schimbare = schImpacheteaza(schLista(schImpacheteaza(l)));
 }
-async function spreRute(id){
+async function spreRute(id, calc){   // v7.20: calc = doar calculează punctele (pentru „✓ Închide ridicarea”), fără formulare
   const m = MISC.find(x => x.id === id); if(!m) return;
-  if(livrExterior(m)){ toast("Comanda e livrată din depozitul " + m.depozit + " — nu se face punct de rută la tine (rămân Facturare și Raport lună)", true); if(VER && VER.f === "rt") VER.form = false; return; }
+  if(livrExterior(m)){ if(calc) return { nu: "comandă livrată din depozitul " + m.depozit + " — fără punct de rută la tine" }; toast("Comanda e livrată din depozitul " + m.depozit + " — nu se face punct de rută la tine (rămân Facturare și Raport lună)", true); if(VER && VER.f === "rt") VER.form = false; return; }
   // v6.41 (cerut de Ovidiu, 19.10): servisare la cerere fără contract / anexă (GLS) — punctul stă pe INACTIV și e ACTIV doar în ziua comenzii
-  if(serCerere(m)){ RUTE_MID = id; await cererePorneste(m); return; }
+  if(serCerere(m)){ if(calc) return { nu: "servisare la cerere" }; RUTE_MID = id; await cererePorneste(m); return; }
   // v6.79 (cerut de Ovidiu, 23.10): eveniment cu program — punctele de servisare, ACTIVE doar în zilele lor (implicit Traseu-EV)
-  if(m.tip_miscare === "EVENIMENT-A" && m.anexa_id){ RUTE_MID = id; await evPorneste(m); return; }   // v6.81: punctele evenimentului (pe locații)
+  if(m.tip_miscare === "EVENIMENT-A" && m.anexa_id){ if(calc) return { nu: "amplasare eveniment" }; RUTE_MID = id; await evPorneste(m); return; }   // v6.81: punctele evenimentului (pe locații)
   if(m.tip_miscare === "EVENIMENT-R" && m.anexa_id){   // v6.81
+    if(calc) return { ev: true };
     toast("Ridicare eveniment: punctele evenimentului trec singure pe INACTIV din ziua de după ridicarea programată (sau la „Confirmă ridicarea”). Nu e nevoie de „→ Rute”.");
     if(VER && VER.f === "rt") VER.form = false; return;
   }
@@ -9629,15 +9843,15 @@ async function spreRute(id){
   // v6.26: comanda din exterior (fără anexă) — mai multe locații: fereastra cu „+ acum” / „− acum” pe fiecare locație
   if(!PL_SARI && !m.anexa_id && extCamp(m.produs) && ["AMPLASARE","SUPLIMENTARE","EVENIMENT-A","REDUCERE","RIDICARE","EVENIMENT-R","DAUNA","FURT"].includes(m.tip_miscare) &&
      ((Array.isArray(m.locatii) && m.locatii.length) || Math.abs(+m.buc || 0) > 1 || NEG.test(m.tip_miscare))){
-    RUTE_MID = id; await pePorneste(m); return;
+    if(calc) return { nu: "comandă din exterior — scade punctul din „→ Rute” (fereastra pe locații)", rute: true }; RUTE_MID = id; await pePorneste(m); return;
   }
   if(!PL_SARI && m.anexa_id && ["AMPLASARE","SUPLIMENTARE","EVENIMENT-A"].includes(m.tip_miscare) && Math.abs(+m.buc || 0) > 1){
     const a0 = ANX.find(x => x.id === m.anexa_id) || {}, l0 = anexeLocatie(a0), b0 = "A" + (l0.length ? Math.min(...l0) : m.anexa_id);
     const simple = PCT.some(p => p.client_key === b0 || /^-[A-Z]{2}$/.test(String(p.client_key || "").slice(b0.length)) && String(p.client_key).startsWith(b0));
-    if(!simple){ RUTE_MID = id; await plPorneste(m); return; }
+    if(!simple){ if(calc) return { nu: "amplasare" }; RUTE_MID = id; await plPorneste(m); return; }
   }
   PL_SARI = false;
-  RUTE_MID = id;
+  if(!calc) RUTE_MID = id;
   const a = ANX.find(x => x.id === m.anexa_id) || {};
   const loc = m.anexa_id ? anexeLocatie(a) : [];
   // v4.69 (cerut de Ovidiu, 06.10): codul punctului = prima anexă a locației + ziua, la orice frecvență (A173-LU, A173-JO),
@@ -9674,7 +9888,7 @@ async function spreRute(id){
   const activ = pct.filter(g => viitor(g).status !== "INACTIV");
   const coada = [];
   if(minus){
-    if(!pct.length){ toast("Pentru această locație nu există încă punct de rută — nu am de unde scădea.", true); return; }
+    if(!pct.length){ if(calc) return { nu: "locația nu are punct de rută — nu am de unde scădea" }; toast("Pentru această locație nu există încă punct de rută — nu am de unde scădea.", true); return; }
     // v4.64: la REDUCERE cu anexă -R, cantitatea se ia din anexele locației (inițiala + S − R până la data comenzii),
     // nu se scade din ce e pe punct — a doua apăsare pe „→ Rute” nu mai scade încă o dată.
     const campDeR = p => { const u = faraDiac(p || "").toUpperCase(); return /TOALET/.test(u) ? "toalete" : /CONTAINER|CAB/.test(u) ? "containere" : /GARD/.test(u) ? "garduri" : null; };
@@ -9748,6 +9962,7 @@ async function spreRute(id){
     if(!coada.length){ toast("Nu am ce pune pe rută din această comandă.", true); return; }
     if(coada.length > 1) coada.forEach((x, k) => { x.nota = `<b>Punctul ${k + 1} din ${coada.length}.</b> ` + x.nota + (k + 1 < coada.length ? " După Salvează sau Renunță urmează următorul." : ""); });
   }
+  if(calc) return { coada, minus };
   RUTE_COADA = coada; rUrmator();
 }
 
