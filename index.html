@@ -901,7 +901,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
   <span id="rz-w"><button id="rz-reset" class="pictograma" title="Lățimi implicite — pune coloanele din tabelele acestei file înapoi cum erau">↺ Reset layout</button><i class="rz-sep">|</i></span>
   <span id="tz-w" title="Mărimea tabelului (doar tabelul, restul rămâne la fel), din 5 în 5%. Merge și cu Ctrl + rotița mausului, Ctrl + / Ctrl − / Ctrl 0. Dublu clic pe procent = scrii tu valoarea."><button class="pictograma" onclick="tzPas(-1)" aria-label="Micșorează tabelul">−</button><b id="tz-v" ondblclick="tzScrie()" title="Dublu clic = scrii mărimea (ex. 87), Enter">100%</b><input id="tz-in" type="number" min="30" max="300" step="5" style="display:none"><button class="pictograma" onclick="tzPas(1)" aria-label="Mărește tabelul">+</button></span>
-  <span class="ver">v7.17</span>
+  <span class="ver">v7.18</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -2605,6 +2605,8 @@ function extTotal(ce, key, camp, m, faraM){
     .reduce((t, x) => t + (NEG.test(x.tip_miscare || "") ? -1 : 1) * extLocuri(x).filter(l => extCheie(l.jud, l.loc, l.sat) === key).reduce((s2, l) => s2 + l.buc, 0), 0));
 }
 function ruteStil(r){
+  // v7.18 (cerut de Ovidiu, 28.10 — ORAȘUL CĂLAN): la EVENIMENT-R RT nu contează (punctele evenimentului se sting singure) → verde
+  if(evFaraRute(r)) return `style="background:#2E8B3C;border-color:#2E8B3C;color:#fff" data-gps="da" data-rute="ridicare eveniment — RT nu contează, punctele se sting singure"`;
   const baza = r.anexa_id ? "A" + r.anexa_id : "C" + r.id;
   const p = PCT.filter(x => x.client_key === baza || String(x.client_key || "").startsWith(baza + "-") || extLaLoc(x, r) ||
     (r.anexa_id && [...(x.anexe_ids || []), ...schLista(x.schimbare).flatMap(e => e.anexe_ids || [])].map(Number).includes(r.anexa_id)));   // v4.64: și anexele din schimbarea programată
