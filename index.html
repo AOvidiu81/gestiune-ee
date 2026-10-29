@@ -932,7 +932,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
   <span id="rz-w"><button id="rz-reset" class="pictograma" title="Lățimi implicite — pune coloanele din tabelele acestei file înapoi cum erau">↺ Reset layout</button><i class="rz-sep">|</i></span>
   <span id="tz-w" title="Mărimea tabelului (doar tabelul, restul rămâne la fel), din 5 în 5%. Merge și cu Ctrl + rotița mausului, Ctrl + / Ctrl − / Ctrl 0. Dublu clic pe procent = scrii tu valoarea."><button class="pictograma" onclick="tzPas(-1)" aria-label="Micșorează tabelul">−</button><b id="tz-v" ondblclick="tzScrie()" title="Dublu clic = scrii mărimea (ex. 87), Enter">100%</b><input id="tz-in" type="number" min="30" max="300" step="5" style="display:none"><button class="pictograma" onclick="tzPas(1)" aria-label="Mărește tabelul">+</button></span>
-  <span class="ver">v7.26</span>
+  <span class="ver">v7.27</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -2794,6 +2794,20 @@ function tipAcc(txt, acc){
   const L = accLista(acc), e = esc(txt || ""); if(!L.length) return e;
   return `<span class="tip-acc" title="Accesorii:&#10;${L.map(x => "• " + esc(x)).join("&#10;")}">${e || "—"}</span>`;
 }
+// v7.27 (hotărât de Ovidiu, 29.10): LI = lavoar interior în orice situație — accesoriu adăugat la o toaletă CLASIC SAU toaleta de tipul
+// „CU LAVOAR INT.”. Pe punctul de rută tipul se ia din seriile punctului, din anexa locației sau din comanda din exterior (C<id>).
+// Doar afișare (Puncte de rută → ACC., Rapoarte rute → „1 T.[LI]”); în bază accesoriile punctului rămân cum sunt.
+const TIP_LI = /LAVOAR\s*INT/i;
+function liDinTip(r){
+  const k = String((r && r.client_key) || ""), ser = p => (SER || []).some(x => x.stare === "LA CLIENT" && String(x.punct || "") === p && TIP_LI.test(x.tip || ""));
+  const c = /^C(\d+)(-\d+)?/.exec(k);
+  if(c){ if(ser("C" + c[1] + (c[2] || ""))) return true; const m = !c[2] && (MISC || []).find(x => x.id === +c[1]); return !!(m && TIP_LI.test([m.model, m.model_fizic].join(" "))); }
+  const a = /^A(\d+)(-\d+)?/.exec(k); if(!a) return false;
+  if(a[2]) return ser("A" + a[1] + a[2]);
+  const an = (ANX || []).find(x => x.id === +a[1]), ids = (an ? anexeLocatie(an) : [+a[1]]).concat(((r && r.anexe_ids) || []).map(Number));
+  return (ANX || []).some(x => ids.includes(x.id) && anexaActiva(x) && TIP_LI.test([x.model, x.model_fizic].join(" ")));
+}
+const accPunct = r => { const t = (r && r.accesorii) || ""; return !liDinTip(r) || accLista(t).some(x => ACC_SCURT[x.toUpperCase()] === "LI") ? t : unesteAcc(t, "LAVOAR INT."); };
 function accIcon(t){
   const L = accLista(t); if(!L.length) return "";
   return `<span class="acc-ic" title="Accesorii:&#10;${L.map(x => "• " + esc(x)).join("&#10;")}">${L.length}</span>`;
@@ -8135,7 +8149,7 @@ function rrAfiseaza(){
   }
   const OBS = { O:"Omis", LA:"Lipsă acces" };
   const hm = t => { if(!t) return "—"; const d = new Date(t); return zi2(d.getHours()) + ":" + zi2(d.getMinutes()); };
-  const produse = c => [c.toalete ? c.toalete + " T" + accToaleta(c) : "", c.containere ? c.containere + " C" : "", c.garduri ? c.garduri + " G" : "", echScurt(c.echipamente)].filter(Boolean).join(" · ");   // v6.91: echScurt
+  const produse = c => [c.toalete ? c.toalete + " T" + accToaleta({ ...c, accesorii: accPunct(c) }) : "", c.containere ? c.containere + " C" : "", c.garduri ? c.garduri + " G" : "", echScurt(c.echipamente)].filter(Boolean).join(" · ");   // v6.91: echScurt
   const tot = $("rr-col").value === "toate";
   const th = t => `<th>${t}</th>`;
   const cap = tot
@@ -8955,7 +8969,7 @@ function renderAdmin(){
       const inactiv = (r.activ===false || r.active===false);
       const vr = A_TBL==="clients" && VER && VER.f==="rt" && (VER.chei||[]).includes(r.client_key);
       return `<tr${inactiv?' style="opacity:.45"':''}${vr?' class="r-ver"':''}>`+(pbOn()?`<td><input type="checkbox" style="width:auto;height:auto" ${PB_SEL.has(String(r.id))?"checked":""} onchange="pbBifa('${String(r.id).replace(/'/g,"")}',this.checked)"></td>`:"")+
-        d.lista.map(([c])=>`<td${pf && c!=="status" && String(adminCelula(r,c)).length > 10 ? ` title="${esc(adminCelula(r,c))}"` : ""}>${A_TBL==="clients" && c==="status" && r.schimbare ? statusIstoric(r) : esc(adminCelula(r,c))}${A_TBL==="clients" && c==="client" && r.cartela===true ? ' <span title="Necesită cartelă — clientul semnează cartonul A4 la fiecare servisare" style="cursor:help">📇</span>' : ""}${A_TBL==="clients" && c==="client" && r.gps_stare ? (r.gps_stare==="CONFIRMAT" ? ' <span title="Coordonata GPS confirmată din vizite" style="cursor:help;color:#2E8B3C">📍✓</span>' : r.gps_stare==="MOBIL" ? ' <span title="Punct mobil (ex. remorcă) — fără pin GPS, intenționat; pe telefon apare la „Fără coordonate GPS”" style="cursor:help">🚚</span>' : ' <span title="Coordonata GPS de verificat (vizitele sunt împrăștiate)" style="cursor:help;color:#D97706">📍?</span>') : ""}</td>` + (pf && c==="_produse" ? `<td class="acc-c">${+r.toalete ? accIcon(r.accesorii || "") : ""}</td>` : "")).join("")+
+        d.lista.map(([c])=>`<td${pf && c!=="status" && String(adminCelula(r,c)).length > 10 ? ` title="${esc(adminCelula(r,c))}"` : ""}>${A_TBL==="clients" && c==="status" && r.schimbare ? statusIstoric(r) : esc(adminCelula(r,c))}${A_TBL==="clients" && c==="client" && r.cartela===true ? ' <span title="Necesită cartelă — clientul semnează cartonul A4 la fiecare servisare" style="cursor:help">📇</span>' : ""}${A_TBL==="clients" && c==="client" && r.gps_stare ? (r.gps_stare==="CONFIRMAT" ? ' <span title="Coordonata GPS confirmată din vizite" style="cursor:help;color:#2E8B3C">📍✓</span>' : r.gps_stare==="MOBIL" ? ' <span title="Punct mobil (ex. remorcă) — fără pin GPS, intenționat; pe telefon apare la „Fără coordonate GPS”" style="cursor:help">🚚</span>' : ' <span title="Coordonata GPS de verificat (vizitele sunt împrăștiate)" style="cursor:help;color:#D97706">📍?</span>') : ""}</td>` + (pf && c==="_produse" ? `<td class="acc-c">${+r.toalete ? accIcon(accPunct(r)) : ""}</td>` : "")).join("")+
         (A_TBL==="clients" ? `<td>${/^A\d+(-\d+)?(-[A-Z]{2})?$/.test(r.client_key||"") ? pvAnexa(parseInt(r.client_key.slice(1))) + flaguriAnexa(parseInt(r.client_key.slice(1)),"rt") : rtComandaPunct(r)}</td>` : "")+
         // v5.17 (cerut de Ovidiu, 09.10): Editează = creion; la puncte de rută și butonul GPS → Google Maps
         `<td class="actions" style="white-space:nowrap"><button class="btn sm sec" title="Editează" onclick="adminEdit('${String(r.id).replace(/'/g,"")}')">✎</button>` +
