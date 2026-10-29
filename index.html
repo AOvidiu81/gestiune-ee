@@ -303,6 +303,18 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   .zile-bife{display:flex;gap:4px 10px;flex-wrap:wrap;padding-top:6px}
   .zile-bife label{display:flex;align-items:center;gap:3px;margin:0;font-size:13px;text-transform:none;letter-spacing:0;color:var(--tx);cursor:pointer}
   .zile-bife input{width:auto;margin:0}
+  /* v7.26: Servisare — zilele ca butoane, frecvența / traseul compacte */
+  .sv-rand{display:flex;flex-wrap:wrap;gap:12px 22px;align-items:flex-end}
+  .sv-rand .sv-mic{width:150px}
+  .sv-rand .sv-mic select{padding:7px 8px;font-size:13px}
+  .zile-pill{gap:6px;padding-top:0;flex-wrap:nowrap}
+  .zile-pill label{position:relative;width:40px;height:36px;justify-content:center;border:1px solid var(--bd);border-radius:9px;background:var(--card2,var(--card));
+    font-size:13px;font-weight:600;color:var(--tx);user-select:none;transition:background .12s,border-color .12s,color .12s,box-shadow .12s}
+  .zile-pill label.we{color:var(--mut)}
+  .zile-pill label:hover{border-color:var(--acc,var(--g))}
+  .zile-pill input{position:absolute;inset:0;opacity:0;margin:0;cursor:pointer}
+  .zile-pill label:has(input:checked){background:var(--acc,var(--g));border-color:var(--acc,var(--g));color:#fff;box-shadow:0 1px 4px rgba(0,0,0,.18)}
+  .zile-pill label:has(input:focus-visible){outline:2px solid var(--acc,var(--g));outline-offset:2px}
   tr.fs-off td:not(:first-child){opacity:.45;text-decoration:line-through}
   tr.r-depasit td{background:rgba(240,140,0,.10)}
   .warn-pill{display:inline-block;margin-left:4px;padding:0 6px;border-radius:9px;background:#f08c00;color:#fff;font-size:11px;font-weight:700;white-space:nowrap;text-decoration:none}
@@ -920,7 +932,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
   <span id="rz-w"><button id="rz-reset" class="pictograma" title="Lățimi implicite — pune coloanele din tabelele acestei file înapoi cum erau">↺ Reset layout</button><i class="rz-sep">|</i></span>
   <span id="tz-w" title="Mărimea tabelului (doar tabelul, restul rămâne la fel), din 5 în 5%. Merge și cu Ctrl + rotița mausului, Ctrl + / Ctrl − / Ctrl 0. Dublu clic pe procent = scrii tu valoarea."><button class="pictograma" onclick="tzPas(-1)" aria-label="Micșorează tabelul">−</button><b id="tz-v" ondblclick="tzScrie()" title="Dublu clic = scrii mărimea (ex. 87), Enter">100%</b><input id="tz-in" type="number" min="30" max="300" step="5" style="display:none"><button class="pictograma" onclick="tzPas(1)" aria-label="Mărește tabelul">+</button></span>
-  <span class="ver">v7.25</span>
+  <span class="ver">v7.26</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -1477,10 +1489,11 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
 
       <div class="sect">
         <h4>Servisare</h4>
-        <div class="grid3">
-          <div id="mm-sv-frecv-d"><label>Frecvență servisare</label><select id="mm-frecv"><option value=""></option></select></div>
-          <div id="mm-sv-zile-d"><label>Zile servisare</label><input type="hidden" id="mm-zi"><div class="zile-bife" id="mm-zile-b"><label><input type="checkbox" value="LUNI" onchange="mmZiCiteste()">L</label><label><input type="checkbox" value="MARTI" onchange="mmZiCiteste()">Ma</label><label><input type="checkbox" value="MIERCURI" onchange="mmZiCiteste()">Mi</label><label><input type="checkbox" value="JOI" onchange="mmZiCiteste()">J</label><label><input type="checkbox" value="VINERI" onchange="mmZiCiteste()">V</label><label><input type="checkbox" value="SAMBATA" onchange="mmZiCiteste()">S</label><label><input type="checkbox" value="DUMINICA" onchange="mmZiCiteste()">D</label></div></div>
-          <div><label>Traseu</label><select id="mm-traseu"><option value=""></option><option>Traseu I</option><option>Traseu II</option><option>Traseu III</option><option>Traseu-EV</option></select></div>
+        <!-- v7.26 (cerut de Ovidiu, 29.10): Servisare refăcut — întâi zilele (butoane mari), apoi frecvența și traseul, compacte -->
+        <div class="sv-rand">
+          <div id="mm-sv-zile-d" class="sv-zile"><label>Zile servisare</label><input type="hidden" id="mm-zi"><div class="zile-bife zile-pill" id="mm-zile-b"><label class="" title="Luni"><input type="checkbox" value="LUNI" onchange="mmZiCiteste()"><span>L</span></label><label class="" title="Marți"><input type="checkbox" value="MARTI" onchange="mmZiCiteste()"><span>Ma</span></label><label class="" title="Miercuri"><input type="checkbox" value="MIERCURI" onchange="mmZiCiteste()"><span>Mi</span></label><label class="" title="Joi"><input type="checkbox" value="JOI" onchange="mmZiCiteste()"><span>J</span></label><label class="" title="Vineri"><input type="checkbox" value="VINERI" onchange="mmZiCiteste()"><span>V</span></label><label class="we" title="Sâmbătă"><input type="checkbox" value="SAMBATA" onchange="mmZiCiteste()"><span>S</span></label><label class="we" title="Duminică"><input type="checkbox" value="DUMINICA" onchange="mmZiCiteste()"><span>D</span></label></div></div>
+          <div id="mm-sv-frecv-d" class="sv-mic"><label>Frecvență</label><select id="mm-frecv"><option value=""></option></select></div>
+          <div class="sv-mic"><label>Traseu</label><select id="mm-traseu"><option value=""></option><option>Traseu I</option><option>Traseu II</option><option>Traseu III</option><option>Traseu-EV</option></select></div>
         </div>
         <div id="mm-sv-ev" style="display:none;margin-top:8px">
           <div style="display:flex;gap:18px;align-items:center;flex-wrap:wrap">
