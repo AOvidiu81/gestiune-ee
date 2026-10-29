@@ -920,7 +920,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
   <span id="rz-w"><button id="rz-reset" class="pictograma" title="Lățimi implicite — pune coloanele din tabelele acestei file înapoi cum erau">↺ Reset layout</button><i class="rz-sep">|</i></span>
   <span id="tz-w" title="Mărimea tabelului (doar tabelul, restul rămâne la fel), din 5 în 5%. Merge și cu Ctrl + rotița mausului, Ctrl + / Ctrl − / Ctrl 0. Dublu clic pe procent = scrii tu valoarea."><button class="pictograma" onclick="tzPas(-1)" aria-label="Micșorează tabelul">−</button><b id="tz-v" ondblclick="tzScrie()" title="Dublu clic = scrii mărimea (ex. 87), Enter">100%</b><input id="tz-in" type="number" min="30" max="300" step="5" style="display:none"><button class="pictograma" onclick="tzPas(1)" aria-label="Mărește tabelul">+</button></span>
-  <span class="ver">v7.24</span>
+  <span class="ver">v7.25</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -10068,6 +10068,15 @@ async function spreRute(id, calc){   // v7.20: calc = doar calculează punctele 
     const campDe = p => { const u = faraDiac(p || "").toUpperCase(); return /TOALET/.test(u) ? "toalete" : /CONTAINER|CAB/.test(u) ? "containere" : /GARD/.test(u) ? "garduri" : null; };
     const totLoc = laL ? null : (m.anexa_id && camp) ? ANX.filter(x => loc.includes(x.id) && campDe(x.produs) === camp && (!x.data_livrarii || !m.data || x.data_livrarii <= m.data))
       .reduce((t, x) => { const c = Math.abs(+x.cant || 0); return t + (x.tip_anexa === "R" ? -c : c); }, 0) : totExt;
+    // v7.25 (cerut de Ovidiu, 29.10 — M.T.D. A261-MI ieșit cu 0 toalete): totalul din anexe mai mic decât bucățile comenzii →
+    // avertizare (de obicei data amplasării de pe anexă e după data comenzii, ex. an greșit). Anexa nu se schimbă.
+    let avTot = "";
+    if(m.anexa_id && camp && totLoc != null && totLoc < n){
+      const viit = ANX.filter(x => loc.includes(x.id) && campDe(x.produs) === camp && x.data_livrarii && m.data && x.data_livrarii > m.data);
+      avTot = "Totalul din anexele locației este " + totLoc + ", mai mic decât bucățile comenzii (" + n + ")." +
+        (viit.length ? " " + viit.map(x => (x.anexa || "Anexa " + x.id) + " are data amplasării " + fmtD(x.data_livrarii) + ", după data comenzii (" + fmtD(m.data) + ")").join("; ") + " — verifică data pe anexă."
+          : " Verifică anexele locației (cantitate, data amplasării, anexe -R).");
+    }
     // 1. punctele care există deja la locație: primesc cantitatea totală
     activ.forEach(g => {
       const rec = viitor(g);
@@ -10110,6 +10119,10 @@ async function spreRute(id, calc){   // v7.20: calc = doar calculează punctele 
       coada.push({ id: g ? g.id : null, rec, camp, orig: g, deLa, ids: g ? idsPe(g) : [...new Set([...(model ? idsPe(model) : []), m.anexa_id].filter(Boolean))], nota });
     });
     if(!coada.length){ toast("Nu am ce pune pe rută din această comandă.", true); return; }
+    if(avTot){   // v7.25
+      coada.forEach(x => { x.nota = `<span style="color:var(--t-err);font-weight:600">⚠ ${esc(avTot)}</span><br>` + x.nota; });
+      if(!calc && !confirm("⚠ " + avTot + "\n\nPunctul de rută s-ar salva cu " + totLoc + " buc. Continui oricum?")) return;
+    }
     if(coada.length > 1) coada.forEach((x, k) => { x.nota = `<b>Punctul ${k + 1} din ${coada.length}.</b> ` + x.nota + (k + 1 < coada.length ? " După Salvează sau Renunță urmează următorul." : ""); });
   }
   if(calc) return { coada, minus };
