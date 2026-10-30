@@ -87,9 +87,10 @@ function locatiile(c) {
 
 function prefillDin(c, items) {
   const address = [c.jud ? `Jud. ${String(c.jud).toUpperCase()}` : '', c.loc, c.sat].filter(Boolean).join(', ');
-  const ctr = c.nr_ctr
-    ? `${c.nr_ctr}${c.ctr_data ? ' din ' + formatDateRo(parseDay(c.ctr_data)).replace(/\./g, '-') : ''}${c.anexa ? '  ·  ' + c.anexa : ''}`
-    : '';
+  // v95 (cerut de Ovidiu, 30.10): „La Contract” = doar numarul contractului (fara data); anexa doar unde se face act
+  // (AMPLASARE / SUPLIMENTARE / REDUCERE / EVENIMENT-A) — la ridicare (anexa -R FINAL) nu se face act, deci nu apare
+  const cuAnexa = /^(AMPLASARE|SUPLIMENTARE|REDUCERE|EVENIMENT-A)$/.test(c.tip_miscare || '');
+  const ctr = c.nr_ctr ? `${c.nr_ctr}${c.anexa && cuAnexa ? '  ·  ' + c.anexa : ''}` : '';
   return {
     clientName: c.client || '',
     address,
