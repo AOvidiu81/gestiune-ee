@@ -950,7 +950,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
   <span id="rz-w"><button id="rz-reset" class="pictograma" title="Lățimi implicite — pune coloanele din tabelele acestei file înapoi cum erau">↺ Reset layout</button><i class="rz-sep">|</i></span>
   <span id="tz-w" title="Mărimea tabelului (doar tabelul, restul rămâne la fel), din 5 în 5%. Merge și cu Ctrl + rotița mausului, Ctrl + / Ctrl − / Ctrl 0. Dublu clic pe procent = scrii tu valoarea."><button class="pictograma" onclick="tzPas(-1)" aria-label="Micșorează tabelul">−</button><b id="tz-v" ondblclick="tzScrie()" title="Dublu clic = scrii mărimea (ex. 87), Enter">100%</b><input id="tz-in" type="number" min="30" max="300" step="5" style="display:none"><button class="pictograma" onclick="tzPas(1)" aria-label="Mărește tabelul">+</button></span>
-  <span class="ver">v7.31</span>
+  <span class="ver">v7.32</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -1537,6 +1537,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
         <h4>Sponsorizare <span class="hint">fără anexă, fără factură, nu intră în Raport lună</span></h4>
         <div class="cmd-rand" id="mm-sp-a">
           <div class="cmd-c"><label>Ridicare estimată</label><input id="mm-sp-rid" type="date"><span class="cmd-sub">te anunță în De urmărit cu 7 zile înainte</span></div>
+          <div class="cmd-c" style="width:auto"><label>Seria și modelul</label><button type="button" class="btn sm" style="height:36px" onclick="mmSeriiDeschide()">🔢 Seria toaletei sponsorizate</button><span class="cmd-sub" id="mm-sp-ser"></span></div>
         </div>
         <div id="mm-sp-info" class="muted" style="margin-top:6px"></div>
       </div>
@@ -3730,6 +3731,10 @@ function mmSpArata(){
   const t = $("mm-tip").value, on = SP_TIP.test(t);
   s.style.display = on ? "" : "none"; if(!on) return;
   $("mm-sp-a").style.display = t === "SPONSORIZARE-A" ? "" : "none";
+  { const id = +$("mm-id").value || 0, m = { client: $("mm-client").value, jud: $("mm-jud").value, loc: $("mm-loc").value, sat: $("mm-sat").value };   // v7.32: seria deja trecută
+    const p = (PCT || []).find(x => extNorm(x.client) === extNorm(m.client) && extCheie(x.jud, x.localitate, x.locatie) === extCheie(m.jud, m.loc, m.sat) && x.status !== "INACTIV");
+    const l = p ? (SER || []).filter(x => x.punct === peBaza(p.client_key) && x.stare === "LA CLIENT") : [];
+    if($("mm-sp-ser")) $("mm-sp-ser").textContent = !id ? "după Salvează" : !p ? "după „→ Rute”" : l.length ? l.map(x => (x.model || "") + " " + (x.serie || "fără serie")).join("; ") : "netrecută"; }
   $("mm-sp-info").innerHTML = t === "SPONSORIZARE-A"
     ? "Toaleta iese din depozit și intră pe punctul clientului de la <b>aceeași adresă</b> (alege anexa locației ca să se completeze adresa exact; comanda se salvează fără anexă). Pe rută: <b>2 T.[1S]</b>. PV de amplasare cu mențiunea SPONSORIZARE."
     : "Ridicarea sponsorizării: după PV, <b>„✓ Închide ridicarea”</b> (sau „→ Rute”) scade toaleta de pe punctul de la aceeași adresă; stocul revine în depozit. Toaleta închiriată rămâne.";
@@ -5079,7 +5084,7 @@ const prodPunct = p => (+p.toalete||0)+(+p.containere||0)+(+p.garduri||0);
 const locSimpla = k => /^A\d+$/.test(String(k||""));
 const locKey = p => { const l = punctLoc(p.client_key); return l ? (l.loc || "A" + l.anexa) : null; };
 const serPeLoc = (x, key, ids) => locSimpla(key) ? (!x.punct && (!ids || ids.includes(x.anexa_id))) : x.punct === key;
-const punctDb = key => locSimpla(key) ? null : key;
+const punctDb = key => locSimpla(key) && !SR_CMD ? null : key;   // v7.32: la sponsorizare (fereastra comenzii) seria stă pe A266
 async function serLocatii(ids){
   const or = ids.map(i=>`client_key.eq.A${i},client_key.like.A${i}-*`).join(",");
   const { data, error } = await db.from("clients").select("client_key,locatie,status,toalete,containere,garduri").or(or).limit(2000);
