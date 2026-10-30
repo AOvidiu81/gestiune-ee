@@ -26,7 +26,7 @@ import { openHistoryScreen } from '../pv/js/screens-history.js';
 import { buildComenziActive } from '../pv/js/screens-comenzi.js';
 import { openSettingsScreen } from '../pv/js/screens-setup.js';
 
-export const SOFER_VERSION = 's58';
+export const SOFER_VERSION = 's59';
 
 const KEY_ZI = 'ee-sofer-zi'; // ziua deschisa: { zi, coleg, carId, km, trasee, zile, zona, ordine, ruta }
 const KEY_ULTIMA = 'ee-sofer-ultima'; // ultimele alegeri (masina, traseu, zona) — precompletare
@@ -605,7 +605,8 @@ function accCoduri(...texte) {
 const serieText = (x, a) => { const s = /^(FARA|FĂRĂ|FARA SERIE|FĂRĂ SERIE)$/i.test(String(x.serie || '').trim()) ? '' : String(x.serie || '').trim();
   const c = accCoduri(x.tip, a && a.accesorii);
   const m = (x.model || x.tip || '') + (c.length ? ' [' + c.join('+') + ']' : '');
-  return [m.trim(), s || 'fără serie'].filter(Boolean).join(' '); };
+  const sp = x.punct && /^A\d+$/.test(x.punct) && !x.anexa_id ? '[S] ' : '';   // s59 (cerut de Ovidiu, 30.10): toaleta din sponsorizare (seria pe locatia A266, fara anexa)
+  return sp + [m.trim(), s || 'fără serie'].filter(Boolean).join(' '); };
 export function hartaSerii(serii, anexe) {
   // s31: ca in GestiuneEE v4.98 — locatia = anexa initiala (linie_id) sau aceeasi adresa pe acelasi contract
   const dupaId = {}; anexe.forEach((a) => { dupaId[a.id] = a; });

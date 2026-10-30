@@ -950,7 +950,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
   <span id="rz-w"><button id="rz-reset" class="pictograma" title="Lățimi implicite — pune coloanele din tabelele acestei file înapoi cum erau">↺ Reset layout</button><i class="rz-sep">|</i></span>
   <span id="tz-w" title="Mărimea tabelului (doar tabelul, restul rămâne la fel), din 5 în 5%. Merge și cu Ctrl + rotița mausului, Ctrl + / Ctrl − / Ctrl 0. Dublu clic pe procent = scrii tu valoarea."><button class="pictograma" onclick="tzPas(-1)" aria-label="Micșorează tabelul">−</button><b id="tz-v" ondblclick="tzScrie()" title="Dublu clic = scrii mărimea (ex. 87), Enter">100%</b><input id="tz-in" type="number" min="30" max="300" step="5" style="display:none"><button class="pictograma" onclick="tzPas(1)" aria-label="Mărește tabelul">+</button></span>
-  <span class="ver">v7.32</span>
+  <span class="ver">v7.33</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -5102,6 +5102,14 @@ function butonSeriiPunct(r){
       const cul = !la ? "" : (la===n ? "background:#2E8B3C;border-color:#2E8B3C;color:#fff" : "background:#D97706;border-color:#D97706;color:#fff");
       return ` <button class="btn sm sec" style="${cul}" title="Model + serie pe fiecare produs livrat de la tine pe această comandă (contract din alt depozit, fără anexă). Se văd și la șofer, pe toate zilele punctului." onclick="openSeriiCmd(${c[1]}${c[2] ? `,'${key}'` : ""})">🔢 ${la}/${n}</button>`; } }
   const l=punctLoc(r.client_key); if(!l || !ANX.some(x=>x.id===l.anexa)) return "";
+  return butonSeriiAnexa(r, l) + spSeriiPunct(r);   // v7.33
+}
+// v7.33 (cerut de Ovidiu, 30.10): informativ, lângă butonul de serii — seriile toaletelor din sponsorizare (serii.punct = A266, fără anexă)
+function spSeriiPunct(r){
+  const b = peBaza(r.client_key), l = (SER || []).filter(x => x.punct === b && !x.anexa_id && x.stare === "LA CLIENT");
+  return l.length ? ` <span class="muted" style="font-size:12px;white-space:nowrap" title="Toaletă în sponsorizare (fără anexă)"><b>[S]</b> ${esc(l.map(x => [x.model || x.tip || "", x.serie || "fără serie"].filter(Boolean).join(" ")).join("; "))}</span>` : "";
+}
+function butonSeriiAnexa(r, l){
   const muta = k => "";   // v5.86: ⇄ și 📅 au trecut în meniul ⋯ de pe rând
   const key = l.loc || "A" + l.anexa;
   // v5.68: locația simplă (A182-MA) — butonul de serii al anexei, ca înainte, cât timp anexa nu are locații numerotate
