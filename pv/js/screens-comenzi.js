@@ -23,6 +23,8 @@ const TIP_PV = {
   RIDICARE: 'RIDICARE',
   REDUCERE: 'RIDICARE',
   'EVENIMENT-R': 'RIDICARE',
+  'SPONSORIZARE-A': 'AMPLASARE',   // v94 (cerut de Ovidiu, 30.10): sponsorizarea pe PV de amplasare / ridicare, cu mentiunea SPONSORIZARE
+  'SPONSORIZARE-R': 'RIDICARE',
   SERVISARE: 'SERVISARE',
   VANZARE: 'VANZARE',
 };
@@ -99,7 +101,7 @@ function prefillDin(c, items) {
     productQty: Math.abs(Number(c.buc) || 0),
     productText: [c.produs, c.model].filter(Boolean).join(' '),
     // Seriile trecute in GestiuneEE la amplasare (fara prefixul fix "EE-" al campului)
-    mentiune: TIP_PV[c.tip_miscare] && TIP_PV[c.tip_miscare] !== c.tip_miscare ? c.tip_miscare + (c.anexa ? ' - ' + c.anexa : '') : '',   // s29
+    mentiune: /^SPONSORIZARE-/.test(c.tip_miscare || '') ? 'SPONSORIZARE' : TIP_PV[c.tip_miscare] && TIP_PV[c.tip_miscare] !== c.tip_miscare ? c.tip_miscare + (c.anexa ? ' - ' + c.anexa : '') : '',   // s29; v94: SPONSORIZARE
     aux: String(c.accesorii || '').split(',').map((x) => x.trim()).filter(Boolean),   // s28: accesoriile comenzii -> Elemente auxiliare
     series: (Array.isArray(c.serii) ? c.serii : []).map((s) => String((s && s.serie) || '').trim().replace(/^EE-?\s*/i, '')).filter(Boolean),
     // s30: seriile care sunt acum la client (locatia) — in PV soferul apasa pe cele ridicate

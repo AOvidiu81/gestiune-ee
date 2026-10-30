@@ -950,7 +950,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
   <span id="rz-w"><button id="rz-reset" class="pictograma" title="Lățimi implicite — pune coloanele din tabelele acestei file înapoi cum erau">↺ Reset layout</button><i class="rz-sep">|</i></span>
   <span id="tz-w" title="Mărimea tabelului (doar tabelul, restul rămâne la fel), din 5 în 5%. Merge și cu Ctrl + rotița mausului, Ctrl + / Ctrl − / Ctrl 0. Dublu clic pe procent = scrii tu valoarea."><button class="pictograma" onclick="tzPas(-1)" aria-label="Micșorează tabelul">−</button><b id="tz-v" ondblclick="tzScrie()" title="Dublu clic = scrii mărimea (ex. 87), Enter">100%</b><input id="tz-in" type="number" min="30" max="300" step="5" style="display:none"><button class="pictograma" onclick="tzPas(1)" aria-label="Mărește tabelul">+</button></span>
-  <span class="ver">v7.29</span>
+  <span class="ver">v7.30</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -1532,6 +1532,13 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
         </div>
         <input type="hidden" id="mm-ev-serv">
         <div id="mm-ev-rinfo" class="muted" style="margin-top:8px"></div>
+      </div>
+      <div class="sect" id="mm-sp-sect" style="display:none">
+        <h4>Sponsorizare <span class="hint">fără anexă, fără factură, nu intră în Raport lună</span></h4>
+        <div class="cmd-rand" id="mm-sp-a">
+          <div class="cmd-c"><label>Ridicare estimată</label><input id="mm-sp-rid" type="date"><span class="cmd-sub">te anunță în De urmărit cu 7 zile înainte</span></div>
+        </div>
+        <div id="mm-sp-info" class="muted" style="margin-top:6px"></div>
       </div>
       <div class="sect" id="mm-cmd-sect" style="display:none">
         <h4>Comanda clientului <span class="hint">ACT — ce trece pe factură</span></h4>
@@ -2214,8 +2221,16 @@ const modelAcc = a => [a.model || "", a.model_fizic || "", a.accesorii ? "[" + a
 // v7.29 (cerut de Ovidiu, 30.10): toaleta proprie a clientului (echipamente „PROPRIE…” pe punct, din v7.28) → „1 T.[P]”
 const ECH_P = /^PROPRIE\b/i;
 const echEP = e => (Array.isArray(e) ? e : []).some(x => ECH_P.test(String(x || "").trim()));
-const echFaraP = e => (Array.isArray(e) ? e : e ? [e] : []).filter(x => !ECH_P.test(String(x || "").trim()));
-const accToaleta = c => { const l = (echEP(c.echipamente) ? ["P"] : []).concat(accLista(c.accesorii).map(x => ACC_SCURT[x.toUpperCase()]).filter(Boolean).map(x => x.replace(/\./g, ""))); return l.length ? ".[" + l.join("+") + "]" : ""; };
+// v7.30 (cerut de Ovidiu, 30.10 — FLORERO, Baia de Fier): SPONSORIZARE-A / SPONSORIZARE-R = toaletă dată gratuit pe o perioadă.
+// Iese din depozit (efect „închiriere”), intră pe punctul clientului de la aceeași adresă, fără anexă, fără factură, fără Raport lună.
+// Pe punct: marcajul „n SPONSORIZARE” în clients.echipamente (câte toalete de pe punct sunt sponsorizate) → „2 T.[1S]”;
+// recalculările din anexe (amplasare / suplimentare / reducere / ridicare) păstrează toaletele sponsorizate.
+const SP_TIP = /^SPONSORIZARE-[AR]$/;
+const SP_MARC = /^(\d+)\s+SPONSORIZARE$/i;
+const spN = r => (Array.isArray(r && r.echipamente) ? r.echipamente : []).reduce((t, x) => { const k = SP_MARC.exec(String(x || "").trim()); return t + (k ? +k[1] : 0); }, 0);
+function spSet(rec, n){ const l = (Array.isArray(rec.echipamente) ? rec.echipamente : []).filter(x => !SP_MARC.test(String(x || "").trim())); if(n > 0) l.push(n + " SPONSORIZARE"); rec.echipamente = l; }
+const echFaraP = e => (Array.isArray(e) ? e : e ? [e] : []).filter(x => !ECH_P.test(String(x || "").trim()) && !SP_MARC.test(String(x || "").trim()));
+const accToaleta = c => { const l = (echEP(c.echipamente) ? ["P"] : []).concat(spN(c) ? [spN(c) + "S"] : []).concat(accLista(c.accesorii).map(x => ACC_SCURT[x.toUpperCase()]).filter(Boolean).map(x => x.replace(/\./g, ""))); return l.length ? ".[" + l.join("+") + "]" : ""; };
 const esc = s => (s==null?"":String(s)).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 // v5.97 (cerut de Ovidiu, 14.10): produsul la singular / plural după număr (1 TOALETA · 6 TOALETE), peste tot unde stă lângă un număr.
 // În bază numele rămâne cel din nomenclator; pluralul e doar la afișare. Cuvintele necunoscute rămân cum sunt.
@@ -2255,7 +2270,7 @@ function evFaraRute(r){
   if(!r || !r.anexa_id || !/^EVENIMENT-[AR]$/.test(r.tip_miscare || "")) return false;
   return r.tip_miscare === "EVENIMENT-R";   // v6.81: la amplasare se fac punctele pe locații (RT contează)   // la ridicarea evenimentului punctele de servisare (dacă au fost) s-au stins singure
 }
-function flaguriNuConteaza(r){ const n = new Set(); if(ctrExterior(r)) ["rpt","fac","act"].forEach(f => n.add(f)); if(livrExterior(r)) n.add("rt"); if(r && r.tip_miscare === "SERVISARE") n.add("rpt"); if(servFaraFact(r)) n.add("fac"); if(evFaraRute(r)) n.add("rt"); return n; }   // v6.42: servisările nu intră în Raport lună   // v5.79: PV contează și la livrarea din alt depozit (X → V / L)
+function flaguriNuConteaza(r){ const n = new Set(); if(ctrExterior(r)) ["rpt","fac","act"].forEach(f => n.add(f)); if(livrExterior(r)) n.add("rt"); if(r && r.tip_miscare === "SERVISARE") n.add("rpt"); if(r && SP_TIP.test(r.tip_miscare || "")) ["rpt","fac","act"].forEach(f => n.add(f));   /* v7.30 */ if(servFaraFact(r)) n.add("fac"); if(evFaraRute(r)) n.add("rt"); return n; }   // v6.42: servisările nu intră în Raport lună   // v5.79: PV contează și la livrarea din alt depozit (X → V / L)
 // v6.64 (cerut de Ovidiu, 22.10): ACT ia culoarea din Registru documente (rândul cu același nr. contract + aceeași anexă în Observații):
 // PRIMIT → V verde · IN ASTEPTARE → V galben (VA, nu e verde) · LIPSA → X · ANULAT → „-” (de făcut). Fără rând în registru → bifa salvată.
 let DOC_ACT = null;
@@ -2670,14 +2685,15 @@ const extLaLoc = (p, m) => !m.anexa_id && /^C\d+/.test(String(p.client_key || ""
 function extTotal(ce, key, camp, m, faraM){
   const pana = x => (x.data || "") < (m.data || "") || ((x.data || "") === (m.data || "") && x.id <= m.id);
   // v6.41: SERVISARE nu mută bucăți (efect stoc „niciun”) — nu se adună la totalul locației
-  return Math.max(0, (ce || []).filter(x => extCamp(x.produs) === camp && x.tip_miscare !== "SERVISARE" && pana(x) && !(faraM && x.id === m.id))
+  return Math.max(0, (ce || []).filter(x => extCamp(x.produs) === camp && x.tip_miscare !== "SERVISARE" && !SP_TIP.test(x.tip_miscare || "") && pana(x) && !(faraM && x.id === m.id))
     .reduce((t, x) => t + (NEG.test(x.tip_miscare || "") ? -1 : 1) * extLocuri(x).filter(l => extCheie(l.jud, l.loc, l.sat) === key).reduce((s2, l) => s2 + l.buc, 0), 0));
 }
 function ruteStil(r){
   // v7.18 (cerut de Ovidiu, 28.10 — ORAȘUL CĂLAN): la EVENIMENT-R RT nu contează (punctele evenimentului se sting singure) → verde
   if(evFaraRute(r)) return `style="background:#2E8B3C;border-color:#2E8B3C;color:#fff" data-gps="da" data-rute="ridicare eveniment — RT nu contează, punctele se sting singure"`;
   const baza = r.anexa_id ? "A" + r.anexa_id : "C" + r.id;
-  const p = PCT.filter(x => x.client_key === baza || String(x.client_key || "").startsWith(baza + "-") || extLaLoc(x, r) ||
+  const p = SP_TIP.test(r.tip_miscare || "") ? PCT.filter(x => extNorm(x.client) === extNorm(r.client) && extCheie(x.jud, x.localitate, x.locatie) === extCheie(r.jud, r.loc, r.sat)) :   // v7.30
+    PCT.filter(x => x.client_key === baza || String(x.client_key || "").startsWith(baza + "-") || extLaLoc(x, r) ||
     (r.anexa_id && [...(x.anexe_ids || []), ...schLista(x.schimbare).flatMap(e => e.anexe_ids || [])].map(Number).includes(r.anexa_id)));   // v4.64: și anexele din schimbarea programată
   // v6.92 (cerut de Ovidiu, 24.10): punctele MOBIL (remorci, fără pin intenționat) contează ca având GPS
   const ok = p.length && p.every(x => x.gps_stare === "MOBIL" || (x.lat != null && x.lon != null && +x.lat && +x.lon));
@@ -3236,6 +3252,7 @@ function openMiscare(id){
   $("mm-pers").value=r?(r.pers_resp||""):""; $("mm-tel").value=r?(r.telefon||""):""; $("mm-frecv").value=r?(r.frecv_serv||""):""; $("mm-zi").value=r?(r.zi_serv||""):""; $("mm-traseu").value=r?(r.traseu||""):""; $("mm-obs").value=r?(r.observatii||""):"";
   document.querySelectorAll("#mm-flags .flag").forEach(f=>setFlag(f,r?(r[f.dataset.f]||"-"):(f.dataset.f==="waap"?"V":"-")));
   $("mm-cmd-nr").value = r ? (r.cmd_nr || "") : ""; $("mm-cmd-data").value = r ? (r.cmd_data || "") : ""; $("mm-cmd-canal").value = r ? (r.cmd_canal || "") : ""; mmCmdArata();   // v6.43
+  $("mm-sp-rid").value = r && r.tip_miscare === "SPONSORIZARE-A" ? (r.ev_rid || "") : "";   // v7.30
   $("mm-ev-rid").value = r ? (r.ev_rid || "") : ""; $("mm-ev-serv").value = r && Array.isArray(r.ev_serv) ? r.ev_serv.join(",") : ""; $("mm-ev-zi").value = ""; MM_EV_CU = !!(r && Array.isArray(r.ev_serv) && r.ev_serv.length);   // v6.79 / v6.80
   $("mm-sv-f").checked = r ? (r.tip_miscare === "SERVISARE" && !!r.desp_factureaza) : true; $("mm-sv-pret").value = r && r.tip_miscare === "SERVISARE" && r.desp_pret != null ? (+r.desp_pret).toFixed(2) : "";   // v6.44
   $("mm-sv-scad").value = r && r.tip_miscare === "SERVISARE" && r.desp_scadent != null ? r.desp_scadent : "";   // v6.48
@@ -3249,7 +3266,7 @@ function openMiscare(id){
   MM_FRATI = []; mmDoc(true); if(r && r.grup_id === r.id) mmFratiIncarca(r.id);   // v5.13
   mmZile();
   mmAntet(); $("mod-m").classList.add("on");
-  mmModClient(); mmExtIncarca(); mmEvpArata(); mmRiArata(); MM_LS = null; $("mm-sat").placeholder = ""; mmLsArata();   // v6.79 / v7.20 / v7.22 / v7.24
+  mmModClient(); mmExtIncarca(); mmEvpArata(); mmSpArata(); mmRiArata(); MM_LS = null; $("mm-sat").placeholder = ""; mmLsArata();   // v6.79 / v7.20 / v7.22 / v7.24
   MM_CIORNA = null; $("mm-ciorne").innerHTML = ""; if(!r) mmCiorne();
 }
 // v4.80 (cerut de Ovidiu, 08.10): ciornele comenzilor noi nesalvate (tabel `ciorne`, tip 'comanda').
@@ -3374,7 +3391,7 @@ function largesteFiltrele(rec){
   }
   return schimbate;
 }
-const NEG=/RIDICARE|EVENIMENT-R|REDUCERE|TransferOUT|VANZARE|DAUNA|FURT/;
+const NEG=/RIDICARE|EVENIMENT-R|SPONSORIZARE-R|REDUCERE|TransferOUT|VANZARE|DAUNA|FURT/;   // v7.30: SPONSORIZARE-R
 // `genereaza` = true vine de la butonul „Salvează și generează”: salveaza la fel,
 // apoi deschide si textul de copiat pe WhatsApp.
 // v6.68 (cerut de Ovidiu, 22.10): ridicare finală (RIDICARE / EVENIMENT-R) pe o anexă a cărei linie n-are încă anexa -R FINAL
@@ -3426,6 +3443,8 @@ async function saveMiscare(genereaza){
   { const evp = tip === "EVENIMENT-A" && !mmExterior(), sv = evp ? evServLista() : [];   // v6.79: programul evenimentului
     rec.ev_rid = evp ? ($("mm-ev-rid").value || null) : null; rec.ev_serv = sv.length ? sv : null;
     if(sv.length && !rec.traseu) rec.traseu = "Traseu-EV"; }
+  if(SP_TIP.test(tip)){ rec.anexa_id = null; rec.ev_rid = tip === "SPONSORIZARE-A" ? ($("mm-sp-rid").value || null) : null;   // v7.30
+    if(tip === "SPONSORIZARE-A" && rec.ev_rid && rec.data && rec.ev_rid <= rec.data && !confirm("⚠ Ridicarea estimată (" + fmtD(rec.ev_rid) + ") nu e după amplasare (" + fmtD(rec.data) + ").\n\nSalvez așa?")) return false; }
   // v6.33 (cerut de Ovidiu, 17.10): despăgubirea la DAUNA / FURT — opțională, rând separat în Facturare (valoare / buc, fără zile)
   { const sv = CMD_TIP(tip);   // v6.43; v6.71 și EVENIMENT-A
     rec.cmd_nr = sv ? ($("mm-cmd-nr").value.trim() || null) : null; rec.cmd_data = sv ? ($("mm-cmd-data").value || null) : null; rec.cmd_canal = sv ? ($("mm-cmd-canal").value || null) : null; }
@@ -3699,6 +3718,17 @@ function mmEvZiToate(){
   evServSet([...evServLista(), ...l]);
 }
 $("mm-tip").addEventListener("change", mmEvpArata);
+// v7.30: secțiunea Sponsorizare (ridicarea estimată la SPONSORIZARE-A)
+function mmSpArata(){
+  const s = $("mm-sp-sect"); if(!s) return;
+  const t = $("mm-tip").value, on = SP_TIP.test(t);
+  s.style.display = on ? "" : "none"; if(!on) return;
+  $("mm-sp-a").style.display = t === "SPONSORIZARE-A" ? "" : "none";
+  $("mm-sp-info").innerHTML = t === "SPONSORIZARE-A"
+    ? "Toaleta iese din depozit și intră pe punctul clientului de la <b>aceeași adresă</b> (alege anexa locației ca să se completeze adresa exact; comanda se salvează fără anexă). Pe rută: <b>2 T.[1S]</b>. PV de amplasare cu mențiunea SPONSORIZARE."
+    : "Ridicarea sponsorizării: după PV, <b>„✓ Închide ridicarea”</b> (sau „→ Rute”) scade toaleta de pe punctul de la aceeași adresă; stocul revine în depozit. Toaleta închiriată rămâne.";
+}
+$("mm-tip").addEventListener("change", mmSpArata);
 $("mm-data").addEventListener("change", mmEvpDeseneaza);
 $("mm-traseu").addEventListener("change", () => mmEvpDeseneaza());
 { const v = $("mm-anexa").onchange; $("mm-anexa").onchange = function(){ if(v) v.apply(this, arguments); mmEvpArata(); }; }
@@ -3849,7 +3879,7 @@ async function inchSalveaza(){
 // punctul de rută scăzut (INACTIV la 0) + RT = V · seriile din PV → ridicate · la ultima ridicare: anexa → RIDICARE
 // (contractul FINALIZAT / clientul inactiv rămân nebifate implicit, ca înainte). Calculul punctelor = cel din „→ Rute”
 // (spreRute(id, true)). „→ Rute”, „Confirmă ridicarea” și fereastra veche rămân pentru cazurile speciale.
-const RI_TIP = /^(RIDICARE|REDUCERE|EVENIMENT-R)$/;
+const RI_TIP = /^(RIDICARE|REDUCERE|EVENIMENT-R|SPONSORIZARE-R)$/;   // v7.30: și ridicarea sponsorizării
 const RI_MULTILOC = /^A\d+-\d+(-[A-Z]{2})?$/;
 let RI = null;
 function mmRiArata(){
@@ -4108,6 +4138,7 @@ async function riSalveaza(){
       if(o.calc.coada && o.rute){
         for(const x of o.calc.coada){
           const rec = {}; A_DEF.clients.campuri.forEach(f => { if(f.c in x.rec) rec[f.c] = x.rec[f.c]; });
+          if(Array.isArray(x.rec.echipamente)) rec.echipamente = x.rec.echipamente;   // v7.30: marcajul sponsorizării
           ruteProgrameaza(rec, x); rec.updated_at = new Date().toISOString();
           const { error } = await db.from("clients").update(rec).eq("id", x.id); if(error) return gres(error);
         }
@@ -4128,8 +4159,8 @@ async function riSalveaza(){
           const ev = /^EVENIMENT/i.test(String(p.a.status || "")) || String(p.a.forma || "").toUpperCase() === "EVENIMENT" || r.tip_miscare === "EVENIMENT-R";
           const { error } = await db.from("anexe").update({ status: ev ? "EVENIMENT-R" : "RIDICARE", data_ridicarii: o.zi || r.data || today() }).in("id", p.anexeLoc); if(error) return gres(error);
           facute.push("anexa → " + (ev ? "EVENIMENT-R" : "RIDICARE"));
-          const { data: ra } = await db.from("clients").select("id,client_key,status,anexe_ids").like("client_key", "A%");
-          const ramase = (ra || []).filter(x => x.status !== "INACTIV" && (p.loc.some(i => punctAlAnexei(x.client_key, i)) || (x.anexe_ids || []).map(Number).some(i => p.loc.includes(i))));
+          const { data: ra } = await db.from("clients").select("id,client_key,status,anexe_ids,echipamente").like("client_key", "A%");
+          const ramase = (ra || []).filter(x => x.status !== "INACTIV" && !spN(x) && (p.loc.some(i => punctAlAnexei(x.client_key, i)) || (x.anexe_ids || []).map(Number).some(i => p.loc.includes(i))));
           if(ramase.length){ const { error: e2 } = await db.from("clients").update({ status: "INACTIV", updated_at: new Date().toISOString() }).in("id", ramase.map(x => x.id)); if(e2) return gres(e2); facute.push(ramase.length + " puncte rămase → INACTIV"); }
         }
         if(o.ctr && p.k && !ctrDone.has(p.k.id)){
@@ -6653,7 +6684,7 @@ async function raportLuna(){
   // (nici în Facturare — aceea pleacă doar din anexe); rămân în Comenzi și în rute.
   // v6.42 (hotărât de Ovidiu, 19.10): comenzile SERVISARE nu intră în Raport lună — raportul arată doar produsele închiriate
   // la client (o servisare pe anexă adăuga până acum +1 bucată în ziua ei; la GLS apărea un rând „fără anexă”)
-  const mis = (await miscariLuna(an, luna)).filter(m => !ctrExterior(m) && m.tip_miscare !== "SERVISARE");
+  const mis = (await miscariLuna(an, luna)).filter(m => !ctrExterior(m) && m.tip_miscare !== "SERVISARE" && !SP_TIP.test(m.tip_miscare || ""));   // v7.30: sponsorizările nu intră
   R_ANTET = ["NR. CTR","NUMELE FIRMEI","LOCATIA DE LIVRARE","NR. ANEXA","DATA LIVRARE","PRODUS","TIP",
              "LIVRAT DIN DEPOZIT","RETUR IN DEPOZIT","0"];
   for(let d = 1; d <= nz; d++) R_ANTET.push(String(d));
@@ -7213,6 +7244,22 @@ async function loadAtentie(){
         .sort((x, y) => x.p.pana.localeCompare(y.p.pana))
         .map(({ p, a }) => { const c = CTR.find(x => x.id === a.contract_id) || {};
           return { id: "fp" + p.id, ctx: p.pana, v: [numeClient(c), a.anexa || "", [a.loc, a.sat].filter(Boolean).join(", "), fmtD(p.de) + " – " + fmtD(p.pana), p.document || "factură", ziDiff(p.pana, azi)] }; })); }
+
+  // v7.30 (cerut de Ovidiu, 30.10): sponsorizările active (SPONSORIZARE-A fără SPONSORIZARE-R la aceeași adresă) cu ridicarea estimată
+  // în ≤ 7 zile, depășită sau nepusă — „să nu uit de ea la client”. Amână cu „până la” după ce vorbești cu clientul.
+  { const { data: sm } = await db.from("miscari").select("id,data,tip_miscare,buc,client,jud,loc,sat,ev_rid").in("tip_miscare", ["SPONSORIZARE-A", "SPONSORIZARE-R"]).limit(5000);
+    const gr = new Map();
+    (sm || []).forEach(x => { const k = extNorm(x.client) + "#" + extCheie(x.jud, x.loc, x.sat);
+      const o = gr.get(k) || { buc: 0, a: null }; o.buc += (NEG.test(x.tip_miscare) ? -1 : 1) * Math.abs(+x.buc || 0);
+      if(x.tip_miscare === "SPONSORIZARE-A" && (!o.a || (x.data || "") >= (o.a.data || ""))) o.a = x; gr.set(k, o); });
+    const peste7 = new Date(Date.now() + 7 * 864e5).toISOString().slice(0, 10);
+    add("spons", "Sponsorizări de urmărit",
+      "Toalete date în sponsorizare cu ridicarea estimată în cel mult 7 zile, depășită sau nepusă. Vorbește cu clientul: ridicare (comanda SPONSORIZARE-R), închiriere (anexă) sau prelungire (schimbă „Ridicare estimată” pe comandă sau amână aici).",
+      ["Client", "Locație", "Buc.", "Amplasată", "Ridicare estimată", "Zile rămase"],
+      [...gr.values()].filter(o => o.buc > 0 && o.a && (!o.a.ev_rid || o.a.ev_rid <= peste7))
+        .sort((x, y) => (x.a.ev_rid || "").localeCompare(y.a.ev_rid || ""))
+        .map(({ a, buc }) => ({ id: "sp" + a.id, ctx: (a.ev_rid || "") + "/" + buc,
+          v: [a.client || "", [a.loc, a.sat].filter(Boolean).join(", "), buc, fmtD(a.data), a.ev_rid ? fmtD(a.ev_rid) : "nepusă", a.ev_rid ? ziDiff(a.ev_rid, azi) : ""] }))); }
 
   add("doc_neprimite", "Documente trimise și neprimite",
       "Au plecat la client și nu s-au întors. Se pot marca primite sau retrimise din fila Registru documente.",
@@ -8913,7 +8960,7 @@ async function adminIncarca(){
 function adminCelula(r,c){
   if(A_TBL==="clients" && c==="status" && r.schimbare) return (r.status||"") + " · " + schText(r.schimbare);
   if(A_TBL==="clients" && c==="_produse"){   // v4.58: produsele de pe punct, fără să intri în Editează
-    const p=[]; if(+r.toalete) p.push(r.toalete+(+r.toalete===1?" toaletă":" toalete")+(echEP(r.echipamente)?" [P]":""));   // v7.29 if(+r.containere) p.push(r.containere+(+r.containere===1?" container":" containere")); if(+r.garduri) p.push(r.garduri+(+r.garduri===1?" gard":" garduri"));
+    const p=[]; if(+r.toalete) p.push(r.toalete+(+r.toalete===1?" toaletă":" toalete")+(echEP(r.echipamente)?" [P]":"")+(spN(r)?" ["+spN(r)+"S]":""));   // v7.29 / v7.30 if(+r.containere) p.push(r.containere+(+r.containere===1?" container":" containere")); if(+r.garduri) p.push(r.garduri+(+r.garduri===1?" gard":" garduri"));
     // v6.91: accesoriile în coloana ACC. (pătrățel); echipamentele prescurtate (1 L.E.)
     return [p.join(" · "), echScurt(echFaraP(r.echipamente))].filter(Boolean).join(" · ");   // v5.61: accesoriile țin de toalete — fără toalete nu se afișează
   }
@@ -10027,11 +10074,59 @@ const servProg = m => !!m && m.tip_miscare === "SERVISARE" && !m.anexa_id && !se
 // v7.29 (cerut de Ovidiu, 30.10): pe punct doar tipul (PROPRIE), fără model — e toaleta clientului; în GestiuneEE „1 T.[P]”
 const spText = m => String((m && m.model) || "").trim().toUpperCase();
 function spEch(rec, m){ const t = spText(m); if(!t) return; rec.echipamente = [...(Array.isArray(rec.echipamente) ? rec.echipamente : []).filter(e => String(e).trim().toUpperCase() !== t), t]; }
+// v7.30: sponsorizarea pe punctul clientului de la aceeași adresă (A… sau C…). Toaletele sponsorizate de la adresă = SPONSORIZARE-A
+// − SPONSORIZARE-R până la data comenzii; pe punct: toalete = (toaletele lui fără cele sponsorizate de dinainte) + sponsorizatele,
+// plus marcajul „n SPONSORIZARE”. Apăsat de două ori, nu adună de două ori.
+async function spPorneste(m, calc){
+  const fara = t => { if(calc) return { nu: t }; toast(t, true); };
+  if(extCamp(m.produs) !== "toalete") return fara("sponsorizarea se trece pe rută doar la toalete");
+  const minus = NEG.test(m.tip_miscare);
+  const [g1, g2] = await Promise.all([ db.from("clients").select("*").limit(5000),
+    db.from("miscari").select("id,data,tip_miscare,buc,client,jud,loc,sat").in("tip_miscare", ["SPONSORIZARE-A", "SPONSORIZARE-R"]).eq("client", m.client || "").limit(5000) ]);
+  if(g1.error || g2.error){ toast((g1.error || g2.error).message, true); return; }
+  const key = extCheie(m.jud, m.loc, m.sat);
+  const pana = x => (x.data || "") < (m.data || "") || ((x.data || "") === (m.data || "") && x.id <= m.id);
+  const sTot = Math.max(0, (g2.data || []).filter(x => extCheie(x.jud, x.loc, x.sat) === key && pana(x)).reduce((t, x) => t + (NEG.test(x.tip_miscare) ? -1 : 1) * Math.abs(+x.buc || 0), 0));
+  const pct = (g1.data || []).filter(p => extNorm(p.client) === extNorm(m.client) && extCheie(p.jud, p.localitate, p.locatie) === key);
+  const activ = pct.filter(p => p.status !== "INACTIV");
+  const deLa = (m.data && m.data > today()) ? m.data : null;
+  const notaData = deLa ? ` <b>Se aplică pe rută din ${fmtD(deLa)}</b> (data comenzii).` : "";
+  const coada = [];
+  if(activ.length){
+    activ.forEach(g => {
+      const rec = Object.assign({}, g); delete rec.schimbare;
+      const vechi = spN(rec), proprii = Math.max(0, (+rec.toalete || 0) - vechi);
+      rec.toalete = proprii + sTot; spSet(rec, sTot);
+      if(!(+rec.toalete || 0) && !(+rec.containere || 0) && !(+rec.garduri || 0)) rec.status = "INACTIV";
+      coada.push({ id: g.id, rec, camp: "toalete", orig: g, deLa, ids: g.anexe_ids || [],
+        nota: `<b>Sponsorizare</b> — punctul <b>${esc(g.client_key)}</b> (${esc(g.ziua || "")}): ${proprii} toalete ale locației + <b>${sTot}</b> în sponsorizare → <b>${rec.toalete}</b> în total` +
+          (rec.status === "INACTIV" ? ", punctul trece pe INACTIV (nu mai rămâne nimic)" : "") + ". Pe rută: " + esc(rec.toalete + " T" + accToaleta(rec)) + "." + notaData +
+          " Anexa locației nu se schimbă (sponsorizarea nu se facturează). Verifică și apasă Salvează." });
+    });
+  } else {
+    if(minus || !sTot) return fara("La această adresă nu există punct de rută activ al clientului — nu am de unde scădea");
+    const zile = String(m.zi_serv || "").split(",").map(z => faraDiac(z).trim().toUpperCase()).filter(z => ZI_ABR[z]);
+    (zile.length ? zile : [""]).forEach(z => {
+      const cheie = "C" + m.id + (z ? "-" + ZI_ABR[z] : "");
+      const g = pct.find(p => p.client_key === cheie) || null;
+      const rec = g ? Object.assign({}, g) : { client_key: cheie, client: m.client || "", jud: m.jud || "", localitate: m.loc || "", locatie: m.sat || "",
+        ziua: ZI_RUTE[z] || "", masina: m.traseu || "", frecventa: String(m.frecv_serv || "").replace(/\s*\/\s*/g, "/"), pers_resp: m.pers_resp || "", telefon: m.telefon || "",
+        toalete: 0, containere: 0, garduri: 0, accesorii: null, lat: null, lon: null, cartela: false };
+      delete rec.schimbare; rec.toalete = sTot; spSet(rec, sTot); rec.status = "ACTIV";
+      coada.push({ id: g ? g.id : null, rec, camp: "toalete", orig: g, deLa, ids: [],
+        nota: `<b>Sponsorizare</b> — clientul nu are punct la această adresă: punct nou <b>${esc(cheie)}</b> cu <b>${sTot}</b> toalete în sponsorizare. <b>Alege mașina, pune GPS-ul</b> și apasă Salvează.` + notaData });
+    });
+  }
+  if(coada.length > 1) coada.forEach((x, k) => { x.nota = `<b>Punctul ${k + 1} din ${coada.length}.</b> ` + x.nota; });
+  if(calc) return { coada, minus };
+  RUTE_COADA = coada; rUrmator();
+}
 async function spreRute(id, calc){   // v7.20: calc = doar calculează punctele (pentru „✓ Închide ridicarea”), fără formulare
   const m = MISC.find(x => x.id === id); if(!m) return;
   if(livrExterior(m)){ if(calc) return { nu: "comandă livrată din depozitul " + m.depozit + " — fără punct de rută la tine" }; toast("Comanda e livrată din depozitul " + m.depozit + " — nu se face punct de rută la tine (rămân Facturare și Raport lună)", true); if(VER && VER.f === "rt") VER.form = false; return; }
   // v6.41 (cerut de Ovidiu, 19.10): servisare la cerere fără contract / anexă (GLS) — punctul stă pe INACTIV și e ACTIV doar în ziua comenzii
   if(serCerere(m)){ if(calc) return { nu: "servisare la cerere" }; RUTE_MID = id; await cererePorneste(m); return; }
+  if(SP_TIP.test(m.tip_miscare || "")){ if(!calc) RUTE_MID = id; return await spPorneste(m, calc); }   // v7.30
   // v6.79 (cerut de Ovidiu, 23.10): eveniment cu program — punctele de servisare, ACTIVE doar în zilele lor (implicit Traseu-EV)
   if(m.tip_miscare === "EVENIMENT-A" && m.anexa_id){ if(calc) return { nu: "amplasare eveniment" }; RUTE_MID = id; await evPorneste(m); return; }   // v6.81: punctele evenimentului (pe locații)
   if(m.tip_miscare === "EVENIMENT-R" && m.anexa_id){   // v6.81
@@ -10109,7 +10204,8 @@ async function spreRute(id, calc){   // v7.20: calc = doar calculează punctele 
       .reduce((t, x) => { const y = anexaNr(x), c = Math.abs(+x.cant || 0); return t + (y && y.tip === "R" ? -c : c); }, 0)) : null;
     (activ.length ? activ : pct).forEach(g => {
       const rec = viitor(g);
-      if(camp) rec[camp] = totR != null ? totR : Math.max(0, (+rec[camp] || 0) - n);
+      const spR = camp === "toalete" ? spN(rec) : 0;   // v7.30: toaletele sponsorizate rămân pe punct
+      if(camp) rec[camp] = totR != null ? totR + spR : Math.max(0, (+rec[camp] || 0) - n);
       if(totR) rec.status = "ACTIV";
       if(!(+rec.toalete || 0) && !(+rec.containere || 0) && !(+rec.garduri || 0)) rec.status = "INACTIV";
       const ct = rec.status === "INACTIV" ? "" : ctPunct(rec, m.pers_resp, m.telefon);
@@ -10117,6 +10213,7 @@ async function spreRute(id, calc){   // v7.20: calc = doar calculează punctele 
         nota: `Punctul <b>${esc(g.client_key)}</b> (${esc(g.ziua || "")}): am scăzut ${n} buc ${esc(prodN(m.produs || "", n))}` + faraCol +
         (camp ? ` → rămân <b>${rec[camp]}</b>` : "") +
         (rec.status === "INACTIV" ? ", iar punctul trece pe INACTIV (nu mai rămâne nimic la el)" : "") + "." + notaData(false) +
+        (spR ? ` <span style="color:var(--t-warn);font-weight:600">⚠ La locație ${spR === 1 ? "este 1 toaletă" : "sunt " + spR + " toalete"} în SPONSORIZARE — ${spR === 1 ? "rămâne" : "rămân"} pe punct. Dacă se ridică și ${spR === 1 ? "ea" : "ele"}, fă comanda SPONSORIZARE-R.</span>` : "") +
         (ct ? ` Persoana de contact pe punct: <b>${esc(ct)}</b> (ultima de la locație).` : "") });
     });
   } else {
@@ -10142,7 +10239,7 @@ async function spreRute(id, calc){   // v7.20: calc = doar calculează punctele 
       const rec = viitor(g);
       rec.status = "ACTIV"; rec.accesorii = unesteAcc(rec.accesorii, m.accesorii) || null;
       const era = camp ? (+rec[camp] || 0) : 0;
-      if(camp) rec[camp] = totLoc != null ? totLoc : era + n;
+      if(camp) rec[camp] = totLoc != null ? totLoc + (camp === "toalete" ? spN(rec) : 0) : era + n;   // v7.30: + sponsorizatele
       const lafel = camp && rec[camp] === era;
       if(sp){ spEch(rec, m); const fq = String(m.frecv_serv || "").replace(/\s*\/\s*/g, "/"); if(fq) rec.frecventa = fq; if(m.traseu) rec.masina = m.traseu; }   // v7.28
       const ct = ctPunct(rec, m.pers_resp, m.telefon);
@@ -10171,7 +10268,9 @@ async function spreRute(id, calc){   // v7.20: calc = doar calculează punctele 
       const ct = g ? ctPunct(rec, m.pers_resp, m.telefon) : "";
       if(model) ["toalete","containere","garduri"].forEach(c => { rec[c] = +viitor(model)[c] || 0; });
       rec.accesorii = unesteAcc(model ? viitor(model).accesorii : "", m.accesorii) || null;
-      if(camp) rec[camp] = totLoc != null ? totLoc : inainte + n;
+      const sp0 = camp === "toalete" ? (g ? spN(rec) : model ? spN(viitor(model)) : 0) : 0;   // v7.30: sponsorizatele locației
+      if(camp) rec[camp] = totLoc != null ? totLoc + sp0 : inainte + n;
+      if(sp0 && !g) spSet(rec, sp0);
       if(sp) spEch(rec, m);   // v7.28
       let nota = (g ? `Punctul <b>${esc(cheie)}</b> există, pe INACTIV — îl repun pe ACTIV` : `Punct nou`) +
         (z ? ` pentru <b>${esc(ZI_RUTE[z])}</b>` : "") + `, completat din comanda din ${fmtD(m.data)}` + faraCol +
@@ -10190,6 +10289,7 @@ async function spreRute(id, calc){   // v7.20: calc = doar calculează punctele 
     if(coada.length > 1) coada.forEach((x, k) => { x.nota = `<b>Punctul ${k + 1} din ${coada.length}.</b> ` + x.nota + (k + 1 < coada.length ? " După Salvează sau Renunță urmează următorul." : ""); });
   }
   if(calc) return { coada, minus };
+  if(minus && coada.some(x => spN(x.rec)) && !confirm("⚠ La această locație sunt toalete în SPONSORIZARE (" + coada.map(x => spN(x.rec)).reduce((a, b) => Math.max(a, b), 0) + ").\n\nRidicarea / reducerea de pe anexă scade doar toaletele închiriate; cele sponsorizate rămân pe punct.\nDacă se ridică și ele, fă comanda SPONSORIZARE-R.\n\nContinui?")) return;   // v7.30
   RUTE_COADA = coada; rUrmator();
 }
 
