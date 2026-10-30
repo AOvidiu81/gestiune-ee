@@ -3121,7 +3121,7 @@ let EE_SERII = {};
 try{ EE_SERII = JSON.parse(localStorage.getItem('ee-ruta-serii') || '{}') || {}; }catch(e){ EE_SERII = {}; }
 // v18: punctul cu locatie numerotata (A181-05-MA) arata doar seriile locatiei A181-05; restul — ale anexei, ca inainte
 function seriiPunct(r){ const c = /^C(\d+)(-\d+)?/.exec((r && r.clientKey) || ''); if(c) return EE_SERII['C' + c[1] + (c[2] || '')] || '';   // R23: comanda fara anexa (serii.punct = C<id>); R24: locatia numerotata C<id>-02
-  const m = /^A(\d+)(-\d+)?/.exec((r && r.clientKey) || ''); if(!m) return ''; return m[2] ? (EE_SERII['A' + m[1] + m[2]] || '') : (EE_SERII[m[1]] || ''); }
+  const m = /^A(\d+)(-\d+)?/.exec((r && r.clientKey) || ''); if(!m) return ''; return m[2] ? (EE_SERII['A' + m[1] + m[2]] || '') : [EE_SERII[m[1]], EE_SERII['A' + m[1]]].filter(Boolean).join('; '); }   // R39 (30.10): + seriile puse pe locația punctului (sponsorizare, serii.punct = A266)
 window.eeSoferSerii = function(harta){
   EE_SERII = harta || {};
   try{ localStorage.setItem('ee-ruta-serii', JSON.stringify(EE_SERII)); }catch(e){}

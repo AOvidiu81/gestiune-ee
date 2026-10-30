@@ -950,7 +950,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
   <span id="rz-w"><button id="rz-reset" class="pictograma" title="Lățimi implicite — pune coloanele din tabelele acestei file înapoi cum erau">↺ Reset layout</button><i class="rz-sep">|</i></span>
   <span id="tz-w" title="Mărimea tabelului (doar tabelul, restul rămâne la fel), din 5 în 5%. Merge și cu Ctrl + rotița mausului, Ctrl + / Ctrl − / Ctrl 0. Dublu clic pe procent = scrii tu valoarea."><button class="pictograma" onclick="tzPas(-1)" aria-label="Micșorează tabelul">−</button><b id="tz-v" ondblclick="tzScrie()" title="Dublu clic = scrii mărimea (ex. 87), Enter">100%</b><input id="tz-in" type="number" min="30" max="300" step="5" style="display:none"><button class="pictograma" onclick="tzPas(1)" aria-label="Mărește tabelul">+</button></span>
-  <span class="ver">v7.30</span>
+  <span class="ver">v7.31</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -3523,6 +3523,12 @@ async function saveMiscare(genereaza){
 const SER_RID=/^(RIDICARE|REDUCERE|EVENIMENT-R|DAUNA|FURT)$/;
 let MM_SER=new Set();
 function mmSeriiDeschide(){
+  if(SP_TIP.test($("mm-tip").value)){ const id=+$("mm-id").value||null;   // v7.31: sponsorizarea — seria stă pe locația punctului
+    if(!id){ toast("Salvează întâi comanda, apoi trece seria (🔢)", true); return; }
+    const m=MISC.find(x=>x.id===id)||{ client:$("mm-client").value, jud:$("mm-jud").value, loc:$("mm-loc").value, sat:$("mm-sat").value };
+    const p=(PCT||[]).filter(x=>extNorm(x.client)===extNorm(m.client) && extCheie(x.jud,x.localitate,x.locatie)===extCheie(m.jud,m.loc,m.sat) && x.status!=="INACTIV")[0];
+    if(!p){ toast("Fă întâi punctul de rută („→ Rute”), apoi seria", true); return; }
+    openSeriiCmd(id, peBaza(p.client_key), Math.max(1, spN(p))); return; }
   if(mmExterior()){ const id=+$("mm-id").value||null;   // v6.21: comanda din exterior — seriile stau pe comandă
     if(!id){ toast("Salvează întâi comanda, apoi trece seriile (🔢 aici sau din Puncte de rută)", true); return; }
     openSeriiCmd(id); return; }
@@ -5123,7 +5129,7 @@ function butonSerii(a){
 }
 // v6.21 (cerut de Ovidiu, 15.10): seriile pe comanda fără anexă (contract MURES / ARAD…, livrat din depozitul lui):
 // serii.punct = „C<id comandă>”, anexa_id / contract_id / client_id goale, miscare_amplasare_id = comanda.
-async function openSeriiCmd(mid, cheie){
+async function openSeriiCmd(mid, cheie, nFix){   // v7.31: nFix = câte bucăți (sponsorizarea: doar cele sponsorizate)
   let m = MISC.find(x => x.id === mid);
   if(!m){ const { data } = await db.from("miscari").select("*").eq("id", mid).maybeSingle(); m = data; }
   if(!m){ toast("Comanda #" + mid + " nu mai există", true); return; }
@@ -5140,7 +5146,7 @@ async function openSeriiCmd(mid, cheie){
     if(b0) key = b0; }
   const { data: pct0 } = await db.from("clients").select("client_key,jud,localitate,locatie,status,toalete,containere,garduri").or(`client_key.eq.${key},client_key.like.${key}-*`).limit(50);
   const pct = (pct0 || []).filter(p => peBaza(p.client_key) === key), p0 = pct[0] || null;
-  const act = (pct || []).filter(p => p.status !== "INACTIV"), n = act.length ? Math.max(...act.map(prodPunct)) : Math.abs(+m.buc || 0);
+  const act = (pct || []).filter(p => p.status !== "INACTIV"), n = nFix || (act.length ? Math.max(...act.map(prodPunct)) : Math.abs(+m.buc || 0));
   SR_CMD = m; SR_DATA = null; SR_STERSE = []; SR_PUNCT = key;
   const aj = p0 ? p0.jud : m.jud, al = p0 ? p0.localitate : m.loc, as = p0 ? p0.locatie : m.sat;
   SR_AN = { id: null, contract_id: null, produs: m.produs || "", model: m.model || "", model_fizic: m.model_fizic || "", jud: aj || null, loc: al || null, sat: as || null, data_livrarii: m.data, anexa: "" };
@@ -6971,6 +6977,7 @@ function verWaPorneste(){
 function rtChei(m){
   const a = ANX.find(x => x.id === m.anexa_id), loc = a ? anexeLocatie(a) : [];
   const idCheie = k => { const r = /^A(\d+)(-\d+)?(-[A-Z]{2})?$/.exec(k || ""); return r ? +r[1] : null; };
+  if(SP_TIP.test(m.tip_miscare || "")) return PCT.filter(p => extNorm(p.client) === extNorm(m.client) && extCheie(p.jud, p.localitate, p.locatie) === extCheie(m.jud, m.loc, m.sat)).map(p => p.client_key);   // v7.31
   return PCT.filter(p => m.anexa_id ? (loc.includes(idCheie(p.client_key)) || (p.anexe_ids || []).some(i => loc.includes(+i)))
                                     : (p.client_key === "C" + m.id || String(p.client_key || "").startsWith("C" + m.id + "-") || extLaLoc(p, m)))
             .map(p => p.client_key);
@@ -7005,7 +7012,7 @@ function verRtLipsa(m){
     const r = { ...p }; schLista(p.schimbare).filter(s => s.de_la <= m.data).forEach(s => { if(camp in s) r[camp] = s[camp]; if("ziua" in s) r.ziua = s.ziua; if("status" in s) r.status = s.status; });
     const k = locKey(p) || p.client_key;
     if(!peLoc.has(k)) peLoc.set(k, []);
-    if(!(r.status === "INACTIV" && trebuie)) peLoc.get(k).push({ zi: r.ziua || "fără zi", are: +r[camp] || 0 });
+    if(!(r.status === "INACTIV" && trebuie)) peLoc.get(k).push({ zi: r.ziua || "fără zi", are: (+r[camp] || 0) - (camp === "toalete" ? spN(r) : 0) });   // v7.31: fără sponsorizate
   }
   let total = 0;
   for(const [k, l] of peLoc){
