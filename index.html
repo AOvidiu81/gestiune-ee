@@ -932,7 +932,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
   <span id="rz-w"><button id="rz-reset" class="pictograma" title="Lățimi implicite — pune coloanele din tabelele acestei file înapoi cum erau">↺ Reset layout</button><i class="rz-sep">|</i></span>
   <span id="tz-w" title="Mărimea tabelului (doar tabelul, restul rămâne la fel), din 5 în 5%. Merge și cu Ctrl + rotița mausului, Ctrl + / Ctrl − / Ctrl 0. Dublu clic pe procent = scrii tu valoarea."><button class="pictograma" onclick="tzPas(-1)" aria-label="Micșorează tabelul">−</button><b id="tz-v" ondblclick="tzScrie()" title="Dublu clic = scrii mărimea (ex. 87), Enter">100%</b><input id="tz-in" type="number" min="30" max="300" step="5" style="display:none"><button class="pictograma" onclick="tzPas(1)" aria-label="Mărește tabelul">+</button></span>
-  <span class="ver">v7.27</span>
+  <span class="ver">v7.28</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -9996,6 +9996,13 @@ function evProgrameaza(rec, x){
   if(rid1) l.push({ de_la: rid1, status: "INACTIV", ziua: "" });
   rec.schimbare = schImpacheteaza(schLista(schImpacheteaza(l)));
 }
+// v7.28 (cerut de Ovidiu, 30.10 — DOMARCONS, toaleta proprie HANDY la Bumbești Jiu): SERVISARE fără anexă cu frecvență programată
+// (nu „La Cerere”) → punct separat C<id comandă>-ZZ, care NU se lipește de punctele clientului cu toalete închiriate de la aceeași
+// adresă; cantitatea = bucățile comenzii (servisarea nu intră în stoc, deci totalul locației ar fi 0); pe card „PROPRIE HANDY”
+// (tipul + modelul comenzii, în clients.echipamente — aplicația de rute îl arată deja). Fără anexă, fără stoc, fără Raport lună.
+const servProg = m => !!m && m.tip_miscare === "SERVISARE" && !m.anexa_id && !serCerere(m);
+const spText = m => [m.model, m.model_fizic].map(x => String(x || "").trim().toUpperCase()).filter(x => x && !/^FARA MODEL$/.test(faraDiac(x))).join(" ");
+function spEch(rec, m){ const t = spText(m); if(!t) return; rec.echipamente = [...(Array.isArray(rec.echipamente) ? rec.echipamente : []).filter(e => String(e).trim().toUpperCase() !== t), t]; }
 async function spreRute(id, calc){   // v7.20: calc = doar calculează punctele (pentru „✓ Închide ridicarea”), fără formulare
   const m = MISC.find(x => x.id === id); if(!m) return;
   if(livrExterior(m)){ if(calc) return { nu: "comandă livrată din depozitul " + m.depozit + " — fără punct de rută la tine" }; toast("Comanda e livrată din depozitul " + m.depozit + " — nu se face punct de rută la tine (rămân Facturare și Raport lună)", true); if(VER && VER.f === "rt") VER.form = false; return; }
@@ -10016,6 +10023,7 @@ async function spreRute(id, calc){   // v7.20: calc = doar calculează punctele 
     if(calc) return { nu: "comandă din exterior — scade punctul din „→ Rute” (fereastra pe locații)", rute: true }; RUTE_MID = id; await pePorneste(m); return;
   }
   // v7.24: locația aleasă pe comanda cu anexă (miscari.locatii[0].anexa)
+  const sp = servProg(m);   // v7.28
   const laL = m.anexa_id && LS_TIP.test(m.tip_miscare) && Array.isArray(m.locatii) && m.locatii.length === 1 && m.locatii[0] && m.locatii[0].anexa ? m.locatii[0] : null;
   if(laL && laL.nou && !NEG.test(m.tip_miscare)){ if(calc) return { nu: "locație nouă — punctele se fac din „→ Rute” (tabelul pe locații)" }; RUTE_MID = id; await plPorneste(m, laL); return; }
   if(!PL_SARI && !laL && m.anexa_id && ["AMPLASARE","SUPLIMENTARE","EVENIMENT-A"].includes(m.tip_miscare) && Math.abs(+m.buc || 0) > 1){
@@ -10035,12 +10043,12 @@ async function spreRute(id, calc){   // v7.20: calc = doar calculează punctele 
   if(error){ toast(error.message, true); return; }
   const idCheie = p => { const k = /^A(\d+)(-\d+)?(-[A-Z]{2})?$/.exec((p && p.client_key) || ""); return k ? +k[1] : null; };
   const alLoc = p => loc.includes(idCheie(p)) || (p.anexe_ids || []).some(i => loc.includes(+i));
-  const pct = (gasite || []).filter(p => m.anexa_id ? alLoc(p) : (p.client_key === baza || p.client_key.startsWith(baza + "-") || extLaLoc(p, m)))
+  const pct = (gasite || []).filter(p => m.anexa_id ? alLoc(p) : (p.client_key === baza || p.client_key.startsWith(baza + "-") || (!sp && extLaLoc(p, m))))
     .filter(p => !(laL && !laL.nou) || laBaza(p.client_key) === laL.cod);   // v7.24: doar locația aleasă
   if(laL && !laL.nou && !pct.length){ if(calc) return { nu: "locația " + laL.cod + " nu are puncte de rută" }; toast("Locația " + laL.cod + " nu are puncte de rută — alege alta în comandă", true); return; }
   if(laL && !laL.nou && !calc && m.rt === "V" && !confirm("Comanda are deja RT = V — bucățile au fost probabil trecute pe locația " + laL.cod + ".\n\nLe " + (NEG.test(m.tip_miscare) ? "scad" : "adaug") + " încă o dată?")) return;
   // v6.25: la exterior, suplimentarea / reducerea / ridicarea merg pe punctele deja existente la locație (cel mai vechi cod C…)
-  if(!m.anexa_id){ const b0 = pct.map(p => (/^C(\d+)/.exec(p.client_key) || [])[1]).filter(Boolean).map(Number).sort((x, y) => x - y)[0];
+  if(!m.anexa_id && !sp){ const b0 = pct.map(p => (/^C(\d+)/.exec(p.client_key) || [])[1]).filter(Boolean).map(Number).sort((x, y) => x - y)[0];
     if(b0 && b0 !== m.id){ baza = "C" + b0;
       toast("Comandă din exterior: punctul locației este " + baza + " — cantitatea = toate comenzile de la această adresă până la data comenzii"); } }
   // punctul așa cum va fi după schimbarea deja programată, dacă are una
@@ -10057,7 +10065,8 @@ async function spreRute(id, calc){   // v7.20: calc = doar calculează punctele 
   // v6.25 (cerut de Ovidiu, 15.10): la exterior totalul se calculează din comenzile locației (același client, aceeași adresă,
   // același fel de produs, până la data comenzii) — ca la anexe: a doua apăsare pe „→ Rute” nu mai adaugă nimic.
   let totExt = null;
-  if(!m.anexa_id && camp){
+  if(sp && camp) totExt = Math.abs(+m.buc || 0) || 1;   // v7.28: toaletele clientului de pe comandă
+  if(!m.anexa_id && camp && !sp){
     const { data: ce, error: eE } = await db.from("miscari").select("id,data,tip_miscare,buc,produs,client,jud,loc,sat,locatii").is("anexa_id", null).eq("client", m.client || "").limit(5000);
     if(eE){ toast("Nu am putut citi comenzile locației: " + eE.message, true); return; }
     totExt = extTotal(ce, extCheie(m.jud, m.loc, m.sat), camp, m);   // v6.26: și comenzile pe mai multe locații
@@ -10111,6 +10120,7 @@ async function spreRute(id, calc){   // v7.20: calc = doar calculează punctele 
       const era = camp ? (+rec[camp] || 0) : 0;
       if(camp) rec[camp] = totLoc != null ? totLoc : era + n;
       const lafel = camp && rec[camp] === era;
+      if(sp){ spEch(rec, m); const fq = String(m.frecv_serv || "").replace(/\s*\/\s*/g, "/"); if(fq) rec.frecventa = fq; if(m.traseu) rec.masina = m.traseu; }   // v7.28
       const ct = ctPunct(rec, m.pers_resp, m.telefon);
       coada.push({ id: g.id, rec, camp, orig: g, deLa, ids: idsPe(g),
         nota: `Punctul <b>${esc(g.client_key)}</b> (${esc(g.ziua || "")}) există deja la această locație. ` +
@@ -10138,6 +10148,7 @@ async function spreRute(id, calc){   // v7.20: calc = doar calculează punctele 
       if(model) ["toalete","containere","garduri"].forEach(c => { rec[c] = +viitor(model)[c] || 0; });
       rec.accesorii = unesteAcc(model ? viitor(model).accesorii : "", m.accesorii) || null;
       if(camp) rec[camp] = totLoc != null ? totLoc : inainte + n;
+      if(sp) spEch(rec, m);   // v7.28
       let nota = (g ? `Punctul <b>${esc(cheie)}</b> există, pe INACTIV — îl repun pe ACTIV` : `Punct nou`) +
         (z ? ` pentru <b>${esc(ZI_RUTE[z])}</b>` : "") + `, completat din comanda din ${fmtD(m.data)}` + faraCol +
         (model && camp ? `, cu tot ce e pe locație (<b>${rec[camp]}</b> în total)` : "") +
@@ -10150,6 +10161,8 @@ async function spreRute(id, calc){   // v7.20: calc = doar calculează punctele 
       coada.forEach(x => { x.nota = `<span style="color:var(--t-err);font-weight:600">⚠ ${esc(avTot)}</span><br>` + x.nota; });
       if(!calc && !confirm("⚠ " + avTot + "\n\nPunctul de rută s-ar salva cu " + totLoc + " buc. Continui oricum?")) return;
     }
+    if(sp){ const t = spText(m); coada.forEach(x => { x.nota = `<b>Servisare programată la toaleta clientului</b> — punct separat <b>${esc(x.rec.client_key)}</b>, nu se lipește de punctele cu toalete închiriate ale clientului. ` +
+      (t ? `Pe cardul șoferului apare <b>${esc(t)}</b>. ` : "") + `Fără anexă, fără stoc, nu intră în Raport lună. ` + x.nota; }); }   // v7.28
     if(coada.length > 1) coada.forEach((x, k) => { x.nota = `<b>Punctul ${k + 1} din ${coada.length}.</b> ` + x.nota + (k + 1 < coada.length ? " După Salvează sau Renunță urmează următorul." : ""); });
   }
   if(calc) return { coada, minus };
