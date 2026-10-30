@@ -308,6 +308,24 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   .sv-rand .sv-mic{width:150px}
   .sv-rand .sv-mic select{padding:7px 8px;font-size:13px}
   .zile-pill{gap:6px;padding-top:0;flex-wrap:nowrap}
+  /* v7.29: Comanda clientului — rânduri egale, explicațiile sub câmp, comutator „Se facturează” */
+  .cmd-rand,.cmd-fact{display:flex;flex-wrap:wrap;gap:10px 18px;align-items:flex-start}
+  .cmd-c{display:flex;flex-direction:column;width:180px}
+  .cmd-c.cmd-s{width:110px}
+  .cmd-c label{margin-bottom:4px}
+  .cmd-c input,.cmd-c select{height:36px;padding:6px 10px;font-size:13px;box-sizing:border-box}
+  .cmd-sub{font-size:11px;color:var(--mut);margin-top:3px;line-height:1.2;min-height:13px}
+  .cmd-fact{margin-top:12px;padding:12px 14px;border:1px solid var(--bd);border-radius:10px;background:var(--card2,var(--card))}
+  .cmd-sw{display:flex;align-items:center;gap:10px;margin:0;padding-top:20px;width:215px;cursor:pointer;text-transform:none;letter-spacing:0}
+  .cmd-sw input{position:absolute;opacity:0;width:1px;height:1px}
+  .cmd-sw-b{flex:0 0 auto;position:relative;width:38px;height:22px;border-radius:11px;background:var(--bd);transition:background .15s}
+  .cmd-sw-b::after{content:"";position:absolute;top:3px;left:3px;width:16px;height:16px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.25);transition:left .15s}
+  .cmd-sw input:checked+.cmd-sw-b{background:var(--acc,var(--g))}
+  .cmd-sw input:checked+.cmd-sw-b::after{left:19px}
+  .cmd-sw input:focus-visible+.cmd-sw-b{outline:2px solid var(--acc,var(--g));outline-offset:2px}
+  .cmd-sw-t{display:flex;flex-direction:column;font-weight:600;font-size:13px;color:var(--tx)}
+  .cmd-sw-t small{white-space:nowrap;font-weight:400;font-size:11px;color:var(--mut)}
+  .cmd-fact:has(#mm-sv-f:not(:checked)) .cmd-f{opacity:.45}
   .zile-pill label{position:relative;width:40px;height:36px;justify-content:center;border:1px solid var(--bd);border-radius:9px;background:var(--card2,var(--card));
     font-size:13px;font-weight:600;color:var(--tx);user-select:none;transition:background .12s,border-color .12s,color .12s,box-shadow .12s}
   .zile-pill label.we{color:var(--mut)}
@@ -932,7 +950,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
   <span id="rz-w"><button id="rz-reset" class="pictograma" title="Lățimi implicite — pune coloanele din tabelele acestei file înapoi cum erau">↺ Reset layout</button><i class="rz-sep">|</i></span>
   <span id="tz-w" title="Mărimea tabelului (doar tabelul, restul rămâne la fel), din 5 în 5%. Merge și cu Ctrl + rotița mausului, Ctrl + / Ctrl − / Ctrl 0. Dublu clic pe procent = scrii tu valoarea."><button class="pictograma" onclick="tzPas(-1)" aria-label="Micșorează tabelul">−</button><b id="tz-v" ondblclick="tzScrie()" title="Dublu clic = scrii mărimea (ex. 87), Enter">100%</b><input id="tz-in" type="number" min="30" max="300" step="5" style="display:none"><button class="pictograma" onclick="tzPas(1)" aria-label="Mărește tabelul">+</button></span>
-  <span class="ver">v7.28</span>
+  <span class="ver">v7.29</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -1516,17 +1534,18 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
         <div id="mm-ev-rinfo" class="muted" style="margin-top:8px"></div>
       </div>
       <div class="sect" id="mm-cmd-sect" style="display:none">
-        <h4>Comanda clientului <span class="hint">(ACT — ce trece pe factură)</span></h4>
-        <div class="grid3">
-          <div><label>Comanda nr. <span class="hint">dacă există</span></label><input id="mm-cmd-nr" oninput="mmCmdAct()"></div>
-          <div><label>Din data <span class="hint">data comenzii clientului (nu a servisării / amplasării)</span></label><input id="mm-cmd-data" type="date" onchange="mmCmdAct()"></div>
-          <div><label>Primită pe</label><select id="mm-cmd-canal" onchange="mmCmdAct()"><option value=""></option><option>WhatsApp</option><option>Email</option><option>PDF</option><option>Telefon</option></select></div>
+        <h4>Comanda clientului <span class="hint">ACT — ce trece pe factură</span></h4>
+        <!-- v7.29 (cerut de Ovidiu, 30.10): câmpurile pe rânduri egale, explicațiile sub câmp, „Se facturează” comutator -->
+        <div class="cmd-rand">
+          <div class="cmd-c"><label>Comanda nr.</label><input id="mm-cmd-nr" oninput="mmCmdAct()" placeholder="—"><span class="cmd-sub">dacă există</span></div>
+          <div class="cmd-c"><label>Din data</label><input id="mm-cmd-data" type="date" onchange="mmCmdAct()"><span class="cmd-sub">a comenzii, nu a servisării</span></div>
+          <div class="cmd-c"><label>Primită pe</label><select id="mm-cmd-canal" onchange="mmCmdAct()"><option value=""></option><option>WhatsApp</option><option>Email</option><option>PDF</option><option>Telefon</option></select><span class="cmd-sub">&nbsp;</span></div>
         </div>
-        <div class="grid3" id="mm-sv-fact" style="margin-top:8px">
-          <div><label>&nbsp;</label><label style="display:flex;align-items:center;gap:6px;margin:0"><input type="checkbox" id="mm-sv-f" style="width:auto"> Se facturează <span class="hint">(fără anexă: rând în Facturare după PV = V)</span></label></div>
-          <div><label>Preț / servisare (fără TVA)</label><input id="mm-sv-pret" type="number" step="0.01" min="0"></div>
-          <div><label>Moneda</label><select id="mm-sv-moneda"></select></div>
-          <div><label>Scadent (zile)</label><input id="mm-sv-scad" type="number" step="1" min="0" placeholder="ex. 5"></div>
+        <div class="cmd-fact" id="mm-sv-fact">
+          <label class="cmd-sw" title="Fără anexă: rând în Facturare după PV = V"><input type="checkbox" id="mm-sv-f"><span class="cmd-sw-b"></span><span class="cmd-sw-t">Se facturează<small>rând în Facturare după PV = V</small></span></label>
+          <div class="cmd-c cmd-f"><label>Preț / servisare</label><input id="mm-sv-pret" type="number" step="0.01" min="0" placeholder="0.00"><span class="cmd-sub">fără TVA</span></div>
+          <div class="cmd-c cmd-f cmd-s"><label>Moneda</label><select id="mm-sv-moneda"></select><span class="cmd-sub">&nbsp;</span></div>
+          <div class="cmd-c cmd-f cmd-s"><label>Scadent</label><input id="mm-sv-scad" type="number" step="1" min="0" placeholder="ex. 5"><span class="cmd-sub">zile</span></div>
         </div>
       </div>
 
@@ -2192,7 +2211,11 @@ const accScurt = t => accLista(t).map(x => ACC_SCURT[x.toUpperCase()] || x).join
 const echScurt = e => (Array.isArray(e) ? e : e ? [e] : []).filter(Boolean).map(x => { const m = /^(\d+)\s+(.+)$/.exec(String(x).trim()); return m ? m[1] + " " + (ACC_SCURT[m[2].toUpperCase()] || m[2]) : (ACC_SCURT[String(x).trim().toUpperCase()] || String(x).trim()); }).join(" · ");
 const modelAcc = a => [a.model || "", a.model_fizic || "", a.accesorii ? "[" + accScurt(a.accesorii) + "]" : ""].filter(Boolean).join(" ");
 // pe rute: 2 T.[LI+DS+DPH] = toaletă cu lavoar interior, dozator săpun, dispenser prosop hârtie
-const accToaleta = c => { const l = accLista(c.accesorii).map(x => ACC_SCURT[x.toUpperCase()]).filter(Boolean).map(x => x.replace(/\./g, "")); return l.length ? ".[" + l.join("+") + "]" : ""; };
+// v7.29 (cerut de Ovidiu, 30.10): toaleta proprie a clientului (echipamente „PROPRIE…” pe punct, din v7.28) → „1 T.[P]”
+const ECH_P = /^PROPRIE\b/i;
+const echEP = e => (Array.isArray(e) ? e : []).some(x => ECH_P.test(String(x || "").trim()));
+const echFaraP = e => (Array.isArray(e) ? e : e ? [e] : []).filter(x => !ECH_P.test(String(x || "").trim()));
+const accToaleta = c => { const l = (echEP(c.echipamente) ? ["P"] : []).concat(accLista(c.accesorii).map(x => ACC_SCURT[x.toUpperCase()]).filter(Boolean).map(x => x.replace(/\./g, ""))); return l.length ? ".[" + l.join("+") + "]" : ""; };
 const esc = s => (s==null?"":String(s)).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 // v5.97 (cerut de Ovidiu, 14.10): produsul la singular / plural după număr (1 TOALETA · 6 TOALETE), peste tot unde stă lângă un număr.
 // În bază numele rămâne cel din nomenclator; pluralul e doar la afișare. Cuvintele necunoscute rămân cum sunt.
@@ -8149,7 +8172,7 @@ function rrAfiseaza(){
   }
   const OBS = { O:"Omis", LA:"Lipsă acces" };
   const hm = t => { if(!t) return "—"; const d = new Date(t); return zi2(d.getHours()) + ":" + zi2(d.getMinutes()); };
-  const produse = c => [c.toalete ? c.toalete + " T" + accToaleta({ ...c, accesorii: accPunct(c) }) : "", c.containere ? c.containere + " C" : "", c.garduri ? c.garduri + " G" : "", echScurt(c.echipamente)].filter(Boolean).join(" · ");   // v6.91: echScurt
+  const produse = c => [c.toalete ? c.toalete + " T" + accToaleta({ ...c, accesorii: accPunct(c) }) : "", c.containere ? c.containere + " C" : "", c.garduri ? c.garduri + " G" : "", echScurt(echFaraP(c.echipamente))].filter(Boolean).join(" · ");   // v6.91: echScurt
   const tot = $("rr-col").value === "toate";
   const th = t => `<th>${t}</th>`;
   const cap = tot
@@ -8890,9 +8913,9 @@ async function adminIncarca(){
 function adminCelula(r,c){
   if(A_TBL==="clients" && c==="status" && r.schimbare) return (r.status||"") + " · " + schText(r.schimbare);
   if(A_TBL==="clients" && c==="_produse"){   // v4.58: produsele de pe punct, fără să intri în Editează
-    const p=[]; if(+r.toalete) p.push(r.toalete+(+r.toalete===1?" toaletă":" toalete")); if(+r.containere) p.push(r.containere+(+r.containere===1?" container":" containere")); if(+r.garduri) p.push(r.garduri+(+r.garduri===1?" gard":" garduri"));
+    const p=[]; if(+r.toalete) p.push(r.toalete+(+r.toalete===1?" toaletă":" toalete")+(echEP(r.echipamente)?" [P]":""));   // v7.29 if(+r.containere) p.push(r.containere+(+r.containere===1?" container":" containere")); if(+r.garduri) p.push(r.garduri+(+r.garduri===1?" gard":" garduri"));
     // v6.91: accesoriile în coloana ACC. (pătrățel); echipamentele prescurtate (1 L.E.)
-    return [p.join(" · "), echScurt(r.echipamente)].filter(Boolean).join(" · ");   // v5.61: accesoriile țin de toalete — fără toalete nu se afișează
+    return [p.join(" · "), echScurt(echFaraP(r.echipamente))].filter(Boolean).join(" · ");   // v5.61: accesoriile țin de toalete — fără toalete nu se afișează
   }
   const v=r[c];
   if(v===true) return "Da"; if(v===false) return "Nu";
@@ -10001,7 +10024,8 @@ function evProgrameaza(rec, x){
 // adresă; cantitatea = bucățile comenzii (servisarea nu intră în stoc, deci totalul locației ar fi 0); pe card „PROPRIE HANDY”
 // (tipul + modelul comenzii, în clients.echipamente — aplicația de rute îl arată deja). Fără anexă, fără stoc, fără Raport lună.
 const servProg = m => !!m && m.tip_miscare === "SERVISARE" && !m.anexa_id && !serCerere(m);
-const spText = m => [m.model, m.model_fizic].map(x => String(x || "").trim().toUpperCase()).filter(x => x && !/^FARA MODEL$/.test(faraDiac(x))).join(" ");
+// v7.29 (cerut de Ovidiu, 30.10): pe punct doar tipul (PROPRIE), fără model — e toaleta clientului; în GestiuneEE „1 T.[P]”
+const spText = m => String((m && m.model) || "").trim().toUpperCase();
 function spEch(rec, m){ const t = spText(m); if(!t) return; rec.echipamente = [...(Array.isArray(rec.echipamente) ? rec.echipamente : []).filter(e => String(e).trim().toUpperCase() !== t), t]; }
 async function spreRute(id, calc){   // v7.20: calc = doar calculează punctele (pentru „✓ Închide ridicarea”), fără formulare
   const m = MISC.find(x => x.id === id); if(!m) return;
