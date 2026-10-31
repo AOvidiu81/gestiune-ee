@@ -963,7 +963,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
   <span id="rz-w"><button id="rz-reset" class="pictograma" title="Lățimi implicite — pune coloanele din tabelele acestei file înapoi cum erau">↺ Reset layout</button><i class="rz-sep">|</i></span>
   <span id="tz-w" title="Mărimea tabelului (doar tabelul, restul rămâne la fel), din 5 în 5%. Merge și cu Ctrl + rotița mausului, Ctrl + / Ctrl − / Ctrl 0. Dublu clic pe procent = scrii tu valoarea."><button class="pictograma" onclick="tzPas(-1)" aria-label="Micșorează tabelul">−</button><b id="tz-v" ondblclick="tzScrie()" title="Dublu clic = scrii mărimea (ex. 87), Enter">100%</b><input id="tz-in" type="number" min="30" max="300" step="5" style="display:none"><button class="pictograma" onclick="tzPas(1)" aria-label="Mărește tabelul">+</button></span>
-  <span class="ver">v7.34</span>
+  <span class="ver">v7.35</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -6006,11 +6006,16 @@ function ftHtml(t){ const e = v => v.replace(/&/g, "&amp;").replace(/</g, "&lt;"
   return '<div style="font-family:Calibri,Arial,sans-serif;font-size:11pt">' + t.split("\n").map(l => e(l).replace(/\*([^*\n]+)\*/g, "<b>$1</b>")).join("<br>") + "</div>"; }
 function ftDeschide(j){
   const t = FT_TXT.get(j); if(t == null){ toast("Rândul nu mai e în listă — reîncarcă Facturare", true); return; }
+  ftArata(t);
+}
+// v7.35: aceeași fereastră și pentru textul din comandă (servisarea la cerere pe locații); nota diferă
+const FT_NOTA = "Scrie direct în text (ex. la „Mențiuni”; gol = nu se trimite). *Textul între steluțe* iese îngroșat. <b>E-mail</b> = copiază textul formatat și deschide mesajul (Către + subiect) → lipește cu Ctrl+V. După trimitere: STARE LUNA = IN ASTEPTARE FACTURA; când vine factura: Verificare → ✓ (trece pe FACTURAT) + nr. factură.";
+function ftArata(t, nota){
   let m = document.getElementById("mod-ft");
   if(!m){
     m = document.createElement("div"); m.id = "mod-ft"; m.className = "modal";
     m.innerHTML = `<div class="box" style="max-width:600px"><h3>✉ Text pentru facturare</h3>
-      <div class="muted" style="font-size:12px;margin-bottom:6px">Scrie direct în text (ex. la „Mențiuni”; gol = nu se trimite). *Textul între steluțe* iese îngroșat. <b>E-mail</b> = copiază textul formatat și deschide mesajul (Către + subiect) → lipește cu Ctrl+V. După trimitere: STARE LUNA = IN ASTEPTARE FACTURA; când vine factura: Verificare → ✓ (trece pe FACTURAT) + nr. factură.</div>
+      <div class="muted" id="ft-nota" style="font-size:12px;margin-bottom:6px"></div>
       <div style="display:flex;gap:8px;margin-bottom:6px"><label style="flex:1">Către<input id="ft-dest"></label><label style="flex:1">Subiect<input id="ft-sub"></label></div>
       <textarea id="ft-t" rows="18" style="width:100%;font-family:inherit;font-size:13px"></textarea>
       <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:10px;flex-wrap:wrap">
@@ -6024,6 +6029,7 @@ function ftDeschide(j){
   }
   let d = FT_DEST; try{ d = localStorage.getItem("ft_dest") || FT_DEST; }catch(_){}
   $("ft-dest").value = d; $("ft-sub").value = FT_SUBIECT;
+  $("ft-nota").innerHTML = nota || FT_NOTA;
   $("ft-t").value = t; m.classList.add("on");
   setTimeout(() => { const el = $("ft-t"); el.focus(); el.setSelectionRange(el.value.length, el.value.length); }, 0);
 }
@@ -10167,11 +10173,10 @@ async function svlTextFactForm(){
     cmd_nr: $("mm-cmd-nr").value.trim(), cmd_data: $("mm-cmd-data").value };
   if(!m.desp_pret && !confirm("Comanda nu are preț pe servisare. Fac textul așa?")) return;
   const txt = svlTextFact(m, L);
-  try { await navigator.clipboard.writeText(txt); } catch(e){ window.prompt("Copiază textul (Ctrl+C):", txt); }
   const f = document.querySelector('#mm-flags .flag[data-f="fac"]');
   if(f && (f.dataset.v || f.textContent) !== "V") setFlag(f, "VA");
-  toast("Textul pentru facturare e copiat — FAC = V galben. Salvez comanda.");
   await saveMiscare(false);
+  ftArata(txt, "Textul pentru facturare (doar locațiile <b>Efectuate</b>). Poți scrie direct în text. <b>Copiază</b> / <b>WhatsApp</b> / <b>E-mail</b> (Către + subiect, lipești cu Ctrl+V). FAC a trecut pe <b>V galben</b>; când factura ajunge la client, apasă FAC în Comenzi → V verde.");
 }
 // La Salvează: ACTIV în ziua comenzii (cu ziua + traseul din formular), INACTIV din ziua următoare — dacă acea zi nu are
 // deja altă schimbare (o cerere pe ziua următoare rămâne ACTIV). Comanda de azi: punctul e ACTIV de acum.
