@@ -963,7 +963,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
   <span id="rz-w"><button id="rz-reset" class="pictograma" title="Lățimi implicite — pune coloanele din tabelele acestei file înapoi cum erau">↺ Reset layout</button><i class="rz-sep">|</i></span>
   <span id="tz-w" title="Mărimea tabelului (doar tabelul, restul rămâne la fel), din 5 în 5%. Merge și cu Ctrl + rotița mausului, Ctrl + / Ctrl − / Ctrl 0. Dublu clic pe procent = scrii tu valoarea."><button class="pictograma" onclick="tzPas(-1)" aria-label="Micșorează tabelul">−</button><b id="tz-v" ondblclick="tzScrie()" title="Dublu clic = scrii mărimea (ex. 87), Enter">100%</b><input id="tz-in" type="number" min="30" max="300" step="5" style="display:none"><button class="pictograma" onclick="tzPas(1)" aria-label="Mărește tabelul">+</button></span>
-  <span class="ver">v7.36</span>
+  <span class="ver">v7.37</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -2049,6 +2049,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <h3 id="cmd-title" class="lux-cap cap-mut" title="Trage de aici ca să muți fereastra; dublu-clic = înapoi la loc">Comanda de trimis</h3>
   <p class="muted" style="margin:0 0 10px">Se scrie singură din ce ai completat. Verific-o, corectează ce vrei direct aici, apoi copiaz-o și trimite-o pe WhatsApp.</p>
   <div class="ver-banda" id="cmd-ver" style="display:none;margin:0 0 10px;padding:10px;border-radius:10px"></div>
+  <div style="display:flex;gap:8px;margin:0 0 8px"><label style="flex:1">Către <span class="muted" style="font-weight:400" id="cmd-dest-info"></span><input id="cmd-dest" placeholder="e-mailul depozitului"></label><label style="flex:1">Subiect<input id="cmd-sub"></label></div>
   <div id="cmd-cap1" style="display:none;font-weight:700;margin:0 0 4px">AMPLASARE</div>
   <textarea id="cmd-text" rows="15" style="width:100%;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:13px;line-height:1.5"></textarea>
   <div id="cmd-doi" style="display:none;margin-top:12px">
@@ -2058,7 +2059,9 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <div class="row" style="margin-top:12px;justify-content:flex-end">
     <div style="flex:1"></div>
     <div style="flex:0"><button class="btn sec" onclick="cmdInchide()">Închide</button></div>
-    <div style="flex:0"><button class="btn" onclick="copiazaComanda()">Copiază textul</button></div>
+    <div style="flex:0"><button class="btn sec" onclick="copiazaComanda()">Copiază textul</button></div>
+    <div style="flex:0"><button class="btn sec" onclick="cmdWa()">WhatsApp</button></div>
+    <div style="flex:0"><button class="btn" onclick="cmdEmail()">E-mail</button></div>
   </div>
 </div></div>
 
@@ -3828,6 +3831,32 @@ function cmdDoi(t){
   if(!on) cmdDoiInfo = "";
 }
 new MutationObserver(() => { if(!$("mod-cmd").classList.contains("on")) cmdDoi(null); }).observe($("mod-cmd"), { attributes: true, attributeFilter: ["class"] });
+// v7.37: „Comanda de trimis” ca fereastra de facturare — Către (e-mailul depozitului din Depozite; gol → îl scrii tu, ține minte pe depozit), Subiect, WhatsApp, E-mail
+let CMD_DEP = "";
+function cmdContext(){
+  if(VER && VER.f === "waap" && VER.m) return { dep: VER.m.depozit || "", tip: VER.m.tip_miscare, client: VER.m.client, data: VER.m.data };
+  return { dep: $("mm-dep").value || "", tip: $("mm-tip").value, client: $("mm-client").value, data: $("mm-data").value };
+}
+function cmdMailPune(){
+  const c = cmdContext(); CMD_DEP = c.dep;
+  const d = (DEP || []).find(x => x.nume === c.dep), din = d && (d.reprezentant_email || "").trim();
+  let mem = ""; try{ mem = localStorage.getItem("cmd_dest_" + c.dep) || ""; }catch(_){}
+  $("cmd-dest").value = din || mem;
+  $("cmd-dest-info").textContent = c.dep ? "· depozit " + c.dep + (din ? "" : mem ? " (scris de tine)" : " — fără e-mail în Depozite, scrie-l") : "";
+  $("cmd-sub").value = ["COMANDA " + (c.tip || ""), (c.client || "").trim(), c.data ? fmtD(c.data) : ""].filter(Boolean).join(" - ");
+}
+new MutationObserver(() => { if($("mod-cmd").classList.contains("on")) cmdMailPune(); }).observe($("mod-cmd"), { attributes: true, attributeFilter: ["class"] });
+$("cmd-dest").addEventListener("change", e => { const d = (DEP || []).find(x => x.nume === CMD_DEP);
+  if(CMD_DEP && !(d && d.reprezentant_email)) try{ localStorage.setItem("cmd_dest_" + CMD_DEP, e.target.value.trim()); }catch(_){} });
+function cmdTextTot(){ const t2 = $("cmd-doi").style.display !== "none" ? $("cmd-text2").value.trim() : "";
+  return t2 ? "AMPLASARE\n" + $("cmd-text").value.trim() + "\n\nRIDICARE\n" + t2 : $("cmd-text").value.trim(); }
+function cmdWa(){ window.open("https://wa.me/?text=" + encodeURIComponent(cmdTextTot()), "_blank", "noopener"); }
+async function cmdEmail(){
+  const t = cmdTextTot();
+  try{ await navigator.clipboard.writeText(t); toast("Textul e copiat — lipește-l în e-mail cu Ctrl+V"); }
+  catch(e){ toast("Nu am putut copia: " + e.message, true); }
+  location.href = "mailto:" + encodeURIComponent($("cmd-dest").value.trim()).replace(/%40/g, "@").replace(/%2C/gi, ",") + "?subject=" + encodeURIComponent($("cmd-sub").value || "COMANDA");
+}
 async function copiazaComanda2(){
   try{ await navigator.clipboard.writeText($("cmd-text2").value); toast("Textul ridicării e copiat — dă-l paste pe WhatsApp"); }
   catch(e){ $("cmd-text2").select(); document.execCommand("copy"); toast("Textul ridicării e copiat"); }
