@@ -239,6 +239,19 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   #mod-ri .ri-ser input{width:auto}
   /* v7.22 locația din șantier la suplimentare / reducere */
   .mm-ls{margin-top:10px}
+  /* v7.34: servisare la cerere pe mai multe locații */
+  .svl-wrap{overflow-x:auto;margin-top:2px}
+  table.svl{width:100%;border-collapse:collapse;font-size:12.5px;min-width:860px}
+  table.svl th{font-size:11px;font-weight:600;color:var(--mut);text-align:left;padding:3px 4px;white-space:nowrap}
+  table.svl td{padding:2px 3px;vertical-align:middle}
+  table.svl input,table.svl select{height:32px;padding:4px 6px;font-size:12.5px;width:100%;box-sizing:border-box}
+  table.svl .svl-nr{width:22px;color:var(--mut);text-align:right;padding-right:6px}
+  table.svl .svl-j{width:52px}table.svl .svl-t{width:128px}table.svl .svl-b{width:58px}table.svl .svl-d{width:140px}table.svl .svl-s{width:150px}table.svl .svl-x{width:30px}
+  table.svl select.st-E{background:#1f9d55;color:#fff;border-color:#1f9d55}
+  table.svl select.st-N{background:#d93025;color:#fff;border-color:#d93025}
+  .svl-jos{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-top:8px;font-size:12.5px}
+  .svl-chip{display:inline-block;padding:0 6px;border-radius:9px;font-size:11px;font-weight:600;margin-left:3px;white-space:nowrap}
+  .svl-chip.e{background:#1f9d55;color:#fff}.svl-chip.n{background:#d93025;color:#fff}.svl-chip.a{background:#F2B705;color:#2B2000}
   .mm-ls .ls-l{display:flex;flex-wrap:wrap;gap:8px;margin-top:4px}
   .mm-ls .ls-b{border:1px solid var(--bd);background:var(--card);color:var(--tx);border-radius:8px;padding:6px 12px;text-align:left;cursor:pointer;font-size:12px;line-height:1.35}
   .mm-ls .ls-b:hover{border-color:var(--g)}
@@ -950,7 +963,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
   <span id="rz-w"><button id="rz-reset" class="pictograma" title="Lățimi implicite — pune coloanele din tabelele acestei file înapoi cum erau">↺ Reset layout</button><i class="rz-sep">|</i></span>
   <span id="tz-w" title="Mărimea tabelului (doar tabelul, restul rămâne la fel), din 5 în 5%. Merge și cu Ctrl + rotița mausului, Ctrl + / Ctrl − / Ctrl 0. Dublu clic pe procent = scrii tu valoarea."><button class="pictograma" onclick="tzPas(-1)" aria-label="Micșorează tabelul">−</button><b id="tz-v" ondblclick="tzScrie()" title="Dublu clic = scrii mărimea (ex. 87), Enter">100%</b><input id="tz-in" type="number" min="30" max="300" step="5" style="display:none"><button class="pictograma" onclick="tzPas(1)" aria-label="Mărește tabelul">+</button></span>
-  <span class="ver">v7.33</span>
+  <span class="ver">v7.34</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -1486,6 +1499,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
           <div><label>Telefon responsabil</label><input id="mm-tel"></div>
         </div>
         <div id="mm-ls" class="mm-ls" style="display:none"></div>
+        <div id="mm-svl" style="display:none"></div>
       </div>
 
       <div class="sect" id="mm-doc-sect" style="display:none">
@@ -1554,6 +1568,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
           <div class="cmd-c cmd-f"><label>Preț / servisare</label><input id="mm-sv-pret" type="number" step="0.01" min="0" placeholder="0.00"><span class="cmd-sub">fără TVA</span></div>
           <div class="cmd-c cmd-f cmd-s"><label>Moneda</label><select id="mm-sv-moneda"></select><span class="cmd-sub">&nbsp;</span></div>
           <div class="cmd-c cmd-f cmd-s"><label>Scadent</label><input id="mm-sv-scad" type="number" step="1" min="0" placeholder="ex. 5"><span class="cmd-sub">zile</span></div>
+          <div class="cmd-c" id="mm-svl-fact-d" style="display:none;width:auto"><label>&nbsp;</label><button type="button" class="btn sm" style="height:36px" onclick="svlTextFactForm()" title="Copiază textul pentru facturare (doar locațiile efectuate) și pune FAC = V galben">📋 Text facturare</button><span class="cmd-sub">după confirmări</span></div>
         </div>
       </div>
 
@@ -2903,7 +2918,7 @@ function renderMiscari(){
   const clCls = clStare;   // v5.75: doar bifele care contează la comanda asta
   const sTit = M_SORT.camp === "data" ? (M_SORT.dir < 0 ? "Acum: nou → vechi. Apasă: vechi → nou" : M_SORT.dir > 0 ? "Acum: vechi → nou. Apasă: pe grupe (Azi, săptămâna asta, trecută, viitoare)" : "Acum: pe grupe (Azi, săptămâna asta, trecută, viitoare, apoi restul). Apasă: nou → vechi") : "Apasă ca să sortezi după dată";
   let h=`<tr><th class="sortabil" onclick="sorteazaComenzi('data')" title="${sTit}">Data${sg("data")}</th><th>Comandă</th><th>Buc</th><th>Produs</th><th title="Tip îngroșat și subliniat = are accesorii (lista la mouse)">Tip</th><th title="Dublu clic pe nume (sau ține mouse-ul 1,5 s) → contractul și anexa">Client</th><th>Jud</th><th>Loc./Com.</th><th>Sat/Str./Locație</th><th>Contract</th><th>Depozit</th><th>Resp. șantier</th><th>Telefon</th><th>Rpt</th><th>RT</th><th>FAC</th><th>PV</th><th>ACT</th><th>WaAp</th><th>Frecv.</th><th class="noprint"></th></tr>`;
-  h+=MISC.map(r=>{const sr=subReferinta(r); const gz=grupaZilei(r.data); return `<tr><td${gz?` class="zd-${gz}"`:""}><span class="zd">${ziScurtData(r.data)}</span>${sr?` <span class="pill p-T" title="Mai veche decât data de referință a stocului (${fmtD(sr)}) — nu intră în stoc">sub referință</span>`:""}</td><td>${r.grup_id&&r.grup_id!==r.id?'<span class="muted" title="Produs din aceeași comandă cu #'+r.grup_id+'">↳ </span>':""}${tipTxt(r.tip_miscare)}${r.grup_id===r.id?' <span class="muted" title="Comanda are mai multe produse">+'+MISC.filter(x=>x.grup_id===r.id&&x.id!==r.id).length+'</span>':""}</td><td class="tc tc-${tipLit(r.tip_miscare)}">${r.buc}</td><td>${esc(prodN(r.produs, r.buc))}</td><td>${tipAcc([r.model, r.model_fizic].filter(Boolean).join(" "), r.accesorii)}</td><td><b class="${clCls(r)} cl-pop" data-mid="${r.id}">${esc(r.client)}</b>${r.din_telefon?' <span class="tel-v" title="Făcută pe telefon — deschide cu Edit, verifică și apasă Salvează pe PC">📱 de verificat</span>':""}</td><td>${esc(r.jud)}</td><td>${esc(r.loc)}</td><td>${esc(r.sat)}</td><td${depCls(r.contract)}>${esc(r.contract)}</td><td${depCls(r.depozit)}>${esc(r.depozit)}</td><td>${esc(r.pers_resp)}</td><td>${esc(r.telefon)}</td><td>${flNC(r, "rpt", flVer(r, "rpt"))}</td><td>${flNC(r, "rt", flVer(r, "rt"))}</td><td>${flNC(r, "fac", flVer(r, "fac"))}</td><td>${flNC(pvR(r), "pv", pvFlag(r))}</td><td>${flNC(actR(r), "act", flVer(actR(r), "act"))}</td><td>${flNC(r, "waap", flVer(r, "waap"))}</td><td>${esc(r.frecv_serv)}</td><td class="noprint actions">${riEditBtn(r)} ${livrExterior(r) ? `<button class="btn sm sec" disabled style="opacity:.45;cursor:default" title="Livrat din depozitul ${esc(r.depozit)} — fără punct de rută la tine (rămân Facturare și Raport lună)">→ Rute</button>` : `<button class="btn sm" ${ruteStil(r)} onclick="spreRute(${r.id})" title="Verde = comanda e trecută pe rută (RT = V) și punctul are GPS; portocaliu = mai ai de făcut (RT nu e V, fără punct sau fără GPS). Deschide punctul de rută completat din comandă. Nu se salvează nimic până nu verifici și apeși Salvează.">→ Rute</button>`}</td></tr>`;}).join("");
+  h+=MISC.map(r=>{const sr=subReferinta(r); const gz=grupaZilei(r.data); return `<tr><td${gz?` class="zd-${gz}"`:""}><span class="zd">${ziScurtData(r.data)}</span>${sr?` <span class="pill p-T" title="Mai veche decât data de referință a stocului (${fmtD(sr)}) — nu intră în stoc">sub referință</span>`:""}</td><td>${r.grup_id&&r.grup_id!==r.id?'<span class="muted" title="Produs din aceeași comandă cu #'+r.grup_id+'">↳ </span>':""}${tipTxt(r.tip_miscare)}${r.grup_id===r.id?' <span class="muted" title="Comanda are mai multe produse">+'+MISC.filter(x=>x.grup_id===r.id&&x.id!==r.id).length+'</span>':""}</td><td class="tc tc-${tipLit(r.tip_miscare)}">${r.buc}</td><td>${esc(prodN(r.produs, r.buc))}</td><td>${tipAcc([r.model, r.model_fizic].filter(Boolean).join(" "), r.accesorii)}</td><td><b class="${clCls(r)} cl-pop" data-mid="${r.id}">${esc(r.client)}</b>${r.din_telefon?' <span class="tel-v" title="Făcută pe telefon — deschide cu Edit, verifică și apasă Salvează pe PC">📱 de verificat</span>':""}</td><td>${esc(r.jud)}</td><td>${svLoc(r)?svlLocCel(r):esc(r.loc)}</td><td>${svLoc(r)?svlSatCel(r):esc(r.sat)}</td><td${depCls(r.contract)}>${esc(r.contract)}</td><td${depCls(r.depozit)}>${esc(r.depozit)}</td><td>${esc(r.pers_resp)}</td><td>${esc(r.telefon)}</td><td>${flNC(r, "rpt", flVer(r, "rpt"))}</td><td>${flNC(r, "rt", flVer(r, "rt"))}</td><td>${flNC(r, "fac", svLoc(r) ? flagBtn(r, "fac") : flVer(r, "fac"))}</td><td>${flNC(pvR(r), "pv", pvFlag(r))}</td><td>${flNC(actR(r), "act", flVer(actR(r), "act"))}</td><td>${flNC(r, "waap", flVer(r, "waap"))}</td><td>${esc(r.frecv_serv)}</td><td class="noprint actions">${riEditBtn(r)} ${livrExterior(r) ? `<button class="btn sm sec" disabled style="opacity:.45;cursor:default" title="Livrat din depozitul ${esc(r.depozit)} — fără punct de rută la tine (rămân Facturare și Raport lună)">→ Rute</button>` : `<button class="btn sm" ${ruteStil(r)} onclick="spreRute(${r.id})" title="Verde = comanda e trecută pe rută (RT = V) și punctul are GPS; portocaliu = mai ai de făcut (RT nu e V, fără punct sau fără GPS). Deschide punctul de rută completat din comandă. Nu se salvează nimic până nu verifici și apeși Salvează.">→ Rute</button>`}</td></tr>`;}).join("");
   $("m-tbl").innerHTML=(h?`<colgroup>${M_LAT.map(w=>`<col style="width:${w}px">`).join("")}</colgroup>`+h:"<tr><td>Nicio comandă.</td></tr>");   // v6.65
   $("m-tbl").style.setProperty("--m-lat", M_LAT.reduce((t,w)=>t+w,0)+"px");
   $("m-tbl").className = "ds-" + DATA_STIL;
@@ -2913,8 +2928,8 @@ function exportMiscari(){
   const ws=XLSX.utils.json_to_sheet(rows); const wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,ws,"COMENZI"); XLSX.writeFile(wb,`Comenzi_${today()}.xlsx`);
 }
 // ---- flags
-document.querySelectorAll("#mm-flags .flag").forEach(f=>f.onclick=()=>{ const L=flagsDe(f.dataset.f), i=(L.indexOf(f.textContent)+1)%L.length; setFlag(f,L[i]); });
-function setFlag(el,v){ el.textContent=v; el.className="flag "+(v==="-"?"":v); if(el.closest && el.closest("#mm-flags")) mmFlagDFcurand(); }
+document.querySelectorAll("#mm-flags .flag").forEach(f=>f.onclick=()=>{ const L=(f.dataset.f==="fac"&&mmSvlMod())?FLAGS_SVL:flagsDe(f.dataset.f), i=(L.indexOf(f.dataset.v||f.textContent)+1)%L.length; setFlag(f,L[i]); });   // v7.34
+function setFlag(el,v){ el.dataset.v=v; el.textContent=v==="VA"?"V":v; el.className="flag "+(v==="-"?"":v); if(el.closest && el.closest("#mm-flags")) mmFlagDFcurand(); }
 // v6.63: în formularul comenzii — „-” pe o bifă care contează = portocaliu (DF); bifele care nu contează, stinse (NCF)
 let MM_DF_T = null;
 function mmFlagDFcurand(){ clearTimeout(MM_DF_T); MM_DF_T = setTimeout(mmFlagDF, 0); }
@@ -3269,6 +3284,7 @@ function openMiscare(id){
   mmAntet(); $("mod-m").classList.add("on");
   mmModClient(); mmExtIncarca(); mmEvpArata(); mmSpArata(); mmRiArata(); MM_LS = null; $("mm-sat").placeholder = ""; mmLsArata();   // v6.79 / v7.20 / v7.22 / v7.24
   MM_CIORNA = null; $("mm-ciorne").innerHTML = ""; if(!r) mmCiorne();
+  MM_SVL = r && svLoc(r) ? r.locatii.filter(l => l && l.sv).map(l => ({ ...l })) : []; mmSvlArata();   // v7.34
 }
 // v4.80 (cerut de Ovidiu, 08.10): ciornele comenzilor noi nesalvate (tabel `ciorne`, tip 'comanda').
 let MM_CIORNA = null, MM_CIORNE = [];
@@ -3276,7 +3292,7 @@ const MM_CAMPURI = ["mm-contract","mm-dep","mm-data","mm-tip","mm-buc","mm-prod"
 function mmDate(){
   const d = Object.fromEntries(MM_CAMPURI.map(id => [id, $(id).value || ""]));
   d.acc = accCitite("mm-acc") || ""; d.flags = {};
-  document.querySelectorAll("#mm-flags .flag").forEach(f => { d.flags[f.dataset.f] = f.textContent; });
+  document.querySelectorAll("#mm-flags .flag").forEach(f => { d.flags[f.dataset.f] = f.dataset.v || f.textContent; });
   return d;
 }
 async function mmCiorne(){
@@ -3460,8 +3476,21 @@ async function saveMiscare(genereaza){
     rec.desp_scadent = rec.desp_factureaza && $("mm-sv-scad").value !== "" ? Math.max(0, Math.round(+$("mm-sv-scad").value || 0)) : null;   // v6.48
     if(rec.desp_factureaza && !rec.desp_pret){ toast("Scrie prețul servisării (sau debifează „Se facturează”)", true); return false; }
   }
+  if(tip === "SERVISARE" && !rec.anexa_id && mmSvlMod()){   // v7.34: servisare la cerere pe mai multe locații → miscari.locatii
+    const L = MM_SVL.map(l => ({ sv: true, jud: String(l.jud || "").trim().toUpperCase() || null, localitate: String(l.localitate || "").trim(), locatie: String(l.locatie || "").trim(),
+      pers: String(l.pers || "").trim(), tel: String(l.tel || "").trim(), buc: Math.max(1, Math.abs(Math.round(+l.buc || 0)) || 1), data: l.data || null, stare: l.stare || "" }))
+      .filter(l => l.localitate || l.locatie);
+    if(!L.length){ toast("Completează cel puțin o locație de servisare", true); return false; }
+    if(L.some(l => l.stare === "E" && !l.data)){ toast("Pune data servisării la locațiile „Efectuată”", true); return false; }
+    rec.locatii = L; rec.buc = L.reduce((t, l) => t + l.buc, 0);
+    Object.assign(rec, { jud: L[0].jud, loc: L[0].localitate || null, sat: L[0].locatie || null, pers_resp: L[0].pers || null, telefon: L[0].tel || null });
+  } else if(tip === "SERVISARE" && Array.isArray(rec.locatii) && rec.locatii.some(l => l && l.sv)) rec.locatii = null;
   mmPvX(); mmActRid();   // v6.66
-  document.querySelectorAll("#mm-flags .flag").forEach(f=>rec[f.dataset.f]=f.textContent);
+  document.querySelectorAll("#mm-flags .flag").forEach(f=>rec[f.dataset.f]=f.dataset.v||f.textContent);
+  if(svLoc(rec)){   // v7.34: FAC pornește pe X (de trimis la facturare); PV = V (W la exterior) când toate locațiile au stare
+    if(rec.desp_factureaza && (!rec.fac || rec.fac === "-")) rec.fac = "X";
+    if(!rec.locatii.some(l => !l.stare) && ["-","X"].includes(rec.pv || "-")) rec.pv = livrExterior(rec) ? "W" : "V";
+  }
   // „Salvează” simplu lasă textul negenerat (portocaliu); „Salvează și generează” pune ora.
   // v5.33 (decizia lui): o comandă deja trimisă rămâne la șoferi și după editare (se actualizează la ei); textul WhatsApp se retrimite doar dacă e nevoie
   rec.generat_la = genereaza ? new Date().toISOString() : (MM_GEN0 || null);
@@ -6145,7 +6174,7 @@ async function raportFacturare(){
   // bifat pe comandă; preț pe servisare, fără zile. STARE = FACTURAT când FAC = V pe comandă (bifa din coloana FAC).
   R_SERV = new Map();
   { const fcS = ($("r-client").value || "").trim().toLowerCase(), fjS = $("r-jud").value;
-    misF.filter(m => m.tip_miscare === "SERVISARE" && !m.anexa_id && m.desp_factureaza && ["V","W"].includes(String(m.pv || "").toUpperCase()))   // v6.57: și PV = W
+    misF.filter(m => SERV_IN_FACT && m.tip_miscare === "SERVISARE" && !m.anexa_id && m.desp_factureaza && ["V","W"].includes(String(m.pv || "").toUpperCase()))   // v6.57: și PV = W; v7.34: oprit (SERV_IN_FACT)
       .sort((x, y) => (x.client || "").localeCompare(y.client || "") || String(x.data).localeCompare(String(y.data))).forEach(m => {
       const k = CLI.find(x => x.id === m.client_id) || CLI.find(x => (x.nume || "").toLowerCase() === (m.client || "").toLowerCase()) || {};
       if(fcS && !((k.nume || m.client || "").toLowerCase().includes(fcS))) return;
@@ -9437,7 +9466,7 @@ async function incarcaCma(){
 function flagBtn(m, f){
   const v = f === "act" ? actEf(m) : (m[f] || "-");   // v6.64: ACT după Registru documente
   return `<span class="flag ${v === "-" ? "" : esc(v)}" data-mid="${m.id}" data-f="${f}" onclick="flagClic(this)" ` +
-    `title="${esc(fmtD(m.data) + " · " + (m.tip_miscare || "") + " · " + (m.buc || 0) + " buc — apasă: " + flagsDe(f).join(" → ") + (f === "pv" ? " (W = PV la sediu / alt depozit)" : "") + (f === "act" ? actTitlu(m) : ""))}">${esc(v === "VA" ? "V" : v)}</span>`;
+    `title="${esc(fmtD(m.data) + " · " + (m.tip_miscare || "") + " · " + (m.buc || 0) + " buc — apasă: " + (f === "fac" && svLoc(m) ? "X (netrimis) → V galben (trimis la facturare) → V (factura la client)" : flagsDe(f).join(" → ")) + (f === "pv" ? " (W = PV la sediu / alt depozit)" : "") + (f === "act" ? actTitlu(m) : ""))}">${esc(v === "VA" ? "V" : v)}</span>`;
 }
 // 📄 pentru fiecare comandă a anexei: deschide PV-ul legat de ea (în Puncte de rută, lângă RT).
 // v6.24: RT pe punctul C<id> (comandă fără anexă) — pătratul comenzii însăși
@@ -9464,7 +9493,8 @@ function flaguriAnexa(anexaId, f, lista){
 async function flagClic(el){
   const id = +el.dataset.mid, f = el.dataset.f;
   const mAct = f === "act" ? [MISC, CMA, R_MIS].map(L => (L || []).find(x => x.id === id)).find(Boolean) : null;   // v6.64: ACT se rotește după bifa salvată
-  const L = flagsDe(f), v = L[(L.indexOf(mAct ? (mAct.act || "-") : el.textContent) + 1) % L.length];
+  const mF = f === "fac" ? [MISC, CMA, R_MIS].map(L => (L || []).find(x => x.id === id)).find(Boolean) : null, sF = svLoc(mF);   // v7.34
+  const L = sF ? FLAGS_SVL : flagsDe(f), v = L[(L.indexOf(mAct ? (mAct.act || "-") : sF ? (mF.fac || "-") : el.textContent) + 1) % L.length];
   const tot = grupTot(id, f);   // v5.14
   const { error } = await (tot ? db.from("miscari").update({ [f]: v }).or(`id.eq.${id},grup_id.eq.${id}`) : db.from("miscari").update({ [f]: v }).eq("id", id));
   if(error){ toast(error.message, true); return; }
@@ -9991,16 +10021,22 @@ const serCerere = m => !!m && m.tip_miscare === "SERVISARE" && !m.anexa_id && /^
 const ZI_DIN = ["DUMINICA","LUNI","MARTI","MIERCURI","JOI","VINERI","SAMBATA"];
 const ziDin = d => ZI_DIN[new Date(d + "T12:00:00").getDay()];
 async function cererePorneste(m){
+  if(svLoc(m)) return cererePornesteLoc(m);   // v7.34
   if(!m.data){ toast("Comanda nu are dată", true); return; }
   const azi = today(), trecut = m.data < azi;
   if(trecut && !confirm("Comanda e din " + fmtD(m.data) + " (a trecut).\n\nPunctul se creează / se actualizează, dar nu se mai pune pe rută.\n\nContinui?")) return;
   const { data: gasite, error } = await db.from("clients").select("*").like("client_key", "C%").limit(5000);
   if(error){ toast(error.message, true); return; }
+  RUTE_COADA = [cerereIntrare(m, gasite, "C" + m.id)]; rUrmator();
+}
+// v7.34: o intrare în coada „→ Rute” pentru o servisare la cerere (comanda m are deja locația și data servisării)
+function cerereIntrare(m, gasite, cheieNoua){
+  const azi = today(), trecut = m.data < azi;
   const nr = p => +((/^C(\d+)/.exec(p.client_key || "") || [])[1] || 0);
   const g = (gasite || []).filter(p => extLaLoc(p, m)).sort((x, y) => nr(x) - nr(y))[0] || null;
   const zi = ziDin(m.data), ziN = ZI_RUTE[zi] || "";
   const camp = extCamp(m.produs) || "toalete", n = Math.abs(+m.buc || 0) || 1;
-  const rec = g ? Object.assign({}, g) : { client_key: "C" + m.id, client: m.client || "", jud: m.jud || "", localitate: m.loc || "", locatie: m.sat || "",
+  const rec = g ? Object.assign({}, g) : { client_key: cheieNoua, client: m.client || "", jud: m.jud || "", localitate: m.loc || "", locatie: m.sat || "",
     pers_resp: m.pers_resp || "", telefon: m.telefon || "", toalete: 0, containere: 0, garduri: 0, accesorii: null, lat: null, lon: null, cartela: false, status: "INACTIV" };
   delete rec.schimbare;
   rec.ziua = ziN; rec.masina = m.traseu || (g && g.masina) || ""; rec.frecventa = "La Cerere"; rec[camp] = n;
@@ -10012,7 +10048,130 @@ async function cererePorneste(m){
       `Servisare la cerere: punctul apare pe rută <b>doar ${esc(ziN)} ${fmtD(m.data)}</b>` + (rec.masina ? `, pe <b>${esc(rec.masina)}</b>` : ` — <b>alege traseul (Mașina)</b>`) +
       `; din ${fmtD(ziUrm(m.data))} trece singur pe INACTIV și rămâne în Puncte de rută.`) +
     ` Fără anexă, fără stoc. Verifică și apasă Salvează.` + (ct ? ` Persoana de contact pe punct: <b>${esc(ct)}</b> (ultima de la locație).` : "");
-  RUTE_COADA = [{ id: g ? g.id : null, rec, camp, orig: g, cerere: { data: m.data }, ids: [], nota }]; rUrmator();
+  return { id: g ? g.id : null, rec, camp, orig: g, cerere: { data: m.data }, ids: [], nota };
+}
+// ================= v7.34: SERVISARE LA CERERE PE MAI MULTE LOCAȚII (IMPA & I, CTR 1369 HD — 31.10) =================
+// Comanda SERVISARE fără anexă, frecvența „La Cerere”: în loc de o singură locație, un tabel cu locațiile din comanda clientului
+// (județ, localitate, adresă, responsabil, telefon, bucăți = toaletele de la locație, data servisării, stare). Totul în miscari.locatii
+// (rânduri cu sv: true); bucățile comenzii = suma. Stare: „” în așteptare · E efectuată (cu data) · N nu s-a efectuat (nu se facturează).
+// Depozit HUNEDOARA: „→ Rute” pune fiecare locație cu dată (azi sau mai târziu) pe ruta zilei ei, ca la GLS (punct C<id>, C<id>-02 …,
+// refolosit la aceeași adresă). Depozit exterior (HARGHITA…): fără puncte de rută.
+// Hotărât de Ovidiu: deocamdată NU intră în raportul de Facturare (nici servisările fără anexă GLS — SERV_IN_FACT); textul de facturare
+// se face din comandă (📋), doar cu locațiile efectuate. FAC: X (netrimis) → V galben „VA” (trimis la sediu) → V (factura la client).
+const SERV_IN_FACT = false;
+const FLAGS_SVL = ["X","VA","V"];
+const svLoc = m => !!m && m.tip_miscare === "SERVISARE" && !m.anexa_id && Array.isArray(m.locatii) && m.locatii.some(l => l && l.sv);
+let MM_SVL = [];
+const mmSvlMod = () => $("mm-tip").value === "SERVISARE" && !(+$("mm-anexa").value) && /^la\s*cerere$/i.test(String($("mm-frecv").value || "").trim());
+const SVL_ST = { "": "În așteptare", E: "Efectuată", N: "Nu s-a efectuat" };
+function mmSvlCurate(){ return MM_SVL.map(l => ({ ...l, sv: true })).filter(l => String(l.localitate || "").trim() || String(l.locatie || "").trim()); }
+function mmSvlArata(){
+  const on = mmSvlMod(), box = $("mm-svl"), sect = box.closest(".sect");
+  sect.querySelectorAll(".g-loc, .g-resp").forEach(g => g.style.display = on ? "none" : "");
+  box.style.display = on ? "" : "none"; $("mm-svl-fact-d").style.display = on ? "" : "none"; $("mm-buc").readOnly = on;
+  if(!on){
+    if(MM_SVL.length){ const l = MM_SVL[0]; $("mm-jud").value = l.jud || ""; $("mm-loc").value = l.localitate || ""; $("mm-sat").value = l.locatie || ""; $("mm-pers").value = l.pers || ""; $("mm-tel").value = l.tel || ""; }
+    return;
+  }
+  if(!MM_SVL.length){ const r = MISC.find(q => q.id === +$("mm-id").value);
+    MM_SVL = [{ sv: true, jud: $("mm-jud").value, localitate: $("mm-loc").value, locatie: $("mm-sat").value, pers: $("mm-pers").value, tel: $("mm-tel").value,
+      buc: Math.abs(+$("mm-buc").value || 1) || 1, data: r && serCerere(r) ? (r.data || "") : "", stare: r && serCerere(r) && ["V","W"].includes(r.pv || "") ? "E" : "" }]; }
+  mmSvlDeseneaza();
+}
+function mmSvlDeseneaza(){
+  const ext = livrExterior({ contract: $("mm-contract").value, depozit: $("mm-dep").value });
+  const inp = (i, c, v, extra) => `<input value="${esc(v || "")}" ${extra || ""} oninput="mmSvlSet(${i},'${c}',this.value)">`;
+  $("mm-svl").innerHTML = `<div class="muted" style="margin:6px 0 6px">Locații de servisare — un rând pe locație; <b>Buc</b> = toaletele de la locație. ` +
+    (ext ? `Execută depozitul <b>${esc($("mm-dep").value)}</b>: fără puncte de rută; treci data și starea când primești confirmarea.` :
+      `Depozit HUNEDOARA: data servisării pune locația pe rută în ziua ei („→ Rute”); după PV treci „Efectuată”.`) + `</div>` +
+    `<div class="svl-wrap"><table class="svl"><tr><th></th><th>Jud.</th><th>Loc. / Com.</th><th>Sat / Str. / Locație</th><th>Responsabil</th><th>Telefon</th><th>Buc</th><th>Data servisării</th><th>Stare</th><th></th></tr>` +
+    MM_SVL.map((l, i) => `<tr><td class="svl-nr">${i + 1}.</td>` +
+      `<td class="svl-j">${inp(i, "jud", l.jud, 'maxlength="3"')}</td><td>${inp(i, "localitate", l.localitate)}</td><td>${inp(i, "locatie", l.locatie)}</td>` +
+      `<td>${inp(i, "pers", l.pers)}</td><td class="svl-t">${inp(i, "tel", l.tel)}</td><td class="svl-b">${inp(i, "buc", l.buc, 'type="number" min="1" step="1"')}</td>` +
+      `<td class="svl-d"><input type="date" value="${esc(l.data || "")}" onchange="mmSvlSet(${i},'data',this.value)"></td>` +
+      `<td class="svl-s"><select class="st-${l.stare || "A"}" onchange="mmSvlSet(${i},'stare',this.value);this.className='st-'+(this.value||'A')">` +
+        Object.keys(SVL_ST).map(k => `<option value="${k}"${(l.stare || "") === k ? " selected" : ""}>${SVL_ST[k]}</option>`).join("") + `</select></td>` +
+      `<td class="svl-x">${MM_SVL.length > 1 ? `<button type="button" class="btn sm sec" title="Scoate locația" onclick="mmSvlScoate(${i})">✕</button>` : ""}</td></tr>`).join("") +
+    `</table></div><div class="svl-jos"><button type="button" class="btn sm sec" onclick="mmSvlAdauga()">＋ Locație</button><span id="mm-svl-tot"></span></div>`;
+  mmSvlTot();
+}
+function mmSvlSet(i, c, v){ if(!MM_SVL[i]) return; MM_SVL[i][c] = c === "buc" ? (Math.abs(Math.round(+v || 0)) || "") : v;
+  if(c === "stare" && v === "E" && !MM_SVL[i].data) toast("Pune și data la care s-a făcut servisarea"); mmSvlTot(); }
+function mmSvlAdauga(){ const u = MM_SVL[MM_SVL.length - 1] || {};
+  MM_SVL.push({ sv: true, jud: u.jud || "", localitate: "", locatie: "", pers: u.pers || "", tel: u.tel || "", buc: 1, data: "", stare: "" }); mmSvlDeseneaza(); }
+function mmSvlScoate(i){ MM_SVL.splice(i, 1); mmSvlDeseneaza(); }
+function svlNr(L){ const n = { E: 0, N: 0, A: 0 }; L.forEach(l => n[l.stare === "E" ? "E" : l.stare === "N" ? "N" : "A"]++); return n; }
+function mmSvlTot(){
+  const tb = MM_SVL.reduce((t, l) => t + (Math.abs(+l.buc || 0) || 0), 0), n = svlNr(MM_SVL);
+  $("mm-buc").value = tb || 1; if(typeof semnBuc === "function") semnBuc();
+  const el = $("mm-svl-tot"); if(el) el.innerHTML = `<b>${MM_SVL.length}</b> ${MM_SVL.length === 1 ? "locație" : "locații"} · <b>${tb}</b> ${tb === 1 ? "toaletă" : "toalete"}` +
+    (n.E ? `<span class="svl-chip e">✓ ${n.E}</span>` : "") + (n.N ? `<span class="svl-chip n">✗ ${n.N}</span>` : "") + (n.A ? `<span class="svl-chip a">⏳ ${n.A}</span>` : "");
+}
+["mm-tip","mm-frecv","mm-anexa"].forEach(id => $(id).addEventListener("change", () => mmSvlArata()));
+["mm-contract","mm-dep"].forEach(id => $(id).addEventListener("change", () => { if(mmSvlMod()) mmSvlDeseneaza(); }));
+// Comenzi: celulele Loc. / Sat pentru servisarea pe locații
+const svlTitlu = r => r.locatii.filter(l => l.sv).map((l, i) => (i + 1) + ". " + [l.jud, l.localitate, l.locatie].filter(Boolean).join(" · ") + " · " + l.buc + " buc" +
+  (l.data ? " · " + fmtD(l.data) : "") + " · " + SVL_ST[l.stare || ""]).join("\n");
+function svlLocCel(r){ const L = r.locatii.filter(l => l.sv); return `<span title="${esc(svlTitlu(r))}">${esc(L[0].localitate || "")}${L.length > 1 ? ` <span class="muted">+${L.length - 1}</span>` : ""}</span>`; }
+function svlSatCel(r){ const L = r.locatii.filter(l => l.sv), n = svlNr(L);
+  return `<span title="${esc(svlTitlu(r))}">${L.length > 1 ? L.length + " locații" : esc(L[0].locatie || "")}` +
+    (n.E ? `<span class="svl-chip e">✓ ${n.E}</span>` : "") + (n.N ? `<span class="svl-chip n">✗ ${n.N}</span>` : "") + (n.A ? `<span class="svl-chip a">⏳ ${n.A}</span>` : "") + `</span>`; }
+// „→ Rute”: fiecare locație cu dată (azi sau mai târziu, neanulată) → punct la cerere pe ziua ei
+async function cererePornesteLoc(m){
+  if(livrExterior(m)){ toast("Servisarea o face depozitul " + (m.depozit || "") + " — fără puncte de rută la tine. Treci data și starea pe locații când primești confirmarea."); return; }
+  const azi = today(), L = m.locatii.map((l, i) => ({ l, i })).filter(o => o.l.sv && o.l.stare !== "N" && o.l.stare !== "E" && o.l.data && o.l.data >= azi);
+  if(!L.length){ toast("Nicio locație de pus pe rută: pune data servisării (azi sau mai târziu) pe locație, Salvează, apoi „→ Rute”", true); return; }
+  const { data: gasite, error } = await db.from("clients").select("*").like("client_key", "C%").limit(5000);
+  if(error){ toast(error.message, true); return; }
+  const folosite = new Set(), coada = [];
+  L.forEach(({ l, i }) => {
+    const mm = { ...m, jud: l.jud || m.jud, loc: l.localitate, sat: l.locatie, buc: l.buc, data: l.data, pers_resp: l.pers || null, telefon: l.tel || null, locatii: null };
+    let k = i ? "C" + m.id + "-" + String(i + 1).padStart(2, "0") : "C" + m.id;
+    while(folosite.has(k) || (gasite || []).some(p => p.client_key === k)) k += "B";
+    folosite.add(k); coada.push(cerereIntrare(mm, gasite, k));
+  });
+  RUTE_COADA = coada; rUrmator();
+}
+// 📋 textul pentru facturare (modelul lui Ovidiu, IMPA & I 20.04.2026) — doar locațiile efectuate
+const JUD_NUME = { AB:"ALBA", AR:"ARAD", AG:"ARGES", BC:"BACAU", BH:"BIHOR", BN:"BISTRITA-NASAUD", BT:"BOTOSANI", BV:"BRASOV", BR:"BRAILA", B:"BUCURESTI", BZ:"BUZAU",
+  CS:"CARAS-SEVERIN", CL:"CALARASI", CJ:"CLUJ", CT:"CONSTANTA", CV:"COVASNA", DB:"DAMBOVITA", DJ:"DOLJ", GL:"GALATI", GR:"GIURGIU", GJ:"GORJ", HR:"HARGHITA",
+  HD:"HUNEDOARA", IL:"IALOMITA", IS:"IASI", IF:"ILFOV", MM:"MARAMURES", MH:"MEHEDINTI", MS:"MURES", NT:"NEAMT", OT:"OLT", PH:"PRAHOVA", SM:"SATU MARE", SJ:"SALAJ",
+  SB:"SIBIU", SV:"SUCEAVA", TR:"TELEORMAN", TM:"TIMIS", TL:"TULCEA", VS:"VASLUI", VL:"VALCEA", VN:"VRANCEA" };
+function svlTextFact(m, L){
+  const k = CLI.find(x => x.id === m.client_id) || CLI.find(x => (x.nume || "").toLowerCase() === (m.client || "").toLowerCase()) || {};
+  const ctr = CTR.find(x => x.id === m.contract_id) || {}, obs = String(k.observatii || "");
+  const rc = (/Reg\.?\s*Com\.?\s*:\s*([^;·\n]+)/i.exec(obs) || [])[1] || "", sed = (/Sediu\s*:\s*([^;·\n]+)/i.exec(obs) || [])[1] || "";
+  const nume = String(k.nume || m.client || "").trim(), d = x => x ? x.split("-").reverse().join(".") : "";
+  const zone = [...new Set(L.map(l => JUD_NUME[String(l.jud || "").toUpperCase()] || String(l.jud || "").toUpperCase()).filter(Boolean))];
+  const prop = /^PROPRIE/i.test(m.model || ""), prodP = faraDiac(prodN(m.produs || "TOALETA", 2)).toUpperCase() + (prop ? " PROPRII" : m.model ? " " + m.model : "");
+  const dubla = new Set(L.map(l => faraDiac(l.localitate || "").toUpperCase()).filter((x, i, a) => a.indexOf(x) !== i));
+  const tot = L.reduce((t, l) => t + (+l.buc || 0), 0), pret = +m.desp_pret || 0, mon = (m.desp_moneda || "RON") === "RON" ? "LEI" : m.desp_moneda;
+  const cmd = ["COMANDA", m.cmd_nr ? "NR " + m.cmd_nr : "", m.cmd_data ? "DIN DATA DE " + d(m.cmd_data) : ""].filter(Boolean).join(" ");
+  return ["Buna", "Te rog factura pentru :", (/^S\.?C\.?\s/i.test(nume) || !/\b(SRL|SA|S\.R\.L\.?|S\.A\.?)$/i.test(nume) ? "" : "SC ") + nume, "",
+    [k.atr, k.cui].filter(Boolean).join(""), rc.trim(), faraDiac(sed).replace(/\s+/g, " ").trim(),
+    [ctr.nr_ctr ? "CONTRACT " + ctr.nr_ctr : "", cmd !== "COMANDA" ? cmd : ""].filter(Boolean).join(", "),
+    "INTRETINERE / SERVISARE - " + prodP + (zone.length ? " ZONA " + zone.join(", ") : ""), "",
+    ...L.map(l => { const lc = faraDiac(l.localitate || l.locatie || "").toUpperCase(), b = +l.buc || 0;
+      return lc + (dubla.has(lc) && l.locatie ? " (" + faraDiac(l.locatie).toUpperCase() + ")" : "") + " - " + b + (b === 1 ? " BUCATA" : " BUCATI") + " _DATA : " + d(l.data); }),
+    tot + " BUC * " + (pret % 1 ? pret.toFixed(2) : pret) + " " + mon + " + TVA"].filter((x, i, a) => x !== "" || (i > 0 && a[i - 1] !== "")).join("\n");
+}
+async function svlTextFactForm(){
+  const id = +$("mm-id").value || null; if(!id){ toast("Salvează întâi comanda", true); return; }
+  const L = mmSvlCurate().filter(l => l.stare === "E");
+  if(!L.length){ toast("Nicio locație efectuată — treci data și „Efectuată” pe locațiile confirmate", true); return; }
+  if(L.some(l => !l.data)){ toast("Pune data servisării la toate locațiile „Efectuată”", true); return; }
+  const desch = mmSvlCurate().filter(l => !l.stare).length;
+  if(desch && !confirm("Mai " + (desch === 1 ? "este 1 locație" : "sunt " + desch + " locații") + " „În așteptare”.\n\nFac textul doar cu cele " + L.length + " efectuate?")) return;
+  const m = { ...(MISC.find(q => q.id === id) || {}), client: $("mm-client").value, client_id: (CLI.find(x => x.nume.toLowerCase() === $("mm-client").value.trim().toLowerCase()) || {}).id || null,
+    contract_id: +$("mm-ctr").value || null, produs: $("mm-prod").value, model: $("mm-model").value, desp_pret: +$("mm-sv-pret").value || 0, desp_moneda: $("mm-sv-moneda").value || "RON",
+    cmd_nr: $("mm-cmd-nr").value.trim(), cmd_data: $("mm-cmd-data").value };
+  if(!m.desp_pret && !confirm("Comanda nu are preț pe servisare. Fac textul așa?")) return;
+  const txt = svlTextFact(m, L);
+  try { await navigator.clipboard.writeText(txt); } catch(e){ window.prompt("Copiază textul (Ctrl+C):", txt); }
+  const f = document.querySelector('#mm-flags .flag[data-f="fac"]');
+  if(f && (f.dataset.v || f.textContent) !== "V") setFlag(f, "VA");
+  toast("Textul pentru facturare e copiat — FAC = V galben. Salvez comanda.");
+  await saveMiscare(false);
 }
 // La Salvează: ACTIV în ziua comenzii (cu ziua + traseul din formular), INACTIV din ziua următoare — dacă acea zi nu are
 // deja altă schimbare (o cerere pe ziua următoare rămâne ACTIV). Comanda de azi: punctul e ACTIV de acum.
@@ -10143,7 +10302,7 @@ async function spPorneste(m, calc){
 }
 async function spreRute(id, calc){   // v7.20: calc = doar calculează punctele (pentru „✓ Închide ridicarea”), fără formulare
   const m = MISC.find(x => x.id === id); if(!m) return;
-  if(livrExterior(m)){ if(calc) return { nu: "comandă livrată din depozitul " + m.depozit + " — fără punct de rută la tine" }; toast("Comanda e livrată din depozitul " + m.depozit + " — nu se face punct de rută la tine (rămân Facturare și Raport lună)", true); if(VER && VER.f === "rt") VER.form = false; return; }
+  if(livrExterior(m)){ if(calc) return { nu: "comandă livrată din depozitul " + m.depozit + " — fără punct de rută la tine" }; toast(svLoc(m) ? "Servisarea o face depozitul " + m.depozit + " — fără puncte de rută la tine. Treci data și starea pe locații când primești confirmarea." : "Comanda e livrată din depozitul " + m.depozit + " — nu se face punct de rută la tine (rămân Facturare și Raport lună)", true); if(VER && VER.f === "rt") VER.form = false; return; }
   // v6.41 (cerut de Ovidiu, 19.10): servisare la cerere fără contract / anexă (GLS) — punctul stă pe INACTIV și e ACTIV doar în ziua comenzii
   if(serCerere(m)){ if(calc) return { nu: "servisare la cerere" }; RUTE_MID = id; await cererePorneste(m); return; }
   if(SP_TIP.test(m.tip_miscare || "")){ if(!calc) RUTE_MID = id; return await spPorneste(m, calc); }   // v7.30
@@ -10349,7 +10508,7 @@ function textComandaDin(d){
   L.push((d.tip || "") + "    " + dz(d.data));
   // v5.13: comanda pe toată anexa — toate produsele; mai multe locații = lista locațiilor (varianta B, Primăria)
   const toate = (Array.isArray(d.locatii) && d.locatii.length)   // v6.26: comanda din exterior pe mai multe locații
-    ? d.locatii.map(l => ({ buc: l.buc, produs: d.produs, model: d.model, acc: d.acc, jud: l.jud || d.jud, loc: l.localitate, sat: l.locatie, pers: d.pers, tel: d.tel }))
+    ? d.locatii.filter(l => !(l.sv && l.stare === "N")).map(l => ({ buc: l.buc, produs: d.produs, model: d.model, acc: d.acc, jud: l.jud || d.jud, loc: l.localitate, sat: l.locatie, pers: l.sv ? (l.pers || "") : d.pers, tel: l.sv ? (l.tel || "") : d.tel, zi: l.sv ? (l.data || "") : "" }))   // v7.34
     : [{ buc: d.buc, produs: d.produs, model: d.model, acc: d.acc, jud: d.jud, loc: d.loc, sat: d.sat, pers: d.pers, tel: d.tel }].concat(d.extra || []);
   const lk = x => [x.jud, x.loc, x.sat].map(v => String(v || "").trim().toUpperCase()).join("|");
   const locuri = [...new Set(toate.map(lk))];
@@ -10372,7 +10531,8 @@ function textComandaDin(d){
       L.push((i + 1) + ")  " + [x0.jud, x0.loc].filter(Boolean).join(" / ") + (x0.sat ? "  –  " + x0.sat : ""));
       xs.forEach(x => L.push("    " + linieP(x).trim() + (x.acc ? "  [" + x.acc + "]" : "")));
       const pt = [x0.pers, x0.tel].filter(Boolean).join("  ·  ");
-      if(pt && (x0.pers !== d.pers || x0.tel !== d.tel || i === 0)) L.push("    PERS. RES.  :  " + pt);
+      if(pt && (x0.pers !== d.pers || x0.tel !== d.tel || i === 0 || x0.zi !== undefined)) L.push("    PERS. RES.  :  " + pt);
+      if(x0.zi) L.push("    DATA  :  " + dz(x0.zi));   // v7.34
     });
   } else {
   if(d.jud) L.push("JUD.  : " + d.jud);
@@ -10431,7 +10591,7 @@ function textComanda(){
     pers: $("mm-pers").value, tel: $("mm-tel").value, frecv: $("mm-frecv").value, zile: $("mm-zi").value, traseu: $("mm-traseu").value, obs: $("mm-obs").value, extra: mmDocExtra(),
     evServ: $("mm-tip").value === "EVENIMENT-A" ? evServLista() : null, evRid: $("mm-ev-rid").value || null,
     cmdNr: CMD_TIP($("mm-tip").value) ? $("mm-cmd-nr").value.trim() : "", cmdData: CMD_TIP($("mm-tip").value) ? $("mm-cmd-data").value : "",
-    locatii: (() => { const x = !$("mm-anexa").value && MISC.find(q => q.id === +$("mm-id").value); return x && Array.isArray(x.locatii) ? x.locatii : null; })() });
+    locatii: mmSvlMod() ? mmSvlCurate() : (() => { const x = !$("mm-anexa").value && MISC.find(q => q.id === +$("mm-id").value); return x && Array.isArray(x.locatii) ? x.locatii : null; })() });
 }
 function serAlegeSalvata(m){
   if(m.tip_miscare!=="REDUCERE" || !m.anexa_id) return null;
