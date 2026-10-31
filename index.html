@@ -963,7 +963,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
   <span id="rz-w"><button id="rz-reset" class="pictograma" title="Lățimi implicite — pune coloanele din tabelele acestei file înapoi cum erau">↺ Reset layout</button><i class="rz-sep">|</i></span>
   <span id="tz-w" title="Mărimea tabelului (doar tabelul, restul rămâne la fel), din 5 în 5%. Merge și cu Ctrl + rotița mausului, Ctrl + / Ctrl − / Ctrl 0. Dublu clic pe procent = scrii tu valoarea."><button class="pictograma" onclick="tzPas(-1)" aria-label="Micșorează tabelul">−</button><b id="tz-v" ondblclick="tzScrie()" title="Dublu clic = scrii mărimea (ex. 87), Enter">100%</b><input id="tz-in" type="number" min="30" max="300" step="5" style="display:none"><button class="pictograma" onclick="tzPas(1)" aria-label="Mărește tabelul">+</button></span>
-  <span class="ver">v7.37</span>
+  <span class="ver">v7.38</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -10541,7 +10541,12 @@ function textComandaDin(d){
   const ZS = ["dum","lun","mar","mie","joi","vin","sam"];
   const dz = s => { const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(s || ""); if(!m) return ""; const z = new Date(+m[1], +m[2] - 1, +m[3]); return ZS[z.getDay()] + "/" + m[3] + "/" + m[2] + "/" + m[1]; };
   const L = [];
-  L.push((d.tip || "") + "    " + dz(d.data));
+  // v7.38 (cerut de Ovidiu, 31.10): servisarea la cerere pe locații — antet „COMANDA DIN DATA: JOI - 22.10.2026” / „SERVISARE LA CERERE” / „2 TOALETE PROPRII”
+  const svlc = d.tip === "SERVISARE" && Array.isArray(d.locatii) && d.locatii.some(l => l && l.sv);
+  const ZL = ["DUMINICA","LUNI","MARTI","MIERCURI","JOI","VINERI","SAMBATA"];
+  const dzL = s => { const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(s || ""); if(!m) return ""; return ZL[new Date(+m[1], +m[2] - 1, +m[3]).getDay()] + " - " + m[3] + "." + m[2] + "." + m[1]; };
+  if(svlc){ L.push("COMANDA DIN DATA: " + dzL(d.data)); L.push("SERVISARE" + (/cerere/i.test(d.frecv || "") ? " LA CERERE" : "")); }
+  else L.push((d.tip || "") + "    " + dz(d.data));
   // v5.13: comanda pe toată anexa — toate produsele; mai multe locații = lista locațiilor (varianta B, Primăria)
   const toate = (Array.isArray(d.locatii) && d.locatii.length)   // v6.26: comanda din exterior pe mai multe locații
     ? d.locatii.filter(l => !(l.sv && l.stare === "N")).map(l => ({ buc: l.buc, produs: d.produs, model: d.model, acc: d.acc, jud: l.jud || d.jud, loc: l.localitate, sat: l.locatie, pers: l.sv ? (l.pers || "") : d.pers, tel: l.sv ? (l.tel || "") : d.tel, zi: l.sv ? (l.data || "") : "" }))   // v7.34
@@ -10549,10 +10554,11 @@ function textComandaDin(d){
   const lk = x => [x.jud, x.loc, x.sat].map(v => String(v || "").trim().toUpperCase()).join("|");
   const locuri = [...new Set(toate.map(lk))];
   const semn = /RIDICARE|EVENIMENT-R|REDUCERE|DAUNA|FURT/.test(d.tip || "") ? "-" : "";   // v5.96 (cerut de Ovidiu, 14.10): la ridicare bucățile cu minus
-  const linieP = x => " " + semn + (Math.abs(+x.buc) || 0) + "    " + prodN(x.produs || "", x.buc) + (x.model ? "    " + x.model : "");
+  const modN = (m, n) => Math.abs(+n) !== 1 && /^PROPRIE$/i.test(String(m || "").trim()) ? "PROPRII" : m;   // v7.38: acord „TOALETE PROPRII”
+  const linieP = x => " " + semn + (Math.abs(+x.buc) || 0) + "    " + prodN(x.produs || "", x.buc) + (x.model ? "    " + modN(x.model, x.buc) : "");
   if(locuri.length > 1){
     const sum = {}; toate.forEach(x => { const k = (x.produs || "") + "|" + (x.model || ""); sum[k] = sum[k] || { produs: x.produs, model: x.model, buc: 0 }; sum[k].buc += Math.abs(+x.buc) || 0; });
-    Object.values(sum).forEach(x => L.push(linieP(x)));
+    Object.values(sum).forEach(x => L.push(svlc ? [x.buc, prodN(x.produs || "", x.buc), modN(x.model, x.buc)].filter(Boolean).join(" ").toUpperCase() : linieP(x)));
   } else {
     toate.forEach(x => { L.push(linieP(x)); if(x.acc) L.push("ACC.  :  " + x.acc); });
   }
@@ -10600,7 +10606,8 @@ function textComandaDin(d){
       const am = (MISC || []).filter(x => x.tip_miscare === "EVENIMENT-A" && ids.includes(x.anexa_id) && (x.cmd_nr || x.cmd_data)).sort((x, y) => y.id - x.id)[0];
       if(am){ cn = am.cmd_nr || ""; cd = am.cmd_data || ""; } }
     if(cn || cd) anxT = String(cn || "COMANDA").trim() + (cd ? " din " + cd.split("-").reverse().join(".") : ""); }
-  if(k.nr_ctr) L.push("CTR.  :  " + k.nr_ctr + (anxT ? "  ·  " + anxT : ""));
+  if(svlc && k.nr_ctr && (d.cmdNr || d.cmdData)) L.push("CTR.  :  " + k.nr_ctr + " * NR COM.: " + (String(d.cmdNr || "").trim() || "-") + (d.cmdData ? " din Data de: " + d.cmdData.split("-").reverse().join(".") : ""));   // v7.38
+  else if(k.nr_ctr) L.push("CTR.  :  " + k.nr_ctr + (anxT ? "  ·  " + anxT : ""));
   else if(d.cdep) L.push("CTR.  :  " + d.cdep);   // v5.31: fără număr de contract, se scrie contractul (gestiune)
   if(d.dep) L.push("DEP.  :  " + d.dep);
   if(ext.length){ L.push(""); L.push(...ext); }
