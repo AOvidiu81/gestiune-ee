@@ -971,7 +971,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
   <span id="rz-w"><button id="rz-reset" class="pictograma" title="Lățimi implicite — pune coloanele din tabelele acestei file înapoi cum erau">↺ Reset layout</button><i class="rz-sep">|</i></span>
   <span id="tz-w" title="Mărimea tabelului (doar tabelul, restul rămâne la fel), din 5 în 5%. Merge și cu Ctrl + rotița mausului, Ctrl + / Ctrl − / Ctrl 0. Dublu clic pe procent = scrii tu valoarea."><button class="pictograma" onclick="tzPas(-1)" aria-label="Micșorează tabelul">−</button><b id="tz-v" ondblclick="tzScrie()" title="Dublu clic = scrii mărimea (ex. 87), Enter">100%</b><input id="tz-in" type="number" min="30" max="300" step="5" style="display:none"><button class="pictograma" onclick="tzPas(1)" aria-label="Mărește tabelul">+</button></span>
-  <span class="ver">v7.42</span>
+  <span class="ver">v7.43</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -1137,6 +1137,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
       <div style="flex:0" id="r-mod-wrap"><label>Variantă</label><div style="display:flex;gap:6px"><button class="btn sec" id="r-mod-lucru" onclick="setModFact('lucru')">În lucru</button><button class="btn sec" id="r-mod-gata" onclick="setModFact('gata')">Gata de trimis</button><button class="btn sec" id="r-mod-verif" onclick="setModFact('verif')" title="Facturile primite de la sediu: verifici rând cu rând înainte să le trimiți la clienți">Verificare</button></div></div>
       <div style="flex:0;align-self:flex-end;padding-bottom:9px;white-space:nowrap"><label style="display:flex;align-items:center;gap:6px;cursor:pointer;margin:0" title="Arată și rândurile din lunile plătite deja în avans (gri, valoare 0, „facturat în …”) — bun când cauți ceva în urmă. Nu intră la Gata de trimis."><input type="checkbox" id="r-ac" onchange="factAcSchimba(this.checked)"> Arată și cele acoperite de avans</label></div>
       <div style="flex:0"><label>&nbsp;</label><button class="btn sec" onclick="exportRaport()">Export Excel</button></div>
+      <div style="flex:0" id="r-exp-c"><label>&nbsp;</label><button class="btn" onclick="exportLunaComplet()" title="v7.43: două fișiere — Excel (foaia 1 Raport lună formatat, foaia 2 SUMAR cu mișcări, grafice și stocul la ultima zi din lună) + Word cu toate comenzile lunii">📊 Excel + Word</button></div>
       <div style="flex:0"><label>&nbsp;</label><button class="btn sec" onclick="window.print()">PDF / Print</button></div>
     </div>
     <div class="kpi" id="r-kpi" style="margin-top:12px"></div>
@@ -6010,7 +6011,7 @@ function setModFact(m){ R_MOD = m; genereazaRaport(); }
 function modFactButoane(){
   const fact = $("r-tip").value === "facturare";
   $("r-mod-wrap").style.display = fact ? "" : "none";
-  $("r-pana-w").style.display = fact ? "none" : "";
+  $("r-pana-w").style.display = fact ? "none" : ""; $("r-exp-c").style.display = fact ? "none" : "";   // v7.43
   const st = (id, activ, cul) => { $(id).style.cssText = activ ? "background:" + cul + ";border-color:" + cul + ";color:#fff" : ""; };
   st("r-mod-lucru", R_MOD === "lucru", "#D97706"); st("r-mod-gata", R_MOD === "gata", "#2E8B3C"); st("r-mod-verif", R_MOD === "verif", "#2563EB");   // v7.05
 }
@@ -12332,6 +12333,213 @@ function locAuto(jId, lId, sId){
 }
 locAuto("mm-jud", "mm-loc", "mm-sat");
 locAuto("ma-jud", "ma-loc", "ma-sat");
+
+// ================= v7.43 (cerut de Ovidiu, 01.11): EXPORT COMPLET RAPORT LUNĂ =================
+// Un clic → 2 fișiere: Excel (foaia 1 = Raport lună formatat, foaia 2 = SUMAR: mișcări, grafice, stoc la ultima zi
+// din lună) + Word cu toate comenzile lunii (amplasări, ridicări, vânzări, transferuri, daune / pierderi), cu textul
+// comenzii exact cum a plecat la depozit. Bibliotecile se încarcă doar la primul export.
+const EXP_LIB = {
+  exceljs: ["https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js", () => window.ExcelJS],
+  docx:    ["https://cdn.jsdelivr.net/npm/docx@8.5.0/build/index.umd.js", () => window.docx],
+  chart:   ["https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.js", () => window.Chart]
+};
+function expLib(k){
+  const [url, ok] = EXP_LIB[k]; if(ok()) return Promise.resolve(ok());
+  return new Promise((res, rej) => { const s = document.createElement("script"); s.src = url; s.onload = () => ok() ? res(ok()) : rej(new Error(k)); s.onerror = () => rej(new Error("nu s-a putut încărca " + k)); document.head.appendChild(s); });
+}
+const EXP_GRUPE = [   // ordinea secțiunilor din Word și a tabelului „pe tip” din SUMAR
+  ["AMPLASĂRI", ["AMPLASARE", "SUPLIMENTARE", "EVENIMENT-A", "SPONSORIZARE-A"]],
+  ["RIDICĂRI", ["RIDICARE", "REDUCERE", "EVENIMENT-R", "SPONSORIZARE-R"]],
+  ["VÂNZĂRI", ["VANZARE"]],
+  ["TRANSFERURI", ["TransferIN", "TransferOUT"]],
+  ["DAUNE / PIERDERI", ["DAUNA", "FURT"]]
+];
+const EXP_LUNI = ["IANUARIE","FEBRUARIE","MARTIE","APRILIE","MAI","IUNIE","IULIE","AUGUST","SEPTEMBRIE","OCTOMBRIE","NOIEMBRIE","DECEMBRIE"];
+const EXP_ZS = ["D","L","Ma","Mi","J","V","S"];
+// datele din bază pentru SUMAR / Word (separat, ca proba să le poată pune direct)
+async function expDate(an, luna){
+  const la = `${an}-${zi2(luna)}-${zi2(zileInLuna(an, luna))}`;
+  const [lun, pana, si] = await Promise.all([
+    miscariLuna(an, luna),
+    db.from("miscari").select("data,tip_miscare,contract,depozit,produs,buc").lte("data", la).then(r => r.data || []),
+    db.from("stoc_initial").select("*").then(r => r.data || [])
+  ]);
+  return { lun, pana, si };
+}
+// stocul la o zi — aceeași socoteală ca v_stoc (Stoc), dar doar cu comenzile până în ziua aceea
+function expStoc(pana, si){
+  const ef = {}; (NOM.tip_miscare || []).forEach(n => ef[n.valoare] = n.efect_stoc || "niciun");
+  const k = (d, p) => d + "\u0001" + p, T = new Map();
+  const r = (d, p) => { if(!T.has(k(d, p))) T.set(k(d, p), { depozit: d, produs: p, inch: 0, dep: 0 }); return T.get(k(d, p)); };
+  const ref = (d, p) => (si.find(s => s.depozit === d && s.produs === p) || {}).data_referinta || null;
+  si.forEach(s => { const x = r(s.depozit, s.produs); x.inch += +s.inchiriate || 0; x.dep += +s.in_depozit || 0; });
+  pana.forEach(m => { const e = ef[m.tip_miscare] || "niciun", b = +m.buc || 0;
+    if((e === "inchiriere" || e === "pierdere") && m.contract){ const rf = ref(m.contract, m.produs); if(!rf || m.data >= rf) r(m.contract, m.produs).inch += b; }
+    if(m.depozit){ const rf = ref(m.depozit, m.produs); if(!rf || m.data >= rf){ const x = r(m.depozit, m.produs);
+      if(e === "inchiriere") x.dep -= b; else if(e === "depozit_in") x.dep += b; else if(e === "depozit_out") x.dep -= Math.abs(b); } } });
+  return [...T.values()].filter(x => x.inch || x.dep).sort((a, b) => a.depozit.localeCompare(b.depozit) || a.produs.localeCompare(b.produs));
+}
+async function expGrafic(Chart, cfg, w, h){
+  const c = document.createElement("canvas"); c.width = w; c.height = h; c.style.width = w + "px"; c.style.height = h + "px";
+  const alb = { id: "alb", beforeDraw: ch => { const x = ch.ctx; x.save(); x.fillStyle = "#fff"; x.fillRect(0, 0, ch.width, ch.height); x.restore(); } };
+  const ch = new Chart(c.getContext("2d"), { ...cfg, plugins: [alb], options: { ...(cfg.options || {}), animation: false, responsive: false, devicePixelRatio: 2 } });
+  const img = ch.toBase64Image("image/png"); ch.destroy(); return img;
+}
+function expDescarca(blob, nume){ const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = nume; document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1500); }
+async function exportLunaComplet(ce){
+  if($("r-tip").value !== "luna" || R_NUME !== "Raport_luna"){ toast("Deschide întâi Raport lună", true); return; }
+  if(!R_RANDURI.length){ toast("Nu e nimic de exportat", true); return; }
+  const an = +$("r-an").value, luna = +$("r-luna").value, nz = zileInLuna(an, luna), lunaT = EXP_LUNI[luna - 1] + " " + an;
+  const ultima = `${zi2(nz)}.${zi2(luna)}.${an}`, sufix = `${an}-${zi2(luna)}`;
+  toast("Pregătesc exportul…");
+  let D; try{ D = await expDate(an, luna); }catch(e){ toast("Nu am putut citi datele: " + e.message, true); return; }
+  try{
+    if(ce !== "word") await expExcel(D, an, luna, nz, lunaT, ultima, sufix);
+    if(ce !== "excel") await expWord(D, an, luna, lunaT, sufix);
+    toast(ce === "excel" ? "Excel descărcat" : ce === "word" ? "Word descărcat" : "Descărcate: Excel (raport + sumar) și Word (comenzile lunii)");
+  }catch(e){ console.error(e); toast("Exportul n-a mers: " + e.message, true); }
+}
+async function expExcel(D, an, luna, nz, lunaT, ultima, sufix){
+  const [ExcelJS, Chart] = await Promise.all([expLib("exceljs"), expLib("chart")]);
+  const wb = new ExcelJS.Workbook(); wb.creator = "GestiuneEE"; wb.created = new Date();
+  const VERDE = "FF1B5E3A", GRI = "FFEFF2F0", SUB = "FFD8F0DF", JOS = "FFFBE0DE", BORD = { style: "thin", color: { argb: "FFC9D3CD" } };
+  const tot = { top: BORD, left: BORD, bottom: BORD, right: BORD };
+  // ---------- foaia 1: RAPORT LUNA ----------
+  const ws = wb.addWorksheet("RAPORT LUNA", { views: [{ state: "frozen", xSplit: 3, ySplit: 4 }],
+    pageSetup: { orientation: "landscape", paperSize: 8, fitToPage: true, fitToWidth: 1, fitToHeight: 0, margins: { left: .3, right: .3, top: .4, bottom: .4, header: .2, footer: .2 }, printTitlesRow: "4:4" } });
+  const cuAcc = R_ACC.length === R_RANDURI.length;
+  const ant = R_ANTET.slice(0, 7).concat(cuAcc ? ["ACC."] : [], R_ANTET.slice(7));
+  const o0 = ant.indexOf("0"), nc = ant.length;   // coloana „0”; după ea zilele
+  ws.mergeCells(1, 1, 1, Math.min(nc, 12)); ws.getCell(1, 1).value = "RAPORT LUNĂ — " + lunaT;
+  ws.getCell(1, 1).font = { bold: true, size: 15, color: { argb: VERDE } };
+  ws.mergeCells(2, 1, 2, Math.min(nc, 12));
+  ws.getCell(2, 1).value = "Euro Ecologic · generat " + new Date().toLocaleString("ro-RO") + " · zilele completate până " + (RL_PANA ? "la " + fmtD(RL_PANA) : "azi / sfârșitul lunii") + " · verde = au venit bucăți, roșu = au plecat";
+  ws.getCell(2, 1).font = { size: 9, color: { argb: "FF6B7A72" } };
+  const hr = ws.getRow(4); hr.height = 30;
+  ant.forEach((t, i) => { const c = hr.getCell(i + 1), zi = i > o0 ? i - o0 : 0;
+    c.value = zi ? zi + "\n" + EXP_ZS[new Date(an, luna - 1, zi).getDay()] : t;
+    c.font = { bold: true, color: { argb: "FFFFFFFF" }, size: zi ? 8 : 9 }; c.alignment = { vertical: "middle", horizontal: "center", wrapText: true };
+    const wk = zi && [0, 6].includes(new Date(an, luna - 1, zi).getDay());
+    c.fill = { type: "pattern", pattern: "solid", fgColor: { argb: wk ? "FF4F7F63" : VERDE } }; c.border = tot; });
+  R_RANDURI.forEach((f, j) => {
+    const v = f.slice(0, 7).concat(cuAcc ? [R_ACC[j] || ""] : [], f.slice(7));
+    const row = ws.getRow(5 + j);
+    v.forEach((x, i) => { const c = row.getCell(i + 1);
+      c.value = i >= o0 ? (x === "" || x == null ? null : +x) : (x == null ? "" : x);
+      c.border = tot; c.font = { size: 9 };
+      c.alignment = i >= o0 ? { horizontal: "center", vertical: "middle" } : { vertical: "middle", wrapText: i === 1 || i === 2 };
+      const ci = i - (cuAcc && i > 6 ? 1 : 0), st = (R_CEL[j] || {})[ci];   // R_CEL e pe coloanele fără ACC.
+      if(st) { c.fill = { type: "pattern", pattern: "solid", fgColor: { argb: st === "up" ? SUB : JOS } }; c.font = { size: 9, bold: true, color: { argb: st === "up" ? "FF15803D" : "FFB3261E" } }; }
+      else if(i > o0 && [0, 6].includes(new Date(an, luna - 1, i - o0).getDay())) c.fill = { type: "pattern", pattern: "solid", fgColor: { argb: GRI } };
+      if(i === 1) c.font = { size: 9, bold: true }; });
+  });
+  const rT = 5 + R_RANDURI.length, lt = n => { let s = ""; n++; while(n){ const m = (n - 1) % 26; s = String.fromCharCode(65 + m) + s; n = Math.floor((n - 1) / 26); } return s; };
+  const rowT = ws.getRow(rT); rowT.getCell(1).value = "TOTAL BUCĂȚI LA CLIENȚI"; ws.mergeCells(rT, 1, rT, o0);
+  for(let i = o0; i < nc; i++){ const c = rowT.getCell(i + 1); c.value = { formula: `IF(COUNT(${lt(i)}5:${lt(i)}${rT - 1})=0,"",SUM(${lt(i)}5:${lt(i)}${rT - 1}))` }; c.alignment = { horizontal: "center" }; }
+  for(let i = 0; i < nc; i++){ const c = rowT.getCell(i + 1); c.font = { bold: true, size: 9, color: { argb: VERDE } }; c.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFE6F3EA" } }; c.border = tot; }
+  const lat = { "NR. CTR": 10, "NUMELE FIRMEI": 30, "LOCATIA DE LIVRARE": 34, "NR. ANEXA": 15, "DATA LIVRARE": 11, "PRODUS": 10, "TIP": 15, "ACC.": 14, "LIVRAT DIN DEPOZIT": 11, "RETUR IN DEPOZIT": 11, "0": 5 };
+  ant.forEach((t, i) => { ws.getColumn(i + 1).width = lat[t] || 4.6; });
+  ws.autoFilter = { from: { row: 4, column: 1 }, to: { row: 4 + R_RANDURI.length, column: o0 } };
+  // ---------- calculele pentru SUMAR ----------
+  const ziTot = []; for(let i = 1; i <= nz; i++) ziTot.push(R_RANDURI.reduce((t, f) => t + (+f[9 + i] || 0), 0));
+  const zL = rlZiLimita(an, luna, nz), inceput = R_RANDURI.reduce((t, f) => t + (+f[9] || 0), 0), sfarsit = zL ? ziTot[zL - 1] : inceput;
+  const lun = D.lun || [];
+  const peTip = new Map(); lun.forEach(m => { const t = m.tip_miscare || "—"; const x = peTip.get(t) || { n: 0, b: 0 }; x.n++; x.b += +m.buc || 0; peTip.set(t, x); });
+  const ordT = EXP_GRUPE.flatMap(g => g[1]); const tipuri = [...peTip.keys()].sort((a, b) => ((ordT.indexOf(a) + 1) || 99) - ((ordT.indexOf(b) + 1) || 99) || a.localeCompare(b));
+  const peProd = new Map(); lun.filter(m => m.tip_miscare !== "SERVISARE").forEach(m => { const k = [m.produs, m.model].filter(Boolean).join(" ") || "—"; const x = peProd.get(k) || { in: 0, out: 0 }; const b = +m.buc || 0; if(b >= 0) x.in += b; else x.out += -b; peProd.set(k, x); });
+  const peDep = new Map(); lun.filter(m => m.tip_miscare !== "SERVISARE").forEach(m => { const k = m.depozit || "—"; const x = peDep.get(k) || { n: 0, in: 0, out: 0 }; const b = +m.buc || 0; x.n++; if(b >= 0) x.in += b; else x.out += -b; peDep.set(k, x); });
+  const stoc = expStoc(D.pana || [], D.si || []), faraSI = !(D.si || []).length;
+  // ---------- foaia 2: SUMAR ----------
+  const s2 = wb.addWorksheet("SUMAR", { pageSetup: { orientation: "portrait", paperSize: 9, fitToPage: true, fitToWidth: 1, fitToHeight: 0 } });
+  [24, 12, 12, 12, 3].forEach((w, i) => s2.getColumn(i + 1).width = w);
+  s2.getCell("A1").value = "SUMAR — " + lunaT; s2.getCell("A1").font = { bold: true, size: 15, color: { argb: VERDE } };
+  s2.getCell("A2").value = "Euro Ecologic · din Raport lună (doar închirierile pe depozitele proprii) și din toate comenzile lunii"; s2.getCell("A2").font = { size: 9, color: { argb: "FF6B7A72" } };
+  let r = 4;
+  const titlu = t => { const c = s2.getCell(r, 1); c.value = t; c.font = { bold: true, size: 11, color: { argb: VERDE } }; s2.getRow(r).height = 18; r++; };
+  const tabel = (cap, rows, fmt) => {
+    const h = s2.getRow(r); cap.forEach((t, i) => { const c = h.getCell(i + 1); c.value = t; c.font = { bold: true, color: { argb: "FFFFFFFF" }, size: 9 }; c.fill = { type: "pattern", pattern: "solid", fgColor: { argb: VERDE } }; c.border = tot; c.alignment = { horizontal: i ? "center" : "left", vertical: "middle", wrapText: true }; }); r++;
+    rows.forEach((v, j) => { const x = s2.getRow(r); v.forEach((t, i) => { const c = x.getCell(i + 1); c.value = t; c.border = tot; c.font = { size: 9, bold: !!(fmt && fmt(j, i)) }; c.alignment = { horizontal: i ? "center" : "left" }; if(j % 2) c.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFF6F8F7" } }; }); r++; });
+    r++;
+  };
+  titlu("Pe scurt");
+  tabel(["", "Valoare"], [
+    ["Poziții în Raport lună", R_RANDURI.length],
+    ["Bucăți la clienți la 01." + zi2(luna) + "." + an, inceput],
+    ["Bucăți la clienți la " + (zL && zL < nz ? zi2(zL) + "." + zi2(luna) + "." + an + " (completat până aici)" : ultima), sfarsit],
+    ["Diferență în lună", (sfarsit - inceput > 0 ? "+" : "") + (sfarsit - inceput)],
+    ["Comenzi în lună (toate tipurile)", lun.length]
+  ], (j) => j === 2);
+  const rGraf = 4;
+  titlu("Comenzi pe tip");
+  tabel(["Tip comandă", "Comenzi", "Bucăți"], tipuri.map(t => [t, peTip.get(t).n, peTip.get(t).b]).concat([["TOTAL", lun.length, ""]]), j => j === tipuri.length);
+  titlu("Mișcări pe produs (fără servisări)");
+  const pk = [...peProd.keys()].sort();
+  tabel(["Produs / tip", "Livrate", "Ridicate", "Net"], pk.map(k => [k, peProd.get(k).in, peProd.get(k).out, peProd.get(k).in - peProd.get(k).out]));
+  titlu("Pe depozitul care a livrat / ridicat");
+  tabel(["Depozit", "Comenzi", "Livrate", "Ridicate"], [...peDep.keys()].sort().map(k => [k, peDep.get(k).n, peDep.get(k).in, peDep.get(k).out]));
+  titlu("Stoc la " + ultima);
+  if(faraSI){
+    tabel(["Depozit (contract)", "Produs", "La clienți"], stoc.filter(x => x.inch).map(x => [x.depozit, x.produs, x.inch]));
+    s2.getCell(r - 1, 1).value = "Stocul inițial nu e completat (Administrare → Stoc inițial), de aceea aici sunt doar bucățile de la clienți; „în depozit” se poate calcula după ce e pus.";
+    s2.getCell(r - 1, 1).font = { italic: true, size: 8, color: { argb: "FF6B7A72" } }; r++;
+  } else tabel(["Depozit", "Produs", "La clienți", "În depozit", "Total"].slice(0, 5), stoc.map(x => [x.depozit, x.produs, x.inch, x.dep, x.inch + x.dep]));
+  // grafice (imagini) în dreapta tabelelor
+  const zileEt = Array.from({ length: nz }, (_, i) => String(i + 1));
+  const g1 = await expGrafic(Chart, { type: "line", data: { labels: zileEt, datasets: [{ label: "Bucăți la clienți", data: ziTot.map((v, i) => i < zL ? v : null), borderColor: "#1b5e3a", backgroundColor: "rgba(27,94,58,.12)", fill: true, tension: .2, pointRadius: 2 }] },
+    options: { plugins: { title: { display: true, text: "Bucăți la clienți pe zile — " + lunaT }, legend: { display: false } }, scales: { y: { beginAtZero: false, ticks: { precision: 0 } } } } }, 640, 300);
+  const g2 = await expGrafic(Chart, { type: "bar", data: { labels: tipuri, datasets: [{ label: "Comenzi", data: tipuri.map(t => peTip.get(t).n), backgroundColor: tipuri.map(t => /RIDIC|REDUC|-R$/.test(t) ? "#b3261e" : t === "SERVISARE" ? "#1d4ed8" : /DAUNA|FURT/.test(t) ? "#b26a00" : "#2e7d4f") }] },
+    options: { plugins: { title: { display: true, text: "Comenzi pe tip" }, legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { precision: 0 } } } } }, 640, 300);
+  const g3 = pk.length ? await expGrafic(Chart, { type: "bar", data: { labels: pk, datasets: [{ label: "Livrate", data: pk.map(k => peProd.get(k).in), backgroundColor: "#2e7d4f" }, { label: "Ridicate", data: pk.map(k => peProd.get(k).out), backgroundColor: "#b3261e" }] },
+    options: { plugins: { title: { display: true, text: "Livrate / ridicate pe produs" } }, scales: { y: { beginAtZero: true, ticks: { precision: 0 } } } } }, 640, 300) : null;
+  [g1, g2, g3].filter(Boolean).forEach((g, i) => { const id = wb.addImage({ base64: g, extension: "png" }); s2.addImage(id, { tl: { col: 5.2, row: rGraf - 1 + i * 17 }, ext: { width: 560, height: 262 } }); });
+  [ws, s2].forEach(w => w.eachRow({ includeEmpty: false }, row => row.eachCell(c => { c.font = { ...(c.font || {}), name: "Calibri" }; })));
+  const buf = await wb.xlsx.writeBuffer();
+  expDescarca(new Blob([buf], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" }), `Raport_luna_${sufix}.xlsx`);
+}
+async function expWord(D, an, luna, lunaT, sufix){
+  const X = await expLib("docx");
+  const { Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell, WidthType, AlignmentType, HeadingLevel, ShadingType, BorderStyle, PageOrientation } = X;
+  const lun = (D.lun || []).slice().sort((a, b) => (a.data || "").localeCompare(b.data || "") || a.id - b.id);
+  const toate = EXP_GRUPE.flatMap(g => g[1]);
+  const grupe = EXP_GRUPE.map(([t, tip]) => [t, lun.filter(m => tip.includes(m.tip_miscare))]).filter(g => g[1].length);
+  const nG = lun.filter(m => toate.includes(m.tip_miscare)).length, alte = lun.filter(m => !toate.includes(m.tip_miscare));
+  const F = "Calibri", MONO = "Consolas", VERDE = "1B5E3A";
+  const run = (t, o) => new TextRun({ text: t, font: F, size: 20, ...(o || {}) });
+  const p = (c, o) => new Paragraph({ children: Array.isArray(c) ? c : [run(c)], spacing: { after: 80 }, ...(o || {}) });
+  const fara = { top: { style: BorderStyle.NONE, size: 0, color: "FFFFFF" }, bottom: { style: BorderStyle.NONE, size: 0, color: "FFFFFF" }, left: { style: BorderStyle.NONE, size: 0, color: "FFFFFF" }, right: { style: BorderStyle.NONE, size: 0, color: "FFFFFF" } };
+  const cel = (t, o) => new TableCell({ children: [new Paragraph({ children: [run(String(t == null ? "" : t), { size: 17, ...(o && o.r || {}) })] })], margins: { top: 40, bottom: 40, left: 70, right: 70 }, ...(o && o.c || {}) });
+  const docNr = m => { if(m.cmd_nr || m.cmd_data) return [m.cmd_nr, m.cmd_data ? fmtD(m.cmd_data) : ""].filter(Boolean).join(" din ");
+    const a = ANX.find(x => x.id === m.anexa_id); return a ? a.anexa || "" : ""; };
+  // tabelul de la început
+  const capT = ["Nr.", "Data", "Tip", "Client", "Localitate", "Buc.", "Depozit", "Anexă / comandă"];
+  const latT = [5, 9, 13, 24, 18, 5, 11, 15];
+  const sum = new Table({ width: { size: 100, type: WidthType.PERCENTAGE }, rows: [
+    new TableRow({ tableHeader: true, children: capT.map((t, i) => cel(t, { r: { bold: true, color: "FFFFFF" }, c: { shading: { type: ShadingType.CLEAR, fill: VERDE, color: "auto" }, width: { size: latT[i], type: WidthType.PERCENTAGE } } })) }),
+    ...grupe.flatMap(g => g[1]).map((m, j) => new TableRow({ cantSplit: true, children: [j + 1, fmtD(m.data), m.tip_miscare, m.client, [m.jud, m.loc].filter(Boolean).join(" · "), m.buc, m.depozit, docNr(m)]
+      .map((t, i) => cel(t, { c: { width: { size: latT[i], type: WidthType.PERCENTAGE }, shading: j % 2 ? { type: ShadingType.CLEAR, fill: "F3F6F4", color: "auto" } : undefined } })) }))
+  ] });
+  const ch = [
+    new Paragraph({ children: [run("COMENZI — " + lunaT, { bold: true, size: 36, color: VERDE })], spacing: { after: 60 } }),
+    p([run("Euro Ecologic · generat " + new Date().toLocaleString("ro-RO") + " · " + nG + " comenzi" + (alte.length ? " (fără servisări / alte tipuri: " + alte.length + ")" : ""), { size: 18, color: "6B7A72" })]),
+    p([run(grupe.map(g => g[0] + ": " + g[1].length).join("   ·   "), { bold: true, size: 20 })], { spacing: { after: 200 } }),
+    sum
+  ];
+  const txtPar = t => t.split("\n").map(l => new Paragraph({ keepLines: true, keepNext: true, spacing: { after: 0, line: 250 },
+    children: l.split(/(\*[^*\n]+\*)/).filter(s => s !== "").map(s => /^\*[^*]+\*$/.test(s) ? new TextRun({ text: s.slice(1, -1), font: MONO, size: 18, bold: true }) : new TextRun({ text: s, font: MONO, size: 18 })) }));
+  grupe.forEach(([t, ms]) => {
+    ch.push(new Paragraph({ heading: HeadingLevel.HEADING_1, pageBreakBefore: true, children: [run(t + " (" + ms.length + ")", { bold: true, size: 28, color: VERDE })], spacing: { after: 160 } }));
+    ms.forEach((m, j) => {
+      let txt = ""; try{ txt = textComandaSalvata(m); }catch(e){ txt = "(textul comenzii nu s-a putut face: " + e.message + ")"; }
+      ch.push(new Paragraph({ keepNext: true, spacing: { before: j ? 200 : 0, after: 60 }, children: [run((j + 1) + ".  " + m.tip_miscare + "  ·  " + fmtD(m.data) + "  ·  ", { bold: true, size: 21 }), run(m.client || "", { bold: true, size: 21, color: VERDE }), run("   comanda nr. " + m.id, { size: 16, color: "6B7A72" })] }));
+      ch.push(new Table({ width: { size: 100, type: WidthType.PERCENTAGE }, rows: [new TableRow({ cantSplit: true, children: [new TableCell({ children: txtPar(txt), margins: { top: 100, bottom: 100, left: 160, right: 160 },
+        shading: { type: ShadingType.CLEAR, fill: "F6F8F7", color: "auto" }, borders: { ...fara, left: { style: BorderStyle.SINGLE, size: 18, color: /RIDIC/.test(t) ? "B3261E" : VERDE } } })] })] }));
+    });
+  });
+  if(!grupe.length) ch.push(p("Nu sunt comenzi de acest fel în " + lunaT.toLowerCase() + "."));
+  const doc = new Document({ creator: "GestiuneEE", title: "Comenzi " + lunaT, styles: { default: { document: { run: { font: F } } } },
+    sections: [{ properties: { page: { margin: { top: 900, bottom: 900, left: 900, right: 900 } } }, children: ch }] });
+  expDescarca(await Packer.toBlob(doc), `Comenzi_${sufix}.docx`);
+}
 </script>
 </body>
 </html>
