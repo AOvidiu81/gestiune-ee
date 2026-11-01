@@ -310,6 +310,14 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   .fs-sel.IN{background:rgba(234,179,8,.18);border-color:rgba(202,138,4,.55);color:#a16207}   /* v7.16: IN ASTEPTARE FACTURA */
   :root[data-tema="inchis"] .fs-sel.IN{color:#FACC15}
   .fs-sel option{background:var(--card,#fff);color:var(--tx)}
+  /* v7.42: propunerile de localități (SIRUTA) */
+  .loc-box{position:fixed;z-index:10050;background:var(--card);border:1px solid var(--bd);border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,.18);padding:4px 0;max-width:min(560px,calc(100vw - 16px));font-size:13px}
+  .loc-box>div[data-i]{padding:6px 10px;cursor:pointer;display:flex;gap:6px;align-items:baseline}
+  .loc-box>div[data-i] span{color:var(--mut);flex:1}
+  .loc-box>div[data-i] i{font-style:normal;font-weight:600;color:var(--g)}
+  .loc-box>div[data-i]:hover,.loc-box>div.on{background:var(--gl)}
+  .loc-box .loc-sursa{padding:4px 10px 2px;font-size:11px;color:var(--mut);border-top:1px solid var(--bd);margin-top:2px}
+  .loc-av{font-size:11.5px;color:var(--amb);margin-top:3px}
   .cx-w{position:relative;display:block} .cx-w>input{padding-right:30px}   /* v5.98: ✕ în căsuțele de căutare */
   .cx-b{position:absolute;right:4px;top:50%;transform:translateY(-50%);border:0;background:none;color:var(--mut);font-size:16px;line-height:1;padding:4px 6px;cursor:pointer}
   .cx-w>input:placeholder-shown~.cx-b{display:none}
@@ -963,7 +971,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
   <span id="rz-w"><button id="rz-reset" class="pictograma" title="Lățimi implicite — pune coloanele din tabelele acestei file înapoi cum erau">↺ Reset layout</button><i class="rz-sep">|</i></span>
   <span id="tz-w" title="Mărimea tabelului (doar tabelul, restul rămâne la fel), din 5 în 5%. Merge și cu Ctrl + rotița mausului, Ctrl + / Ctrl − / Ctrl 0. Dublu clic pe procent = scrii tu valoarea."><button class="pictograma" onclick="tzPas(-1)" aria-label="Micșorează tabelul">−</button><b id="tz-v" ondblclick="tzScrie()" title="Dublu clic = scrii mărimea (ex. 87), Enter">100%</b><input id="tz-in" type="number" min="30" max="300" step="5" style="display:none"><button class="pictograma" onclick="tzPas(1)" aria-label="Mărește tabelul">+</button></span>
-  <span class="ver">v7.41</span>
+  <span class="ver">v7.42</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -12225,6 +12233,105 @@ porneste();
   window.addEventListener("resize", () => { tabele.forEach(t => { if(!t.querySelector(".rz-h")) aplica(t); }); butoane(); });
   butoane();
 })();
+
+// ================= v7.42 (cerut de Ovidiu, 01.11): LOCALITĂȚI DIN LISTA OFICIALĂ (SIRUTA) =================
+// La „Loc. / Com.” (Comandă) și „Localitate / Comună / Sector” (Anexă): la scriere apar propunerile din
+// localitati.json (SIRUTA, INS — 3181 municipii / orașe / comune + 13452 sate și localități componente).
+// Alegerea completează județul; la un sat: Loc. = „COM X” (sau orașul), Sat = „SAT Y, ” dacă e gol.
+// Scris de mână ce nu e în listă / alt județ → avertisment discret sub câmp; nu oprește nimic.
+let LOCX = null, LOCX_P = null;
+const locNorm = s => String(s || "").normalize("NFD").replace(/[̀-ͯ]/g, "").toUpperCase()
+  .replace(/[^A-Z0-9 ]/g, " ").replace(/\s+/g, " ").replace(/\bSECTORUL\b/g, "SECTOR").trim();
+const locFara = s => { let n = locNorm(s).replace(/^(COMUNA|COMUNEI|COM|SATUL|SAT|ORASUL|ORAS|MUNICIPIUL|MUN|LOCALITATEA|LOC)\s+/, "");
+  return n.replace(/^TG\s/, "TARGU ").replace(/^SF\s/, "SFANTU ").replace(/^DR TR\s/, "DROBETA TURNU "); };
+const locMare = s => String(s || "").normalize("NFD").replace(/[̀-ͯ]/g, "").toUpperCase();
+function locIncarca(){
+  if(LOCX) return Promise.resolve(LOCX);
+  if(LOCX_P) return LOCX_P;
+  LOCX_P = fetch("localitati.json").then(r => { if(!r.ok) throw new Error("http " + r.status); return r.json(); }).then(d => {
+    const KN = { M: "municipiu", O: "oraș", C: "comună" };
+    const E = d.u.map((u, i) => ({ n: locNorm(u[0]), nume: u[0], j: u[2], k: u[1], uat: i, t: KN[u[1]] }));
+    d.l.forEach(l => { const u = d.u[l[1]], k = l[2] || "S";
+      E.push({ n: locNorm(l[0]), nume: l[0], j: u[2], k, uat: l[1], up: u,
+        t: k === "S" ? "sat, " + (u[1] === "C" ? "com. " : u[1] === "M" ? "mun. " : "oraș ") + locTitlu(u[0])
+         : k === "X" ? "București" : "localitate a " + (u[1] === "M" ? "mun. " : "orașului ") + locTitlu(u[0]) }); });
+    LOCX = { E, U: d.u }; return LOCX;
+  }).catch(e => { LOCX_P = null; console.warn("localitati.json:", e); return null; });
+  return LOCX_P;
+}
+const locTitlu = s => String(s).toLowerCase().replace(/(^|[\s-])(\p{L})/gu, (m, a, b) => a + b.toUpperCase());
+function locCauta(q, jud){
+  if(!LOCX) return [];
+  const n = locFara(q); if(n.length < 2) return [];
+  const j = locMare(jud).trim(), r = [];
+  for(const e of LOCX.E){
+    let s = e.n === n ? 0 : e.n.startsWith(n) ? 1 : e.n.includes(" " + n) ? 2 : -1;
+    if(s < 0) continue;
+    r.push({ e, s: s * 10 + (j && e.j === j ? 0 : 4) + (e.up ? 1 : 0) });
+  }
+  return r.sort((a, b) => a.s - b.s || a.e.nume.length - b.e.nume.length || a.e.nume.localeCompare(b.e.nume, "ro")).slice(0, 12).map(x => x.e);
+}
+// ce scrie în câmpuri la alegere (fără diacritice, cu majuscule — ca restul datelor)
+function locScrie(e){
+  const N = locMare(e.nume);
+  if(!e.up) return { jud: e.j, loc: (e.k === "C" ? "COM " : "") + N };
+  const U = locMare(e.up[0]), L = (e.up[1] === "C" ? "COM " : "") + U;
+  if(e.k === "X") return { jud: e.j, loc: "BUCURESTI " + N.replace(/^BUCURESTI\s+/, "") };
+  return { jud: e.j, loc: L, sat: (e.k === "S" ? "SAT " : "") + N + ", " };
+}
+function locAvert(lId, jId){
+  const el = $(lId), j = $(jId); if(!el) return;
+  let w = el.parentNode.querySelector(".loc-av");
+  const pune = t => { if(!t){ if(w) w.remove(); return; } if(!w){ w = document.createElement("div"); w.className = "loc-av"; el.parentNode.appendChild(w); } w.textContent = t; };
+  if(!el.dataset.locEd || !LOCX){ pune(""); return; }
+  const n = locFara(el.value); if(n.length < 2){ pune(""); return; }
+  const g = LOCX.E.filter(e => e.n === n), jud = locMare(j && j.value).trim();
+  if(!g.length){ pune("⚠ nu apare în lista oficială a localităților — verifică scrierea"); return; }
+  if(jud && !g.some(e => e.j === jud)){ const js = [...new Set(g.map(e => e.j))]; pune("⚠ " + g[0].nume + " e în " + (js.length > 4 ? js.slice(0, 4).join(", ") + "…" : js.join(", ")) + ", nu în " + jud); return; }
+  pune("");
+}
+function locAuto(jId, lId, sId){
+  const el = $(lId), jud = $(jId), sat = $(sId); if(!el || el.dataset.locAuto) return; el.dataset.locAuto = "1";
+  el.setAttribute("autocomplete", "off");
+  let box = null, lista = [], sel = -1;
+  const inchide = () => { if(box){ box.remove(); box = null; } lista = []; sel = -1; };
+  const arata = () => {
+    if(el.readOnly || el.disabled || document.activeElement !== el){ inchide(); return; }
+    lista = locCauta(el.value, jud && jud.value);
+    if(!lista.length){ inchide(); return; }
+    if(!box){ box = document.createElement("div"); box.className = "loc-box"; document.body.appendChild(box);
+      box.addEventListener("mousedown", ev => { const d = ev.target.closest("[data-i]"); if(d){ ev.preventDefault(); alege(+d.dataset.i); } }); }
+    const r = el.getBoundingClientRect();
+    box.style.left = r.left + "px"; box.style.top = (r.bottom + 2) + "px"; box.style.minWidth = Math.max(r.width, 300) + "px";
+    box.innerHTML = lista.map((e, i) => `<div data-i="${i}" class="${i === sel ? "on" : ""}"><b>${esc(e.nume)}</b> <span>— ${esc(e.t)}</span><i>${esc(e.j)}</i></div>`).join("") +
+      `<div class="loc-sursa">lista oficială SIRUTA (INS)</div>`;
+  };
+  const alege = i => {
+    const e = lista[i]; if(!e) return; const w = locScrie(e);
+    el.value = w.loc; if(jud){ jud.value = w.jud; jud.dispatchEvent(new Event("change", { bubbles: true })); }
+    let spreSat = false;
+    if(w.sat && sat && !sat.readOnly && !sat.value.trim()){ sat.value = w.sat; spreSat = true; }
+    el.dataset.locEd = "1"; inchide();
+    el.dispatchEvent(new Event("input", { bubbles: true })); el.dispatchEvent(new Event("change", { bubbles: true }));
+    if(spreSat && sat){ sat.dispatchEvent(new Event("input", { bubbles: true })); sat.focus(); sat.setSelectionRange(sat.value.length, sat.value.length); }
+    locAvert(lId, jId);
+  };
+  el.addEventListener("focus", () => { locIncarca(); });
+  el.addEventListener("input", ev => { if(!ev.isTrusted) return; el.dataset.locEd = "1"; sel = -1; locIncarca().then(arata); });
+  el.addEventListener("keydown", ev => {
+    if(!box) return;
+    if(ev.key === "ArrowDown" || ev.key === "ArrowUp"){ ev.preventDefault(); sel = (sel + (ev.key === "ArrowDown" ? 1 : -1) + lista.length) % lista.length; arata(); }
+    else if(ev.key === "Enter" && sel >= 0){ ev.preventDefault(); alege(sel); }
+    else if(ev.key === "Escape"){ ev.stopPropagation(); inchide(); }
+  });
+  el.addEventListener("blur", () => { setTimeout(() => { inchide(); locAvert(lId, jId); }, 120); });
+  if(jud) jud.addEventListener("change", () => locAvert(lId, jId));
+  // la deschiderea altei comenzi / anexe: avertismentul vechi dispare (se verifică doar ce scrii tu)
+  new MutationObserver(() => { delete el.dataset.locEd; locAvert(lId, jId); }).observe(el.closest(".modal, .mod, [id^='mod-']") || document.body, { attributes: true, attributeFilter: ["class"] });
+  window.addEventListener("scroll", inchide, true);
+}
+locAuto("mm-jud", "mm-loc", "mm-sat");
+locAuto("ma-jud", "ma-loc", "ma-sat");
 </script>
 </body>
 </html>
