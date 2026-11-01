@@ -971,7 +971,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
   <span id="rz-w"><button id="rz-reset" class="pictograma" title="Lățimi implicite — pune coloanele din tabelele acestei file înapoi cum erau">↺ Reset layout</button><i class="rz-sep">|</i></span>
   <span id="tz-w" title="Mărimea tabelului (doar tabelul, restul rămâne la fel), din 5 în 5%. Merge și cu Ctrl + rotița mausului, Ctrl + / Ctrl − / Ctrl 0. Dublu clic pe procent = scrii tu valoarea."><button class="pictograma" onclick="tzPas(-1)" aria-label="Micșorează tabelul">−</button><b id="tz-v" ondblclick="tzScrie()" title="Dublu clic = scrii mărimea (ex. 87), Enter">100%</b><input id="tz-in" type="number" min="30" max="300" step="5" style="display:none"><button class="pictograma" onclick="tzPas(1)" aria-label="Mărește tabelul">+</button></span>
-  <span class="ver">v7.45</span>
+  <span class="ver">v7.46</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -12445,10 +12445,11 @@ async function expExcel(D, an, luna, nz, lunaT, ultima, sufix){
   const ziTot = []; for(let i = 1; i <= nz; i++) ziTot.push(R_RANDURI.reduce((t, f) => t + (+f[9 + i] || 0), 0));
   const zL = rlZiLimita(an, luna, nz), inceput = R_RANDURI.reduce((t, f) => t + (+f[9] || 0), 0), sfarsit = zL ? ziTot[zL - 1] : inceput;
   const lun = D.lun || [];
-  const peTip = new Map(); lun.forEach(m => { const t = m.tip_miscare || "—"; const x = peTip.get(t) || { n: 0, b: 0 }; x.n++; x.b += +m.buc || 0; peTip.set(t, x); });
+  const peTip = new Map(); lun.forEach(m => { const t = m.tip_miscare || "—"; const x = peTip.get(t) || { n: 0, b: 0 }; if(!(m.grup_id && m.grup_id !== m.id)) x.n++; x.b += +m.buc || 0; peTip.set(t, x); });   // v7.46: comanda cu mai multe produse = o comandă
+  const nCmd = lun.filter(m => !(m.grup_id && m.grup_id !== m.id)).length;
   const ordT = EXP_GRUPE.flatMap(g => g[1]); const tipuri = [...peTip.keys()].sort((a, b) => ((ordT.indexOf(a) + 1) || 99) - ((ordT.indexOf(b) + 1) || 99) || a.localeCompare(b));
   const peProd = new Map(); lun.filter(m => m.tip_miscare !== "SERVISARE").forEach(m => { const k = [m.produs, m.model].filter(Boolean).join(" ") || "—"; const x = peProd.get(k) || { in: 0, out: 0 }; const b = +m.buc || 0; if(b >= 0) x.in += b; else x.out += -b; peProd.set(k, x); });
-  const peDep = new Map(); lun.filter(m => m.tip_miscare !== "SERVISARE").forEach(m => { const k = m.depozit || "—"; const x = peDep.get(k) || { n: 0, in: 0, out: 0 }; const b = +m.buc || 0; x.n++; if(b >= 0) x.in += b; else x.out += -b; peDep.set(k, x); });
+  const peDep = new Map(); lun.filter(m => m.tip_miscare !== "SERVISARE").forEach(m => { const k = m.depozit || "—"; const x = peDep.get(k) || { n: 0, in: 0, out: 0 }; const b = +m.buc || 0; if(!(m.grup_id && m.grup_id !== m.id)) x.n++; if(b >= 0) x.in += b; else x.out += -b; peDep.set(k, x); });
   const stoc = expStoc(D.pana || [], D.si || []), faraSI = !(D.si || []).length;
   // ---------- foaia 2: SUMAR ----------
   const s2 = wb.addWorksheet("SUMAR", { pageSetup: { orientation: "portrait", paperSize: 9, fitToPage: true, fitToWidth: 1, fitToHeight: 0 } });
@@ -12468,11 +12469,11 @@ async function expExcel(D, an, luna, nz, lunaT, ultima, sufix){
     ["Bucăți la clienți la 01." + zi2(luna) + "." + an, inceput],
     ["Bucăți la clienți la " + (zL && zL < nz ? zi2(zL) + "." + zi2(luna) + "." + an + " (completat până aici)" : ultima), sfarsit],
     ["Diferență în lună", (sfarsit - inceput > 0 ? "+" : "") + (sfarsit - inceput)],
-    ["Comenzi în lună (toate tipurile)", lun.length]
+    ["Comenzi în lună (toate tipurile)", nCmd]
   ], (j) => j === 2);
   const rGraf = 4;
   titlu("Comenzi pe tip");
-  tabel(["Tip comandă", "Comenzi", "Bucăți"], tipuri.map(t => [t, peTip.get(t).n, peTip.get(t).b]).concat([["TOTAL", lun.length, ""]]), j => j === tipuri.length);
+  tabel(["Tip comandă", "Comenzi", "Bucăți"], tipuri.map(t => [t, peTip.get(t).n, peTip.get(t).b]).concat([["TOTAL", nCmd, ""]]), j => j === tipuri.length);
   titlu("Mișcări pe produs (fără servisări)");
   const pk = [...peProd.keys()].sort();
   tabel(["Produs / tip", "Livrate", "Ridicate", "Net"], pk.map(k => [k, peProd.get(k).in, peProd.get(k).out, peProd.get(k).in - peProd.get(k).out]));
@@ -12508,12 +12509,14 @@ async function expWord(D, an, luna, lunaT, sufix){
   const ZS = ["dum","lun","mar","mie","joi","vin","sam"];
   const dz = s => { const x = /^(\d{4})-(\d{2})-(\d{2})$/.exec(s || ""); if(!x) return ""; return ZS[new Date(+x[1], +x[2] - 1, +x[3]).getDay()] + "/" + x[3] + "/" + x[2] + "/" + x[1]; };
   const modN = (mo, n) => Math.abs(+n) !== 1 && /^PROPRIE$/i.test(String(mo || "").trim()) ? "PROPRII" : mo;
-  const prodL = x => "   " + (Math.abs(+x.buc) || 0) + "    " + prodN(x.produs || "", x.buc) + (x.model || x.model_fizic ? "    " + modN([x.model, x.model_fizic].filter(Boolean).join(" "), x.buc) : "") + (x.accesorii ? "    ACC.  :  " + x.accesorii : "");
+  const prodL = x => "   " + (Math.abs(+x.buc) || 0) + "    " + prodN(x.produs || "", x.buc) + (x.model || x.model_fizic ? "    " + modN([x.model, x.model_fizic].filter(Boolean).join(" "), x.buc) : "") + (x.accesorii ? "\n  ACC.  :  " + x.accesorii : "");
   const sp = "    ";
   const scurt = m => {
     const L = [], evT = { "EVENIMENT-A": "AMPLASARE", "EVENIMENT-R": "RIDICARE" }[m.tip_miscare];
     L.push("*" + m.tip_miscare + (evT ? " [ " + evT + " ]" : "") + "*" + sp + dz(m.data));
-    L.push(prodL(m)); (MISC || []).filter(x => m.grup_id === m.id && x.grup_id === m.id && x.id !== m.id).forEach(x => L.push(prodL(x)));
+    // v7.46: comanda cu mai multe produse (grup, ex. DRAMIROM 155–158) — toate produsele, fiecare cu accesoriile lui
+    const ext = m.grup_id === m.id ? lun.filter(x => x.grup_id === m.id && x.id !== m.id).sort((x, y) => x.id - y.id) : [];
+    [m, ...ext].forEach(x => prodL(x).split("\n").forEach(l => L.push(l)));
     L.push("  NUME CLIENT:  *" + ((m.client || "").trim() || "—") + "*");
     const loc = (j, l, s, p, t) => [j && "JUD.  : " + j, l && "LOC.  : " + l, s, p && "PERS. RES.  :  " + p, t && "TEL.  :  " + t].filter(Boolean).join(sp);
     const ls = Array.isArray(m.locatii) && m.locatii.length > 1 ? m.locatii.filter(l => !(l.sv && l.stare === "N")) : null;
@@ -12524,7 +12527,8 @@ async function expWord(D, an, luna, lunaT, sufix){
     const ru = m.traseu ? "*RUTA*  :  " + m.traseu : "";
     if(sv || ru) L.push([sv, ru].filter(Boolean).join(sp));
     const a = ANX.find(x => x.id === m.anexa_id) || {}, k = CTR.find(x => x.id === a.contract_id) || CTR.find(x => x.id === m.contract_id) || {};
-    const doc = m.cmd_nr || m.cmd_data ? [m.cmd_nr || "COMANDA", m.cmd_data ? "din " + fmtD(m.cmd_data).replace(/-/g, ".") : ""].filter(Boolean).join(" ") : (a.anexa || "");
+    const doc = m.cmd_nr || m.cmd_data ? [m.cmd_nr || "COMANDA", m.cmd_data ? "din " + fmtD(m.cmd_data).replace(/-/g, ".") : ""].filter(Boolean).join(" ")
+      : [...new Set([m, ...ext].map(x => (ANX.find(z => z.id === x.anexa_id) || {}).anexa).filter(Boolean))].join(", ");
     L.push("  CTR.  :  " + (k.nr_ctr || m.contract || "—") + (doc ? "  ·  " + doc : "") + sp + "DEP.   :  " + (m.depozit || "—"));
     return L;
   };
