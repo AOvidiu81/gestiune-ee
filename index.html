@@ -971,7 +971,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
   <span id="rz-w"><button id="rz-reset" class="pictograma" title="Lățimi implicite — pune coloanele din tabelele acestei file înapoi cum erau">↺ Reset layout</button><i class="rz-sep">|</i></span>
   <span id="tz-w" title="Mărimea tabelului (doar tabelul, restul rămâne la fel), din 5 în 5%. Merge și cu Ctrl + rotița mausului, Ctrl + / Ctrl − / Ctrl 0. Dublu clic pe procent = scrii tu valoarea."><button class="pictograma" onclick="tzPas(-1)" aria-label="Micșorează tabelul">−</button><b id="tz-v" ondblclick="tzScrie()" title="Dublu clic = scrii mărimea (ex. 87), Enter">100%</b><input id="tz-in" type="number" min="30" max="300" step="5" style="display:none"><button class="pictograma" onclick="tzPas(1)" aria-label="Mărește tabelul">+</button></span>
-  <span class="ver">v7.44</span>
+  <span class="ver">v7.45</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -1132,10 +1132,10 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
       <div><label>Client</label><input id="r-client" placeholder="toți" oninput="genereazaRaport()"></div>
       <div style="flex:0"><label>Județ</label><select id="r-jud" onchange="genereazaRaport()"></select></div>
       <div style="flex:0"><label>Stare contract</label><select id="r-stare" onchange="genereazaRaport()"></select></div>
-      <div style="flex:0"><label>TVA %</label><input id="r-tva" type="number" value="21" step="1" oninput="genereazaRaport()"></div>
+      <div style="flex:0" id="r-tva-w"><label>TVA %</label><input id="r-tva" type="number" value="21" step="1" oninput="genereazaRaport()"></div>
       <div style="flex:0 0 auto" id="r-pana-w"><label title="Gol = zilele se completează până azi. Cu o dată (ex. ultima zi a lunii) se completează până la ea și rămâne așa până o golești.">Completat până la</label><div style="display:flex;gap:6px"><input id="r-pana" type="date" onchange="rlPanaSet(this.value)" style="width:150px;flex:0 0 150px"><button class="btn sec" style="flex:0 0 auto" onclick="rlPanaSet('')" title="Golește data — zilele se completează din nou până azi">✕</button></div></div>
       <div style="flex:0" id="r-mod-wrap"><label>Variantă</label><div style="display:flex;gap:6px"><button class="btn sec" id="r-mod-lucru" onclick="setModFact('lucru')">În lucru</button><button class="btn sec" id="r-mod-gata" onclick="setModFact('gata')">Gata de trimis</button><button class="btn sec" id="r-mod-verif" onclick="setModFact('verif')" title="Facturile primite de la sediu: verifici rând cu rând înainte să le trimiți la clienți">Verificare</button></div></div>
-      <div style="flex:0;align-self:flex-end;padding-bottom:9px;white-space:nowrap"><label style="display:flex;align-items:center;gap:6px;cursor:pointer;margin:0" title="Arată și rândurile din lunile plătite deja în avans (gri, valoare 0, „facturat în …”) — bun când cauți ceva în urmă. Nu intră la Gata de trimis."><input type="checkbox" id="r-ac" onchange="factAcSchimba(this.checked)"> Arată și cele acoperite de avans</label></div>
+      <div style="flex:0;align-self:flex-end;padding-bottom:9px;white-space:nowrap" id="r-ac-w"><label style="display:flex;align-items:center;gap:6px;cursor:pointer;margin:0" title="Arată și rândurile din lunile plătite deja în avans (gri, valoare 0, „facturat în …”) — bun când cauți ceva în urmă. Nu intră la Gata de trimis."><input type="checkbox" id="r-ac" onchange="factAcSchimba(this.checked)"> Arată și cele acoperite de avans</label></div>
       <div style="flex:0"><label>&nbsp;</label><button class="btn sec" onclick="exportRaport()">Export Excel</button></div>
       <div style="flex:0" id="r-exp-c"><label>&nbsp;</label><button class="btn" onclick="exportLunaComplet()" title="Două fișiere — Excel (foaia 1 Raport lună formatat, foaia 2 SUMAR cu mișcări, grafice și stocul la ultima zi din lună) + Word „MISCARI - RAPORT” cu comenzile lunii (amplasări, ridicări, vânzări, transfer, daună / pierdere)">📊 Excel + Word</button></div>
       <div style="flex:0"><label>&nbsp;</label><button class="btn sec" onclick="window.print()">PDF / Print</button></div>
@@ -6012,6 +6012,7 @@ function modFactButoane(){
   const fact = $("r-tip").value === "facturare";
   $("r-mod-wrap").style.display = fact ? "" : "none";
   $("r-pana-w").style.display = fact ? "none" : ""; $("r-exp-c").style.display = fact ? "none" : "";   // v7.43
+  $("r-tva-w").style.display = fact ? "" : "none"; $("r-ac-w").style.display = fact ? "" : "none";   // v7.45: TVA și „acoperite de avans” țin doar de Facturare
   const st = (id, activ, cul) => { $(id).style.cssText = activ ? "background:" + cul + ";border-color:" + cul + ";color:#fff" : ""; };
   st("r-mod-lucru", R_MOD === "lucru", "#D97706"); st("r-mod-gata", R_MOD === "gata", "#2E8B3C"); st("r-mod-verif", R_MOD === "verif", "#2563EB");   // v7.05
 }
