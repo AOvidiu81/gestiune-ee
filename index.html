@@ -963,7 +963,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
   <span id="rz-w"><button id="rz-reset" class="pictograma" title="Lățimi implicite — pune coloanele din tabelele acestei file înapoi cum erau">↺ Reset layout</button><i class="rz-sep">|</i></span>
   <span id="tz-w" title="Mărimea tabelului (doar tabelul, restul rămâne la fel), din 5 în 5%. Merge și cu Ctrl + rotița mausului, Ctrl + / Ctrl − / Ctrl 0. Dublu clic pe procent = scrii tu valoarea."><button class="pictograma" onclick="tzPas(-1)" aria-label="Micșorează tabelul">−</button><b id="tz-v" ondblclick="tzScrie()" title="Dublu clic = scrii mărimea (ex. 87), Enter">100%</b><input id="tz-in" type="number" min="30" max="300" step="5" style="display:none"><button class="pictograma" onclick="tzPas(1)" aria-label="Mărește tabelul">+</button></span>
-  <span class="ver">v7.40</span>
+  <span class="ver">v7.41</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -10550,7 +10550,8 @@ function textComandaDin(d){
   const dzL = s => { const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(s || ""); if(!m) return ""; return ZL[new Date(+m[1], +m[2] - 1, +m[3]).getDay()] + " - " + m[3] + "." + m[2] + "." + m[1]; };
   // v7.40 (cerut de Ovidiu, 01.11): tipul comenzii și numele clientului îngroșate (*…* = bold pe WhatsApp; la E-mail se copiază formatat)
   if(svlc){ L.push("COMANDA DIN DATA: " + dzL(d.data)); L.push("*SERVISARE" + (/cerere/i.test(d.frecv || "") ? " LA CERERE" : "") + "*"); }
-  else L.push((d.tip ? "*" + d.tip + "*" : "") + "    " + dz(d.data));
+  else { const evT = { "EVENIMENT-A": "AMPLASARE", "EVENIMENT-R": "RIDICARE" }[d.tip];   // v7.41: „EVENIMENT-A [ AMPLASARE ]”
+    L.push((d.tip ? "*" + d.tip + (evT ? " [ " + evT + " ]" : "") + "*" : "") + "    " + dz(d.data)); }
   // v5.13: comanda pe toată anexa — toate produsele; mai multe locații = lista locațiilor (varianta B, Primăria)
   const toate = (Array.isArray(d.locatii) && d.locatii.length)   // v6.26: comanda din exterior pe mai multe locații
     ? d.locatii.filter(l => !(l.sv && l.stare === "N")).map(l => ({ buc: l.buc, produs: d.produs, model: d.model, acc: d.acc, jud: l.jud || d.jud, loc: l.localitate, sat: l.locatie, pers: l.sv ? (l.pers || "") : d.pers, tel: l.sv ? (l.tel || "") : d.tel, zi: l.sv ? (l.data || "") : "" }))   // v7.34
@@ -10588,18 +10589,18 @@ function textComandaDin(d){
   }
   // v5.91 (cerut de Ovidiu, 14.10): comanda ajunge la șoferi cu frecvența, zilele și traseul
   if(Array.isArray(d.evServ) && d.evServ.length){   // v6.79: servisările evenimentului, pe date exacte
-    L.push(""); L.push("SERVISARE  :  " + d.evServ.map(dz).join(", ")); L.push("TRASEU  :  " + (d.traseu || "Traseu-EV"));
+    L.push(""); L.push("SERVISARE  :  " + d.evServ.map(dz).join(", ")); L.push("*RUTA*  :  " + (d.traseu || "Traseu-EV"));
   } else if(FARA_ACT(d.tip)){   // v7.12 (cerut de Ovidiu, 27.10): la RIDICARE / EVENIMENT-R fără „SERVISARE”, doar traseul
-    if(d.traseu){ L.push(""); L.push("TRASEU  :  " + d.traseu); }
+    if(d.traseu){ L.push(""); L.push("*RUTA*  :  " + d.traseu); }
   } else { const zl = String(d.zile || "").split(",").filter(Boolean).join(", ");
     if(d.frecv || zl){ L.push(""); L.push("SERVISARE  :  " + [d.frecv, zl].filter(Boolean).join(" · ")); }
-    if(d.traseu) L.push("TRASEU  :  " + d.traseu); }
+    if(d.traseu){ if(!(d.frecv || zl)) L.push(""); L.push("*RUTA*  :  " + d.traseu); } }   // v7.41: „RUTA” îngroșat (fost TRASEU); rând gol și fără servisare
   const ext = [];
   // v5.03: la ridicare / reducere data amplasării anexei nu se scrie (la 1-R1 era data reducerii, se citea greșit)
   if(a.data_livrarii && a.data_livrarii !== d.data && !SER_RID.test(d.tip || "")) ext.push("DATA AMPL.  :  " + dz(a.data_livrarii));
-  if(d.tip === "EVENIMENT-A"){ const p = evPerAnexa(a); if(p) ext.push("EVENIMENT  :  " + dz(p.de) + (p.pana !== p.de ? "  –  " + dz(p.pana) : "")); }   // v6.79
-  if(a.data_ridicarii) ext.push("DATA RID.  :  " + dz(a.data_ridicarii));
-  else if(d.evRid && d.tip === "EVENIMENT-A") ext.push("DATA RID.  :  " + dz(d.evRid));   // v6.79: ridicarea programată
+  if(d.tip === "EVENIMENT-A"){ const p = evPerAnexa(a); if(p) ext.push("PERIOADA EVENIMENT  :  " + dz(p.de) + (p.pana !== p.de ? "  –  " + dz(p.pana) : "")); }   // v6.79
+  if(a.data_ridicarii) ext.push("DATA RIDICARE  :  " + dz(a.data_ridicarii));
+  else if(d.evRid && d.tip === "EVENIMENT-A") ext.push("DATA RIDICARE  :  " + dz(d.evRid));   // v6.79: ridicarea programată
   if(+a.transport) ext.push("TRANSPORT  :  " + a.transport);
   L.push("");
   let anxT = [...new Set([a.anexa, ...(d.extra || []).map(x => x.anexa)].filter(Boolean))].join(", ");   // v5.76: toate anexele de pe comandă
