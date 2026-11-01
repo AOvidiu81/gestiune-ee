@@ -971,7 +971,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
   <span id="rz-w"><button id="rz-reset" class="pictograma" title="Lățimi implicite — pune coloanele din tabelele acestei file înapoi cum erau">↺ Reset layout</button><i class="rz-sep">|</i></span>
   <span id="tz-w" title="Mărimea tabelului (doar tabelul, restul rămâne la fel), din 5 în 5%. Merge și cu Ctrl + rotița mausului, Ctrl + / Ctrl − / Ctrl 0. Dublu clic pe procent = scrii tu valoarea."><button class="pictograma" onclick="tzPas(-1)" aria-label="Micșorează tabelul">−</button><b id="tz-v" ondblclick="tzScrie()" title="Dublu clic = scrii mărimea (ex. 87), Enter">100%</b><input id="tz-in" type="number" min="30" max="300" step="5" style="display:none"><button class="pictograma" onclick="tzPas(1)" aria-label="Mărește tabelul">+</button></span>
-  <span class="ver">v7.47</span>
+  <span class="ver">v7.49</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -6841,7 +6841,7 @@ async function raportLuna(){
     const dep = g.map(p => p.dep).filter(Boolean).pop() || "", ret = g.map(p => p.ret).filter(Boolean).pop() || "";
     const x = baza.x; R_ACC.push(x.a.accesorii || "");
     return [ x.c.nr_ctr || "", x.k.nume || "", [x.a.loc, x.a.sat].filter(Boolean).join(", "),
-             vig.x.a.anexa || "", dRO(baza.em), prodN(x.a.produs || "", acum), [x.a.model, x.a.model_fizic].filter(Boolean).join(" "), dep, ret, col0, ...zile ];   // v6.91: TIP fără accesorii
+             vig.x.a.anexa || "", dRO(baza.em), prodN(x.a.produs || "", acum), x.a.model || "", dep, ret, col0, ...zile ];   // v7.49 (cerut de Ovidiu, 01.11): TIP fără modelul fizic (ARMAL, SATELIT…)   // v6.91: TIP fără accesorii
   });
   // mișcările care nu se potrivesc cu nicio anexă nu trebuie să dispară din raport
   const ramase = mis.filter(m => !folosite.has(m.id));
@@ -12456,9 +12456,11 @@ async function expExcel(D, an, luna, nz, lunaT, ultima, sufix){
   // pe produs + tip: la clienți la începutul lunii / la ultima zi (din Raport lună) + livrate / ridicate (din comenzi)
   const PP = new Map(), pk = (p, t) => p + "\u0001" + t;
   const pp = (p, t) => { const k = pk(p, t); if(!PP.has(k)) PP.set(k, { p, t, a: 0, l: 0, r: 0, z: 0 }); return PP.get(k); };
-  R_RANDURI.forEach(f => { const x = pp(sing(f[5]) || "—", f[6] || ""); x.a += +f[9] || 0; x.z += zL ? (+f[9 + zL] || 0) : (+f[9] || 0); });
+  // v7.48: TIP = doar modelul (ex. CU LAVOAR INTERIOR), fără modelul fizic (ARMAL) — acela e altă clasificare
+  const modR = j => { const a = ANX.find(z => z.id === ((R_RIDS[j] || {}).anx || [])[0]); return a ? (a.model || "") : (R_RANDURI[j][6] || ""); };
+  R_RANDURI.forEach((f, j) => { const x = pp(sing(f[5]) || "—", modR(j)); x.a += +f[9] || 0; x.z += zL ? (+f[9 + zL] || 0) : (+f[9] || 0); });
   lunHD.filter(m => m.tip_miscare !== "SERVISARE" && !SP_TIP.test(m.tip_miscare || "")).forEach(m => {
-    const x = pp(sing(m.produs) || "—", [m.model, m.model_fizic].filter(Boolean).join(" ")); const b = +m.buc || 0; if(b >= 0) x.l += b; else x.r += -b; });
+    const x = pp(sing(m.produs) || "—", m.model || ""); const b = +m.buc || 0; if(b >= 0) x.l += b; else x.r += -b; });
   const prodR = [...PP.values()].filter(x => x.a || x.l || x.r || x.z).sort((a, b) => a.p.localeCompare(b.p) || a.t.localeCompare(b.t));
   const peTip = new Map(); lunHD.forEach(m => { const t = m.tip_miscare || "—"; const x = peTip.get(t) || { n: 0, b: 0 }; if(unu(m)) x.n++; x.b += +m.buc || 0; peTip.set(t, x); });
   const ordT = EXP_GRUPE.flatMap(g => g[1]); const tipuri = [...peTip.keys()].sort((a, b) => ((ordT.indexOf(a) + 1) || 99) - ((ordT.indexOf(b) + 1) || 99) || a.localeCompare(b));
