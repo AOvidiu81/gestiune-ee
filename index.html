@@ -971,7 +971,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
   <span id="rz-w"><button id="rz-reset" class="pictograma" title="Lățimi implicite — pune coloanele din tabelele acestei file înapoi cum erau">↺ Reset layout</button><i class="rz-sep">|</i></span>
   <span id="tz-w" title="Mărimea tabelului (doar tabelul, restul rămâne la fel), din 5 în 5%. Merge și cu Ctrl + rotița mausului, Ctrl + / Ctrl − / Ctrl 0. Dublu clic pe procent = scrii tu valoarea."><button class="pictograma" onclick="tzPas(-1)" aria-label="Micșorează tabelul">−</button><b id="tz-v" ondblclick="tzScrie()" title="Dublu clic = scrii mărimea (ex. 87), Enter">100%</b><input id="tz-in" type="number" min="30" max="300" step="5" style="display:none"><button class="pictograma" onclick="tzPas(1)" aria-label="Mărește tabelul">+</button></span>
-  <span class="ver">v7.43</span>
+  <span class="ver">v7.44</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -1137,7 +1137,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
       <div style="flex:0" id="r-mod-wrap"><label>Variantă</label><div style="display:flex;gap:6px"><button class="btn sec" id="r-mod-lucru" onclick="setModFact('lucru')">În lucru</button><button class="btn sec" id="r-mod-gata" onclick="setModFact('gata')">Gata de trimis</button><button class="btn sec" id="r-mod-verif" onclick="setModFact('verif')" title="Facturile primite de la sediu: verifici rând cu rând înainte să le trimiți la clienți">Verificare</button></div></div>
       <div style="flex:0;align-self:flex-end;padding-bottom:9px;white-space:nowrap"><label style="display:flex;align-items:center;gap:6px;cursor:pointer;margin:0" title="Arată și rândurile din lunile plătite deja în avans (gri, valoare 0, „facturat în …”) — bun când cauți ceva în urmă. Nu intră la Gata de trimis."><input type="checkbox" id="r-ac" onchange="factAcSchimba(this.checked)"> Arată și cele acoperite de avans</label></div>
       <div style="flex:0"><label>&nbsp;</label><button class="btn sec" onclick="exportRaport()">Export Excel</button></div>
-      <div style="flex:0" id="r-exp-c"><label>&nbsp;</label><button class="btn" onclick="exportLunaComplet()" title="v7.43: două fișiere — Excel (foaia 1 Raport lună formatat, foaia 2 SUMAR cu mișcări, grafice și stocul la ultima zi din lună) + Word cu toate comenzile lunii">📊 Excel + Word</button></div>
+      <div style="flex:0" id="r-exp-c"><label>&nbsp;</label><button class="btn" onclick="exportLunaComplet()" title="Două fișiere — Excel (foaia 1 Raport lună formatat, foaia 2 SUMAR cu mișcări, grafice și stocul la ultima zi din lună) + Word „MISCARI - RAPORT” cu comenzile lunii (amplasări, ridicări, vânzări, transfer, daună / pierdere)">📊 Excel + Word</button></div>
       <div style="flex:0"><label>&nbsp;</label><button class="btn sec" onclick="window.print()">PDF / Print</button></div>
     </div>
     <div class="kpi" id="r-kpi" style="margin-top:12px"></div>
@@ -12497,48 +12497,50 @@ async function expExcel(D, an, luna, nz, lunaT, ultima, sufix){
   expDescarca(new Blob([buf], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" }), `Raport_luna_${sufix}.xlsx`);
 }
 async function expWord(D, an, luna, lunaT, sufix){
+  // v7.44 (cerut de Ovidiu, 01.11): Word-ul ca al lui de până acum („09. MISCARI - RAPORT SEPTEMBRIE”): Times New Roman 12,
+  // titlul grupei îngroșat + subliniat, fiecare comandă în 6 rânduri scurte, un rând gol între ele; *…* = îngroșat (fără steluțe)
   const X = await expLib("docx");
-  const { Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell, WidthType, AlignmentType, HeadingLevel, ShadingType, BorderStyle, PageOrientation } = X;
+  const { Document, Packer, Paragraph, TextRun, UnderlineType } = X;
   const lun = (D.lun || []).slice().sort((a, b) => (a.data || "").localeCompare(b.data || "") || a.id - b.id);
-  const toate = EXP_GRUPE.flatMap(g => g[1]);
-  const grupe = EXP_GRUPE.map(([t, tip]) => [t, lun.filter(m => tip.includes(m.tip_miscare))]).filter(g => g[1].length);
-  const nG = lun.filter(m => toate.includes(m.tip_miscare)).length, alte = lun.filter(m => !toate.includes(m.tip_miscare));
-  const F = "Calibri", MONO = "Consolas", VERDE = "1B5E3A";
-  const run = (t, o) => new TextRun({ text: t, font: F, size: 20, ...(o || {}) });
-  const p = (c, o) => new Paragraph({ children: Array.isArray(c) ? c : [run(c)], spacing: { after: 80 }, ...(o || {}) });
-  const fara = { top: { style: BorderStyle.NONE, size: 0, color: "FFFFFF" }, bottom: { style: BorderStyle.NONE, size: 0, color: "FFFFFF" }, left: { style: BorderStyle.NONE, size: 0, color: "FFFFFF" }, right: { style: BorderStyle.NONE, size: 0, color: "FFFFFF" } };
-  const cel = (t, o) => new TableCell({ children: [new Paragraph({ children: [run(String(t == null ? "" : t), { size: 17, ...(o && o.r || {}) })] })], margins: { top: 40, bottom: 40, left: 70, right: 70 }, ...(o && o.c || {}) });
-  const docNr = m => { if(m.cmd_nr || m.cmd_data) return [m.cmd_nr, m.cmd_data ? fmtD(m.cmd_data) : ""].filter(Boolean).join(" din ");
-    const a = ANX.find(x => x.id === m.anexa_id); return a ? a.anexa || "" : ""; };
-  // tabelul de la început
-  const capT = ["Nr.", "Data", "Tip", "Client", "Localitate", "Buc.", "Depozit", "Anexă / comandă"];
-  const latT = [5, 9, 13, 24, 18, 5, 11, 15];
-  const sum = new Table({ width: { size: 100, type: WidthType.PERCENTAGE }, rows: [
-    new TableRow({ tableHeader: true, children: capT.map((t, i) => cel(t, { r: { bold: true, color: "FFFFFF" }, c: { shading: { type: ShadingType.CLEAR, fill: VERDE, color: "auto" }, width: { size: latT[i], type: WidthType.PERCENTAGE } } })) }),
-    ...grupe.flatMap(g => g[1]).map((m, j) => new TableRow({ cantSplit: true, children: [j + 1, fmtD(m.data), m.tip_miscare, m.client, [m.jud, m.loc].filter(Boolean).join(" · "), m.buc, m.depozit, docNr(m)]
-      .map((t, i) => cel(t, { c: { width: { size: latT[i], type: WidthType.PERCENTAGE }, shading: j % 2 ? { type: ShadingType.CLEAR, fill: "F3F6F4", color: "auto" } : undefined } })) }))
-  ] });
-  const ch = [
-    new Paragraph({ children: [run("COMENZI — " + lunaT, { bold: true, size: 36, color: VERDE })], spacing: { after: 60 } }),
-    p([run("Euro Ecologic · generat " + new Date().toLocaleString("ro-RO") + " · " + nG + " comenzi" + (alte.length ? " (fără servisări / alte tipuri: " + alte.length + ")" : ""), { size: 18, color: "6B7A72" })]),
-    p([run(grupe.map(g => g[0] + ": " + g[1].length).join("   ·   "), { bold: true, size: 20 })], { spacing: { after: 200 } }),
-    sum
-  ];
-  const txtPar = t => t.split("\n").map(l => new Paragraph({ keepLines: true, keepNext: true, spacing: { after: 0, line: 250 },
-    children: l.split(/(\*[^*\n]+\*)/).filter(s => s !== "").map(s => /^\*[^*]+\*$/.test(s) ? new TextRun({ text: s.slice(1, -1), font: MONO, size: 18, bold: true }) : new TextRun({ text: s, font: MONO, size: 18 })) }));
-  grupe.forEach(([t, ms]) => {
-    ch.push(new Paragraph({ heading: HeadingLevel.HEADING_1, pageBreakBefore: true, children: [run(t + " (" + ms.length + ")", { bold: true, size: 28, color: VERDE })], spacing: { after: 160 } }));
-    ms.forEach((m, j) => {
-      let txt = ""; try{ txt = textComandaSalvata(m); }catch(e){ txt = "(textul comenzii nu s-a putut face: " + e.message + ")"; }
-      ch.push(new Paragraph({ keepNext: true, spacing: { before: j ? 200 : 0, after: 60 }, children: [run((j + 1) + ".  " + m.tip_miscare + "  ·  " + fmtD(m.data) + "  ·  ", { bold: true, size: 21 }), run(m.client || "", { bold: true, size: 21, color: VERDE }), run("   comanda nr. " + m.id, { size: 16, color: "6B7A72" })] }));
-      ch.push(new Table({ width: { size: 100, type: WidthType.PERCENTAGE }, rows: [new TableRow({ cantSplit: true, children: [new TableCell({ children: txtPar(txt), margins: { top: 100, bottom: 100, left: 160, right: 160 },
-        shading: { type: ShadingType.CLEAR, fill: "F6F8F7", color: "auto" }, borders: { ...fara, left: { style: BorderStyle.SINGLE, size: 18, color: /RIDIC/.test(t) ? "B3261E" : VERDE } } })] })] }));
-    });
+  const GR = [["AMPLASARI", EXP_GRUPE[0][1]], ["RIDICARI", EXP_GRUPE[1][1]], ["VANZARI", EXP_GRUPE[2][1]], ["TRANSFER", EXP_GRUPE[3][1]], ["DAUNA / PIERDERE", EXP_GRUPE[4][1]]];
+  const grupe = GR.map(([t, tip]) => [t, lun.filter(m => tip.includes(m.tip_miscare) && !(m.grup_id && m.grup_id !== m.id))]).filter(g => g[1].length);
+  const ZS = ["dum","lun","mar","mie","joi","vin","sam"];
+  const dz = s => { const x = /^(\d{4})-(\d{2})-(\d{2})$/.exec(s || ""); if(!x) return ""; return ZS[new Date(+x[1], +x[2] - 1, +x[3]).getDay()] + "/" + x[3] + "/" + x[2] + "/" + x[1]; };
+  const modN = (mo, n) => Math.abs(+n) !== 1 && /^PROPRIE$/i.test(String(mo || "").trim()) ? "PROPRII" : mo;
+  const prodL = x => "   " + (Math.abs(+x.buc) || 0) + "    " + prodN(x.produs || "", x.buc) + (x.model || x.model_fizic ? "    " + modN([x.model, x.model_fizic].filter(Boolean).join(" "), x.buc) : "") + (x.accesorii ? "    ACC.  :  " + x.accesorii : "");
+  const sp = "    ";
+  const scurt = m => {
+    const L = [], evT = { "EVENIMENT-A": "AMPLASARE", "EVENIMENT-R": "RIDICARE" }[m.tip_miscare];
+    L.push("*" + m.tip_miscare + (evT ? " [ " + evT + " ]" : "") + "*" + sp + dz(m.data));
+    L.push(prodL(m)); (MISC || []).filter(x => m.grup_id === m.id && x.grup_id === m.id && x.id !== m.id).forEach(x => L.push(prodL(x)));
+    L.push("  NUME CLIENT:  *" + ((m.client || "").trim() || "—") + "*");
+    const loc = (j, l, s, p, t) => [j && "JUD.  : " + j, l && "LOC.  : " + l, s, p && "PERS. RES.  :  " + p, t && "TEL.  :  " + t].filter(Boolean).join(sp);
+    const ls = Array.isArray(m.locatii) && m.locatii.length > 1 ? m.locatii.filter(l => !(l.sv && l.stare === "N")) : null;
+    if(ls) ls.forEach((l, i) => L.push((i + 1) + ")  " + loc(l.jud || m.jud, l.localitate, l.locatie, l.sv ? l.pers : "", l.sv ? l.tel : "") + (l.data ? sp + "DATA  :  " + dz(l.data) : "") + (l.buc ? sp + "BUC.  :  " + l.buc : "")));
+    else L.push(loc(m.jud, m.loc, m.sat, m.pers_resp, m.telefon));
+    const zl = String(m.zi_serv || "").split(",").filter(Boolean).join(", ");
+    const sv = !FARA_ACT(m.tip_miscare) && (m.frecv_serv || zl) ? "SERVISARE  :  " + [m.frecv_serv, zl].filter(Boolean).join(" · ") : "";
+    const ru = m.traseu ? "*RUTA*  :  " + m.traseu : "";
+    if(sv || ru) L.push([sv, ru].filter(Boolean).join(sp));
+    const a = ANX.find(x => x.id === m.anexa_id) || {}, k = CTR.find(x => x.id === a.contract_id) || CTR.find(x => x.id === m.contract_id) || {};
+    const doc = m.cmd_nr || m.cmd_data ? [m.cmd_nr || "COMANDA", m.cmd_data ? "din " + fmtD(m.cmd_data).replace(/-/g, ".") : ""].filter(Boolean).join(" ") : (a.anexa || "");
+    L.push("  CTR.  :  " + (k.nr_ctr || m.contract || "—") + (doc ? "  ·  " + doc : "") + sp + "DEP.   :  " + (m.depozit || "—"));
+    return L;
+  };
+  const TNR = "Times New Roman", SZ = 24;
+  const par = (l, o) => new Paragraph({ spacing: { after: 0, line: 240 }, keepLines: true, ...(o || {}),
+    children: l.split(/(\*[^*\n]+\*)/).filter(s => s !== "").map(s => /^\*[^*]+\*$/.test(s) ? new TextRun({ text: s.slice(1, -1), font: TNR, size: SZ, bold: true }) : new TextRun({ text: s, font: TNR, size: SZ })) });
+  const gol = () => new Paragraph({ spacing: { after: 0 }, children: [new TextRun({ text: "", font: TNR, size: SZ })] });
+  const ch = [];
+  grupe.forEach(([t, ms], gi) => {
+    if(gi) ch.push(gol());
+    ch.push(new Paragraph({ spacing: { after: 0 }, keepNext: true, children: [new TextRun({ text: t, font: TNR, size: SZ, bold: true, underline: { type: UnderlineType.SINGLE } })] }));
+    ms.forEach(m => { ch.push(gol()); const L = scurt(m); L.forEach((l, i) => ch.push(par(l, { keepNext: i < L.length - 1 }))); });
   });
-  if(!grupe.length) ch.push(p("Nu sunt comenzi de acest fel în " + lunaT.toLowerCase() + "."));
-  const doc = new Document({ creator: "GestiuneEE", title: "Comenzi " + lunaT, styles: { default: { document: { run: { font: F } } } },
-    sections: [{ properties: { page: { margin: { top: 900, bottom: 900, left: 900, right: 900 } } }, children: ch }] });
-  expDescarca(await Packer.toBlob(doc), `Comenzi_${sufix}.docx`);
+  if(!grupe.length) ch.push(par("Nu sunt comenzi în " + lunaT.toLowerCase() + "."));
+  const doc = new Document({ creator: "GestiuneEE", title: "Miscari " + lunaT, styles: { default: { document: { run: { font: TNR, size: SZ } } } },
+    sections: [{ properties: { page: { margin: { top: 1134, bottom: 1134, left: 1134, right: 1134 } } }, children: ch }] });
+  expDescarca(await Packer.toBlob(doc), `${zi2(luna)}. MISCARI - RAPORT ${EXP_LUNI[luna - 1]} - ${an}.docx`);
 }
 </script>
 </body>
