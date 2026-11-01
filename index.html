@@ -963,7 +963,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
   <span id="rz-w"><button id="rz-reset" class="pictograma" title="Lățimi implicite — pune coloanele din tabelele acestei file înapoi cum erau">↺ Reset layout</button><i class="rz-sep">|</i></span>
   <span id="tz-w" title="Mărimea tabelului (doar tabelul, restul rămâne la fel), din 5 în 5%. Merge și cu Ctrl + rotița mausului, Ctrl + / Ctrl − / Ctrl 0. Dublu clic pe procent = scrii tu valoarea."><button class="pictograma" onclick="tzPas(-1)" aria-label="Micșorează tabelul">−</button><b id="tz-v" ondblclick="tzScrie()" title="Dublu clic = scrii mărimea (ex. 87), Enter">100%</b><input id="tz-in" type="number" min="30" max="300" step="5" style="display:none"><button class="pictograma" onclick="tzPas(1)" aria-label="Mărește tabelul">+</button></span>
-  <span class="ver">v7.38</span>
+  <span class="ver">v7.39</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -1564,7 +1564,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
           <div class="cmd-c"><label>Primită pe</label><select id="mm-cmd-canal" onchange="mmCmdAct()"><option value=""></option><option>WhatsApp</option><option>Email</option><option>PDF</option><option>Telefon</option></select><span class="cmd-sub">&nbsp;</span></div>
         </div>
         <div class="cmd-fact" id="mm-sv-fact">
-          <label class="cmd-sw" title="Fără anexă: rând în Facturare după PV = V"><input type="checkbox" id="mm-sv-f"><span class="cmd-sw-b"></span><span class="cmd-sw-t">Se facturează<small>rând în Facturare după PV = V</small></span></label>
+          <label class="cmd-sw" title="v7.39: servisarea fără anexă se facturează din Comenzi, nu din raportul de Facturare. Urmărirea e în coloana FAC (X = de facturat, V galben = cerută, V verde = factura la client). La servisarea pe locații: butonul 📋 Text facturare, după confirmări."><input type="checkbox" id="mm-sv-f"><span class="cmd-sw-b"></span><span class="cmd-sw-t">Se facturează<small>urmărită în Comenzi, la FAC</small></span></label>
           <div class="cmd-c cmd-f"><label>Preț / servisare</label><input id="mm-sv-pret" type="number" step="0.01" min="0" placeholder="0.00"><span class="cmd-sub">fără TVA</span></div>
           <div class="cmd-c cmd-f cmd-s"><label>Moneda</label><select id="mm-sv-moneda"></select><span class="cmd-sub">&nbsp;</span></div>
           <div class="cmd-c cmd-f cmd-s"><label>Scadent</label><input id="mm-sv-scad" type="number" step="1" min="0" placeholder="ex. 5"><span class="cmd-sub">zile</span></div>
