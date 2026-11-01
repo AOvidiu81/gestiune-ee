@@ -963,7 +963,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
   <span id="rz-w"><button id="rz-reset" class="pictograma" title="Lățimi implicite — pune coloanele din tabelele acestei file înapoi cum erau">↺ Reset layout</button><i class="rz-sep">|</i></span>
   <span id="tz-w" title="Mărimea tabelului (doar tabelul, restul rămâne la fel), din 5 în 5%. Merge și cu Ctrl + rotița mausului, Ctrl + / Ctrl − / Ctrl 0. Dublu clic pe procent = scrii tu valoarea."><button class="pictograma" onclick="tzPas(-1)" aria-label="Micșorează tabelul">−</button><b id="tz-v" ondblclick="tzScrie()" title="Dublu clic = scrii mărimea (ex. 87), Enter">100%</b><input id="tz-in" type="number" min="30" max="300" step="5" style="display:none"><button class="pictograma" onclick="tzPas(1)" aria-label="Mărește tabelul">+</button></span>
-  <span class="ver">v7.39</span>
+  <span class="ver">v7.40</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -3853,7 +3853,10 @@ function cmdTextTot(){ const t2 = $("cmd-doi").style.display !== "none" ? $("cmd
 function cmdWa(){ window.open("https://wa.me/?text=" + encodeURIComponent(cmdTextTot()), "_blank", "noopener"); }
 async function cmdEmail(){
   const t = cmdTextTot();
-  try{ await navigator.clipboard.writeText(t); toast("Textul e copiat — lipește-l în e-mail cu Ctrl+V"); }
+  try{   // v7.40: în e-mail *…* devine îngroșat (ca la Text facturare), fără steluțe
+    if(window.ClipboardItem) await navigator.clipboard.write([new ClipboardItem({ "text/html": new Blob([ftHtml(t).replace(/ {2,}/g, m => "&nbsp;".repeat(m.length - 1) + " ")], { type: "text/html" }), "text/plain": new Blob([t.replace(/\*([^*\n]+)\*/g, "$1")], { type: "text/plain" }) })]);
+    else await navigator.clipboard.writeText(t);
+    toast("Textul e copiat (formatat) — lipește-l în e-mail cu Ctrl+V"); }
   catch(e){ toast("Nu am putut copia: " + e.message, true); }
   location.href = "mailto:" + encodeURIComponent($("cmd-dest").value.trim()).replace(/%40/g, "@").replace(/%2C/gi, ",") + "?subject=" + encodeURIComponent($("cmd-sub").value || "COMANDA");
 }
@@ -10545,8 +10548,9 @@ function textComandaDin(d){
   const svlc = d.tip === "SERVISARE" && Array.isArray(d.locatii) && d.locatii.some(l => l && l.sv);
   const ZL = ["DUMINICA","LUNI","MARTI","MIERCURI","JOI","VINERI","SAMBATA"];
   const dzL = s => { const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(s || ""); if(!m) return ""; return ZL[new Date(+m[1], +m[2] - 1, +m[3]).getDay()] + " - " + m[3] + "." + m[2] + "." + m[1]; };
-  if(svlc){ L.push("COMANDA DIN DATA: " + dzL(d.data)); L.push("SERVISARE" + (/cerere/i.test(d.frecv || "") ? " LA CERERE" : "")); }
-  else L.push((d.tip || "") + "    " + dz(d.data));
+  // v7.40 (cerut de Ovidiu, 01.11): tipul comenzii și numele clientului îngroșate (*…* = bold pe WhatsApp; la E-mail se copiază formatat)
+  if(svlc){ L.push("COMANDA DIN DATA: " + dzL(d.data)); L.push("*SERVISARE" + (/cerere/i.test(d.frecv || "") ? " LA CERERE" : "") + "*"); }
+  else L.push((d.tip ? "*" + d.tip + "*" : "") + "    " + dz(d.data));
   // v5.13: comanda pe toată anexa — toate produsele; mai multe locații = lista locațiilor (varianta B, Primăria)
   const toate = (Array.isArray(d.locatii) && d.locatii.length)   // v6.26: comanda din exterior pe mai multe locații
     ? d.locatii.filter(l => !(l.sv && l.stare === "N")).map(l => ({ buc: l.buc, produs: d.produs, model: d.model, acc: d.acc, jud: l.jud || d.jud, loc: l.localitate, sat: l.locatie, pers: l.sv ? (l.pers || "") : d.pers, tel: l.sv ? (l.tel || "") : d.tel, zi: l.sv ? (l.data || "") : "" }))   // v7.34
@@ -10563,7 +10567,7 @@ function textComandaDin(d){
     toate.forEach(x => { L.push(linieP(x)); if(x.acc) L.push("ACC.  :  " + x.acc); });
   }
   L.push("");
-  L.push("NUME CL:  " + ((d.client || "").trim() || "—"));
+  L.push("NUME CLIENT:  " + ((d.client || "").trim() ? "*" + d.client.trim() + "*" : "—"));   // v7.40
   L.push("");
   if(locuri.length > 1){
     L.push("LOCATII  :  " + locuri.length);
