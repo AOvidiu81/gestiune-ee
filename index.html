@@ -971,7 +971,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
   <span id="rz-w"><button id="rz-reset" class="pictograma" title="Lățimi implicite — pune coloanele din tabelele acestei file înapoi cum erau">↺ Reset layout</button><i class="rz-sep">|</i></span>
   <span id="tz-w" title="Mărimea tabelului (doar tabelul, restul rămâne la fel), din 5 în 5%. Merge și cu Ctrl + rotița mausului, Ctrl + / Ctrl − / Ctrl 0. Dublu clic pe procent = scrii tu valoarea."><button class="pictograma" onclick="tzPas(-1)" aria-label="Micșorează tabelul">−</button><b id="tz-v" ondblclick="tzScrie()" title="Dublu clic = scrii mărimea (ex. 87), Enter">100%</b><input id="tz-in" type="number" min="30" max="300" step="5" style="display:none"><button class="pictograma" onclick="tzPas(1)" aria-label="Mărește tabelul">+</button></span>
-  <span class="ver">v7.51</span>
+  <span class="ver">v7.52</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -12452,7 +12452,8 @@ async function expExcel(D, an, luna, nz, lunaT, ultima, sufix){
   const ziTot = []; for(let i = 1; i <= nz; i++) ziTot.push(R_RANDURI.reduce((t, f) => t + (+f[9 + i] || 0), 0));
   const zL = rlZiLimita(an, luna, nz), inceput = R_RANDURI.reduce((t, f) => t + (+f[9] || 0), 0), sfarsit = zL ? ziTot[zL - 1] : inceput;
   const ziRef = zL && zL < nz ? `${zi2(zL)}.${zi2(luna)}.${an}` : ultima;
-  const lunHD = (D.lun || []).filter(m => !ctrExterior(m)), unu = m => !(m.grup_id && m.grup_id !== m.id), nCmd = lunHD.filter(unu).length;
+  // v7.52 (hotărât de Ovidiu, 01.11): servisările nu mută produse (nici la client, nici în depozit) → nu intră în SUMAR
+  const lunHD = (D.lun || []).filter(m => !ctrExterior(m) && m.tip_miscare !== "SERVISARE"), unu = m => !(m.grup_id && m.grup_id !== m.id), nCmd = lunHD.filter(unu).length;
   const PP = new Map(), pp = (p, t) => { const k = p + "\u0001" + t; if(!PP.has(k)) PP.set(k, { p, t, a: 0, l: 0, r: 0, z: 0 }); return PP.get(k); };
   const modR = j => { const a = ANX.find(z => z.id === ((R_RIDS[j] || {}).anx || [])[0]); return a ? (a.model || "") : (R_RANDURI[j][6] || ""); };
   R_RANDURI.forEach((f, j) => { const x = pp(sing(f[5]) || "—", modR(j)); x.a += +f[9] || 0; x.z += zL ? (+f[9 + zL] || 0) : (+f[9] || 0); });
@@ -12485,14 +12486,12 @@ async function expExcel(D, an, luna, nz, lunaT, ultima, sufix){
   // sub Raport lună: pe categorie, apoi pe categorie și tip
   { let r1 = rT + 3; const c0 = 3;
     ws.getCell(r1, c0).value = "SUMAR LA DATA DE " + ziRef + " — pe categorie de produs (" + PRINC + ")"; ws.getCell(r1, c0).font = { name: "Calibri", bold: true, size: TT, color: { argb: VERDE } }; ws.getRow(r1).height = 20;
-    r1 = tbl(ws, r1 + 1, c0, capCat, catR, 1) + 3;
-    ws.getCell(r1, c0).value = "SUMAR LA DATA DE " + ziRef + " — pe categorie și tip"; ws.getCell(r1, c0).font = { name: "Calibri", bold: true, size: TT, color: { argb: VERDE } }; ws.getRow(r1).height = 20;
-    tbl(ws, r1 + 1, c0, capTip, prodR.map(x => [x.p, x.t, x.a, x.l, x.r, x.z]), 2); }
+    tbl(ws, r1 + 1, c0, capCat, catR, 1); }   // v7.52: sub Raport lună doar pe categorie
   // ---------- foaia 2: SUMAR (coloana A goală) ----------
   const s2 = wb.addWorksheet("SUMAR", { pageSetup: { orientation: "landscape", paperSize: 9, fitToPage: true, fitToWidth: 1, fitToHeight: 0 } });
   s2.getColumn(1).width = 2.5;
   const lc = Math.max(6, stP.length + 1);   // câte coloane folosesc tabelele (stocul are câte o coloană pe produs)
-  [22, 26].concat(new Array(lc).fill(14)).forEach((w, i) => s2.getColumn(i + 2).width = w);
+  s2.getColumn(2).width = 32; for(let i = 3; i <= Math.max(9, lc + 2); i++) s2.getColumn(i).width = 18;   // v7.52: B = 32, C–I = 18
   s2.getCell("B1").value = "SUMAR DEPOZIT " + PRINC + " - " + lunaT; s2.getCell("B1").font = { bold: true, size: TT, color: { argb: VERDE } };
   s2.getCell("B2").value = "Euro Ecologic · doar contractele depozitului " + PRINC + " · la data de " + ziRef; s2.getCell("B2").font = NOTA;
   let r = 4;
