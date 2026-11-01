@@ -971,7 +971,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
   <span id="rz-w"><button id="rz-reset" class="pictograma" title="Lățimi implicite — pune coloanele din tabelele acestei file înapoi cum erau">↺ Reset layout</button><i class="rz-sep">|</i></span>
   <span id="tz-w" title="Mărimea tabelului (doar tabelul, restul rămâne la fel), din 5 în 5%. Merge și cu Ctrl + rotița mausului, Ctrl + / Ctrl − / Ctrl 0. Dublu clic pe procent = scrii tu valoarea."><button class="pictograma" onclick="tzPas(-1)" aria-label="Micșorează tabelul">−</button><b id="tz-v" ondblclick="tzScrie()" title="Dublu clic = scrii mărimea (ex. 87), Enter">100%</b><input id="tz-in" type="number" min="30" max="300" step="5" style="display:none"><button class="pictograma" onclick="tzPas(1)" aria-label="Mărește tabelul">+</button></span>
-  <span class="ver">v7.49</span>
+  <span class="ver">v7.50</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -12342,7 +12342,8 @@ locAuto("ma-jud", "ma-loc", "ma-sat");
 const EXP_LIB = {
   exceljs: ["https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js", () => window.ExcelJS],
   docx:    ["https://cdn.jsdelivr.net/npm/docx@8.5.0/build/index.umd.js", () => window.docx],
-  chart:   ["https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.js", () => window.Chart]
+  chart:   ["https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.js", () => window.Chart],
+  jszip:   ["https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js", () => window.JSZip]
 };
 function expLib(k){
   const [url, ok] = EXP_LIB[k]; if(ok()) return Promise.resolve(ok());
@@ -12401,125 +12402,178 @@ async function exportLunaComplet(ce){
   }catch(e){ console.error(e); toast("Exportul n-a mers: " + e.message, true); }
 }
 async function expExcel(D, an, luna, nz, lunaT, ultima, sufix){
-  const [ExcelJS, Chart] = await Promise.all([expLib("exceljs"), expLib("chart")]);
+  // v7.50 (cerut de Ovidiu, 01.11): coloana A goală în ambele foi, text 12 / titluri 14, stocul HUNEDOARA printre primele
+  // (ÎNCHIRIATE / DEPOZIT / TOTAL, ca în Stoc), grafice Excel adevărate (la mouse arată ce înseamnă fiecare coloană).
+  const [ExcelJS, JSZip] = await Promise.all([expLib("exceljs"), expLib("jszip")]);
   const wb = new ExcelJS.Workbook(); wb.creator = "GestiuneEE"; wb.created = new Date();
+  const PRINC = depPrincipal() || "HUNEDOARA";
   const VERDE = "FF1B5E3A", GRI = "FFEFF2F0", SUB = "FFD8F0DF", JOS = "FFFBE0DE", BORD = { style: "thin", color: { argb: "FFC9D3CD" } };
   const tot = { top: BORD, left: BORD, bottom: BORD, right: BORD };
-  // ---------- foaia 1: RAPORT LUNA ----------
-  const ws = wb.addWorksheet("RAPORT LUNA", { views: [{ state: "frozen", xSplit: 3, ySplit: 4 }],
+  const T = 12, TT = 14, NOTA = { italic: true, size: 10, color: { argb: "FF6B7A72" } };
+  const plin = argb => ({ type: "pattern", pattern: "solid", fgColor: { argb } });
+  // ---------- foaia 1: RAPORT LUNA (coloana A goală) ----------
+  const ws = wb.addWorksheet("RAPORT LUNA", { views: [{ state: "frozen", xSplit: 4, ySplit: 4 }],
     pageSetup: { orientation: "landscape", paperSize: 8, fitToPage: true, fitToWidth: 1, fitToHeight: 0, margins: { left: .3, right: .3, top: .4, bottom: .4, header: .2, footer: .2 }, printTitlesRow: "4:4" } });
+  ws.getColumn(1).width = 2.5;
   const cuAcc = R_ACC.length === R_RANDURI.length;
   const ant = R_ANTET.slice(0, 7).concat(cuAcc ? ["ACC."] : [], R_ANTET.slice(7));
-  const o0 = ant.indexOf("0"), nc = ant.length;   // coloana „0”; după ea zilele
-  ws.mergeCells(1, 1, 1, Math.min(nc, 12)); ws.getCell(1, 1).value = "RAPORT LUNĂ — " + lunaT;
-  ws.getCell(1, 1).font = { bold: true, size: 15, color: { argb: VERDE } };
-  ws.mergeCells(2, 1, 2, Math.min(nc, 12));
-  ws.getCell(2, 1).value = "Euro Ecologic · generat " + new Date().toLocaleString("ro-RO") + " · zilele completate până " + (RL_PANA ? "la " + fmtD(RL_PANA) : "azi / sfârșitul lunii") + " · verde = au venit bucăți, roșu = au plecat";
-  ws.getCell(2, 1).font = { size: 9, color: { argb: "FF6B7A72" } };
-  const hr = ws.getRow(4); hr.height = 30;
-  ant.forEach((t, i) => { const c = hr.getCell(i + 1), zi = i > o0 ? i - o0 : 0;
+  const o0 = ant.indexOf("0"), nc = ant.length, C = i => i + 2;   // C(i) = coloana Excel a câmpului i (după coloana A goală)
+  const lt = n => { let s = ""; while(n){ const m = (n - 1) % 26; s = String.fromCharCode(65 + m) + s; n = Math.floor((n - 1) / 26); } return s; };
+  ws.getCell(1, 2).value = "RAPORT LUNĂ — " + lunaT + " — DEPOZIT " + PRINC; ws.getCell(1, 2).font = { bold: true, size: TT, color: { argb: VERDE } };
+  ws.getCell(2, 2).value = "Euro Ecologic · generat " + new Date().toLocaleString("ro-RO") + " · zilele completate până " + (RL_PANA ? "la " + fmtD(RL_PANA) : "azi / sfârșitul lunii") + " · verde = au venit bucăți, roșu = au plecat";
+  ws.getCell(2, 2).font = NOTA;
+  const hr = ws.getRow(4); hr.height = 34;
+  ant.forEach((t, i) => { const c = hr.getCell(C(i)), zi = i > o0 ? i - o0 : 0;
     c.value = zi ? zi + "\n" + EXP_ZS[new Date(an, luna - 1, zi).getDay()] : t;
-    c.font = { bold: true, color: { argb: "FFFFFFFF" }, size: zi ? 8 : 9 }; c.alignment = { vertical: "middle", horizontal: "center", wrapText: true };
+    c.font = { bold: true, color: { argb: "FFFFFFFF" }, size: zi ? 10 : 11 }; c.alignment = { vertical: "middle", horizontal: "center", wrapText: true };
     const wk = zi && [0, 6].includes(new Date(an, luna - 1, zi).getDay());
-    c.fill = { type: "pattern", pattern: "solid", fgColor: { argb: wk ? "FF4F7F63" : VERDE } }; c.border = tot; });
+    c.fill = plin(wk ? "FF4F7F63" : VERDE); c.border = tot; });
   R_RANDURI.forEach((f, j) => {
     const v = f.slice(0, 7).concat(cuAcc ? [R_ACC[j] || ""] : [], f.slice(7));
     const row = ws.getRow(5 + j); row.height = 15;
-    v.forEach((x, i) => { const c = row.getCell(i + 1);
+    v.forEach((x, i) => { const c = row.getCell(C(i));
       c.value = i >= o0 ? (x === "" || x == null ? null : +x) : (x == null ? "" : x);
-      c.border = tot; c.font = { size: 9 };
-      c.alignment = i >= o0 ? { horizontal: "center", vertical: "middle" } : { vertical: "middle", wrapText: false };   // v7.47: un singur rând, textul lung rămâne ascuns
-      const ci = i - (cuAcc && i > 6 ? 1 : 0), st = (R_CEL[j] || {})[ci];   // R_CEL e pe coloanele fără ACC.
-      if(st) { c.fill = { type: "pattern", pattern: "solid", fgColor: { argb: st === "up" ? SUB : JOS } }; c.font = { size: 9, bold: true, color: { argb: st === "up" ? "FF15803D" : "FFB3261E" } }; }
-      else if(i > o0 && [0, 6].includes(new Date(an, luna - 1, i - o0).getDay())) c.fill = { type: "pattern", pattern: "solid", fgColor: { argb: GRI } };
-      if(i === 1) c.font = { size: 9, bold: true }; });
+      c.border = tot; c.font = { size: T, bold: i === 1 };
+      c.alignment = i >= o0 ? { horizontal: "center", vertical: "middle" } : { vertical: "middle", wrapText: false };
+      const ci = i - (cuAcc && i > 6 ? 1 : 0), st = (R_CEL[j] || {})[ci];
+      if(st){ c.fill = plin(st === "up" ? SUB : JOS); c.font = { size: T, bold: true, color: { argb: st === "up" ? "FF15803D" : "FFB3261E" } }; }
+      else if(i > o0 && [0, 6].includes(new Date(an, luna - 1, i - o0).getDay())) c.fill = plin(GRI); });
   });
-  const rT = 5 + R_RANDURI.length, lt = n => { let s = ""; n++; while(n){ const m = (n - 1) % 26; s = String.fromCharCode(65 + m) + s; n = Math.floor((n - 1) / 26); } return s; };
-  const rowT = ws.getRow(rT); rowT.height = 15; rowT.getCell(1).value = "TOTAL BUCĂȚI LA CLIENȚI"; ws.mergeCells(rT, 1, rT, o0);
-  for(let i = o0; i < nc; i++){ const c = rowT.getCell(i + 1); c.value = { formula: `IF(COUNT(${lt(i)}5:${lt(i)}${rT - 1})=0,"",SUM(${lt(i)}5:${lt(i)}${rT - 1}))` }; c.alignment = { horizontal: "center" }; }
-  for(let i = 0; i < nc; i++){ const c = rowT.getCell(i + 1); c.font = { bold: true, size: 9, color: { argb: VERDE } }; c.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFE6F3EA" } }; c.border = tot; }
-  const lat = { "NR. CTR": 10, "NUMELE FIRMEI": 30, "LOCATIA DE LIVRARE": 34, "NR. ANEXA": 15, "DATA LIVRARE": 11, "PRODUS": 10, "TIP": 15, "ACC.": 14, "LIVRAT DIN DEPOZIT": 11, "RETUR IN DEPOZIT": 11, "0": 5 };
-  ant.forEach((t, i) => { ws.getColumn(i + 1).width = lat[t] || 4.6; });
-  ws.autoFilter = { from: { row: 4, column: 1 }, to: { row: 4 + R_RANDURI.length, column: o0 } };
-  // ---------- calculele pentru SUMAR ----------
-  // v7.47 (cerut de Ovidiu, 01.11): SUMAR doar pentru depozitul principal (HUNEDOARA), la ultima zi din lună;
-  // sus tabelul pe produs (singular, cu filtru), dedesubt comenzile pe tip, cine a livrat, stocul HUNEDOARA.
-  const PRINC = depPrincipal() || "HUNEDOARA";
+  const rT = 5 + R_RANDURI.length, rowT = ws.getRow(rT); rowT.height = 15;
+  rowT.getCell(2).value = "TOTAL BUCĂȚI LA CLIENȚI"; ws.mergeCells(rT, 2, rT, C(o0 - 1));
+  for(let i = o0; i < nc; i++){ const L = lt(C(i)), c = rowT.getCell(C(i)); c.value = { formula: `IF(COUNT(${L}5:${L}${rT - 1})=0,"",SUM(${L}5:${L}${rT - 1}))` }; c.alignment = { horizontal: "center" }; }
+  for(let i = 0; i < nc; i++){ const c = rowT.getCell(C(i)); c.font = { bold: true, size: T, color: { argb: VERDE } }; c.fill = plin("FFE6F3EA"); c.border = tot; }
+  const lat = { "NR. CTR": 11, "NUMELE FIRMEI": 34, "LOCATIA DE LIVRARE": 40, "NR. ANEXA": 17, "DATA LIVRARE": 13, "PRODUS": 12, "TIP": 20, "ACC.": 16, "LIVRAT DIN DEPOZIT": 13, "RETUR IN DEPOZIT": 13, "0": 6 };
+  ant.forEach((t, i) => { ws.getColumn(C(i)).width = lat[t] || 5.6; });
+  ws.autoFilter = { from: { row: 4, column: 2 }, to: { row: 4 + R_RANDURI.length, column: C(o0 - 1) } };
+  // ---------- calculele pentru SUMAR (doar depozitul principal) ----------
   const SG = {}; Object.entries(PL_CUV).forEach(([s, p]) => SG[p] = s);
   const sing = t => String(t || "").split(/(\s+)/).map(w => { const k = w.normalize("NFD").replace(/[̀-ͯ]/g, "").toUpperCase(); return SG[k] || w; }).join("").trim();
   const ziTot = []; for(let i = 1; i <= nz; i++) ziTot.push(R_RANDURI.reduce((t, f) => t + (+f[9 + i] || 0), 0));
   const zL = rlZiLimita(an, luna, nz), inceput = R_RANDURI.reduce((t, f) => t + (+f[9] || 0), 0), sfarsit = zL ? ziTot[zL - 1] : inceput;
   const ziRef = zL && zL < nz ? `${zi2(zL)}.${zi2(luna)}.${an}` : ultima;
-  const lunHD = (D.lun || []).filter(m => !ctrExterior(m));   // comenzile pe contractele depozitului principal
-  const unu = m => !(m.grup_id && m.grup_id !== m.id);         // comanda cu mai multe produse = o comandă
-  const nCmd = lunHD.filter(unu).length;
-  // pe produs + tip: la clienți la începutul lunii / la ultima zi (din Raport lună) + livrate / ridicate (din comenzi)
-  const PP = new Map(), pk = (p, t) => p + "\u0001" + t;
-  const pp = (p, t) => { const k = pk(p, t); if(!PP.has(k)) PP.set(k, { p, t, a: 0, l: 0, r: 0, z: 0 }); return PP.get(k); };
-  // v7.48: TIP = doar modelul (ex. CU LAVOAR INTERIOR), fără modelul fizic (ARMAL) — acela e altă clasificare
+  const lunHD = (D.lun || []).filter(m => !ctrExterior(m)), unu = m => !(m.grup_id && m.grup_id !== m.id), nCmd = lunHD.filter(unu).length;
+  const PP = new Map(), pp = (p, t) => { const k = p + "\u0001" + t; if(!PP.has(k)) PP.set(k, { p, t, a: 0, l: 0, r: 0, z: 0 }); return PP.get(k); };
   const modR = j => { const a = ANX.find(z => z.id === ((R_RIDS[j] || {}).anx || [])[0]); return a ? (a.model || "") : (R_RANDURI[j][6] || ""); };
   R_RANDURI.forEach((f, j) => { const x = pp(sing(f[5]) || "—", modR(j)); x.a += +f[9] || 0; x.z += zL ? (+f[9 + zL] || 0) : (+f[9] || 0); });
-  lunHD.filter(m => m.tip_miscare !== "SERVISARE" && !SP_TIP.test(m.tip_miscare || "")).forEach(m => {
-    const x = pp(sing(m.produs) || "—", m.model || ""); const b = +m.buc || 0; if(b >= 0) x.l += b; else x.r += -b; });
+  lunHD.filter(m => m.tip_miscare !== "SERVISARE" && !SP_TIP.test(m.tip_miscare || "")).forEach(m => { const x = pp(sing(m.produs) || "—", m.model || ""); const b = +m.buc || 0; if(b >= 0) x.l += b; else x.r += -b; });
   const prodR = [...PP.values()].filter(x => x.a || x.l || x.r || x.z).sort((a, b) => a.p.localeCompare(b.p) || a.t.localeCompare(b.t));
   const peTip = new Map(); lunHD.forEach(m => { const t = m.tip_miscare || "—"; const x = peTip.get(t) || { n: 0, b: 0 }; if(unu(m)) x.n++; x.b += +m.buc || 0; peTip.set(t, x); });
   const ordT = EXP_GRUPE.flatMap(g => g[1]); const tipuri = [...peTip.keys()].sort((a, b) => ((ordT.indexOf(a) + 1) || 99) - ((ordT.indexOf(b) + 1) || 99) || a.localeCompare(b));
   const peDep = new Map(); lunHD.filter(m => m.tip_miscare !== "SERVISARE").forEach(m => { const k = m.depozit || "—"; const x = peDep.get(k) || { n: 0, in: 0, out: 0 }; const b = +m.buc || 0; if(unu(m)) x.n++; if(b >= 0) x.in += b; else x.out += -b; peDep.set(k, x); });
-  const stoc = expStoc(D.pana || [], D.si || []).filter(x => x.depozit === PRINC), faraSI = !(D.si || []).some(s => s.depozit === PRINC);
-  // ---------- foaia 2: SUMAR ----------
-  const s2 = wb.addWorksheet("SUMAR", { pageSetup: { orientation: "portrait", paperSize: 9, fitToPage: true, fitToWidth: 1, fitToHeight: 0 } });
-  [20, 24, 12, 11, 11, 12, 3].forEach((w, i) => s2.getColumn(i + 1).width = w);
-  s2.getCell("A1").value = "SUMAR DEPOZIT " + PRINC + " - " + lunaT; s2.getCell("A1").font = { bold: true, size: 15, color: { argb: VERDE } };
-  s2.getCell("A2").value = "Euro Ecologic · doar contractele depozitului " + PRINC + " · la data de " + ziRef; s2.getCell("A2").font = { size: 9, color: { argb: "FF6B7A72" } };
+  // stocul la ultima zi, ca în Stoc: produsele vizibile la depozit, rânduri ÎNCHIRIATE / DEPOZIT / TOTAL
+  const stoc = expStoc(D.pana || [], D.si || []).filter(x => x.depozit === PRINC);
+  const ordP = nomv("produs"), poz = p => { const i = ordP.indexOf(p); return i < 0 ? 1e6 : i; };
+  const stP = [...new Set([...ordP, ...stoc.map(x => x.produs)])].filter(p => !esteAscuns(PRINC, p)).sort((a, b) => poz(a) - poz(b) || a.localeCompare(b));
+  const sv = (p, k) => (stoc.find(x => x.produs === p) || {})[k] || 0;
+  // ---------- foaia 2: SUMAR (coloana A goală) ----------
+  const s2 = wb.addWorksheet("SUMAR", { pageSetup: { orientation: "landscape", paperSize: 9, fitToPage: true, fitToWidth: 1, fitToHeight: 0 } });
+  s2.getColumn(1).width = 2.5;
+  const lc = Math.max(6, stP.length + 1);   // câte coloane folosesc tabelele (stocul are câte o coloană pe produs)
+  [22, 26].concat(new Array(lc).fill(14)).forEach((w, i) => s2.getColumn(i + 2).width = w);
+  s2.getCell("B1").value = "SUMAR DEPOZIT " + PRINC + " - " + lunaT; s2.getCell("B1").font = { bold: true, size: TT, color: { argb: VERDE } };
+  s2.getCell("B2").value = "Euro Ecologic · doar contractele depozitului " + PRINC + " · la data de " + ziRef; s2.getCell("B2").font = NOTA;
   let r = 4;
-  const titlu = t => { const c = s2.getCell(r, 1); c.value = t; c.font = { bold: true, size: 11, color: { argb: VERDE } }; r++; };
-  const capR = cap => { const h = s2.getRow(r); cap.forEach((t, i) => { const c = h.getCell(i + 1); c.value = t; c.font = { bold: true, color: { argb: "FFFFFFFF" }, size: 9 }; c.fill = { type: "pattern", pattern: "solid", fgColor: { argb: VERDE } }; c.border = tot; c.alignment = { horizontal: i ? "center" : "left", vertical: "middle", wrapText: true }; }); h.height = 26; return r++; };
-  const randR = (v, j, bold, st) => { const x = s2.getRow(r); v.forEach((t, i) => { const c = x.getCell(i + 1); c.value = t; c.border = tot; c.font = { size: 9, bold: !!bold }; c.alignment = { horizontal: i < (st || 1) ? "left" : "center" }; if(j % 2) c.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFF6F8F7" } }; }); r++; };
+  const titlu = t => { const c = s2.getCell(r, 2); c.value = t; c.font = { bold: true, size: TT, color: { argb: VERDE } }; s2.getRow(r).height = 20; r++; };
+  const capR = cap => { const h = s2.getRow(r); h.height = 32; cap.forEach((t, i) => { const c = h.getCell(i + 2); c.value = t; c.font = { bold: true, color: { argb: "FFFFFFFF" }, size: T }; c.fill = plin(VERDE); c.border = tot; c.alignment = { horizontal: i ? "center" : "left", vertical: "middle", wrapText: true }; }); return r++; };
+  const randR = (v, j, bold, st) => { const x = s2.getRow(r); x.height = 16; v.forEach((t, i) => { const c = x.getCell(i + 2); c.value = t; c.border = tot; c.font = { size: T, bold: !!bold }; c.alignment = { horizontal: i < (st || 1) ? "left" : "center", vertical: "middle" }; if(j % 2) c.fill = plin("FFF6F8F7"); }); r++; };
   const tabel = (cap, rows, fmt, st) => { capR(cap); rows.forEach((v, j) => randR(v, j, fmt && fmt(j), st)); r++; };
-  // 1) LA DATA DE … — pe produs și tip, cu filtru pe PRODUS și total care se schimbă după filtru
+  const nota = t => { const c = s2.getCell(r, 2); c.value = t; c.font = NOTA; r += 2; };
+  // 1) STOC HUNEDOARA la ultima zi (ca în Stoc)
+  titlu("STOC " + PRINC + " LA " + ultima);
+  capR([""].concat(stP, ["TOTAL"]));
+  [["ÎNCHIRIATE", "inch"], ["DEPOZIT", "dep"], ["TOTAL", "t"]].forEach(([e, k], j) => {
+    const v = stP.map(p => k === "t" ? sv(p, "inch") + sv(p, "dep") : sv(p, k));
+    randR([e].concat(v, [v.reduce((a, b) => a + b, 0)]), j, k === "t");
+  });
+  nota("Ca în Stoc: ÎNCHIRIATE = la clienți, DEPOZIT = în depozit, socotit cu comenzile până la " + ultima + "." + (!(D.si || []).some(s => s.depozit === PRINC) ? " Stocul inițial nu e completat (Administrare → Stoc inițial), de aceea DEPOZIT poate ieși cu minus." : ""));
+  // 2) LA DATA DE … — pe produs și tip, cu filtru
   titlu("LA DATA DE " + ziRef + " — pe produs");
   const hP = capR(["PRODUS", "TIP", "La clienți la 01." + zi2(luna), "Livrate în lună", "Ridicate în lună", "La clienți la " + ziRef.slice(0, 5)]);
-  const p1 = r; prodR.forEach((x, j) => randR([x.p, x.t, x.a, x.l, x.r, x.z], j, false, 2));
-  const pN = r - 1;
+  const p1 = r; prodR.forEach((x, j) => randR([x.p, x.t, x.a, x.l, x.r, x.z], j, false, 2)); const pN = r - 1;
   if(prodR.length){
-    const t = s2.getRow(r); t.getCell(1).value = "TOTAL (după filtru)"; ["C", "D", "E", "F"].forEach((L, i) => { t.getCell(3 + i).value = { formula: `SUBTOTAL(109,${L}${p1}:${L}${pN})` }; });
-    for(let i = 1; i <= 6; i++){ const c = t.getCell(i); c.font = { bold: true, size: 9, color: { argb: VERDE } }; c.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFE6F3EA" } }; c.border = tot; c.alignment = { horizontal: i < 3 ? "left" : "center" }; }
-    r++;
-    s2.autoFilter = { from: { row: hP, column: 1 }, to: { row: pN, column: 2 } };
+    const t = s2.getRow(r); t.height = 16; t.getCell(2).value = "TOTAL (după filtru)"; ["D", "E", "F", "G"].forEach((L, i) => { t.getCell(4 + i).value = { formula: `SUBTOTAL(109,${L}${p1}:${L}${pN})` }; });
+    for(let i = 2; i <= 7; i++){ const c = t.getCell(i); c.font = { bold: true, size: T, color: { argb: VERDE } }; c.fill = plin("FFE6F3EA"); c.border = tot; c.alignment = { horizontal: i < 4 ? "left" : "center" }; }
+    r++; s2.autoFilter = { from: { row: hP, column: 2 }, to: { row: pN, column: 3 } };
   }
-  const n1 = s2.getCell(r, 1); n1.value = "Filtrul din PRODUS / TIP alege ce produse vezi; totalul se refă singur. La clienți = din Raport lună; livrate / ridicate = comenzile lunii (fără servisări și sponsorizări)."; n1.font = { italic: true, size: 8, color: { argb: "FF6B7A72" } }; r += 2;
-  // 2) pe scurt + comenzi pe tip + cine a livrat + stoc
-  const rGraf = r;
+  nota("Filtrul din PRODUS / TIP alege ce vezi; totalul se refă singur. La clienți = din Raport lună; livrate / ridicate = comenzile lunii (fără servisări și sponsorizări).");
+  // 3) restul
   titlu("Pe scurt");
-  tabel(["", "Valoare"], [
-    ["Poziții în Raport lună", R_RANDURI.length],
-    ["Bucăți la clienți la 01." + zi2(luna) + "." + an, inceput],
-    ["Bucăți la clienți la " + ziRef, sfarsit],
-    ["Diferență în lună", (sfarsit - inceput > 0 ? "+" : "") + (sfarsit - inceput)],
-    ["Comenzi în lună", nCmd]
-  ], j => j === 2);
+  tabel(["", "Valoare"], [["Poziții în Raport lună", R_RANDURI.length], ["Bucăți la clienți la 01." + zi2(luna) + "." + an, inceput], ["Bucăți la clienți la " + ziRef, sfarsit],
+    ["Diferență în lună", (sfarsit - inceput > 0 ? "+" : "") + (sfarsit - inceput)], ["Comenzi în lună", nCmd]], j => j === 2);
   titlu("Comenzi pe tip");
   tabel(["Tip comandă", "Comenzi", "Bucăți"], tipuri.map(t => [t, peTip.get(t).n, peTip.get(t).b]).concat([["TOTAL", nCmd, ""]]), j => j === tipuri.length);
   titlu("Depozitul care a livrat / ridicat");
   tabel(["Depozit", "Comenzi", "Livrate", "Ridicate"], [...peDep.keys()].sort().map(k => [k, peDep.get(k).n, peDep.get(k).in, peDep.get(k).out]));
-  titlu("Stoc " + PRINC + " la " + ultima);
-  if(faraSI){
-    tabel(["Produs", "La clienți"], stoc.filter(x => x.inch).map(x => [x.produs, x.inch]));
-    const n2 = s2.getCell(r - 1, 1); n2.value = "Stocul inițial nu e completat (Administrare → Stoc inițial): aici sunt doar bucățile de la clienți; „în depozit” apare după ce e pus."; n2.font = { italic: true, size: 8, color: { argb: "FF6B7A72" } }; r++;
-  } else tabel(["Produs", "La clienți", "În depozit", "Total"], stoc.map(x => [x.produs, x.inch, x.dep, x.inch + x.dep]));
-  // grafice (imagini) în dreapta
-  const zileEt = Array.from({ length: nz }, (_, i) => String(i + 1));
-  const g1 = await expGrafic(Chart, { type: "line", data: { labels: zileEt, datasets: [{ label: "Bucăți la clienți", data: ziTot.map((v, i) => i < zL ? v : null), borderColor: "#1b5e3a", backgroundColor: "rgba(27,94,58,.12)", fill: true, tension: .2, pointRadius: 2 }] },
-    options: { plugins: { title: { display: true, text: "Bucăți la clienți pe zile — " + PRINC + " — " + lunaT }, legend: { display: false } }, scales: { y: { beginAtZero: false, ticks: { precision: 0 } } } } }, 640, 300);
-  const g2 = tipuri.length ? await expGrafic(Chart, { type: "bar", data: { labels: tipuri, datasets: [{ label: "Comenzi", data: tipuri.map(t => peTip.get(t).n), backgroundColor: tipuri.map(t => /RIDIC|REDUC|-R$/.test(t) ? "#b3261e" : t === "SERVISARE" ? "#1d4ed8" : /DAUNA|FURT/.test(t) ? "#b26a00" : "#2e7d4f") }] },
-    options: { plugins: { title: { display: true, text: "Comenzi pe tip" }, legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { precision: 0 } } } } }, 640, 300) : null;
-  const pr = [...new Set(prodR.map(x => x.p))], sumP = (p, k) => prodR.filter(x => x.p === p).reduce((t, x) => t + x[k], 0);
-  const g3 = pr.length ? await expGrafic(Chart, { type: "bar", data: { labels: pr, datasets: [{ label: "La clienți la 01." + zi2(luna), data: pr.map(p => sumP(p, "a")), backgroundColor: "#9bb8a7" }, { label: "La clienți la " + ziRef.slice(0, 5), data: pr.map(p => sumP(p, "z")), backgroundColor: "#1b5e3a" }] },
-    options: { plugins: { title: { display: true, text: "La clienți pe produs" } }, scales: { y: { beginAtZero: true, ticks: { precision: 0 } } } } }, 640, 300) : null;
-  [g1, g2, g3].filter(Boolean).forEach((g, i) => { const id = wb.addImage({ base64: g, extension: "png" }); s2.addImage(id, { tl: { col: 7.2, row: 3 + i * 17 }, ext: { width: 560, height: 262 } }); });
   [ws, s2].forEach(w => w.eachRow({ includeEmpty: false }, row => row.eachCell(c => { c.font = { ...(c.font || {}), name: "Calibri" }; })));
+  // ---------- datele graficelor (foaie ascunsă) ----------
+  const dt = wb.addWorksheet("DATE GRAFICE"); dt.state = "hidden";
+  const S1 = "Bucăți la clienți în ziua respectivă (toate produsele, " + PRINC + ")", S2 = "Câte comenzi de acest tip au fost în lună", S3a = "Bucăți la clienți la 01." + zi2(luna) + " (începutul lunii)", S3b = "Bucăți la clienți la " + ziRef.slice(0, 5) + " (ultima zi)";
+  dt.getCell("A1").value = "Ziua"; dt.getCell("B1").value = S1;
+  for(let i = 0; i < nz; i++){ dt.getCell(2 + i, 1).value = String(i + 1); dt.getCell(2 + i, 2).value = i < zL ? ziTot[i] : null; }
+  dt.getCell("D1").value = "Tip"; dt.getCell("E1").value = S2; tipuri.forEach((t, i) => { dt.getCell(2 + i, 4).value = t; dt.getCell(2 + i, 5).value = peTip.get(t).n; });
+  const pr = [...new Set(prodR.map(x => x.p))], sumP = (p, k) => prodR.filter(x => x.p === p).reduce((t, x) => t + x[k], 0);
+  dt.getCell("G1").value = "Produs"; dt.getCell("H1").value = S3a; dt.getCell("I1").value = S3b;
+  pr.forEach((p, i) => { dt.getCell(2 + i, 7).value = p; dt.getCell(2 + i, 8).value = sumP(p, "a"); dt.getCell(2 + i, 9).value = sumP(p, "z"); });
+  const culT = t => /RIDIC|REDUC|-R$/.test(t) ? "B3261E" : t === "SERVISARE" ? "1D4ED8" : /DAUNA|FURT/.test(t) ? "B26A00" : "2E7D4F";
+  const graf = [
+    { tip: "line", titlu: "Bucăți la clienți pe zile — " + PRINC + " — " + lunaT, cat: ["A", nz, Array.from({ length: nz }, (_, i) => String(i + 1))], ser: [{ nume: ["B1", S1], col: "B", val: ziTot.map((v, i) => i < zL ? v : null), cul: "1B5E3A" }], minAuto: true },
+    { tip: "bar", titlu: "Comenzi pe tip — " + lunaT, cat: ["D", tipuri.length, tipuri], ser: [{ nume: ["E1", S2], col: "E", val: tipuri.map(t => peTip.get(t).n), cul: "2E7D4F", pct: tipuri.map(culT) }] },
+    { tip: "bar", titlu: "La clienți pe produs — " + PRINC, cat: ["G", pr.length, pr], ser: [{ nume: ["H1", S3a], col: "H", val: pr.map(p => sumP(p, "a")), cul: "9BB8A7" }, { nume: ["I1", S3b], col: "I", val: pr.map(p => sumP(p, "z")), cul: "1B5E3A" }], legenda: true }
+  ].filter(g => g.cat[1]);
   const buf = await wb.xlsx.writeBuffer();
-  expDescarca(new Blob([buf], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" }), `Raport_luna_${sufix}.xlsx`);
+  const out = await expGraficeNative(JSZip, buf, "SUMAR", "DATE GRAFICE", graf, lc + 3);
+  expDescarca(new Blob([out], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" }), `${zi2(luna)}. RAPORT LUNA - ${lunaT} - DEPOZIT ${PRINC}.xlsx`);
+}
+// v7.50: grafice Excel adevărate (nu imagini) — la mouse Excel arată numele seriei (ce înseamnă coloana), categoria și valoarea.
+// Se adaugă în fișierul făcut de ExcelJS: xl/charts/chartN.xml + un desen pe foaia SUMAR.
+async function expGraficeNative(JSZip, buf, foaie, foaieDate, graf, colStart){
+  const z = await JSZip.loadAsync(buf);
+  const wbx = await z.file("xl/workbook.xml").async("string"), wbr = await z.file("xl/_rels/workbook.xml.rels").async("string");
+  const rid = (new RegExp(`<sheet[^>]*name="${foaie}"[^>]*r:id="([^"]+)"`).exec(wbx) || new RegExp(`<sheet[^>]*r:id="([^"]+)"[^>]*name="${foaie}"`).exec(wbx) || [])[1];
+  const tgt = (new RegExp(`Id="${rid}"[^>]*Target="([^"]+)"`).exec(wbr) || new RegExp(`Target="([^"]+)"[^>]*Id="${rid}"`).exec(wbr) || [])[1];
+  if(!tgt) return buf;
+  const sh = "xl/" + tgt.replace(/^\/?xl\//, ""), shName = sh.split("/").pop(), shRels = sh.replace(shName, "_rels/" + shName + ".rels");
+  const x = s => String(s == null ? "" : s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+  const F = `'${foaieDate}'`;
+  const strC = arr => `<c:strCache><c:ptCount val="${arr.length}"/>${arr.map((v, i) => `<c:pt idx="${i}"><c:v>${x(v)}</c:v></c:pt>`).join("")}</c:strCache>`;
+  const numC = arr => `<c:numCache><c:formatCode>General</c:formatCode><c:ptCount val="${arr.length}"/>${arr.map((v, i) => v == null ? "" : `<c:pt idx="${i}"><c:v>${v}</c:v></c:pt>`).join("")}</c:numCache>`;
+  const fill = c => `<c:spPr><a:solidFill><a:srgbClr val="${c}"/></a:solidFill></c:spPr>`;
+  const txt = (t, sz, b) => `<c:tx><c:rich><a:bodyPr/><a:lstStyle/><a:p><a:pPr><a:defRPr sz="${sz}" b="${b ? 1 : 0}"/></a:pPr><a:r><a:rPr lang="ro-RO" sz="${sz}" b="${b ? 1 : 0}"/><a:t>${x(t)}</a:t></a:r></a:p></c:rich></c:tx>`;
+  const chartXml = g => {
+    const n = g.cat[1], catR = `${F}!$${g.cat[0]}$2:$${g.cat[0]}$${n + 1}`;
+    const ser = g.ser.map((s, i) => {
+      const head = `<c:idx val="${i}"/><c:order val="${i}"/><c:tx><c:strRef><c:f>${F}!$${s.nume[0].replace(/(\D+)(\d+)/, "$1$$$2")}</c:f>${strC([s.nume[1]])}</c:strRef></c:tx>`;
+      const cv = `<c:cat><c:strRef><c:f>${catR}</c:f>${strC(g.cat[2])}</c:strRef></c:cat><c:val><c:numRef><c:f>${F}!$${s.col}$2:$${s.col}$${n + 1}</c:f>${numC(s.val)}</c:numRef></c:val>`;
+      if(g.tip === "line") return `<c:ser>${head}<c:spPr><a:ln w="28575"><a:solidFill><a:srgbClr val="${s.cul}"/></a:solidFill></a:ln></c:spPr><c:marker><c:symbol val="circle"/><c:size val="5"/>${fill(s.cul)}</c:marker>${cv}<c:smooth val="0"/></c:ser>`;
+      const dpt = (s.pct || []).map((c, k) => `<c:dPt><c:idx val="${k}"/><c:invertIfNegative val="0"/><c:bubble3D val="0"/>${fill(c)}</c:dPt>`).join("");
+      return `<c:ser>${head}${fill(s.cul)}<c:invertIfNegative val="0"/>${dpt}${cv}</c:ser>`;
+    }).join("");
+    const plot = g.tip === "line" ? `<c:lineChart><c:grouping val="standard"/><c:varyColors val="0"/>${ser}<c:marker val="1"/><c:axId val="501"/><c:axId val="502"/></c:lineChart>`
+      : `<c:barChart><c:barDir val="col"/><c:grouping val="clustered"/><c:varyColors val="0"/>${ser}<c:gapWidth val="70"/><c:axId val="501"/><c:axId val="502"/></c:barChart>`;
+    return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><c:chartSpace xmlns:c="http://schemas.openxmlformats.org/drawingml/2006/chart" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><c:roundedCorners val="0"/><c:chart><c:title>${txt(g.titlu, 1200, true)}<c:overlay val="0"/></c:title><c:autoTitleDeleted val="0"/><c:plotArea><c:layout/>${plot}`
+      + `<c:catAx><c:axId val="501"/><c:scaling><c:orientation val="minMax"/></c:scaling><c:delete val="0"/><c:axPos val="b"/><c:numFmt formatCode="General" sourceLinked="0"/><c:majorTickMark val="none"/><c:minorTickMark val="none"/><c:tickLblPos val="nextTo"/><c:txPr><a:bodyPr/><a:lstStyle/><a:p><a:pPr><a:defRPr sz="900"/></a:pPr><a:endParaRPr lang="ro-RO"/></a:p></c:txPr><c:crossAx val="502"/><c:crosses val="autoZero"/><c:auto val="1"/><c:lblAlgn val="ctr"/><c:lblOffset val="100"/><c:noMultiLvlLbl val="0"/></c:catAx>`
+      + `<c:valAx><c:axId val="502"/><c:scaling><c:orientation val="minMax"/></c:scaling><c:delete val="0"/><c:axPos val="l"/><c:majorGridlines><c:spPr><a:ln><a:solidFill><a:srgbClr val="E3E8E5"/></a:solidFill></a:ln></c:spPr></c:majorGridlines><c:numFmt formatCode="0" sourceLinked="0"/><c:majorTickMark val="none"/><c:minorTickMark val="none"/><c:tickLblPos val="nextTo"/><c:txPr><a:bodyPr/><a:lstStyle/><a:p><a:pPr><a:defRPr sz="900"/></a:pPr><a:endParaRPr lang="ro-RO"/></a:p></c:txPr><c:crossAx val="501"/><c:crosses val="autoZero"/><c:crossBetween val="between"/></c:valAx></c:plotArea>`
+      + (g.legenda ? `<c:legend><c:legendPos val="b"/><c:overlay val="0"/></c:legend>` : "") + `<c:plotVisOnly val="1"/><c:dispBlanksAs val="gap"/></c:chart></c:chartSpace>`;
+  };
+  const anc = (i, k) => { const r0 = 3 + i * 20; return `<xdr:twoCellAnchor editAs="oneCell"><xdr:from><xdr:col>${colStart}</xdr:col><xdr:colOff>0</xdr:colOff><xdr:row>${r0}</xdr:row><xdr:rowOff>0</xdr:rowOff></xdr:from><xdr:to><xdr:col>${colStart + 8}</xdr:col><xdr:colOff>0</xdr:colOff><xdr:row>${r0 + 18}</xdr:row><xdr:rowOff>0</xdr:rowOff></xdr:to>`
+    + `<xdr:graphicFrame macro=""><xdr:nvGraphicFramePr><xdr:cNvPr id="${100 + i}" name="Grafic ${i + 1}"/><xdr:cNvGraphicFramePr/></xdr:nvGraphicFramePr><xdr:xfrm><a:off x="0" y="0"/><a:ext cx="0" cy="0"/></xdr:xfrm><a:graphic><a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/chart"><c:chart xmlns:c="http://schemas.openxmlformats.org/drawingml/2006/chart" r:id="rIdG${k}"/></a:graphicData></a:graphic></xdr:graphicFrame><xdr:clientData/></xdr:twoCellAnchor>`; };
+  graf.forEach((g, i) => z.file(`xl/charts/chartEE${i + 1}.xml`, chartXml(g)));
+  z.file("xl/drawings/drawingEE1.xml", `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><xdr:wsDr xmlns:xdr="http://schemas.openxmlformats.org/drawingml/2006/spreadsheetDrawing" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">${graf.map((g, i) => anc(i, i + 1)).join("")}</xdr:wsDr>`);
+  z.file("xl/drawings/_rels/drawingEE1.xml.rels", `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">${graf.map((g, i) => `<Relationship Id="rIdG${i + 1}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/chart" Target="../charts/chartEE${i + 1}.xml"/>`).join("")}</Relationships>`);
+  let rels = z.file(shRels) ? await z.file(shRels).async("string") : `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"></Relationships>`;
+  rels = rels.replace("</Relationships>", `<Relationship Id="rIdDEE1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/drawing" Target="../drawings/drawingEE1.xml"/></Relationships>`);
+  z.file(shRels, rels);
+  let sx = await z.file(sh).async("string");
+  if(!/xmlns:r=/.test(sx.slice(0, 600))) sx = sx.replace("<worksheet ", '<worksheet xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" ');
+  const dr = '<drawing r:id="rIdDEE1"/>', m = /<(legacyDrawing|legacyDrawingHF|picture|oleObjects|controls|webPublishItems|tableParts|extLst)[\s>\/]/.exec(sx);
+  sx = m ? sx.slice(0, m.index) + dr + sx.slice(m.index) : sx.replace("</worksheet>", dr + "</worksheet>");
+  z.file(sh, sx);
+  let ct = await z.file("[Content_Types].xml").async("string");
+  ct = ct.replace("</Types>", graf.map((g, i) => `<Override PartName="/xl/charts/chartEE${i + 1}.xml" ContentType="application/vnd.openxmlformats-officedocument.drawingml.chart+xml"/>`).join("")
+    + `<Override PartName="/xl/drawings/drawingEE1.xml" ContentType="application/vnd.openxmlformats-officedocument.drawing+xml"/></Types>`);
+  z.file("[Content_Types].xml", ct);
+  return z.generateAsync({ type: "uint8array", compression: "DEFLATE" });
 }
 async function expWord(D, an, luna, lunaT, sufix){
   // v7.44 (cerut de Ovidiu, 01.11): Word-ul ca al lui de până acum („09. MISCARI - RAPORT SEPTEMBRIE”): Times New Roman 12,
@@ -12568,7 +12622,7 @@ async function expWord(D, an, luna, lunaT, sufix){
   if(!grupe.length) ch.push(par("Nu sunt comenzi în " + lunaT.toLowerCase() + "."));
   const doc = new Document({ creator: "GestiuneEE", title: "Miscari " + lunaT, styles: { default: { document: { run: { font: TNR, size: SZ } } } },
     sections: [{ properties: { page: { margin: { top: 1134, bottom: 1134, left: 1134, right: 1134 } } }, children: ch }] });
-  expDescarca(await Packer.toBlob(doc), `${zi2(luna)}. MISCARI - RAPORT ${EXP_LUNI[luna - 1]} - ${an}.docx`);
+  expDescarca(await Packer.toBlob(doc), `${zi2(luna)}. MISCARI RAPORT LUNA - ${lunaT} - DEPOZIT ${depPrincipal() || "HUNEDOARA"}.docx`);
 }
 </script>
 </body>
