@@ -971,7 +971,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
   <span id="rz-w"><button id="rz-reset" class="pictograma" title="Lățimi implicite — pune coloanele din tabelele acestei file înapoi cum erau">↺ Reset layout</button><i class="rz-sep">|</i></span>
   <span id="tz-w" title="Mărimea tabelului (doar tabelul, restul rămâne la fel), din 5 în 5%. Merge și cu Ctrl + rotița mausului, Ctrl + / Ctrl − / Ctrl 0. Dublu clic pe procent = scrii tu valoarea."><button class="pictograma" onclick="tzPas(-1)" aria-label="Micșorează tabelul">−</button><b id="tz-v" ondblclick="tzScrie()" title="Dublu clic = scrii mărimea (ex. 87), Enter">100%</b><input id="tz-in" type="number" min="30" max="300" step="5" style="display:none"><button class="pictograma" onclick="tzPas(1)" aria-label="Mărește tabelul">+</button></span>
-  <span class="ver">v7.50</span>
+  <span class="ver">v7.51</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -12466,6 +12466,28 @@ async function expExcel(D, an, luna, nz, lunaT, ultima, sufix){
   const ordP = nomv("produs"), poz = p => { const i = ordP.indexOf(p); return i < 0 ? 1e6 : i; };
   const stP = [...new Set([...ordP, ...stoc.map(x => x.produs)])].filter(p => !esteAscuns(PRINC, p)).sort((a, b) => poz(a) - poz(b) || a.localeCompare(b));
   const sv = (p, k) => (stoc.find(x => x.produs === p) || {})[k] || 0;
+  // v7.51 (cerut de Ovidiu, 01.11): pe CATEGORIE de produs (TOALETA = CLASIC + CU LAVOAR INTERIOR + …) — în teren și în depozit
+  const catR = [...new Set(prodR.map(x => x.p))].map(p => { const g = prodR.filter(x => x.p === p), S = k => g.reduce((t, x) => t + x[k], 0);
+    const dep = sv(p, "dep"); return [p, S("a"), S("l"), S("r"), S("z"), dep, S("z") + dep]; });
+  const capCat = ["PRODUS", "La clienți la 01." + zi2(luna), "Livrate în lună", "Ridicate în lună", "În teren (la clienți) la " + ziRef.slice(0, 5), "În depozit la " + ziRef.slice(0, 5), "TOTAL"];
+  const capTip = ["PRODUS", "TIP", "La clienți la 01." + zi2(luna), "Livrate în lună", "Ridicate în lună", "La clienți la " + ziRef.slice(0, 5)];
+  // tabel pe orice foaie: antet verde, rânduri 16, TOTAL cu SUBTOTAL (se refă după filtru) pe coloanele cu numere
+  const tbl = (w, r0, c0, cap, rows, txt) => {
+    const h = w.getRow(r0); h.height = 32;
+    cap.forEach((t, i) => { const c = h.getCell(c0 + i); c.value = t; c.font = { name: "Calibri", bold: true, color: { argb: "FFFFFFFF" }, size: T }; c.fill = plin(VERDE); c.border = tot; c.alignment = { horizontal: i < txt ? "left" : "center", vertical: "middle", wrapText: true }; });
+    rows.forEach((v, j) => { const x = w.getRow(r0 + 1 + j); x.height = 16; v.forEach((t, i) => { const c = x.getCell(c0 + i); c.value = t; c.border = tot; c.font = { name: "Calibri", size: T }; c.alignment = { horizontal: i < txt ? "left" : "center", vertical: "middle" }; if(j % 2) c.fill = plin("FFF6F8F7"); }); });
+    const rt = r0 + 1 + rows.length, x = w.getRow(rt); x.height = 16;
+    cap.forEach((t, i) => { const c = x.getCell(c0 + i), L = lt(c0 + i);
+      c.value = i === 0 ? "TOTAL" : i < txt ? "" : (rows.length ? { formula: `SUBTOTAL(109,${L}${r0 + 1}:${L}${rt - 1})` } : 0);
+      c.font = { name: "Calibri", bold: true, size: T, color: { argb: VERDE } }; c.fill = plin("FFE6F3EA"); c.border = tot; c.alignment = { horizontal: i < txt ? "left" : "center" }; });
+    return rt;
+  };
+  // sub Raport lună: pe categorie, apoi pe categorie și tip
+  { let r1 = rT + 3; const c0 = 3;
+    ws.getCell(r1, c0).value = "SUMAR LA DATA DE " + ziRef + " — pe categorie de produs (" + PRINC + ")"; ws.getCell(r1, c0).font = { name: "Calibri", bold: true, size: TT, color: { argb: VERDE } }; ws.getRow(r1).height = 20;
+    r1 = tbl(ws, r1 + 1, c0, capCat, catR, 1) + 3;
+    ws.getCell(r1, c0).value = "SUMAR LA DATA DE " + ziRef + " — pe categorie și tip"; ws.getCell(r1, c0).font = { name: "Calibri", bold: true, size: TT, color: { argb: VERDE } }; ws.getRow(r1).height = 20;
+    tbl(ws, r1 + 1, c0, capTip, prodR.map(x => [x.p, x.t, x.a, x.l, x.r, x.z]), 2); }
   // ---------- foaia 2: SUMAR (coloana A goală) ----------
   const s2 = wb.addWorksheet("SUMAR", { pageSetup: { orientation: "landscape", paperSize: 9, fitToPage: true, fitToWidth: 1, fitToHeight: 0 } });
   s2.getColumn(1).width = 2.5;
@@ -12488,7 +12510,10 @@ async function expExcel(D, an, luna, nz, lunaT, ultima, sufix){
   });
   nota("Ca în Stoc: ÎNCHIRIATE = la clienți, DEPOZIT = în depozit, socotit cu comenzile până la " + ultima + "." + (!(D.si || []).some(s => s.depozit === PRINC) ? " Stocul inițial nu e completat (Administrare → Stoc inițial), de aceea DEPOZIT poate ieși cu minus." : ""));
   // 2) LA DATA DE … — pe produs și tip, cu filtru
-  titlu("LA DATA DE " + ziRef + " — pe produs");
+  titlu("LA DATA DE " + ziRef + " — pe categorie de produs");
+  r = tbl(s2, r, 2, capCat, catR, 1) + 1;
+  nota("Categoria cuprinde toate tipurile ei (TOALETA = CLASIC + CU LAVOAR INTERIOR + …). În teren = din Raport lună; în depozit = ca în Stoc (sponsorizările nu intră în teren).");
+  titlu("LA DATA DE " + ziRef + " — pe categorie și tip");
   const hP = capR(["PRODUS", "TIP", "La clienți la 01." + zi2(luna), "Livrate în lună", "Ridicate în lună", "La clienți la " + ziRef.slice(0, 5)]);
   const p1 = r; prodR.forEach((x, j) => randR([x.p, x.t, x.a, x.l, x.r, x.z], j, false, 2)); const pN = r - 1;
   if(prodR.length){
@@ -12517,9 +12542,9 @@ async function expExcel(D, an, luna, nz, lunaT, ultima, sufix){
   pr.forEach((p, i) => { dt.getCell(2 + i, 7).value = p; dt.getCell(2 + i, 8).value = sumP(p, "a"); dt.getCell(2 + i, 9).value = sumP(p, "z"); });
   const culT = t => /RIDIC|REDUC|-R$/.test(t) ? "B3261E" : t === "SERVISARE" ? "1D4ED8" : /DAUNA|FURT/.test(t) ? "B26A00" : "2E7D4F";
   const graf = [
-    { tip: "line", titlu: "Bucăți la clienți pe zile — " + PRINC + " — " + lunaT, cat: ["A", nz, Array.from({ length: nz }, (_, i) => String(i + 1))], ser: [{ nume: ["B1", S1], col: "B", val: ziTot.map((v, i) => i < zL ? v : null), cul: "1B5E3A" }], minAuto: true },
-    { tip: "bar", titlu: "Comenzi pe tip — " + lunaT, cat: ["D", tipuri.length, tipuri], ser: [{ nume: ["E1", S2], col: "E", val: tipuri.map(t => peTip.get(t).n), cul: "2E7D4F", pct: tipuri.map(culT) }] },
-    { tip: "bar", titlu: "La clienți pe produs — " + PRINC, cat: ["G", pr.length, pr], ser: [{ nume: ["H1", S3a], col: "H", val: pr.map(p => sumP(p, "a")), cul: "9BB8A7" }, { nume: ["I1", S3b], col: "I", val: pr.map(p => sumP(p, "z")), cul: "1B5E3A" }], legenda: true }
+    { tip: "line", titlu: "Bucăți la clienți pe zile — " + PRINC + " — " + lunaT, cat: ["A", nz, Array.from({ length: nz }, (_, i) => String(i + 1))], ser: [{ nume: ["B1", S1], col: "B", val: ziTot.map((v, i) => i < zL ? v : null), cul: "1B5E3A" }], minAuto: true, poz: [0, 26, 16, 46] },
+    { tip: "bar", titlu: "Comenzi pe tip — " + lunaT, cat: ["D", tipuri.length, tipuri], ser: [{ nume: ["E1", S2], col: "E", val: tipuri.map(t => peTip.get(t).n), cul: "2E7D4F", pct: tipuri.map(culT) }], poz: [0, 6, 8, 24] },
+    { tip: "bar", titlu: "La clienți pe produs — " + PRINC, cat: ["G", pr.length, pr], ser: [{ nume: ["H1", S3a], col: "H", val: pr.map(p => sumP(p, "a")), cul: "9BB8A7" }, { nume: ["I1", S3b], col: "I", val: pr.map(p => sumP(p, "z")), cul: "1B5E3A" }], legenda: true, poz: [9, 6, 16, 24] }
   ].filter(g => g.cat[1]);
   const buf = await wb.xlsx.writeBuffer();
   const out = await expGraficeNative(JSZip, buf, "SUMAR", "DATE GRAFICE", graf, lc + 3);
@@ -12556,10 +12581,12 @@ async function expGraficeNative(JSZip, buf, foaie, foaieDate, graf, colStart){
       + `<c:valAx><c:axId val="502"/><c:scaling><c:orientation val="minMax"/></c:scaling><c:delete val="0"/><c:axPos val="l"/><c:majorGridlines><c:spPr><a:ln><a:solidFill><a:srgbClr val="E3E8E5"/></a:solidFill></a:ln></c:spPr></c:majorGridlines><c:numFmt formatCode="0" sourceLinked="0"/><c:majorTickMark val="none"/><c:minorTickMark val="none"/><c:tickLblPos val="nextTo"/><c:txPr><a:bodyPr/><a:lstStyle/><a:p><a:pPr><a:defRPr sz="900"/></a:pPr><a:endParaRPr lang="ro-RO"/></a:p></c:txPr><c:crossAx val="501"/><c:crosses val="autoZero"/><c:crossBetween val="between"/></c:valAx></c:plotArea>`
       + (g.legenda ? `<c:legend><c:legendPos val="b"/><c:overlay val="0"/></c:legend>` : "") + `<c:plotVisOnly val="1"/><c:dispBlanksAs val="gap"/></c:chart></c:chartSpace>`;
   };
-  const anc = (i, k) => { const r0 = 3 + i * 20; return `<xdr:twoCellAnchor editAs="oneCell"><xdr:from><xdr:col>${colStart}</xdr:col><xdr:colOff>0</xdr:colOff><xdr:row>${r0}</xdr:row><xdr:rowOff>0</xdr:rowOff></xdr:from><xdr:to><xdr:col>${colStart + 8}</xdr:col><xdr:colOff>0</xdr:colOff><xdr:row>${r0 + 18}</xdr:row><xdr:rowOff>0</xdr:rowOff></xdr:to>`
+  // v7.51: așezate ca în poza lui Ovidiu — sus „Comenzi pe tip” + „La clienți pe produs”, dedesubt „pe zile” pe toată lățimea
+  const anc = (g, i, k) => { const P = g.poz || [0, 3 + i * 20, 8, 21 + i * 20], c0 = colStart + P[0], r0 = P[1], c1 = colStart + P[2], r1 = P[3];
+    return `<xdr:twoCellAnchor editAs="oneCell"><xdr:from><xdr:col>${c0}</xdr:col><xdr:colOff>0</xdr:colOff><xdr:row>${r0}</xdr:row><xdr:rowOff>0</xdr:rowOff></xdr:from><xdr:to><xdr:col>${c1}</xdr:col><xdr:colOff>0</xdr:colOff><xdr:row>${r1}</xdr:row><xdr:rowOff>0</xdr:rowOff></xdr:to>`
     + `<xdr:graphicFrame macro=""><xdr:nvGraphicFramePr><xdr:cNvPr id="${100 + i}" name="Grafic ${i + 1}"/><xdr:cNvGraphicFramePr/></xdr:nvGraphicFramePr><xdr:xfrm><a:off x="0" y="0"/><a:ext cx="0" cy="0"/></xdr:xfrm><a:graphic><a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/chart"><c:chart xmlns:c="http://schemas.openxmlformats.org/drawingml/2006/chart" r:id="rIdG${k}"/></a:graphicData></a:graphic></xdr:graphicFrame><xdr:clientData/></xdr:twoCellAnchor>`; };
   graf.forEach((g, i) => z.file(`xl/charts/chartEE${i + 1}.xml`, chartXml(g)));
-  z.file("xl/drawings/drawingEE1.xml", `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><xdr:wsDr xmlns:xdr="http://schemas.openxmlformats.org/drawingml/2006/spreadsheetDrawing" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">${graf.map((g, i) => anc(i, i + 1)).join("")}</xdr:wsDr>`);
+  z.file("xl/drawings/drawingEE1.xml", `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><xdr:wsDr xmlns:xdr="http://schemas.openxmlformats.org/drawingml/2006/spreadsheetDrawing" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">${graf.map((g, i) => anc(g, i, i + 1)).join("")}</xdr:wsDr>`);
   z.file("xl/drawings/_rels/drawingEE1.xml.rels", `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">${graf.map((g, i) => `<Relationship Id="rIdG${i + 1}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/chart" Target="../charts/chartEE${i + 1}.xml"/>`).join("")}</Relationships>`);
   let rels = z.file(shRels) ? await z.file(shRels).async("string") : `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"></Relationships>`;
   rels = rels.replace("</Relationships>", `<Relationship Id="rIdDEE1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/drawing" Target="../drawings/drawingEE1.xml"/></Relationships>`);
