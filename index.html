@@ -974,7 +974,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
   <span id="rz-w"><button id="rz-reset" class="pictograma" title="Lățimi implicite — pune coloanele din tabelele acestei file înapoi cum erau">↺ Reset layout</button><i class="rz-sep">|</i></span>
   <span id="tz-w" title="Mărimea tabelului (doar tabelul, restul rămâne la fel), din 5 în 5%. Merge și cu Ctrl + rotița mausului, Ctrl + / Ctrl − / Ctrl 0. Dublu clic pe procent = scrii tu valoarea."><button class="pictograma" onclick="tzPas(-1)" aria-label="Micșorează tabelul">−</button><b id="tz-v" ondblclick="tzScrie()" title="Dublu clic = scrii mărimea (ex. 87), Enter">100%</b><input id="tz-in" type="number" min="30" max="300" step="5" style="display:none"><button class="pictograma" onclick="tzPas(1)" aria-label="Mărește tabelul">+</button></span>
-  <span class="ver">v7.56</span>
+  <span class="ver">v7.57</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -12678,7 +12678,7 @@ async function expWord(D, an, luna, lunaT, sufix){
   // titlul grupei îngroșat + subliniat, fiecare comandă în 6 rânduri scurte, un rând gol între ele; *…* = îngroșat (fără steluțe)
   const X = await expLib("docx");
   const { Document, Packer, Paragraph, TextRun, UnderlineType } = X;
-  const lun = (D.lun || []).slice().sort((a, b) => (a.data || "").localeCompare(b.data || "") || a.id - b.id);
+  const lun = (D.lun || []).filter(m => !ctrExterior(m)).sort((a, b) => (a.data || "").localeCompare(b.data || "") || a.id - b.id);   // v7.57 (Ovidiu, 02.11): doar comenzile pe contracte HUNEDOARA, oricare depozit livrează (fără contractele NOVALIS, CONSTANȚA…)
   const GR = [["AMPLASARI", EXP_GRUPE[0][1]], ["RIDICARI", EXP_GRUPE[1][1]], ["VANZARI", EXP_GRUPE[2][1]], ["TRANSFER", EXP_GRUPE[3][1]], ["DAUNA / PIERDERE", EXP_GRUPE[4][1]]];
   const grupe = GR.map(([t, tip]) => [t, lun.filter(m => tip.includes(m.tip_miscare) && !(m.grup_id && m.grup_id !== m.id))]).filter(g => g[1].length);
   const ZS = ["dum","lun","mar","mie","joi","vin","sam"];
