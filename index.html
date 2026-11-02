@@ -96,6 +96,8 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
     #r-tbl.flat td.noprint{overflow:visible} }
   /* v6.93 (cerut de Ovidiu, 24.10): lățimea coloanelor se trage cu mouse-ul din „|” din antet; ținută minte pe calculator (localStorage) */
   th.rz-th{background-clip:padding-box}
+  .rz-px{position:fixed;z-index:10060;background:#1e2a24;color:#fff;font-size:12px;padding:4px 8px;border-radius:6px;pointer-events:none;white-space:nowrap;box-shadow:0 4px 12px rgba(0,0,0,.25)}
+  .rz-px span{opacity:.7}   /* v7.56 */
   .rz-h{position:absolute;top:0;right:0;width:7px;height:100%;cursor:col-resize;z-index:3;user-select:none}
   .rz-h::after{content:"";position:absolute;right:3px;top:22%;bottom:22%;width:1px;background:var(--mut);opacity:.45}
   .rz-h:hover::after,.rz-h.on::after{background:var(--blue);opacity:1;width:2px;top:0;bottom:0}
@@ -972,7 +974,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
   <span id="rz-w"><button id="rz-reset" class="pictograma" title="Lățimi implicite — pune coloanele din tabelele acestei file înapoi cum erau">↺ Reset layout</button><i class="rz-sep">|</i></span>
   <span id="tz-w" title="Mărimea tabelului (doar tabelul, restul rămâne la fel), din 5 în 5%. Merge și cu Ctrl + rotița mausului, Ctrl + / Ctrl − / Ctrl 0. Dublu clic pe procent = scrii tu valoarea."><button class="pictograma" onclick="tzPas(-1)" aria-label="Micșorează tabelul">−</button><b id="tz-v" ondblclick="tzScrie()" title="Dublu clic = scrii mărimea (ex. 87), Enter">100%</b><input id="tz-in" type="number" min="30" max="300" step="5" style="display:none"><button class="pictograma" onclick="tzPas(1)" aria-label="Mărește tabelul">+</button></span>
-  <span class="ver">v7.55</span>
+  <span class="ver">v7.56</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -1193,7 +1195,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
       <div style="flex:0;min-width:130px"><label>Vizita</label><select id="rr-viz" onchange="rrAfiseaza()"><option value="">toate</option><option value="da">vizitate</option><option value="nu">nevizitate</option></select></div>
       <div style="flex:0;min-width:170px"><label title="Ordinea sosirii = cum au ajuns șoferii la clienți în săptămâna aleasă (de la primul la ultimul); nevizitatele la sfârșit">Ordine</label><select id="rr-ord" onchange="rrAfiseaza()"><option value="">ca în listă</option><option value="sosire">ordinea sosirii (HHMM)</option></select></div>
       <div style="min-width:160px"><label>Caută</label><input id="rr-caut" placeholder="client, localitate…" oninput="rrAfiseaza()"></div>
-      <div style="flex:0;min-width:120px"><label>Săptămâni</label><select id="rr-nsapt" onchange="rrAfiseaza()"><option value="2">ultimele 2</option><option value="3" selected>ultimele 3</option><option value="4">ultimele 4</option><option value="6">ultimele 6</option><option value="12">ultimele 12</option><option value="toate">toate</option></select></div>
+      <div style="flex:0;min-width:120px"><label>Săptămâni</label><select id="rr-nsapt" onchange="rrAfiseaza()"><option value="2">ultimele 2</option><option value="3">ultimele 3</option><option value="4">ultimele 4</option><option value="6" selected>ultimele 6</option><option value="12">ultimele 12</option><option value="toate">toate</option></select></div>
       <div style="flex:0;min-width:140px"><label>Coloane</label><select id="rr-col" onchange="rrAfiseaza()"><option value="">esențiale</option><option value="toate">toate</option></select></div>
       <div style="flex:0"><label>&nbsp;</label><button class="btn sec" onclick="loadRR(true)">Reîncarcă</button></div>
       <div style="flex:0"><label>&nbsp;</label><button class="btn sec" onclick="exportRR()">Export Excel</button></div>
@@ -8237,7 +8239,7 @@ function rrAfiseaza(){
   RR_WEEKS = [];
   if(W){
     if($("rr-nsapt").value === "toate"){ const L = sAn(+$("rr-an").value); RR_WEEKS = L.slice(0, L.indexOf(W) + 1); }
-    else { const n = +$("rr-nsapt").value || 3; /* v6.96: implicit ultimele 3 */ for(let i = n - 1; i >= 0; i--) RR_WEEKS.push(sMuta(W, -i)); }
+    else { const n = +$("rr-nsapt").value || 6; /* v7.56: implicit ultimele 6 */ for(let i = n - 1; i >= 0; i--) RR_WEEKS.push(sMuta(W, -i)); }
     if(!RR_WEEKS.length) RR_WEEKS = [W];
     RR_WEEKS.reverse();   // v7.55 (cerut de Ovidiu, 02.11): după COD vine săptămâna aleasă (W45), apoi cele dinainte (W44, W43…) — și în Export Excel
   }
@@ -12195,16 +12197,21 @@ porneste();
     const col = cols[c.idx];
     trag = { t, col, cols, name: c.name, x0: e.clientX, w0: parseFloat(col.style.width) || th.offsetWidth, z: zoom(t), h, mutat: false };
     h.classList.add("on"); document.body.classList.add("rz-trag");
+    // v7.56 (cerut de Ovidiu, 02.11): cât de lată e coloana, în timp ce o tragi (ca să le poți face egale)
+    trag.px = document.createElement("div"); trag.px.className = "rz-px"; document.body.appendChild(trag.px);
+    trag.pxT = w => { trag.px.innerHTML = `<b>${esc((th.innerText || "").replace(/\s+/g, " ").trim() || "coloana")}</b>: ${w} px` + (w !== Math.round(trag.w0) ? ` <span>(era ${Math.round(trag.w0)})</span>` : ""); };
+    trag.pxT(Math.round(trag.w0)); trag.px.style.left = (e.clientX + 14) + "px"; trag.px.style.top = (e.clientY + 16) + "px";
   }, true);
   document.addEventListener("mousemove", e => {
     if(!trag) return;
     const w = Math.max(24, Math.round(trag.w0 + (e.clientX - trag.x0) / trag.z));
     if(Math.abs(e.clientX - trag.x0) > 2) trag.mutat = true;
     trag.col.style.width = w + "px"; total(trag.t, trag.cols);
+    if(trag.px){ trag.pxT(w); trag.px.style.left = (e.clientX + 14) + "px"; trag.px.style.top = (e.clientY + 16) + "px"; }
   });
   document.addEventListener("mouseup", () => {
     if(!trag) return;
-    const d = trag; trag = null; d.h.classList.remove("on"); document.body.classList.remove("rz-trag");
+    const d = trag; trag = null; d.h.classList.remove("on"); document.body.classList.remove("rz-trag"); if(d.px) d.px.remove();
     if(d.mutat){
       const k = cheie(d.t), m = citeste(k); m[d.name] = Math.round(parseFloat(d.col.style.width)); scrie(k, m); butoane();
       const opreste = ev => { ev.stopPropagation(); ev.preventDefault(); };
@@ -12219,6 +12226,8 @@ porneste();
     const c = harta(antet(t)).find(x => x.th === th); if(!c) return;
     const k = cheie(t), m = citeste(k); delete m[c.name]; scrie(k, m); aplica(t); butoane();
   }, true);
+  document.addEventListener("mouseover", e => { const h = e.target.closest && e.target.closest(".rz-h"); if(!h) return;   // v7.56
+    h.title = "Lățime: " + Math.round(h.parentElement.getBoundingClientRect().width / (zoom(h.closest("table")) || 1)) + " px · trage ca s-o schimbi · dublu clic = lățimea implicită"; });
   // titlul întreg la mouse pe celulele tăiate cu „…” din tabelele îngustate
   document.addEventListener("mouseover", e => {
     const td = e.target.closest && e.target.closest("table.rz-fix td"); if(!td || td.title) return;
