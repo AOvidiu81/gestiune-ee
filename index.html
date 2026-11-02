@@ -318,6 +318,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   .loc-box>div[data-i]:hover,.loc-box>div.on{background:var(--gl)}
   .loc-box .loc-sursa{padding:4px 10px 2px;font-size:11px;color:var(--mut);border-top:1px solid var(--bd);margin-top:2px}
   .loc-av{font-size:11.5px;color:var(--amb);margin-top:3px}
+  .loc-box-sat{max-height:340px;overflow:auto}   /* v7.54 */
   .cx-w{position:relative;display:block} .cx-w>input{padding-right:30px}   /* v5.98: ✕ în căsuțele de căutare */
   .cx-b{position:absolute;right:4px;top:50%;transform:translateY(-50%);border:0;background:none;color:var(--mut);font-size:16px;line-height:1;padding:4px 6px;cursor:pointer}
   .cx-w>input:placeholder-shown~.cx-b{display:none}
@@ -971,7 +972,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
   <span id="rz-w"><button id="rz-reset" class="pictograma" title="Lățimi implicite — pune coloanele din tabelele acestei file înapoi cum erau">↺ Reset layout</button><i class="rz-sep">|</i></span>
   <span id="tz-w" title="Mărimea tabelului (doar tabelul, restul rămâne la fel), din 5 în 5%. Merge și cu Ctrl + rotița mausului, Ctrl + / Ctrl − / Ctrl 0. Dublu clic pe procent = scrii tu valoarea."><button class="pictograma" onclick="tzPas(-1)" aria-label="Micșorează tabelul">−</button><b id="tz-v" ondblclick="tzScrie()" title="Dublu clic = scrii mărimea (ex. 87), Enter">100%</b><input id="tz-in" type="number" min="30" max="300" step="5" style="display:none"><button class="pictograma" onclick="tzPas(1)" aria-label="Mărește tabelul">+</button></span>
-  <span class="ver">v7.53</span>
+  <span class="ver">v7.54</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -12316,6 +12317,7 @@ function locAuto(jId, lId, sId){
     el.dataset.locEd = "1"; inchide();
     el.dispatchEvent(new Event("input", { bubbles: true })); el.dispatchEvent(new Event("change", { bubbles: true }));
     if(spreSat && sat){ sat.dispatchEvent(new Event("input", { bubbles: true })); sat.focus(); sat.setSelectionRange(sat.value.length, sat.value.length); }
+    else if(sat && !sat.readOnly && !sat.value.trim() && !e.up && e.k !== "M" && e.k !== "O") sat.focus();   // v7.54: după comună → direct la sat (apare lista satelor)
     locAvert(lId, jId);
   };
   el.addEventListener("focus", () => { locIncarca(); });
@@ -12334,6 +12336,63 @@ function locAuto(jId, lId, sId){
 }
 locAuto("mm-jud", "mm-loc", "mm-sat");
 locAuto("ma-jud", "ma-loc", "ma-sat");
+// v7.54 (cerut de Ovidiu, 02.11): la „Sat / Str. / Locație” — satele comunei (orașului) din „Loc. / Com.”, în județul ales.
+// Se caută doar partea dinaintea primei virgule (după virgulă e strada). Alegerea scrie „SAT X, ” și lasă cursorul pentru stradă.
+// Fără comună recunoscută: satele din județ; alegerea completează și comuna.
+function satUAT(locV, judV){
+  if(!LOCX) return null;
+  const n = locFara(locV), j = locMare(judV).trim(); if(n.length < 2) return null;
+  const g = LOCX.E.filter(e => e.n === n);
+  const u = g.find(e => !e.up && (!j || e.j === j)) || g.find(e => e.up && (!j || e.j === j));
+  return u ? u.uat : null;
+}
+function satCauta(q, locV, judV){
+  if(!LOCX) return [];
+  const j = locMare(judV).trim(), u = satUAT(locV, judV);
+  const n = locNorm(q).replace(/^(SATUL|SAT)\s+/, "");
+  const lista = LOCX.E.filter(e => e.up && e.k !== "X" && (u != null ? e.uat === u : (j ? e.j === j : false)));
+  if(u == null && n.length < 2) return [];
+  return lista.map(e => ({ e, s: !n ? 0 : e.n === n ? 0 : e.n.startsWith(n) ? 1 : e.n.includes(" " + n) ? 2 : -1 })).filter(x => x.s >= 0)
+    .sort((a, b) => a.s - b.s || a.e.nume.localeCompare(b.e.nume, "ro")).slice(0, 40).map(x => x.e);
+}
+function satAuto(jId, lId, sId){
+  const el = $(sId), jud = $(jId), loc = $(lId); if(!el || el.dataset.satAuto) return; el.dataset.satAuto = "1";
+  el.setAttribute("autocomplete", "off");
+  let box = null, lista = [], sel = -1;
+  const inchide = () => { if(box){ box.remove(); box = null; } lista = []; sel = -1; };
+  const arata = () => {
+    if(el.readOnly || el.disabled || document.activeElement !== el || el.value.includes(",")){ inchide(); return; }
+    lista = satCauta(el.value, loc && loc.value, jud && jud.value);
+    if(!lista.length){ inchide(); return; }
+    if(!box){ box = document.createElement("div"); box.className = "loc-box loc-box-sat"; document.body.appendChild(box);
+      box.addEventListener("mousedown", ev => { const d = ev.target.closest("[data-i]"); ev.preventDefault(); if(d) alege(+d.dataset.i); }); }
+    const r = el.getBoundingClientRect();
+    box.style.left = r.left + "px"; box.style.top = (r.bottom + 2) + "px"; box.style.minWidth = Math.max(r.width, 300) + "px";
+    const u = satUAT(loc && loc.value, jud && jud.value);
+    box.innerHTML = `<div class="loc-sursa" style="border:0;margin:0 0 2px">${u != null ? "satele " + (LOCX.U[u][1] === "C" ? "comunei " : LOCX.U[u][1] === "M" ? "municipiului " : "orașului ") + esc(locTitlu(LOCX.U[u][0])) + " · " + esc(LOCX.U[u][2]) : "sate din județul " + esc(locMare(jud && jud.value))}</div>` +
+      lista.map((e, i) => `<div data-i="${i}" class="${i === sel ? "on" : ""}"><b>${esc(e.nume)}</b> <span>— ${esc(e.t)}</span><i>${esc(e.j)}</i></div>`).join("");
+  };
+  const alege = i => {
+    const e = lista[i]; if(!e) return; const w = locScrie(e);
+    if(loc && satUAT(loc.value, jud && jud.value) !== e.uat){ loc.value = w.loc; loc.dispatchEvent(new Event("change", { bubbles: true })); }
+    if(jud && locMare(jud.value).trim() !== e.j){ jud.value = e.j; jud.dispatchEvent(new Event("change", { bubbles: true })); }
+    el.value = w.sat || (locMare(e.nume) + ", "); inchide();
+    el.dispatchEvent(new Event("input", { bubbles: true })); el.dispatchEvent(new Event("change", { bubbles: true }));
+    el.focus(); el.setSelectionRange(el.value.length, el.value.length);
+  };
+  el.addEventListener("focus", () => { locIncarca().then(arata); });
+  el.addEventListener("input", ev => { if(!ev.isTrusted) return; sel = -1; locIncarca().then(arata); });
+  el.addEventListener("keydown", ev => {
+    if(!box) return;
+    if(ev.key === "ArrowDown" || ev.key === "ArrowUp"){ ev.preventDefault(); sel = (sel + (ev.key === "ArrowDown" ? 1 : -1) + lista.length) % lista.length; arata(); const o = box && box.querySelector(".on"); if(o) o.scrollIntoView({ block: "nearest" }); }
+    else if(ev.key === "Enter" && sel >= 0){ ev.preventDefault(); alege(sel); }
+    else if(ev.key === "Escape"){ ev.stopPropagation(); inchide(); }
+  });
+  el.addEventListener("blur", () => { setTimeout(inchide, 120); });
+  window.addEventListener("scroll", ev => { if(box && box.contains(ev.target)) return; inchide(); }, true);
+}
+satAuto("mm-jud", "mm-loc", "mm-sat");
+satAuto("ma-jud", "ma-loc", "ma-sat");
 
 // ================= v7.43 (cerut de Ovidiu, 01.11): EXPORT COMPLET RAPORT LUNĂ =================
 // Un clic → 2 fișiere: Excel (foaia 1 = Raport lună formatat, foaia 2 = SUMAR: mișcări, grafice, stoc la ultima zi
