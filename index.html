@@ -320,6 +320,10 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   .loc-box>div[data-i]:hover,.loc-box>div.on{background:var(--gl)}
   .loc-box .loc-sursa{padding:4px 10px 2px;font-size:11px;color:var(--mut);border-top:1px solid var(--bd);margin-top:2px}
   .loc-av{font-size:11.5px;color:var(--amb);margin-top:3px}
+  .loc-box .loc-cap{padding:4px 10px 2px;font-size:11px;color:var(--mut);font-weight:600}
+  .loc-box .loc-cap+div[data-i]{border-top:0}
+  .loc-box>div[data-i].str b{font-weight:600}
+  .loc-box{max-height:min(420px,calc(100vh - 120px));overflow-y:auto}
   .loc-box-sat{max-height:340px;overflow:auto}   /* v7.54 */
   .cx-w{position:relative;display:block} .cx-w>input{padding-right:30px}   /* v5.98: ✕ în căsuțele de căutare */
   .cx-b{position:absolute;right:4px;top:50%;transform:translateY(-50%);border:0;background:none;color:var(--mut);font-size:16px;line-height:1;padding:4px 6px;cursor:pointer}
@@ -974,7 +978,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
   <span id="rz-w"><button id="rz-reset" class="pictograma" title="Lățimi implicite — pune coloanele din tabelele acestei file înapoi cum erau">↺ Reset layout</button><i class="rz-sep">|</i></span>
   <span id="tz-w" title="Mărimea tabelului (doar tabelul, restul rămâne la fel), din 5 în 5%. Merge și cu Ctrl + rotița mausului, Ctrl + / Ctrl − / Ctrl 0. Dublu clic pe procent = scrii tu valoarea."><button class="pictograma" onclick="tzPas(-1)" aria-label="Micșorează tabelul">−</button><b id="tz-v" ondblclick="tzScrie()" title="Dublu clic = scrii mărimea (ex. 87), Enter">100%</b><input id="tz-in" type="number" min="30" max="300" step="5" style="display:none"><button class="pictograma" onclick="tzPas(1)" aria-label="Mărește tabelul">+</button></span>
-  <span class="ver">v7.57</span>
+  <span class="ver">v7.58</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -12264,11 +12268,11 @@ function locIncarca(){
   LOCX_P = fetch("localitati.json").then(r => { if(!r.ok) throw new Error("http " + r.status); return r.json(); }).then(d => {
     const KN = { M: "municipiu", O: "oraș", C: "comună" };
     const E = d.u.map((u, i) => ({ n: locNorm(u[0]), nume: u[0], j: u[2], k: u[1], uat: i, t: KN[u[1]] }));
-    d.l.forEach(l => { const u = d.u[l[1]], k = l[2] || "S";
-      E.push({ n: locNorm(l[0]), nume: l[0], j: u[2], k, uat: l[1], up: u,
+    d.l.forEach((l, li) => { const u = d.u[l[1]], k = l[2] || "S";
+      E.push({ n: locNorm(l[0]), nume: l[0], j: u[2], k, uat: l[1], up: u, li,
         t: k === "S" ? "sat, " + (u[1] === "C" ? "com. " : u[1] === "M" ? "mun. " : "oraș ") + locTitlu(u[0])
          : k === "X" ? "București" : "localitate a " + (u[1] === "M" ? "mun. " : "orașului ") + locTitlu(u[0]) }); });
-    LOCX = { E, U: d.u }; return LOCX;
+    LOCX = { E, U: d.u, L: d.l }; return LOCX;
   }).catch(e => { LOCX_P = null; console.warn("localitati.json:", e); return null; });
   return LOCX_P;
 }
@@ -12365,33 +12369,124 @@ function satCauta(q, locV, judV){
   return lista.map(e => ({ e, s: !n ? 0 : e.n === n ? 0 : e.n.startsWith(n) ? 1 : e.n.includes(" " + n) ? 2 : -1 })).filter(x => x.s >= 0)
     .sort((a, b) => a.s - b.s || a.e.nume.localeCompare(b.e.nume, "ro")).slice(0, 40).map(x => x.e);
 }
+// ================= v7.58 (cerut de Ovidiu, 03.11): STRĂZI DIN OPENSTREETMAP =================
+// La „Sat / Str. / Locație”: după satul / orașul ales apar străzile lui (strazi/<JUD>.json, făcute din OpenStreetMap
+// cu import/strazi_osm.py — se refac lunar). Câmpul rămâne liber (DN, FN, [ reper ]). Sus apar și adresele deja
+// folosite în anexele cu aceeași localitate. Anexele existente nu se schimbă.
+const STR_C = {}, STR_P = {};
+const STR_PRE = /^(STRADA|STR|CALEA|BULEVARDUL|BLVD|BLV|BDUL|BDL|B DUL|ALEEA|SOSEAUA|SOS|DRUMUL|PIATA|PTA|SPLAIUL|INTRAREA|INTR|FUNDATURA|ULITA|STRADELA|PRELUNGIREA)\s+/;
+const strCore = s => locNorm(s).replace(STR_PRE, "").replace(/^(GENERAL|GEN|DOCTOR|DR|PROFESOR|PROF|POET|PATRIARH)\s+/, "");
+const strTip = w => ({ STRADA: "STR", BULEVARDUL: "BLV", BLVD: "BLV", BDUL: "BLV", BDL: "BLV", SOSEAUA: "SOS", PTA: "PIATA", INTR: "INTRAREA" })[w] || w;
+function strIncarca(jud){
+  const j = locMare(jud).trim();
+  if(!/^[A-Z]{1,2}$/.test(j)) return Promise.resolve(null);
+  if(j in STR_C) return Promise.resolve(STR_C[j]);
+  if(STR_P[j]) return STR_P[j];
+  STR_P[j] = fetch("strazi/" + j + ".json").then(r => r.ok ? r.json() : null).then(d => {
+    if(d) for(const k in d.u) d.u[k] = d.u[k].map(r => ({ nume: r[0], sat: r[1], x: r[2], y: r[3], n: locNorm(r[0]), c: strCore(r[0]) }));
+    STR_C[j] = d; delete STR_P[j]; return d;
+  }).catch(e => { delete STR_P[j]; console.warn("strazi " + j + ":", e); return null; });
+  return STR_P[j];
+}
+// satul scris înaintea virgulei („SAT BAILE FELIX”) → indexul lui în localitati.json (sau -1)
+function strSatDin(t, u){
+  if(!LOCX || u == null) return -1;
+  const n = locNorm(t).replace(/^(SATUL|SAT|LOCALITATEA|LOC)\s+/, "");
+  const e = LOCX.E.find(e => e.up && e.uat === u && e.n === n);
+  return e ? e.li : -1;
+}
+function strCauta(q, u, si, j){
+  const d = STR_C[locMare(j).trim()]; if(!d || u == null) return [];
+  let L = d.u[String(u)] || [];
+  if(LOCX && LOCX.U[u] && LOCX.U[u][1] === "C" && !L.some(r => r.c === "PRINCIPALA"))
+    L = L.concat([{ nume: "STR PRINCIPALA", sat: -1, n: "STR PRINCIPALA", c: "PRINCIPALA" }]);   // la sate drumul principal lipsește des din hartă
+  const n = strCore(q), cuSat = si >= 0 && L.some(r => r.sat === si);
+  const pm = locNorm(q).match(STR_PRE), pq = pm ? strTip(pm[1]) : "";   // „SOS ALEX…” → întâi șoselele
+  if(!n){   // nimic scris după virgulă: străzile satului (dacă sunt puține), altfel nimic
+    const S = cuSat ? L.filter(r => r.sat === si) : L;
+    return S.length <= 60 ? S : [];
+  }
+  const r = [];
+  for(const x of L){
+    const s = x.c === n ? 0 : x.c.startsWith(n) ? 1 : x.c.includes(" " + n) ? 2 : (n.length >= 3 && x.c.includes(n)) ? 3 : x.n.startsWith(locNorm(q)) ? 1 : -1;
+    if(s < 0) continue;
+    r.push({ x, s: s * 4 + (pq && strTip(x.n.split(" ")[0]) !== pq ? 2 : 0) + (cuSat && x.sat !== si ? 1 : 0) });
+  }
+  return r.sort((a, b) => a.s - b.s || a.x.nume.localeCompare(b.x.nume, "ro")).map(o => o.x);
+}
+// adresele deja scrise în anexe, la aceeași localitate (ce scrii trebuie să fie în ele)
+function strIstoric(q, locV, j){
+  const l = locFara(locV), n = locNorm(q); if(!l || n.length < 2) return [];
+  const vaz = new Set(), r = [];
+  for(const a of ANX){
+    if(!a.sat || locFara(a.loc) !== l || (j && locMare(a.jud).trim() !== j)) continue;
+    const t = String(a.sat).trim(), tn = locNorm(t);
+    if(tn === n || vaz.has(tn) || !tn.includes(n)) continue;
+    vaz.add(tn); r.push(t); if(r.length >= 4) break;
+  }
+  return r;
+}
 function satAuto(jId, lId, sId){
   const el = $(sId), jud = $(jId), loc = $(lId); if(!el || el.dataset.satAuto) return; el.dataset.satAuto = "1";
   el.setAttribute("autocomplete", "off");
   let box = null, lista = [], sel = -1;
   const inchide = () => { if(box){ box.remove(); box = null; } lista = []; sel = -1; };
   const arata = () => {
-    if(el.readOnly || el.disabled || document.activeElement !== el || el.value.includes(",")){ inchide(); return; }
-    lista = satCauta(el.value, loc && loc.value, jud && jud.value);
+    if(el.readOnly || el.disabled || document.activeElement !== el){ inchide(); return; }
+    const v = el.value, ci = v.indexOf(","), ul = v.lastIndexOf(",");
+    const u = satUAT(loc && loc.value, jud && jud.value), j = locMare(jud && jud.value).trim();
+    let sate = [], str = [], ist = [];
+    if(ci < 0){
+      sate = satCauta(v, loc && loc.value, jud && jud.value);
+      if(u != null && locNorm(v).length >= 2) str = strCauta(v, u, -1, j).slice(0, sate.length ? 12 : 30);
+    } else {
+      const si = strSatDin(v.slice(0, ci), u);
+      str = strCauta(v.slice(ul + 1), u, si, j).slice(0, 40);
+    }
+    ist = strIstoric(v, loc && loc.value, j);
+    lista = [...sate.map(e => ({ t: "sat", e })), ...str.map(r => ({ t: "str", r })), ...ist.map(a => ({ t: "ist", a }))];
     if(!lista.length){ inchide(); return; }
     if(!box){ box = document.createElement("div"); box.className = "loc-box loc-box-sat"; document.body.appendChild(box);
       box.addEventListener("mousedown", ev => { const d = ev.target.closest("[data-i]"); ev.preventDefault(); if(d) alege(+d.dataset.i); }); }
     const r = el.getBoundingClientRect();
     box.style.left = r.left + "px"; box.style.top = (r.bottom + 2) + "px"; box.style.minWidth = Math.max(r.width, 300) + "px";
-    const u = satUAT(loc && loc.value, jud && jud.value);
-    box.innerHTML = `<div class="loc-sursa" style="border:0;margin:0 0 2px">${u != null ? "satele " + (LOCX.U[u][1] === "C" ? "comunei " : LOCX.U[u][1] === "M" ? "municipiului " : "orașului ") + esc(locTitlu(LOCX.U[u][0])) + " · " + esc(LOCX.U[u][2]) : "sate din județul " + esc(locMare(jud && jud.value))}</div>` +
-      lista.map((e, i) => `<div data-i="${i}" class="${i === sel ? "on" : ""}"><b>${esc(e.nume)}</b> <span>— ${esc(e.t)}</span><i>${esc(e.j)}</i></div>`).join("");
+    const U = u != null ? LOCX.U[u] : null, tipU = U ? (U[1] === "C" ? "comunei " : U[1] === "M" ? "municipiului " : "orașului ") + esc(locTitlu(U[0])) : "";
+    let h = "", cap = "";
+    lista.forEach((x, i) => {
+      const c = x.t === "sat" ? (U ? "satele " + tipU + " · " + esc(U[2]) : "sate din județul " + esc(j))
+        : x.t === "str" ? "străzi " + (U ? "· " + esc(locTitlu(U[0])) : "") + " · OpenStreetMap" + (STR_C[j] && STR_C[j].v ? " " + esc(STR_C[j].v.replace(/^OSM\s*/, "")) : "")
+        : "folosite în anexele tale";
+      if(c !== cap){ h += `<div class="loc-cap">${c}</div>`; cap = c; }
+      const on = i === sel ? "on" : "";
+      if(x.t === "sat") h += `<div data-i="${i}" class="${on}"><b>${esc(x.e.nume)}</b> <span>— ${esc(x.e.t)}</span><i>${esc(x.e.j)}</i></div>`;
+      else if(x.t === "str") h += `<div data-i="${i}" class="str ${on}"><b>${esc(x.r.nume)}</b> <span>${x.r.sat >= 0 && LOCX.L[x.r.sat] ? "— " + esc(locTitlu(LOCX.L[x.r.sat][0])) : ""}</span></div>`;
+      else h += `<div data-i="${i}" class="${on}"><b>${esc(x.a)}</b></div>`;
+    });
+    box.innerHTML = h;
   };
+  const scrieSus = () => { el.dispatchEvent(new Event("input", { bubbles: true })); el.dispatchEvent(new Event("change", { bubbles: true }));
+    el.focus(); el.setSelectionRange(el.value.length, el.value.length); };
   const alege = i => {
-    const e = lista[i]; if(!e) return; const w = locScrie(e);
+    const x = lista[i]; if(!x) return;
+    if(x.t === "ist"){ el.value = x.a; inchide(); scrieSus(); return; }
+    if(x.t === "str"){
+      const v = el.value, ci = v.indexOf(","), ul = v.lastIndexOf(","), u = satUAT(loc && loc.value, jud && jud.value);
+      if(ci >= 0) el.value = v.slice(0, ul + 1).trimEnd() + " " + x.r.nume + " ";
+      else {
+        const sat = x.r.sat >= 0 && u != null && LOCX.U[u][1] === "C" ? LOCX.L[x.r.sat] : null;   // la comune: „SAT X, STR Y ”
+        el.value = (sat ? "SAT " + locMare(sat[0]) + ", " : "") + x.r.nume + " ";
+      }
+      inchide(); scrieSus(); return;
+    }
+    const e = x.e, w = locScrie(e);
     if(loc && satUAT(loc.value, jud && jud.value) !== e.uat){ loc.value = w.loc; loc.dispatchEvent(new Event("change", { bubbles: true })); }
     if(jud && locMare(jud.value).trim() !== e.j){ jud.value = e.j; jud.dispatchEvent(new Event("change", { bubbles: true })); }
-    el.value = w.sat || (locMare(e.nume) + ", "); inchide();
-    el.dispatchEvent(new Event("input", { bubbles: true })); el.dispatchEvent(new Event("change", { bubbles: true }));
-    el.focus(); el.setSelectionRange(el.value.length, el.value.length);
+    el.value = w.sat || (locMare(e.nume) + ", "); inchide(); scrieSus();
+    strIncarca(e.j).then(() => { if(document.activeElement === el) arata(); });   // după sat → străzile lui
   };
-  el.addEventListener("focus", () => { locIncarca().then(arata); });
-  el.addEventListener("input", ev => { if(!ev.isTrusted) return; sel = -1; locIncarca().then(arata); });
+  const incarca = () => Promise.all([locIncarca(), strIncarca(jud && jud.value)]);
+  el.addEventListener("focus", () => { incarca().then(arata); });
+  el.addEventListener("input", ev => { if(!ev.isTrusted) return; sel = -1; incarca().then(arata); });
   el.addEventListener("keydown", ev => {
     if(!box) return;
     if(ev.key === "ArrowDown" || ev.key === "ArrowUp"){ ev.preventDefault(); sel = (sel + (ev.key === "ArrowDown" ? 1 : -1) + lista.length) % lista.length; arata(); const o = box && box.querySelector(".on"); if(o) o.scrollIntoView({ block: "nearest" }); }
@@ -12399,6 +12494,7 @@ function satAuto(jId, lId, sId){
     else if(ev.key === "Escape"){ ev.stopPropagation(); inchide(); }
   });
   el.addEventListener("blur", () => { setTimeout(inchide, 120); });
+  if(jud) jud.addEventListener("change", () => strIncarca(jud.value));
   window.addEventListener("scroll", ev => { if(box && box.contains(ev.target)) return; inchide(); }, true);
 }
 satAuto("mm-jud", "mm-loc", "mm-sat");
