@@ -197,14 +197,14 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   :root[data-tema="inchis"] .pan-info .pi-t,:root[data-tema="inchis"] .pan-info .pi-ml{color:#93C5FD}
   :root[data-tema="inchis"] .pan-info .pi-sep{background:#2C4A7A}
   :root[data-tema="inchis"] .pan-info .pi-f{background:#1F3B2A;color:#9BE0B4}
-  .acc-box:has(.acc-c){grid-template-columns:repeat(auto-fill,minmax(230px,max-content));gap:8px 10px}
-  .acc-c{display:inline-flex;align-items:center;gap:10px;padding:5px 6px 5px 10px;border:1px solid var(--bd);border-radius:999px;background:var(--card);min-height:36px;transition:border-color .15s,background .15s}
-  .acc-c.on{border-color:#1F5FD1;background:#F1F6FF}
-  :root[data-tema="inchis"] .acc-c.on{background:#14233D;border-color:#6A9CF0}
-  .acc-c label{font-weight:600}
-  .acc-c .acc-q{display:none;align-items:center;gap:4px;font-size:12px;color:var(--mut)}
-  .acc-c.on .acc-q{display:inline-flex}
-  .acc-c .acc-n{width:58px;padding:3px 6px;font-size:13px;text-align:center;border-radius:999px;font-weight:700}
+  .acc-box:has(.acc-pil){grid-template-columns:repeat(auto-fill,minmax(230px,max-content));gap:8px 10px}
+  .acc-pil{display:inline-flex;align-items:center;gap:10px;padding:5px 6px 5px 10px;border:1px solid var(--bd);border-radius:999px;background:var(--card);min-height:36px;transition:border-color .15s,background .15s}
+  .acc-pil.on{border-color:#1F5FD1;background:#F1F6FF}
+  :root[data-tema="inchis"] .acc-pil.on{background:#14233D;border-color:#6A9CF0}
+  .acc-pil label{font-weight:600}
+  .acc-pil .acc-q{display:none;align-items:center;gap:4px;font-size:12px;color:var(--mut)}
+  .acc-pil.on .acc-q{display:inline-flex}
+  .acc-pil .acc-n{width:58px;padding:3px 6px;font-size:13px;text-align:center;border-radius:999px;font-weight:700}
   .st-t{width:100%;border-collapse:collapse;font-size:14px}
   .st-t th{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.04em;color:var(--mut);text-align:right;padding:0 0 6px 10px;border-bottom:1px solid var(--bd);background:none}
   .st-t th:first-child{text-align:left;padding-left:0}
@@ -998,7 +998,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
   <span id="rz-w"><button id="rz-reset" class="pictograma" title="Lățimi implicite — pune coloanele din tabelele acestei file înapoi cum erau">↺ Reset layout</button><i class="rz-sep">|</i></span>
   <span id="tz-w" title="Mărimea tabelului (doar tabelul, restul rămâne la fel), din 5 în 5%. Merge și cu Ctrl + rotița mausului, Ctrl + / Ctrl − / Ctrl 0. Dublu clic pe procent = scrii tu valoarea."><button class="pictograma" onclick="tzPas(-1)" aria-label="Micșorează tabelul">−</button><b id="tz-v" ondblclick="tzScrie()" title="Dublu clic = scrii mărimea (ex. 87), Enter">100%</b><input id="tz-in" type="number" min="30" max="300" step="5" style="display:none"><button class="pictograma" onclick="tzPas(1)" aria-label="Mărește tabelul">+</button></span>
-  <span class="ver">v7.65</span>
+  <span class="ver">v7.66</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -2445,7 +2445,7 @@ const accDe = (prod) => (NOM.accesoriu||[]).filter(a => a.parinte === prod).map(
 const accNr = x => { const m = /^(\d+)\s+(.+)$/.exec(String(x || "").trim()); return m ? { n: +m[1], nume: m[2].trim() } : { n: 0, nume: String(x || "").trim() }; };
 const accCuNr = prod => /GARD|CORDON/i.test(prod || "");
 const accCitite = box => [...$(box).querySelectorAll("input[type=checkbox]:checked")].map(x => {
-  const n = x.closest(".acc-c") && x.closest(".acc-c").querySelector(".acc-n"), v = n ? Math.abs(Math.round(+n.value || 0)) : 0;
+  const n = x.closest(".acc-pil") && x.closest(".acc-pil").querySelector(".acc-n"), v = n ? Math.abs(Math.round(+n.value || 0)) : 0;
   return (v ? v + " " : "") + x.value; }).join(", ") || null;
 function umpleAcc(selProdus, selModel, bifate){
   const box = $(selModel.replace("model","acc")); if(!box) return;
@@ -2456,10 +2456,10 @@ function umpleAcc(selProdus, selModel, bifate){
   alese.forEach(a => { if(!lista.includes(a)) lista.push(a); });
   box.innerHTML = lista.length ? lista.map(a => { const ch = alese.includes(a);
       const lab = `<label><input type="checkbox" value="${esc(a)}" ${ch?"checked":""}>${esc(a)}</label>`;
-      return cuNr ? `<span class="acc-c${ch ? " on" : ""}">${lab}<span class="acc-q"><input type="number" min="0" step="1" class="acc-n" placeholder="0" title="Câte bucăți (${esc(a)})" value="${ch ? nrDe(a) : ""}">buc</span></span>` : lab; }).join("")
+      return cuNr ? `<span class="acc-pil${ch ? " on" : ""}">${lab}<span class="acc-q"><input type="number" min="0" step="1" class="acc-n" placeholder="0" title="Câte bucăți (${esc(a)})" value="${ch ? nrDe(a) : ""}">buc</span></span>` : lab; }).join("")
                                : '<span class="muted">—</span>';
-  if(cuNr) box.querySelectorAll(".acc-c input[type=checkbox]").forEach(c => c.addEventListener("change", () => {
-    const w = c.closest(".acc-c"), n = w.querySelector(".acc-n"); w.classList.toggle("on", c.checked); if(c.checked) n.focus(); else n.value = ""; }));
+  if(cuNr) box.querySelectorAll(".acc-pil input[type=checkbox]").forEach(c => c.addEventListener("change", () => {
+    const w = c.closest(".acc-pil"), n = w.querySelector(".acc-n"); w.classList.toggle("on", c.checked); if(c.checked) n.focus(); else n.value = ""; }));
   setTimeout(panouArata, 0);
 }
 // v7.61 (cerut de Ovidiu, 04.11): GARD / CORDON — lungimea panoului din numele tipului („F2 (3,5*2M)” = 3,5 m, „F6 (2,5*1,2M)” = 2,5 m).
