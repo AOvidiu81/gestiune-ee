@@ -1446,6 +1446,7 @@ async function findOrCreateSession(){
     if(existing && existing.length){
       const s = existing[0];
       currentSessionId = s.id;
+      if(s.created_at) dayStart.startTime = new Date(s.created_at);   // R40 (04.11): ora start = când a început sesiunea, nu când s-a redeschis aplicația
       dayStart.brand = s.vehicle_brand;
       dayStart.plate = s.vehicle_plate;
       dayStart.kmStart = s.km_start;
@@ -2530,10 +2531,11 @@ async function generateDailyPdf(kmEndEl){
   const vehicleStr = stripDiacritics(`${dayStart.brand || '-'} ${dayStart.plate || '-'}`);
 
   const startTimeStr = dayStart.startTime ? `${pad2(dayStart.startTime.getHours())}:${pad2(dayStart.startTime.getMinutes())}` : '-';
-  const endTimeStr = `${pad2(now.getHours())}:${pad2(now.getMinutes())}`;
+  const stop = dayStart.endTime || now;   // R40: la PDF-ul din istoric ora stop = finalizarea sesiunii
+  const endTimeStr = `${pad2(stop.getHours())}:${pad2(stop.getMinutes())}`;
   let totalOreHHMM = '-';
   if(dayStart.startTime){
-    const totalMin = Math.round((now - dayStart.startTime)/60000);
+    const totalMin = Math.round((stop - dayStart.startTime)/60000);
     if(totalMin >= 0){
       totalOreHHMM = `${pad2(Math.floor(totalMin/60))}:${pad2(totalMin%60)}`;
     }
@@ -2641,6 +2643,9 @@ async function regenerateHistoryPdf(session){
   dayStart = {
     brand: session.vehicle_brand, plate: session.vehicle_plate,
     kmStart: session.km_start, driver1: session.driver1, driver2: session.driver2, traseu: session.last_masina || '',
+    zona: session.zona || '',
+    startTime: session.created_at ? new Date(session.created_at) : null,                                   // R40: ora start din sesiune
+    endTime: session.status === 'finalizata' && session.updated_at ? new Date(session.updated_at) : null,  // R40: ora stop = finalizarea, nu ora regenerării
   };
   Object.keys(visitLog).forEach(k=>delete visitLog[k]);
   (visits||[]).forEach(v=>{
