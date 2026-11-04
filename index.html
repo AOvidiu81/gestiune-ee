@@ -998,7 +998,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
   <span id="rz-w"><button id="rz-reset" class="pictograma" title="Lățimi implicite — pune coloanele din tabelele acestei file înapoi cum erau">↺ Reset layout</button><i class="rz-sep">|</i></span>
   <span id="tz-w" title="Mărimea tabelului (doar tabelul, restul rămâne la fel), din 5 în 5%. Merge și cu Ctrl + rotița mausului, Ctrl + / Ctrl − / Ctrl 0. Dublu clic pe procent = scrii tu valoarea."><button class="pictograma" onclick="tzPas(-1)" aria-label="Micșorează tabelul">−</button><b id="tz-v" ondblclick="tzScrie()" title="Dublu clic = scrii mărimea (ex. 87), Enter">100%</b><input id="tz-in" type="number" min="30" max="300" step="5" style="display:none"><button class="pictograma" onclick="tzPas(1)" aria-label="Mărește tabelul">+</button></span>
-  <span class="ver">v7.67</span>
+  <span class="ver">v7.68</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -6015,8 +6015,8 @@ function randuriRaport(){
 // Facturare (hotărât de Ovidiu, 04.10): rânduri pe grupe de bucăți, cu cantități pozitive. Zilele pornesc de la data
 // amplasării. Suplimentarea = rând separat de la ziua ei. Reducerea desparte rândul: bucățile ridicate se facturează până
 // în ziua reducerii inclusiv, restul merge mai departe. Reducerea ia întâi din cele mai vechi bucăți (anexa inițială).
-function randuriFacturare(){
-  const an = +$("r-an").value, luna = +$("r-luna").value;
+function randuriFacturare(anP, lunaP){
+  const an = anP || +$("r-an").value, luna = lunaP || +$("r-luna").value;   // v7.68: și pentru altă lună (avansul PF = luna următoare)
   const p1 = new Date(an, luna - 1, 1), pN = new Date(an, luna, 0);
   const fc = ($("r-client").value || "").trim().toLowerCase();
   const fj = $("r-jud").value, fs = $("r-stare").value;
@@ -6225,6 +6225,13 @@ async function raportFacturare(){
   const tva = (+$("r-tva").value || 0) / 100;
   let r = randuriFacturare();
   const anF = +$("r-an").value, lunaF = +$("r-luna").value;
+  // v7.68 (cerut de Ovidiu, 04.11): anexele cu „Facturare în avans” (persoane fizice) se facturează pe LUNA URMĂTOARE —
+  // în raportul din noiembrie apare 01.12 – 31.12 (cu ridicarea, dacă e programată în decembrie). În luna amplasării rămâne
+  // și rândul lunii curente (de la amplasare până la sfârșitul lunii), ca să nu se piardă primele zile.
+  { const [anU, lunaU] = lunaF === 12 ? [anF + 1, 1] : [anF, lunaF + 1], p1 = new Date(anF, lunaF - 1, 1), pN = new Date(anF, lunaF, 0);
+    const primaLuna = x => { const d = dtz(x.a.data_livrarii || x.a.data_emitere); return d && d >= p1 && d <= pN; };
+    r = r.filter(x => !x.a.fact_avans || primaLuna(x)).concat(randuriFacturare(anU, lunaU).filter(x => x.a.fact_avans))
+      .sort((x, y) => (x.k.nume || "").localeCompare(y.k.nume || "") || (x.c.id - y.c.id) || String(x.lin).localeCompare(String(y.lin), undefined, { numeric: true }) || (x.de - y.de)); }
   // v6.81 (cerut de Ovidiu, 23.10): anexa evenimentului cu „Comanda clientului” pe amplasare → ANEXA NR = comanda clientului, EMITERE ANEXA = data ei
   { const { data: cm } = await db.from("miscari").select("id,anexa_id,cmd_nr,cmd_data").eq("tip_miscare", "EVENIMENT-A").not("anexa_id", "is", null).or("cmd_nr.not.is.null,cmd_data.not.is.null").limit(5000);
     FACT_CMD = {}; (cm || []).sort((x, y) => x.id - y.id).forEach(m => { FACT_CMD[m.anexa_id] = m; }); }
