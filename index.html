@@ -998,7 +998,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
   <span id="rz-w"><button id="rz-reset" class="pictograma" title="Lățimi implicite — pune coloanele din tabelele acestei file înapoi cum erau">↺ Reset layout</button><i class="rz-sep">|</i></span>
   <span id="tz-w" title="Mărimea tabelului (doar tabelul, restul rămâne la fel), din 5 în 5%. Merge și cu Ctrl + rotița mausului, Ctrl + / Ctrl − / Ctrl 0. Dublu clic pe procent = scrii tu valoarea."><button class="pictograma" onclick="tzPas(-1)" aria-label="Micșorează tabelul">−</button><b id="tz-v" ondblclick="tzScrie()" title="Dublu clic = scrii mărimea (ex. 87), Enter">100%</b><input id="tz-in" type="number" min="30" max="300" step="5" style="display:none"><button class="pictograma" onclick="tzPas(1)" aria-label="Mărește tabelul">+</button></span>
-  <span class="ver">v7.69</span>
+  <span class="ver">v7.70</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -8662,7 +8662,24 @@ function rcvDate(){
     const mx = f => Math.max(0, ...g.pct.map(c => +c[f] || 0));
     const pr = { t: mx("toalete"), c: mx("containere"), g: mx("garduri") }; tot.toal += pr.t; tot.cont += pr.c; tot.gard += pr.g;
     const fr = [...new Set(g.pct.map(c => c.frecventa).filter(Boolean))].join(", ");
-    return { ...g, pr, fr, randuri };
+    // v7.70 (cerut de Ovidiu, 04.11): GPS-ul punctului, modelul (din anexe) și seriile LA CLIENT de pe locație, dacă există în bază
+    const cuGps = g.pct.find(c => c.lat != null && c.lon != null), gps = cuGps ? { lat: +cuGps.lat, lon: +cuGps.lon } : null;
+    const idA = new Set(); g.pct.forEach(c => { const m = /^A(\d+)/.exec(c.client_key || ""); if(m) idA.add(+m[1]); (c.anexe_ids || []).forEach(i => idA.add(+i)); });
+    const nCl = rrNorm(g.pct[0].client), cli = (CLI || []).find(k => rrNorm(k.nume) === nCl || rrNorm(k.nume).replace(/\b(S\.?R\.?L\.?|S\.?A\.?)$/,"").trim() === nCl);
+    const locN = x => rrNorm(x.loc) + "|" + rrNorm(x.sat), cheieLoc = rrNorm(g.loc) + "|" + rrNorm(g.sat);
+    if(cli) (ANX || []).forEach(a => { const k = (CTR || []).find(t => t.id === a.contract_id); if(k && k.client_id === cli.id && locN(a) === cheieLoc) idA.add(a.id); });
+    [...idA].forEach(i => { const a = (ANX || []).find(x => x.id === i); if(a) anexeLocatie(a).forEach(j => idA.add(j)); });
+    const anx = (ANX || []).filter(a => idA.has(a.id) && !(anexaNr(a) || {}).tip && !stRid(a.status));
+    const model = [...new Set(anx.map(a => [a.produs, a.model, a.model_fizic].filter(Boolean).join(" ")).filter(Boolean))].join(" · ");
+    // seria stă pe punct (serii.punct = „A201-01” → punctele A201-01-MA / -VI); fără punct: pe anexă (o singură locație) sau pe adresă
+    const chPct = g.pct.map(c => String(c.client_key || ""));
+    const peLoc = x => x.punct ? chPct.some(k => k === x.punct || k.startsWith(x.punct + "-"))
+      : (idA.has(x.anexa_id) && (!x.sat || locN(x) === cheieLoc)) || (cli && x.client_id === cli.id && locN(x) === cheieLoc);
+    const SL = (SER || []).filter(x => x.stare === "LA CLIENT" && peLoc(x));
+    const mf = {}; SL.forEach(x => { if(x.model) mf[x.model] = (mf[x.model] || 0) + 1; });
+    const modelF = Object.entries(mf).map(([m, n]) => n + " " + m).join(", ");
+    const serii = [...new Set(SL.map(x => x.serie).filter(Boolean))];
+    return { ...g, pr, fr, randuri, gps, model: [model, modelF].filter(Boolean).join(" · "), serii };
   }).sort((x, y) => (x.loc + x.sat).localeCompare(y.loc + y.sat));
   const prodT = (t, c, gd) => [t ? t + (t === 1 ? " toaletă" : " toalete") : "", c ? c + (c === 1 ? " container" : " containere") : "", gd ? gd + " gard" : ""].filter(Boolean).join(" · ") || "—";
   loc.forEach(l => l.prodT = prodT(l.pr.t, l.pr.c, l.pr.g));
@@ -8672,14 +8689,17 @@ function rcvDate(){
 }
 function rcvTipar(){
   const d = rcvDate(); if(!d || d.err){ toast(d ? d.err : "Alege clientul", true); return; }
-  const ZS = ["Du","Lu","Ma","Mi","Jo","Vi","Sâ"], ziS = iso => ZS[new Date(iso + "T12:00:00").getDay()];
-  const dd = iso => iso.slice(8, 10) + "." + iso.slice(5, 7);
-  const sapt = d.W.map(w => { const s = sInfo(w); return `<th><div class="w">${d.etW(w)}</div><div class="wd">${dd(s.start)}–${dd(s.end)}</div></th>`; }).join("");
-  const celula = x => x.ale.length ? x.ale.map(v => `<div class="v"><b>${ziS(v.s.session_date)} ${dd(v.s.session_date)}</b><span>${v.arrive_time ? rcvHm(v.arrive_time) + (v.leave_time ? "–" + rcvHm(v.leave_time) : "") : "vizitat"}</span></div>`).join("")
-    : x.faraRuta ? `<div class="pl">${ziS(x.plan)} ${dd(x.plan)}<br>fără înregistrare</div>`
-    : x.plan && !x.viitor ? `<div class="nv">${ziS(x.plan)} ${dd(x.plan)}<br>nevizitat</div>` : x.viitor ? `<div class="pl">${ziS(x.plan)} ${dd(x.plan)}</div>` : `<div class="gol">·</div>`;
+  const ZS = ["Duminică","Luni","Marți","Miercuri","Joi","Vineri","Sâmbătă"], ziS = iso => ZS[new Date(iso + "T12:00:00").getDay()];
+  const dd = iso => iso.slice(8, 10) + "." + iso.slice(5, 7) + "." + iso.slice(0, 4);   // v7.70: data întreagă 19.10.2026
+  const sapt = d.W.map(w => { const s = sInfo(w); return `<th><div class="w">${d.etW(w)}</div><div class="wd">${dd(s.start)}<br>${dd(s.end)}</div></th>`; }).join("");
+  // v7.70 (cerut de Ovidiu, 04.11): „Luni 19.10.2026” și doar ora sosirii
+  const celula = x => x.ale.length ? x.ale.map(v => `<div class="v"><b>${ziS(v.s.session_date)}</b><b>${dd(v.s.session_date)}</b><span>${v.arrive_time ? "ora " + rcvHm(v.arrive_time) : "vizitat"}</span></div>`).join("")
+    : x.faraRuta ? `<div class="pl">${ziS(x.plan)}<br>${dd(x.plan)}<br>fără înregistrare</div>`
+    : x.plan && !x.viitor ? `<div class="nv">${ziS(x.plan)}<br>${dd(x.plan)}<br>nevizitat</div>` : x.viitor ? `<div class="pl">${ziS(x.plan)}<br>${dd(x.plan)}</div>` : `<div class="gol">·</div>`;
   const blocuri = d.loc.map((l, i) => `<section class="loc"><div class="lh"><div class="ln">${i + 1}</div><div class="la"><b>${esc([l.jud, l.loc].filter(Boolean).join(" / "))}</b> — ${esc(l.sat)}</div>
       <div class="lp">${esc(l.prodT)}</div><div class="lf">${esc(l.fr || "—")}</div></div>
+    <div class="ld"><span><i>GPS</i> ${l.gps ? `<a href="https://www.google.com/maps?q=${l.gps.lat},${l.gps.lon}">${l.gps.lat.toFixed(6)}, ${l.gps.lon.toFixed(6)}</a>` : "—"}</span>
+      <span><i>Model</i> ${esc(l.model || "—")}</span><span><i>Serii</i> ${l.serii.length ? esc(l.serii.join(", ")) : "—"}</span></div>
     <table><thead><tr><th class="z">Ziua din program</th><th class="t">Traseu</th>${sapt}</tr></thead><tbody>${l.randuri.map(r => `<tr><td class="z">${esc(r.c.ziua || "—")}</td><td class="t">${esc(r.c.masina || "—")}</td>${r.cel.map(x => `<td>${celula(x)}</td>`).join("")}</tr>`).join("")}</tbody></table></section>`).join("");
   const html = `<!doctype html><html lang="ro"><head><meta charset="utf-8"><title>Raport vizite – ${esc(d.client)} – ${esc(d.per)}</title><style>
   @page{size:A4 landscape;margin:10mm}
@@ -8690,23 +8710,25 @@ function rcvTipar(){
   .kpi{display:flex;gap:10px;margin:0 0 14px} .kpi div{border:1px solid #d9e0dc;border-radius:8px;padding:7px 12px;min-width:120px} .kpi b{display:block;font-size:16px;color:#1b5e3a} .kpi span{font-size:10px;color:#6b7a72;text-transform:uppercase;letter-spacing:.05em}
   .loc{margin:0 0 12px;break-inside:avoid;border:1px solid #d9e0dc;border-radius:8px;overflow:hidden}
   .lh{display:flex;align-items:center;gap:12px;background:#E6F3EA;padding:7px 10px;font-size:12px} .ln{width:22px;height:22px;border-radius:50%;background:#1b5e3a;color:#fff;font-weight:700;display:flex;align-items:center;justify-content:center;font-size:11px}
-  .la{flex:1} .lp{font-weight:700;color:#1b5e3a} .lf{background:#fff;border:1px solid #b8d8c3;border-radius:999px;padding:1px 9px;font-weight:600}
+  .la{flex:1} .lp{font-weight:700;color:#1b5e3a}
+  .ld{display:flex;flex-wrap:wrap;gap:4px 22px;padding:5px 10px 6px 44px;background:#F4FAF6;border-top:1px solid #d6eadc;font-size:10.5px}
+  .ld i{font-style:normal;font-size:9px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#6b7a72;margin-right:4px} .ld a{color:#1b5e3a;font-weight:600;text-decoration:none} .lf{background:#fff;border:1px solid #b8d8c3;border-radius:999px;padding:1px 9px;font-weight:600}
   table{width:100%;border-collapse:collapse;table-layout:fixed} th,td{border-top:1px solid #e3e8e5;padding:4px 5px;text-align:center;vertical-align:top}
   th{background:#f6f8f7;font-size:10px;color:#44544b} th .w{font-weight:800;color:#1e2a24;font-size:11px} th .wd{font-weight:500;font-size:9px}
   th.z,td.z{width:92px;text-align:left;font-weight:700} th.t,td.t{width:70px;text-align:left;color:#44544b}
-  .v{background:#EAF6EE;border-radius:5px;padding:2px 3px;margin:1px 0;line-height:1.25} .v b{display:block;font-size:10px} .v span{font-size:10px;color:#1b5e3a;font-weight:700}
+  .v{background:#EAF6EE;border-radius:5px;padding:2px 3px;margin:1px 0;line-height:1.25} .v b{display:block;font-size:10px;line-height:1.2} .v span{font-size:10px;color:#1b5e3a;font-weight:700}
   .nv{background:#FDECEA;color:#b3261e;border-radius:5px;padding:2px 3px;font-size:9px;font-weight:600;line-height:1.25} .pl{color:#9aa6a0;font-size:9px} .gol{color:#c9d1cc}
   .foot{margin-top:10px;color:#6b7a72;font-size:9px;display:flex;justify-content:space-between}
   .bar{position:fixed;bottom:14px;right:14px;display:flex;gap:8px} .bar button{font:inherit;font-size:12px;padding:7px 14px;border-radius:7px;border:1px solid #1b5e3a;background:#1b5e3a;color:#fff;cursor:pointer}
   @media print{.bar{display:none} body{padding:0}}
   </style></head><body>
   <div class="bar"><button onclick="print()">🖨 Tipărește / Salvează PDF</button></div>
-  <div class="top"><div><div class="brand">EURO ECOLOGIC<small>Raport vizite de servisare</small></div></div>
+  <div class="top"><div><div class="brand">EURO ECOLOGIC – DEPOZIT ${esc(depPrincipal() || "HUNEDOARA")}<small>Raport vizite de servisare</small></div></div>
     <div style="text-align:right"><h1>${esc(d.client)}</h1><div class="sub">Perioada: <b>${esc(d.per)}</b> (${fmtD(d.d1)} – ${fmtD(d.d2)})</div></div></div>
   <div class="kpi"><div><span>Locații</span><b>${d.loc.length}</b></div><div><span>Produse</span><b style="font-size:13px">${esc(d.tot.prod)}</b></div>
     <div><span>Vizite efectuate</span><b>${d.tot.viz}</b></div><div><span>Planificate până azi</span><b>${d.tot.plan}</b></div></div>
   ${blocuri}
-  <div class="foot"><span>Verde = vizită înregistrată de șofer (data · ora sosire–plecare) · Roșu = zi din program fără vizită · Gri = zi programată încă neajunsă / zi fără rută înregistrată în aplicație</span><span>Generat ${fmtD(today())} · GestiuneEE</span></div>
+  <div class="foot"><span>Verde = vizită înregistrată de șofer (ziua · data · ora sosirii) · Roșu = zi din program fără vizită · Gri = zi programată încă neajunsă / zi fără rută înregistrată în aplicație</span><span>Generat ${fmtD(today())} · GestiuneEE</span></div>
   </body></html>`;
   const w = window.open("", "_blank"); if(!w){ toast("Browserul a blocat fereastra — permite ferestrele pop-up", true); return; }
   w.document.open(); w.document.write(html); w.document.close();
@@ -8715,9 +8737,10 @@ function rcvExcel(){
   const d = rcvDate(); if(!d || d.err){ toast(d ? d.err : "Alege clientul", true); return; }
   const ZL = ["DUMINICA","LUNI","MARTI","MIERCURI","JOI","VINERI","SAMBATA"], rows = [];
   d.loc.forEach(l => l.randuri.forEach(r => r.cel.forEach((x, i) => {
-    const baza = { CLIENT: d.client, JUDET: l.jud, LOCALITATE: l.loc, LOCATIE: l.sat, PRODUSE: l.prodT, FRECVENTA: l.fr, "ZIUA DIN PROGRAM": r.c.ziua || "", TRASEU: r.c.masina || "", SAPTAMANA: d.etW(d.W[i]) };
-    if(x.ale.length) x.ale.forEach(v => rows.push({ ...baza, DATA: fmtD(v.s.session_date), ZIUA: ZL[new Date(v.s.session_date + "T12:00:00").getDay()], SOSIRE: rcvHm(v.arrive_time), PLECARE: rcvHm(v.leave_time), STARE: "VIZITAT" }));
-    else if(x.plan) rows.push({ ...baza, DATA: fmtD(x.plan), ZIUA: ZL[new Date(x.plan + "T12:00:00").getDay()], SOSIRE: "", PLECARE: "", STARE: x.viitor ? "PROGRAMAT" : x.faraRuta ? "FARA INREGISTRARE" : "NEVIZITAT" });
+    const baza = { CLIENT: d.client, JUDET: l.jud, LOCALITATE: l.loc, LOCATIE: l.sat, GPS: l.gps ? l.gps.lat.toFixed(6) + ", " + l.gps.lon.toFixed(6) : "",
+      PRODUSE: l.prodT, MODEL: l.model || "", SERII: l.serii.join(", "), FRECVENTA: l.fr, "ZIUA DIN PROGRAM": r.c.ziua || "", TRASEU: r.c.masina || "", SAPTAMANA: d.etW(d.W[i]) };
+    if(x.ale.length) x.ale.forEach(v => rows.push({ ...baza, DATA: fmtD(v.s.session_date), ZIUA: ZL[new Date(v.s.session_date + "T12:00:00").getDay()], "ORA SOSIRE": rcvHm(v.arrive_time), STARE: "VIZITAT" }));
+    else if(x.plan) rows.push({ ...baza, DATA: fmtD(x.plan), ZIUA: ZL[new Date(x.plan + "T12:00:00").getDay()], "ORA SOSIRE": "", STARE: x.viitor ? "PROGRAMAT" : x.faraRuta ? "FARA INREGISTRARE" : "NEVIZITAT" });
   })));
   if(!rows.length){ toast("Nu e nimic de exportat", true); return; }
   const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(rows), "VIZITE");
