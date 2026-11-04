@@ -978,7 +978,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
   <span id="rz-w"><button id="rz-reset" class="pictograma" title="Lățimi implicite — pune coloanele din tabelele acestei file înapoi cum erau">↺ Reset layout</button><i class="rz-sep">|</i></span>
   <span id="tz-w" title="Mărimea tabelului (doar tabelul, restul rămâne la fel), din 5 în 5%. Merge și cu Ctrl + rotița mausului, Ctrl + / Ctrl − / Ctrl 0. Dublu clic pe procent = scrii tu valoarea."><button class="pictograma" onclick="tzPas(-1)" aria-label="Micșorează tabelul">−</button><b id="tz-v" ondblclick="tzScrie()" title="Dublu clic = scrii mărimea (ex. 87), Enter">100%</b><input id="tz-in" type="number" min="30" max="300" step="5" style="display:none"><button class="pictograma" onclick="tzPas(1)" aria-label="Mărește tabelul">+</button></span>
-  <span class="ver">v7.58</span>
+  <span class="ver">v7.59</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -10848,9 +10848,16 @@ window.addEventListener("resize", calendarInchide);
 const faraDiacritice = t => String(t == null ? "" : t)
   .replace(/[șşŞȘ]/g, "s").replace(/[țţŢȚ]/g, "t")
   .normalize("NFD").replace(/[̀-ͯ]/g, "").toUpperCase();
+// v7.59 (cerut de Ovidiu, 04.11): punctuația nu mai contează — „MTD” găsește „M.T.D. SIMPLU CONSTRUCT”
+// (și invers). Se caută și pe textul fără . , - ' " / & ( ) etc., pe lângă textul întreg.
+const faraSemne = t => t.replace(/[^\p{L}\p{N}\s]/gu, "");
 function potrivesteCautarea(text, cautat){
-  const t = faraDiacritice(text);
-  return faraDiacritice(cautat).split(/\s+/).filter(Boolean).every(b => t.includes(b));
+  const t = faraDiacritice(text), ts = faraSemne(t);
+  return faraDiacritice(cautat).split(/\s+/).filter(Boolean).every(b => {
+    if(t.includes(b)) return true;
+    const bs = faraSemne(b);
+    return !!bs && ts.includes(bs);
+  });
 }
 
 let CT_PANOU = null, CT_INP = null, CT_LISTA = [], CT_POZ = -1, CT_ALEGE = null;
