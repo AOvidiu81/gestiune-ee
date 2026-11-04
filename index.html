@@ -998,7 +998,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
   <span id="rz-w"><button id="rz-reset" class="pictograma" title="Lățimi implicite — pune coloanele din tabelele acestei file înapoi cum erau">↺ Reset layout</button><i class="rz-sep">|</i></span>
   <span id="tz-w" title="Mărimea tabelului (doar tabelul, restul rămâne la fel), din 5 în 5%. Merge și cu Ctrl + rotița mausului, Ctrl + / Ctrl − / Ctrl 0. Dublu clic pe procent = scrii tu valoarea."><button class="pictograma" onclick="tzPas(-1)" aria-label="Micșorează tabelul">−</button><b id="tz-v" ondblclick="tzScrie()" title="Dublu clic = scrii mărimea (ex. 87), Enter">100%</b><input id="tz-in" type="number" min="30" max="300" step="5" style="display:none"><button class="pictograma" onclick="tzPas(1)" aria-label="Mărește tabelul">+</button></span>
-  <span class="ver">v7.64</span>
+  <span class="ver">v7.65</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -1903,7 +1903,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   #mod-admin .pr-g.cj{grid-template-columns:110px 1fr} #mod-admin .pr-g.c4{grid-template-columns:repeat(4,1fr)}
   #mod-admin textarea{width:100%;min-height:60px;resize:vertical}
   @media(max-width:600px){ #mod-admin .pr-g.c2,#mod-admin .pr-g.c4,#mod-admin .pr-g.cj{grid-template-columns:1fr} }
-  #mod-a .box{resize:both;overflow:auto;width:860px;max-width:98vw;max-height:96vh;min-width:400px;min-height:300px;position:relative}
+  #mod-a .box{resize:both;overflow:auto;width:1000px;max-width:98vw;max-height:96vh;min-width:400px;min-height:300px;position:relative}
   #ma-cap{cursor:move;user-select:none}
   #ma-ctx{font-size:13px;font-weight:400;color:var(--mut);margin-left:6px}
   #mod-a .ma-sect>h4{margin:12px 0 8px;font-size:11px;letter-spacing:.09em;text-transform:uppercase;color:var(--mut);font-weight:700;display:flex;gap:10px;align-items:center}
@@ -1932,6 +1932,10 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   @media(max-width:640px){ #mod-a .sc-campuri{grid-template-columns:1fr 1fr} #mod-a .sc-ex{grid-column:1/-1} }
   #mod-a .c2{grid-template-columns:1fr 1fr} #mod-a .c3{grid-template-columns:1fr 1fr 1fr} #mod-a .c3a{grid-template-columns:110px 1fr 1.4fr}
   #mod-a .c5{grid-template-columns:1fr 1.2fr 1.1fr 1.1fr .7fr .7fr}
+  /* v7.65 (cerut de Ovidiu, 04.11): la GARD / CORDON — Forma · Produs · Panouri · Tip · UM preț (fără Model) */
+  #mod-a .c5.e-gard{grid-template-columns:1fr 1.2fr .7fr 1.7fr .8fr}
+  #mod-a .c5.e-gard>.maf:nth-child(1){order:1} #mod-a .c5.e-gard>.maf:nth-child(2){order:2} #mod-a .c5.e-gard>.maf:nth-child(6){order:3}
+  #mod-a .c5.e-gard>.maf:nth-child(3){order:4} #mod-a .c5.e-gard>.maf:nth-child(5){order:5} #mod-a .c5.e-gard>.maf:nth-child(4){display:none}
   @media(max-width:640px){ #mod-a .c2,#mod-a .c3,#mod-a .c3a,#mod-a .c5{grid-template-columns:1fr} }
   #ma-ciorne{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:-4px 0 10px;font-size:12px}
   #ma-ciorne:empty{display:none}
@@ -2493,7 +2497,9 @@ const umAnexa = id => ((id && ANX.find(x => x.id === +id)) || {}).um || "BUC";
 function panouArata(){
   const ma = $("ma-pan"); if(ma) ma.innerHTML = panouBanda($("ma-prod").value, $("ma-model").value, $("ma-cant").value, $("ma-um").value, true);
   { const g = !!panouLung($("ma-prod").value, $("ma-model").value), l = $("ma-cant-l"), u = $("ma-um") && $("ma-um").previousElementSibling;   // v7.62
-    if(l) l.textContent = g ? "Panouri" : "Cantitate"; if(u) u.textContent = g ? "UM preț" : "UM"; }
+    if(l) l.textContent = g ? "Panouri" : "Cantitate"; if(u) u.textContent = g ? "UM preț" : "UM";
+    const gr = $("ma-cant") && $("ma-cant").closest(".ma-g"); if(gr) gr.classList.toggle("e-gard", g);   // v7.65
+    if(g && $("ma-mf").value) $("ma-mf").value = ""; }
   { const g = !!panouLung($("mm-prod").value, $("mm-model").value), l = $("mm-buc").previousElementSibling; if(l) l.textContent = g ? "Panouri" : "Bucăți"; }
   const mm = $("mm-pan"); if(mm) mm.innerHTML = panouBanda($("mm-prod").value, $("mm-model").value, $("mm-buc").value, umAnexa($("mm-anexa").value), false);
 }
