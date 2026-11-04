@@ -185,13 +185,26 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   .acc-box{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:6px 14px;min-height:34px;align-items:center;font-size:13px}
   .acc-box label{display:flex;align-items:center;gap:6px;cursor:pointer;white-space:nowrap;margin:0;text-transform:none;letter-spacing:0;font-size:13px;font-weight:500;color:var(--tx,inherit)}
   .acc-box input[type=checkbox]{width:16px;height:16px;margin:0;flex:0 0 auto}
-  /* v7.61: GARD / CORDON — informare panouri ↔ metri liniari; numărul accesoriilor */
-  .pan-info{font-size:12px;font-weight:600;color:#1F5FD1;margin-top:3px;min-height:0}
-  :root[data-tema="inchis"] .pan-info{color:#93C5FD}
+  /* v7.61 / v7.63: GARD / CORDON — banda panouri → metri liniari (pe toată lățimea, sub produs) + accesorii cu număr */
+  .pan-info{display:flex;flex-wrap:wrap;align-items:center;gap:8px 14px;margin:2px 0 12px;padding:9px 14px;border:1px solid #BFD3F5;
+    border-left:4px solid #1F5FD1;border-radius:8px;background:#F1F6FF;color:#1E2A3B;font-size:13px}
   .pan-info:empty{display:none}
-  .acc-c{display:flex;align-items:center;gap:6px}
-  .acc-c .acc-n{width:64px;padding:3px 6px;font-size:13px}
-  .acc-c .acc-n:disabled{opacity:.35}
+  .pan-info .pi-t{font-size:11px;font-weight:700;letter-spacing:.06em;color:#1F5FD1;text-transform:uppercase}
+  .pan-info .pi-ml{font-size:16px;font-weight:800;color:#1F5FD1}
+  .pan-info .pi-sep{width:1px;align-self:stretch;background:#BFD3F5}
+  .pan-info .pi-f{font-weight:600;color:#1b5e3a;background:#E6F3EA;border-radius:999px;padding:2px 10px}
+  :root[data-tema="inchis"] .pan-info{background:#14233D;border-color:#2C4A7A;border-left-color:#6A9CF0;color:#DCE6F5}
+  :root[data-tema="inchis"] .pan-info .pi-t,:root[data-tema="inchis"] .pan-info .pi-ml{color:#93C5FD}
+  :root[data-tema="inchis"] .pan-info .pi-sep{background:#2C4A7A}
+  :root[data-tema="inchis"] .pan-info .pi-f{background:#1F3B2A;color:#9BE0B4}
+  .acc-box:has(.acc-c){grid-template-columns:repeat(auto-fill,minmax(230px,max-content));gap:8px 10px}
+  .acc-c{display:inline-flex;align-items:center;gap:10px;padding:5px 6px 5px 10px;border:1px solid var(--bd);border-radius:999px;background:var(--card);min-height:36px;transition:border-color .15s,background .15s}
+  .acc-c.on{border-color:#1F5FD1;background:#F1F6FF}
+  :root[data-tema="inchis"] .acc-c.on{background:#14233D;border-color:#6A9CF0}
+  .acc-c label{font-weight:600}
+  .acc-c .acc-q{display:none;align-items:center;gap:4px;font-size:12px;color:var(--mut)}
+  .acc-c.on .acc-q{display:inline-flex}
+  .acc-c .acc-n{width:58px;padding:3px 6px;font-size:13px;text-align:center;border-radius:999px;font-weight:700}
   .st-t{width:100%;border-collapse:collapse;font-size:14px}
   .st-t th{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.04em;color:var(--mut);text-align:right;padding:0 0 6px 10px;border-bottom:1px solid var(--bd);background:none}
   .st-t th:first-child{text-align:left;padding-left:0}
@@ -985,7 +998,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
   <span id="rz-w"><button id="rz-reset" class="pictograma" title="Lățimi implicite — pune coloanele din tabelele acestei file înapoi cum erau">↺ Reset layout</button><i class="rz-sep">|</i></span>
   <span id="tz-w" title="Mărimea tabelului (doar tabelul, restul rămâne la fel), din 5 în 5%. Merge și cu Ctrl + rotița mausului, Ctrl + / Ctrl − / Ctrl 0. Dublu clic pe procent = scrii tu valoarea."><button class="pictograma" onclick="tzPas(-1)" aria-label="Micșorează tabelul">−</button><b id="tz-v" ondblclick="tzScrie()" title="Dublu clic = scrii mărimea (ex. 87), Enter">100%</b><input id="tz-in" type="number" min="30" max="300" step="5" style="display:none"><button class="pictograma" onclick="tzPas(1)" aria-label="Mărește tabelul">+</button></span>
-  <span class="ver">v7.62</span>
+  <span class="ver">v7.64</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -1488,11 +1501,12 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
         <div class="gf g-cmd">
           <div><label>Data</label><input type="date" id="mm-data"></div>
           <div><label>Tip comandă</label><select id="mm-tip"></select></div>
-          <div><label>Bucăți</label><input type="number" id="mm-buc" value="1"><div id="mm-pan" class="pan-info"></div></div>
+          <div><label>Bucăți</label><input type="number" id="mm-buc" value="1"></div>
           <div><label>Produs <button type="button" class="cat-plus" onclick="catRapid('mm','prod',this)" title="Categorie nouă în catalog, dacă produsul nu există încă">＋ nou</button></label><select id="mm-prod"></select></div>
           <div><label>Tip <button type="button" class="cat-plus" onclick="catRapid('mm','model',this)" title="Tip nou la categoria aleasă, dacă nu există încă">＋ nou</button></label><select id="mm-model"></select></div>
           <div><label>Model <button type="button" class="cat-plus" onclick="catRapid('mm','mf',this)" title="Model nou la categoria aleasă (ex. 14 WC, DUS)">＋ nou</button></label><select id="mm-mf"></select></div>
         </div>
+        <div id="mm-pan" class="pan-info"></div>
         <div class="gf g-full">
           <div><label>Accesorii</label><div id="mm-acc" class="acc-box"></div></div>
         </div>
@@ -1972,8 +1986,9 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
         <div class="maf"><label>Tip <button type="button" class="cat-plus" onclick="catRapid('ma','model',this)" title="Tip nou la categoria aleasă, dacă nu există încă">＋ nou</button></label><select id="ma-model"></select></div>
         <div class="maf"><label>Model <button type="button" class="cat-plus" onclick="catRapid('ma','mf',this)" title="Model nou la categoria aleasă (ex. 14 WC, DUS)">＋ nou</button></label><select id="ma-mf"></select></div>
         <div class="maf"><label>UM</label><select id="ma-um"></select></div>
-        <div class="maf"><label id="ma-cant-l">Cantitate</label><input type="number" id="ma-cant" value="1"><div id="ma-pan" class="pan-info"></div></div>
+        <div class="maf"><label id="ma-cant-l">Cantitate</label><input type="number" id="ma-cant" value="1"></div>
       </div>
+      <div id="ma-pan" class="pan-info"></div>
       <div class="ma-g"><div class="maf"><label>Accesorii</label><div id="ma-acc" class="acc-box"></div></div></div>
       <div class="ma-g c3">
         <div class="maf"><label>Preț</label><input type="number" step="0.01" min="0" id="ma-pret" value="0.00" onblur="pret2(this)"></div>
@@ -2255,7 +2270,17 @@ const ACC_SCURT = { "DOZATOR SAPUN":"DS", "LAVOAR INTERIOR":"LI", "LAVOAR INT.":
   "AER CONDITIONAT":"AC", "RADIATOR INCALZIRE":"RI", "BOILER APA CALDA":"BAC", "BAILER APA CALDA":"BAC",
   "DISPENSER PROSOP":"DPH", "DISPENSER PROSOP HARTIE":"DPH", "DISPENCER PROSOP HARTIE":"DPH" };
 const accLista = t => String(t || "").split(",").map(x => x.trim()).filter(Boolean);
-const accScurt = t => accLista(t).map(x => ACC_SCURT[x.toUpperCase()] || x).join(", ");
+const accScurt = t => accLista(accAcord(t)).map(x => ACC_SCURT[x.toUpperCase()] || x).join(", ");
+// v7.64 (cerut de Ovidiu, 04.11): acordul la accesoriile cu număr — „1 CLEMA PRINDERE”, „4 CLEME PRINDERE”, „1 TALPA SUSTINERE”, „4 TALPI SUSTINERE”.
+// Doar la afișare (comandă, WhatsApp / e-mail, Word, liste); în bază rămâne numele din catalog, ca bifele să se regăsească.
+function accAcord(t){
+  if(!t) return t;
+  return accLista(t).map(x => { const m = /^(\d+)\s+(.+)$/.exec(x); if(!m) return x;
+    const n = +m[1], w = m[2].split(/(\s+)/), k = w[0].normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase();
+    if(n === 1){ const sg = Object.keys(PL_CUV).find(s => PL_CUV[s] === k); if(sg) w[0] = sg; }
+    else if(PL_CUV[k]) w[0] = PL_CUV[k];
+    return n + " " + w.join(""); }).join(", ");
+}
 // v6.91: echipamentele de pe punct („1 LAVOAR EXTERIOR”) prescurtate ca accesoriile („1 L.E.”); listă goală = nimic
 const echScurt = e => (Array.isArray(e) ? e : e ? [e] : []).filter(Boolean).map(x => { const m = /^(\d+)\s+(.+)$/.exec(String(x).trim()); return m ? m[1] + " " + (ACC_SCURT[m[2].toUpperCase()] || m[2]) : (ACC_SCURT[String(x).trim().toUpperCase()] || String(x).trim()); }).join(" · ");
 const modelAcc = a => [a.model || "", a.model_fizic || "", a.accesorii ? "[" + accScurt(a.accesorii) + "]" : ""].filter(Boolean).join(" ");
@@ -2427,10 +2452,10 @@ function umpleAcc(selProdus, selModel, bifate){
   alese.forEach(a => { if(!lista.includes(a)) lista.push(a); });
   box.innerHTML = lista.length ? lista.map(a => { const ch = alese.includes(a);
       const lab = `<label><input type="checkbox" value="${esc(a)}" ${ch?"checked":""}>${esc(a)}</label>`;
-      return cuNr ? `<span class="acc-c">${lab}<input type="number" min="0" step="1" class="acc-n" placeholder="buc" title="Câte bucăți (${esc(a)})" value="${ch ? nrDe(a) : ""}" ${ch ? "" : "disabled"}></span>` : lab; }).join("")
+      return cuNr ? `<span class="acc-c${ch ? " on" : ""}">${lab}<span class="acc-q"><input type="number" min="0" step="1" class="acc-n" placeholder="0" title="Câte bucăți (${esc(a)})" value="${ch ? nrDe(a) : ""}">buc</span></span>` : lab; }).join("")
                                : '<span class="muted">—</span>';
   if(cuNr) box.querySelectorAll(".acc-c input[type=checkbox]").forEach(c => c.addEventListener("change", () => {
-    const n = c.closest(".acc-c").querySelector(".acc-n"); n.disabled = !c.checked; if(c.checked) n.focus(); else n.value = ""; }));
+    const w = c.closest(".acc-c"), n = w.querySelector(".acc-n"); w.classList.toggle("on", c.checked); if(c.checked) n.focus(); else n.value = ""; }));
   setTimeout(panouArata, 0);
 }
 // v7.61 (cerut de Ovidiu, 04.11): GARD / CORDON — lungimea panoului din numele tipului („F2 (3,5*2M)” = 3,5 m, „F6 (2,5*1,2M)” = 2,5 m).
@@ -2456,13 +2481,21 @@ function cantFact(a, q){
 // „10 buc (35 ml)” la gard cu preț pe ML; altfel „14 buc”
 const cantUmT = a => { const q = Math.abs(+a.cant || 0), L = panouLung(a.produs, a.model);
   return L ? q + " buc (" + panF(q * L) + " ml)" : q + " " + (a.um || "buc").toLowerCase(); };
+// v7.63 (cerut de Ovidiu, 04.11): banda de sub produs — „METRI LINIARI · 14 ML · 4 panouri × 3,5 m · se facturează 14 ML”
+function panouBanda(produs, model, cant, um, laAnexa){
+  const L = panouLung(produs, model), q = Math.abs(+cant || 0); if(!L || !q) return "";
+  const ml = panF(q * L), fact = String(um || "").toUpperCase() === "ML";
+  return `<span class="pi-t">Metri liniari</span><span class="pi-ml">${ml} ML</span><span class="pi-sep"></span>` +
+    `<span>${panF(q)} ${q === 1 ? "panou" : "panouri"} × ${panF(L)} m</span>` +
+    (laAnexa || fact ? `<span class="pi-f">${fact ? "Se facturează " + ml + " ML" : "Se facturează pe panou (" + panF(q) + " BUC)"}</span>` : "");
+}
 const umAnexa = id => ((id && ANX.find(x => x.id === +id)) || {}).um || "BUC";
 function panouArata(){
-  const ma = $("ma-pan"); if(ma) ma.textContent = panouInfo($("ma-prod").value, $("ma-model").value, $("ma-cant").value, $("ma-um").value);
+  const ma = $("ma-pan"); if(ma) ma.innerHTML = panouBanda($("ma-prod").value, $("ma-model").value, $("ma-cant").value, $("ma-um").value, true);
   { const g = !!panouLung($("ma-prod").value, $("ma-model").value), l = $("ma-cant-l"), u = $("ma-um") && $("ma-um").previousElementSibling;   // v7.62
-    if(l) l.textContent = g ? "Cantitate (panouri)" : "Cantitate"; if(u) u.textContent = g ? "UM preț" : "UM"; }
-  { const g = !!panouLung($("mm-prod").value, $("mm-model").value), l = $("mm-buc").previousElementSibling; if(l) l.textContent = g ? "Bucăți (panouri)" : "Bucăți"; }
-  const mm = $("mm-pan"); if(mm) mm.textContent = panouInfo($("mm-prod").value, $("mm-model").value, $("mm-buc").value, umAnexa($("mm-anexa").value));
+    if(l) l.textContent = g ? "Panouri" : "Cantitate"; if(u) u.textContent = g ? "UM preț" : "UM"; }
+  { const g = !!panouLung($("mm-prod").value, $("mm-model").value), l = $("mm-buc").previousElementSibling; if(l) l.textContent = g ? "Panouri" : "Bucăți"; }
+  const mm = $("mm-pan"); if(mm) mm.innerHTML = panouBanda($("mm-prod").value, $("mm-model").value, $("mm-buc").value, umAnexa($("mm-anexa").value), false);
 }
 ["input", "change"].forEach(ev => document.addEventListener(ev, e => {
   if(e.target && ["ma-prod","ma-model","ma-um","ma-cant","mm-prod","mm-model","mm-buc","mm-anexa"].includes(e.target.id)) panouArata(); }));
@@ -4375,7 +4408,8 @@ function mmDocRanduri(){
 const mmDocCant = (x, rid) => rid ? cantLinie(x.id) : Math.abs(+x.cant || 0);
 const mmLocK = x => [x.jud, x.loc, x.sat].map(v => String(v || "").trim().toUpperCase()).join("|");
 function mmDocEt(x, rid, multiLoc, buc){
-  return [(buc != null ? buc : mmDocCant(x, rid)) + " " + (x.produs || ""), modelAcc(x)].filter(Boolean).join(" ") +
+  const q = buc != null ? buc : mmDocCant(x, rid);
+  return [q + " " + prodN(x.produs || "", q), modelAcc(x)].filter(Boolean).join(" ") +
     (multiLoc ? " · " + [[x.jud, x.loc].filter(Boolean).join(" "), x.sat].filter(Boolean).join(" – ") : "");
 }
 function mmFrateAl(x){ const ids = anexeLinie(x.id).map(z => z.id); return MM_FRATI.find(f => ids.includes(f.anexa_id)); }
@@ -5128,7 +5162,7 @@ function maVerifica(){
 function maConfRanduri(){
   if(MA_SCURT || MA_RAND.length < 2) return "";
   return `<h4 style="margin:14px 0 6px">Toate produsele de pe anexă (${MA_RAND.length})</h4><table>` + MA_RAND.map((x, i) =>
-    `<tr><td>${i + 1}.</td><td><b>${esc(Math.abs(+x.cant || 0) + " " + (x.produs || "") + " " + (x.model || ""))}</b>${x.accesorii ? " <span class='muted'>" + esc(x.accesorii) + "</span>" : ""}</td>` +
+    `<tr><td>${i + 1}.</td><td><b>${esc(Math.abs(+x.cant || 0) + " " + (x.produs || "") + " " + (x.model || ""))}</b>${x.accesorii ? " <span class='muted'>" + esc(accAcord(x.accesorii)) + "</span>" : ""}</td>` +
     `<td>${esc(fmtPret(x.pret) + " " + (x.moneda || ""))}</td><td>${esc([x.jud, x.loc, x.sat].filter(Boolean).join(" "))}</td>` +
     `<td>${x.id ? "" : "<span class='muted'>nou</span>"}</td></tr>`).join("") + "</table>" +
     (MA_UN_RAND ? `<p style="margin:8px 0 0"><b>La facturare: un singur rând</b> pentru produsele cu același preț și aceeași perioadă.</p>` : "") +
@@ -10662,7 +10696,7 @@ function textComandaDin(d){
     const sum = {}; toate.forEach(x => { const k = (x.produs || "") + "|" + (x.model || ""); sum[k] = sum[k] || { produs: x.produs, model: x.model, buc: 0 }; sum[k].buc += Math.abs(+x.buc) || 0; });
     Object.values(sum).forEach(x => L.push(svlc ? [x.buc, prodN(x.produs || "", x.buc), modN(x.model, x.buc)].filter(Boolean).join(" ").toUpperCase() : linieP(x)));
   } else {
-    toate.forEach(x => { L.push(linieP(x)); if(x.acc) L.push("ACC.  :  " + x.acc); });
+    toate.forEach(x => { L.push(linieP(x)); if(x.acc) L.push("ACC.  :  " + accAcord(x.acc)); });
   }
   L.push("");
   L.push("NUME CLIENT:  " + ((d.client || "").trim() ? "*" + d.client.trim() + "*" : "—"));   // v7.40
@@ -10673,7 +10707,7 @@ function textComandaDin(d){
       const xs = toate.filter(x => lk(x) === k), x0 = xs[0];
       L.push("");
       L.push((i + 1) + ")  " + [x0.jud, x0.loc].filter(Boolean).join(" / ") + (x0.sat ? "  –  " + x0.sat : ""));
-      xs.forEach(x => L.push("    " + linieP(x).trim() + (x.acc ? "  [" + x.acc + "]" : "")));
+      xs.forEach(x => L.push("    " + linieP(x).trim() + (x.acc ? "  [" + accAcord(x.acc) + "]" : "")));
       const pt = [x0.pers, x0.tel].filter(Boolean).join("  ·  ");
       if(pt && (x0.pers !== d.pers || x0.tel !== d.tel || i === 0 || x0.zi !== undefined)) L.push("    PERS. RES.  :  " + pt);
       if(x0.zi) L.push("    DATA  :  " + dz(x0.zi));   // v7.34
@@ -12867,7 +12901,7 @@ async function expWord(D, an, luna, lunaT, sufix){
   const dz = s => { const x = /^(\d{4})-(\d{2})-(\d{2})$/.exec(s || ""); if(!x) return ""; return ZS[new Date(+x[1], +x[2] - 1, +x[3]).getDay()] + "/" + x[3] + "/" + x[2] + "/" + x[1]; };
   const modN = (mo, n) => Math.abs(+n) !== 1 && /^PROPRIE$/i.test(String(mo || "").trim()) ? "PROPRII" : mo;
   const panW = x => { const t = panouInfo(x.produs, x.model, x.buc, "", true); return t ? "    ( " + t + " )" : ""; };   // v7.61 / v7.62
-  const prodL = x => "   " + (Math.abs(+x.buc) || 0) + "    " + prodN(x.produs || "", x.buc) + (x.model || x.model_fizic ? "    " + modN([x.model, x.model_fizic].filter(Boolean).join(" "), x.buc) : "") + panW(x) + (x.accesorii ? "\n  ACC.  :  " + x.accesorii : "");
+  const prodL = x => "   " + (Math.abs(+x.buc) || 0) + "    " + prodN(x.produs || "", x.buc) + (x.model || x.model_fizic ? "    " + modN([x.model, x.model_fizic].filter(Boolean).join(" "), x.buc) : "") + panW(x) + (x.accesorii ? "\n  ACC.  :  " + accAcord(x.accesorii) : "");
   const sp = "    ";
   const scurt = m => {
     const L = [], evT = { "EVENIMENT-A": "AMPLASARE", "EVENIMENT-R": "RIDICARE" }[m.tip_miscare];
