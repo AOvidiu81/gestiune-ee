@@ -998,7 +998,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
   <span id="rz-w"><button id="rz-reset" class="pictograma" title="Lățimi implicite — pune coloanele din tabelele acestei file înapoi cum erau">↺ Reset layout</button><i class="rz-sep">|</i></span>
   <span id="tz-w" title="Mărimea tabelului (doar tabelul, restul rămâne la fel), din 5 în 5%. Merge și cu Ctrl + rotița mausului, Ctrl + / Ctrl − / Ctrl 0. Dublu clic pe procent = scrii tu valoarea."><button class="pictograma" onclick="tzPas(-1)" aria-label="Micșorează tabelul">−</button><b id="tz-v" ondblclick="tzScrie()" title="Dublu clic = scrii mărimea (ex. 87), Enter">100%</b><input id="tz-in" type="number" min="30" max="300" step="5" style="display:none"><button class="pictograma" onclick="tzPas(1)" aria-label="Mărește tabelul">+</button></span>
-  <span class="ver">v7.72</span>
+  <span class="ver">v7.73</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -8684,7 +8684,10 @@ function rcvDate(){
     const mf = {}; SL.forEach(x => { if(x.model) mf[x.model] = (mf[x.model] || 0) + 1; });
     const modelF = Object.entries(mf).map(([m, n]) => n + " " + m).join(", ");
     const serii = [...new Set(SL.map(x => x.serie).filter(Boolean))];
-    return { ...g, pr, fr, randuri, gps, model: [model, modelF].filter(Boolean).join(" · "), serii };
+    // v7.73 (cerut de Ovidiu, 04.11): persoana de contact a locației — de pe punctul de rută, altfel de pe anexă
+    const pc = g.pct.find(c => c.pers_resp || c.telefon) || {}, ac = anx.find(a => a.pers_contact || a.telefon) || {};
+    const contact = { nume: (pc.pers_resp || ac.pers_contact || "").trim(), tel: (pc.telefon || ac.telefon || "").trim() };
+    return { ...g, pr, fr, randuri, gps, model: [model, modelF].filter(Boolean).join(" · "), serii, contact };
   }).sort((x, y) => (x.loc + x.sat).localeCompare(y.loc + y.sat));
   const prodT = (t, c, gd) => [t ? t + (t === 1 ? " toaletă" : " toalete") : "", c ? c + (c === 1 ? " container" : " containere") : "", gd ? gd + " gard" : ""].filter(Boolean).join(" · ") || "—";
   loc.forEach(l => l.prodT = prodT(l.pr.t, l.pr.c, l.pr.g));
@@ -8708,7 +8711,8 @@ function rcvTipar(){
   const blocuri = d.loc.map((l, i) => `<section class="loc"><div class="lh"><div class="ln">${i + 1}</div><div class="la"><b>${esc([l.jud, l.loc].filter(Boolean).join(" / "))}</b> — ${esc(l.sat)}</div>
       <div class="lp">${esc(l.prodT)}</div><div class="lf">${esc(l.fr || "—")}</div></div>
     <div class="ld"><span><i>GPS</i> ${l.gps ? `<a href="https://www.google.com/maps?q=${l.gps.lat},${l.gps.lon}">${l.gps.lat.toFixed(6)}, ${l.gps.lon.toFixed(6)}</a>` : "—"}</span>
-      <span><i>Model</i> ${esc(l.model || "—")}</span><span><i>Serii</i> ${l.serii.length ? esc(l.serii.join(", ")) : "—"}</span></div>
+      <span><i>Model</i> ${esc(l.model || "—")}</span><span><i>Serii</i> ${l.serii.length ? esc(l.serii.join(", ")) : "—"}</span>
+      ${l.contact.nume || l.contact.tel ? `<span><i>Contact</i> ${esc([l.contact.nume, l.contact.tel].filter(Boolean).join(" · "))}</span>` : ""}</div>
     ${grupe.map(([a, b]) => `<table><thead>${capT(a, b)}</thead><tbody>${l.randuri.map(r => `<tr><td class="z">${esc(r.c.ziua || "—")}</td><td class="t">${esc(r.c.masina || "—")}</td>${r.cel.slice(a, b).map(x => `<td>${celula(x)}</td>`).join("")}${"<td class=\"x\"></td>".repeat(BUC - (b - a))}</tr>`).join("")}</tbody></table>`).join("")}</section>`).join("");
   const html = `<!doctype html><html lang="ro"><head><meta charset="utf-8"><title>Raport vizite – ${esc(d.client)} – ${esc(d.per)}</title><style>
   @page{size:A4 landscape;margin:14mm 12mm 14mm 12mm}
@@ -8757,7 +8761,7 @@ function rcvExcel(){
   const ZL = ["DUMINICA","LUNI","MARTI","MIERCURI","JOI","VINERI","SAMBATA"], rows = [];
   d.loc.forEach(l => l.randuri.forEach(r => r.cel.forEach((x, i) => {
     const baza = { CLIENT: d.client, JUDET: l.jud, LOCALITATE: l.loc, LOCATIE: l.sat, GPS: l.gps ? l.gps.lat.toFixed(6) + ", " + l.gps.lon.toFixed(6) : "",
-      PRODUSE: l.prodT, MODEL: l.model || "", SERII: l.serii.join(", "), FRECVENTA: l.fr, "ZIUA DIN PROGRAM": r.c.ziua || "", TRASEU: r.c.masina || "", SAPTAMANA: d.etW(d.W[i]) };
+      PRODUSE: l.prodT, MODEL: l.model || "", SERII: l.serii.join(", "), "PERSOANA CONTACT": l.contact.nume, "TELEFON CONTACT": l.contact.tel, FRECVENTA: l.fr, "ZIUA DIN PROGRAM": r.c.ziua || "", TRASEU: r.c.masina || "", SAPTAMANA: d.etW(d.W[i]) };
     if(x.ale.length) x.ale.forEach(v => rows.push({ ...baza, DATA: fmtD(v.s.session_date), ZIUA: ZL[new Date(v.s.session_date + "T12:00:00").getDay()],
       "ORA SOSIRE": v.manual ? (v.ora || "") : rcvHm(v.arrive_time), STARE: v.manual && v.lipsa ? "LIPSA ACCES" : "VIZITAT", SURSA: v.manual ? "REGISTRU (cod " + v.cod + ")" : "APLICATIE SOFER" }));
     else if(x.plan) rows.push({ ...baza, DATA: fmtD(x.plan), ZIUA: ZL[new Date(x.plan + "T12:00:00").getDay()], "ORA SOSIRE": "", STARE: x.viitor ? "PROGRAMAT" : x.faraRuta ? "FARA INREGISTRARE" : "NEVIZITAT" });
