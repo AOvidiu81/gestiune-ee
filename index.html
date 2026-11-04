@@ -998,7 +998,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
   <span id="rz-w"><button id="rz-reset" class="pictograma" title="Lățimi implicite — pune coloanele din tabelele acestei file înapoi cum erau">↺ Reset layout</button><i class="rz-sep">|</i></span>
   <span id="tz-w" title="Mărimea tabelului (doar tabelul, restul rămâne la fel), din 5 în 5%. Merge și cu Ctrl + rotița mausului, Ctrl + / Ctrl − / Ctrl 0. Dublu clic pe procent = scrii tu valoarea."><button class="pictograma" onclick="tzPas(-1)" aria-label="Micșorează tabelul">−</button><b id="tz-v" ondblclick="tzScrie()" title="Dublu clic = scrii mărimea (ex. 87), Enter">100%</b><input id="tz-in" type="number" min="30" max="300" step="5" style="display:none"><button class="pictograma" onclick="tzPas(1)" aria-label="Mărește tabelul">+</button></span>
-  <span class="ver">v7.70</span>
+  <span class="ver">v7.71</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -8634,6 +8634,8 @@ function rcvDate(){
   const puncte = RR.cl.filter(c => rrNorm(c.client) === q); if(!puncte.length) return { err: "Clientul nu are puncte de rută cu acest nume." };
   const ses = {}; RR.sess.forEach(s => ses[s.id] = s);
   const ziRuta = new Set(RR.sess.map(s => s.session_date).filter(Boolean));   // zile în care s-a înregistrat măcar o rută
+  // v7.71 (cerut de Ovidiu, 04.11): și codurile trecute de mână pe săptămână (Verificare rute → client_weeks, „0734-03” = sosire 07:34, 3 min)
+  const cwDe = {}; (RR.cw || []).forEach(x => ((cwDe[x.client_key] ||= {})[x.week_num] = x.code));
   const vizDe = {}; RR.vis.forEach(v => { const s = ses[v.session_id]; if(!s || !s.session_date || s.session_date < d1 || s.session_date > d2) return;
     (vizDe[v.client_key || v.client_id] ||= []).push({ ...v, s }); });
   const W = []; for(let c = sCod(d1); ; c = sMuta(c, 1)){ W.push(c); if(c === sCod(d2) || W.length > 60) break; }
@@ -8652,6 +8654,9 @@ function rcvDate(){
         const cel = W.map(w => {
           const ale = vz.filter(v => sCod(v.s.session_date) === w);
           let plan = null; if(zi >= 0){ const p = sStart(w); p.setDate(p.getDate() + zi); const pi = sIso(p); if(pi >= d1 && pi <= d2) plan = pi; }
+          if(!ale.length && plan){ const cod = chei.map(k => cwDe[k] && cwDe[k][w]).find(Boolean);
+            if(cod){ const m = /^(\d{2})(\d{2})/.exec(String(cod).trim()), la = /LA\b/i.test(cod);
+              ale.push({ manual: true, cod, s: { session_date: plan }, ora: m ? m[1] + ":" + m[2] : null, lipsa: la, alt: !m && !la ? String(cod).trim() : null }); } }
           const faraRuta = !!plan && plan <= azi && !ziRuta.has(plan) && !ale.length;   // în ziua aceea nu s-a înregistrat nicio rută în aplicație
           if(plan && plan <= azi && !faraRuta) tot.plan++;
           tot.viz += ale.length;
@@ -8693,7 +8698,7 @@ function rcvTipar(){
   const dd = iso => iso.slice(8, 10) + "." + iso.slice(5, 7) + "." + iso.slice(0, 4);   // v7.70: data întreagă 19.10.2026
   const sapt = d.W.map(w => { const s = sInfo(w); return `<th><div class="w">${d.etW(w)}</div><div class="wd">${dd(s.start)}<br>${dd(s.end)}</div></th>`; }).join("");
   // v7.70 (cerut de Ovidiu, 04.11): „Luni 19.10.2026” și doar ora sosirii
-  const celula = x => x.ale.length ? x.ale.map(v => `<div class="v"><b>${ziS(v.s.session_date)}</b><b>${dd(v.s.session_date)}</b><span>${v.arrive_time ? "ora " + rcvHm(v.arrive_time) : "vizitat"}</span></div>`).join("")
+  const celula = x => x.ale.length ? x.ale.map(v => `<div class="v"><b>${ziS(v.s.session_date)}</b><b>${dd(v.s.session_date)}</b><span>${v.manual ? (v.ora ? "ora " + v.ora : v.lipsa ? "lipsă acces" : esc(v.alt || "vizitat")) + (v.lipsa && v.ora ? " · lipsă acces" : "") : v.arrive_time ? "ora " + rcvHm(v.arrive_time) : "vizitat"}</span></div>`).join("")
     : x.faraRuta ? `<div class="pl">${ziS(x.plan)}<br>${dd(x.plan)}<br>fără înregistrare</div>`
     : x.plan && !x.viitor ? `<div class="nv">${ziS(x.plan)}<br>${dd(x.plan)}<br>nevizitat</div>` : x.viitor ? `<div class="pl">${ziS(x.plan)}<br>${dd(x.plan)}</div>` : `<div class="gol">·</div>`;
   const blocuri = d.loc.map((l, i) => `<section class="loc"><div class="lh"><div class="ln">${i + 1}</div><div class="la"><b>${esc([l.jud, l.loc].filter(Boolean).join(" / "))}</b> — ${esc(l.sat)}</div>
@@ -8739,7 +8744,8 @@ function rcvExcel(){
   d.loc.forEach(l => l.randuri.forEach(r => r.cel.forEach((x, i) => {
     const baza = { CLIENT: d.client, JUDET: l.jud, LOCALITATE: l.loc, LOCATIE: l.sat, GPS: l.gps ? l.gps.lat.toFixed(6) + ", " + l.gps.lon.toFixed(6) : "",
       PRODUSE: l.prodT, MODEL: l.model || "", SERII: l.serii.join(", "), FRECVENTA: l.fr, "ZIUA DIN PROGRAM": r.c.ziua || "", TRASEU: r.c.masina || "", SAPTAMANA: d.etW(d.W[i]) };
-    if(x.ale.length) x.ale.forEach(v => rows.push({ ...baza, DATA: fmtD(v.s.session_date), ZIUA: ZL[new Date(v.s.session_date + "T12:00:00").getDay()], "ORA SOSIRE": rcvHm(v.arrive_time), STARE: "VIZITAT" }));
+    if(x.ale.length) x.ale.forEach(v => rows.push({ ...baza, DATA: fmtD(v.s.session_date), ZIUA: ZL[new Date(v.s.session_date + "T12:00:00").getDay()],
+      "ORA SOSIRE": v.manual ? (v.ora || "") : rcvHm(v.arrive_time), STARE: v.manual && v.lipsa ? "LIPSA ACCES" : "VIZITAT", SURSA: v.manual ? "REGISTRU (cod " + v.cod + ")" : "APLICATIE SOFER" }));
     else if(x.plan) rows.push({ ...baza, DATA: fmtD(x.plan), ZIUA: ZL[new Date(x.plan + "T12:00:00").getDay()], "ORA SOSIRE": "", STARE: x.viitor ? "PROGRAMAT" : x.faraRuta ? "FARA INREGISTRARE" : "NEVIZITAT" });
   })));
   if(!rows.length){ toast("Nu e nimic de exportat", true); return; }
