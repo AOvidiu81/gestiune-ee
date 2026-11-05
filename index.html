@@ -1009,7 +1009,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
   <span id="rz-w"><button id="rz-reset" class="pictograma" title="Lățimi implicite — pune coloanele din tabelele acestei file înapoi cum erau">↺ Reset layout</button><i class="rz-sep">|</i></span>
   <span id="tz-w" title="Mărimea tabelului (doar tabelul, restul rămâne la fel), din 5 în 5%. Merge și cu Ctrl + rotița mausului, Ctrl + / Ctrl − / Ctrl 0. Dublu clic pe procent = scrii tu valoarea."><button class="pictograma" onclick="tzPas(-1)" aria-label="Micșorează tabelul">−</button><b id="tz-v" ondblclick="tzScrie()" title="Dublu clic = scrii mărimea (ex. 87), Enter">100%</b><input id="tz-in" type="number" min="30" max="300" step="5" style="display:none"><button class="pictograma" onclick="tzPas(1)" aria-label="Mărește tabelul">+</button></span>
-  <span class="ver">v7.81</span>
+  <span class="ver">v7.82</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -8595,6 +8595,8 @@ async function rrSalveazaCod(el){
 }
 // v7.81 (cerut de Ovidiu, 05.11): Enter = salvează codul (rămâi pe el); încă un Enter sau Tab = treci la rândul următor
 // (Shift+Tab / Shift+Enter = înapoi), cu minutele de staționare (după „-”) selectate, ca să le scrii direct.
+// v7.82 (cerut de Ovidiu, 05.11): și la clic / intrare în căsuță se selectează doar minutele; rândul primește linia albastră
+document.addEventListener("focusin", e => { const el = e.target; if(el && el.matches && el.matches("#rr-tbl input[data-i]")) setTimeout(() => { if(document.activeElement === el && el.selectionStart === el.selectionEnd) rrCodSelecteaza(el); }, 0); });
 async function rrCodTasta(e, el){
   if(e.key !== "Enter" && e.key !== "Tab") return;
   const schimbat = el.value !== el.defaultValue && el.dataset.salvat !== el.value, i = el.dataset.i, dir = e.shiftKey ? -1 : 1;
@@ -8620,7 +8622,7 @@ function tcPastreaza(id, fn){
   fn();
   const tb2 = $(id); if(!tb2) return;
   if(ri >= 0){ const r = tcRanduri(tb2)[ri]; if(r) tcMarcheaza(r, ci >= 0 ? r.cells[ci] : null); }
-  if(di != null){ const ni = tb2.querySelector(`input[data-i="${di}"]`); if(ni){ ni.focus(); try{ ni.select(); }catch(_){} } }
+  if(di != null){ const ni = tb2.querySelector(`input[data-i="${di}"]`); if(ni){ if(id === "rr-tbl") rrCodSelecteaza(ni); else { ni.focus(); try{ ni.select(); }catch(_){} } } }   // v7.82
 }
 function exportRR(){
   if(!RR_ROWS.length){ toast("Nu e nimic de exportat", true); return; }
@@ -12513,7 +12515,7 @@ document.addEventListener("keydown", e => {
     e.preventDefault(); act.blur();
     const ntd = tcMuta(td.parentElement, td, k === "ArrowUp" ? -1 : 1, 0);
     const ni = ntd && ntd.querySelector('input:not([type]),input[type="text"],input[type="search"]');
-    if(ni){ ni.focus(); try{ ni.select(); }catch(_){} }
+    if(ni){ if(ni.closest("#rr-tbl") && ni.dataset.i != null) rrCodSelecteaza(ni); else { ni.focus(); try{ ni.select(); }catch(_){} } }   // v7.82
     return;
   }
   const pag = document.querySelector("main .page.on") || document;
