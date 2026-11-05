@@ -1009,7 +1009,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
   <span id="rz-w"><button id="rz-reset" class="pictograma" title="Lățimi implicite — pune coloanele din tabelele acestei file înapoi cum erau">↺ Reset layout</button><i class="rz-sep">|</i></span>
   <span id="tz-w" title="Mărimea tabelului (doar tabelul, restul rămâne la fel), din 5 în 5%. Merge și cu Ctrl + rotița mausului, Ctrl + / Ctrl − / Ctrl 0. Dublu clic pe procent = scrii tu valoarea."><button class="pictograma" onclick="tzPas(-1)" aria-label="Micșorează tabelul">−</button><b id="tz-v" ondblclick="tzScrie()" title="Dublu clic = scrii mărimea (ex. 87), Enter">100%</b><input id="tz-in" type="number" min="30" max="300" step="5" style="display:none"><button class="pictograma" onclick="tzPas(1)" aria-label="Mărește tabelul">+</button></span>
-  <span class="ver">v7.87</span>
+  <span class="ver">v7.89</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -6472,8 +6472,9 @@ async function raportFacturare(){
     R_ROSU = sel.map(x => x.ro); R_FNOTE = sel.map(x => x.nota); R_FCOL = []; R_FCODB = sel.map(x => !!x.f._cod);   // v7.85: cod client → bold
     R_FCONT = sel.map(x => x.g === "cont");
     // v6.47: coloana „DOCUMENT” = FACTURA AVANS / FACTURA PROFORMA (gol la factura obișnuită); v7.84: prima coloană
-    R_RANDURI = sel.map(({ f, g, gn }) => { const doc = /^FACTURA /.test(f[0]) ? f[0] : "";
-      const r = [g === "prim" ? [doc, `1 FACTURĂ · ${gn} POZIȚII`].filter(Boolean).join(" · ") : doc].concat(idx.map(i => i === 8 && f._cod ? f._cod : f[i]));   // v7.13: doar codul clientului
+    const DOC_SCURT = { "FACTURA AVANS": "FA", "FACTURA PROFORMA": "FP" };   // v7.89 (cerut de Ovidiu, 05.11): prescurtări, cu legendă în Excel
+    R_RANDURI = sel.map(({ f, g, gn }) => { const doc = /^FACTURA /.test(f[0]) ? (DOC_SCURT[f[0]] || f[0]) : "";
+      const r = [g === "prim" ? [doc, `1F-${gn}R`].filter(Boolean).join(" · ") : doc].concat(idx.map(i => i === 8 && f._cod ? f._cod : f[i]));   // v7.13: doar codul clientului
       if(g === "cont") r[2] = "↳ " + r[2];
       return r; });
     R_ANTET = ["DOCUMENT","NR CTR","NUME CLIENT","ID","ATR.","NUMAR","ANEXA NR","JUD.","LOCALITATE","SAT / LOCATIE / STRADA","FORMA","PRODUS","TIP","UM","CANT.","PRET","MONEDA","INCEPUT LUNA","SFARSIT LUNA","NR. ZILE","VALOARE FARA TVA","VALOARE CU TVA","SCADENT"];
@@ -7158,7 +7159,7 @@ function deseneazaRaport(){
         if(fact && i === 10 && av.anx) t += ` <span class="warn-pill" title="Anexa a expirat la ${esc(fmtD(av.anx))}; echipamentul nu e trecut pe RIDICARE, deci se facturează mai departe">⚠ act adițional</span>`;
         if(R_NUME === "Facturare_de_trimis" && i === 6 && R_FCODB[j]) t = `<b>${t}</b>`;
         if(R_NUME === "Facturare_de_trimis" && R_FCONT[j]) t = `<i style="color:#36405C">${t}</i>`;   // v7.87: poziție în continuarea facturii
-        if(R_NUME === "Facturare_de_trimis" && i === 0 && /1 FACTURĂ/.test(String(v || ""))) t = `<b style="color:#4A2E8F">${t}</b>`;
+        if(R_NUME === "Facturare_de_trimis" && i === 0 && /\b1F-\d+R\b/.test(String(v || ""))) t = `<b style="color:#4A2E8F" title="1 factură cu ${String(v).match(/1F-(\d+)R/)[1]} rânduri (poziții)">${t}</b>`;
         if(fact && i === 1 && FCTR_PRIM.has(j)){ const c = FCTR_PRIM.get(j);
           t += ` <button class="btn sm ${c.fact_o_factura ? "" : "sec"}" style="padding:1px 6px;font-size:10.5px${c.fact_o_factura ? ";background:#4A2E8F;border-color:#4A2E8F" : ""}" title="${c.fact_o_factura ? "Bifat: toate rândurile contractului merg pe o singură factură (fiecare rând = o poziție). Clic = facturi separate." : "Clic: toate rândurile contractului pe o singură factură (fiecare rând = o poziție)"}" onclick="event.stopPropagation();factOFactura(${c.id})">${c.fact_o_factura ? "☑" : "☐"} 1 factură</button>`; }
         if(R_NUME === "Facturare_de_trimis" && i === 16 && /^EUR/i.test(String(v || ""))) t = `<b style="color:#0B5D1E">${t}</b>`;   // v7.86: EURO verde închis   // v7.85: codul clientului (CTP, ARL…) îngroșat
@@ -7482,7 +7483,7 @@ async function exportFactTrimis(){
       if(i === ix("ANEXA NR") && R_FCODB[j]) c.font = Object.assign({}, c.font, { bold: true });   // v7.85: cod client îngroșat
       if(i === iM && /^EUR/i.test(String(v || ""))) c.font = Object.assign({}, c.font, { bold: true, color: { argb: "FF0B5D1E" } });   // v7.86: EURO verde închis
       if(R_FCONT[j]){ c.font = Object.assign({}, c.font, { italic: true, bold: i === iM && /^EUR/i.test(String(v || "")) }); if(i === iC) c.alignment = Object.assign({}, c.alignment, { indent: 3 }); }   // v7.87
-      if(i === iD && /1 FACTURĂ/.test(String(v || ""))) c.font = Object.assign({}, c.font, { bold: true, color: { argb: "FF4A2E8F" } });
+      if(i === iD && /\b1F-\d+R\b/.test(String(v || ""))) c.font = Object.assign({}, c.font, { bold: true, color: { argb: "FF4A2E8F" } });
     });
     const pune = (i, C, nota) => { const c = ws.getCell(r, O + i); c.fill = umple(C.fill); c.font = Object.assign({}, c.font, { bold: true, color: { argb: C.font } });
       if(nota) c.note = { texts: [{ font: { size: 11, name: "Arial" }, text: nota }], margins: { insetmode: "auto" } }; };
@@ -7507,8 +7508,11 @@ async function exportFactTrimis(){
   });
   // legendă
   rt++;
-  const leg = [[VERDE, "zi de amplasare / suplimentare (notă pe celulă)"], [ROSU, "zi de ridicare / reducere (notă pe celulă)"], [GALBEN, "perioadă care nu e lună întreagă din alt motiv (ex. perioadă stabilită separat)"]];
-  leg.forEach(([C, t]) => { const c = ws.getCell(rt, O); c.value = ""; c.fill = umple(C.fill); c.border = bord;
+  const leg = [[{ fill: "FFFFFFFF" }, "1F-6R = 1 factură cu 6 rânduri (poziții): rândul cu 1F-…R și rândurile de sub el, scrise înclinat cu ↳, merg pe aceeași factură", "1F-6R"],
+    [{ fill: "FFFFFFFF" }, "FA = factură în avans · FP = factură proformă (DOCUMENT gol = factură obișnuită)", "FA / FP"],
+    [VERDE, "zi de amplasare / suplimentare (notă pe celulă)"], [ROSU, "zi de ridicare / reducere (notă pe celulă)"], [GALBEN, "perioadă care nu e lună întreagă din alt motiv (ex. perioadă stabilită separat)"]];
+  leg.forEach(([C, t, et]) => { const c = ws.getCell(rt, O); c.value = et || ""; c.fill = umple(C.fill); c.border = bord;
+    if(et) Object.assign(c, { font: { name: "Arial", size: 12, bold: true, color: { argb: /^F[AP]/.test(et) ? "FFC2570C" : "FF4A2E8F" } }, alignment: { horizontal: "center", vertical: "middle" } });
     Object.assign(ws.getCell(rt, O + 1), { value: t, font: { name: "Arial", size: 12, italic: true, color: { argb: "FF5E6A82" } } }); rt++; });
   ws.autoFilter = { from: { row: H, column: O }, to: { row: rN, column: O + n - 1 } };
   const buf = await wb.xlsx.writeBuffer();
