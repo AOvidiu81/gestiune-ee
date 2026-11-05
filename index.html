@@ -189,6 +189,11 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   .pan-info{display:flex;flex-wrap:wrap;align-items:center;gap:8px 14px;margin:2px 0 12px;padding:9px 14px;border:1px solid #BFD3F5;
     border-left:4px solid #1F5FD1;border-radius:8px;background:#F1F6FF;color:#1E2A3B;font-size:13px}
   .pan-info:empty{display:none}
+  /* v7.74: Raport vizite client — opțiuni */
+  .rcv-opt{display:grid;grid-template-columns:1fr 1fr;gap:6px 14px;margin-top:4px}
+  .rcv-opt label{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:500;text-transform:none;letter-spacing:0;margin:0;cursor:pointer;padding:7px 10px;border:1px solid var(--bd);border-radius:8px}
+  .rcv-opt input{width:16px;height:16px;margin:0;flex:0 0 auto}
+  @media(max-width:600px){ .rcv-opt{grid-template-columns:1fr} }
   .pan-info .pi-t{font-size:11px;font-weight:700;letter-spacing:.06em;color:#1F5FD1;text-transform:uppercase}
   .pan-info .pi-ml{font-size:16px;font-weight:800;color:#1F5FD1}
   .pan-info .pi-sep{width:1px;align-self:stretch;background:#BFD3F5}
@@ -998,7 +1003,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
   <span id="rz-w"><button id="rz-reset" class="pictograma" title="Lățimi implicite — pune coloanele din tabelele acestei file înapoi cum erau">↺ Reset layout</button><i class="rz-sep">|</i></span>
   <span id="tz-w" title="Mărimea tabelului (doar tabelul, restul rămâne la fel), din 5 în 5%. Merge și cu Ctrl + rotița mausului, Ctrl + / Ctrl − / Ctrl 0. Dublu clic pe procent = scrii tu valoarea."><button class="pictograma" onclick="tzPas(-1)" aria-label="Micșorează tabelul">−</button><b id="tz-v" ondblclick="tzScrie()" title="Dublu clic = scrii mărimea (ex. 87), Enter">100%</b><input id="tz-in" type="number" min="30" max="300" step="5" style="display:none"><button class="pictograma" onclick="tzPas(1)" aria-label="Mărește tabelul">+</button></span>
-  <span class="ver">v7.73</span>
+  <span class="ver">v7.74</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -2157,6 +2162,14 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
     <div><label>De la luna</label><div style="display:flex;gap:6px"><select id="rcv-l1" onchange="rcvInfo()"></select><select id="rcv-an1" onchange="rcvInfo()" style="max-width:90px"></select></div></div>
     <div><label>Până la luna</label><div style="display:flex;gap:6px"><select id="rcv-l2" onchange="rcvInfo()"></select><select id="rcv-an2" onchange="rcvInfo()" style="max-width:90px"></select></div></div>
   </div>
+  <div style="margin-top:12px"><label>Ce mai apare în raport</label>
+    <div class="rcv-opt">
+      <label><input type="checkbox" id="rcv-o-masina" onchange="rcvOpt()"> Numărul mașinii</label>
+      <label><input type="checkbox" id="rcv-o-plecare" onchange="rcvOpt()"> Ora plecării de pe locație</label>
+      <label><input type="checkbox" id="rcv-o-stationare" onchange="rcvOpt()"> Timpul de staționare</label>
+      <label><input type="checkbox" id="rcv-o-contact" onchange="rcvOpt()"> Persoana de contact (nume, telefon)</label>
+    </div>
+    <div class="muted" style="font-size:12px;margin-top:4px">Mereu: locația, produsele, frecvența, traseul, GPS, model, serii, ziua, data și ora sosirii. Alegerea rămâne ținută minte.</div></div>
   <div id="rcv-info" style="margin-top:10px;line-height:1.5"></div>
   <div class="row" style="justify-content:flex-end;margin-top:12px">
     <div style="flex:0"><button class="btn sec" onclick="closeModal('mod-rcv')">Închide</button></div>
@@ -8615,7 +8628,7 @@ function rcvDeschide(){
   cautaAtaseaza($("rcv-client"), () => [...new Set((RR.cl || []).map(c => String(c.client || "").trim()).filter(Boolean))].sort().map(n => ({ v: n, t: n })),
     o => { $("rcv-client").value = o.v; rcvInfo(); });
   $("rcv-client").oninput = rcvInfo;
-  $("mod-rcv").classList.add("on"); rcvInfo();
+  rcvOptIncarca(); $("mod-rcv").classList.add("on"); rcvInfo();
   if(!RR_GATA) loadRR().then(rcvInfo);
 }
 function rcvInfo(){
@@ -8695,76 +8708,123 @@ function rcvDate(){
   const per = (l1 === l2 && a1 === a2) ? RCV_LUNI[l1 - 1] + " " + a1 : RCV_LUNI[l1 - 1] + " " + a1 + " – " + RCV_LUNI[l2 - 1] + " " + a2;
   return { client: puncte[0].client, d1, d2, W, etW, loc, tot, per, LUNA_S };
 }
+// v7.74 (cerut de Ovidiu, 05.11): înainte de generare alegi ce mai apare — numărul mașinii, ora plecării, timpul de staționare,
+// persoana de contact a locației. Căsuța vizitei: „LU-05.10.26” / „S: 11:07 | P: 11:12” / „TS: 00:05 min” / mașina. Design nou.
+const RCV_OPT_CHEI = ["masina", "plecare", "stationare", "contact"];
+function rcvOpt(){ const o = {}; RCV_OPT_CHEI.forEach(k => { const e = $("rcv-o-" + k); o[k] = !!(e && e.checked); });
+  try { localStorage.setItem("rcv_opt", JSON.stringify(o)); } catch(e){} return o; }
+function rcvOptIncarca(){ let o = {}; try { o = JSON.parse(localStorage.getItem("rcv_opt") || "{}") || {}; } catch(e){}
+  RCV_OPT_CHEI.forEach(k => { const e = $("rcv-o-" + k); if(e) e.checked = !!o[k]; }); }
+const rcvZS = ["DU","LU","MA","MI","JO","VI","SÂ"];
+const rcvZiS = iso => rcvZS[new Date(iso + "T12:00:00").getDay()];
+const rcvD2 = iso => iso.slice(8, 10) + "." + iso.slice(5, 7) + "." + iso.slice(2, 4);          // 05.10.26
+const rcvD4 = iso => iso.slice(8, 10) + "." + iso.slice(5, 7) + "." + iso.slice(0, 4);          // 05.10.2026
+// sosire / plecare / minute pe locație, la fel pentru vizitele din aplicație și pentru codurile trecute de mână
+function rcvTimpi(v){
+  if(v.manual){ const m = /^(\d{2})(\d{2})(?:-(\d+))?/.exec(String(v.cod || "").trim()); if(!m) return { s: "", p: "", min: null };
+    const min = m[3] != null ? +m[3] : null, t = (+m[1]) * 60 + (+m[2]) + (min || 0);
+    return { s: m[1] + ":" + m[2], p: min != null ? zi2(Math.floor(t / 60) % 24) + ":" + zi2(t % 60) : "", min }; }
+  const a = v.arrive_time ? new Date(v.arrive_time) : null, l = v.leave_time ? new Date(v.leave_time) : null;
+  return { s: a ? rcvHm(v.arrive_time) : "", p: l ? rcvHm(v.leave_time) : "", min: a && l ? Math.max(0, Math.round((l - a) / 60000)) : null };
+}
+const rcvTS = min => min == null ? "" : zi2(Math.floor(min / 60)) + ":" + zi2(min % 60);
 function rcvTipar(){
   const d = rcvDate(); if(!d || d.err){ toast(d ? d.err : "Alege clientul", true); return; }
-  const ZS = ["Duminică","Luni","Marți","Miercuri","Joi","Vineri","Sâmbătă"], ziS = iso => ZS[new Date(iso + "T12:00:00").getDay()];
-  const dd = iso => iso.slice(8, 10) + "." + iso.slice(5, 7) + "." + iso.slice(0, 4);   // v7.70: data întreagă 19.10.2026
-  const sapt = d.W.map(w => { const s = sInfo(w); return `<th><div class="w">${d.etW(w)}</div><div class="wd">${dd(s.start)}<br>${dd(s.end)}</div></th>`; }).join("");
-  // v7.70 (cerut de Ovidiu, 04.11): „Luni 19.10.2026” și doar ora sosirii
-  const celula = x => x.ale.length ? x.ale.map(v => `<div class="v"><b>${ziS(v.s.session_date)}</b><b>${dd(v.s.session_date)}</b><span>${v.manual ? (v.ora ? "ora " + v.ora : v.lipsa ? "lipsă acces" : esc(v.alt || "vizitat")) + (v.lipsa && v.ora ? " · lipsă acces" : "") : v.arrive_time ? "ora " + rcvHm(v.arrive_time) : "vizitat"}</span></div>`).join("")
-    : x.faraRuta ? `<div class="pl">${ziS(x.plan)}<br>${dd(x.plan)}<br>fără înregistrare</div>`
-    : x.plan && !x.viitor ? `<div class="nv">${ziS(x.plan)}<br>${dd(x.plan)}<br>nevizitat</div>` : x.viitor ? `<div class="pl">${ziS(x.plan)}<br>${dd(x.plan)}</div>` : `<div class="gol">·</div>`;
-  // v7.72 (cerut de Ovidiu, 04.11): de citit pe hârtie — A4 orizontal cu margini, text mare, chenare vizibile; câte 5 săptămâni pe tabel
+  const O = rcvOpt();
+  const cel = x => {
+    if(x.ale.length) return x.ale.map(v => { const t = rcvTimpi(v), mas = !v.manual && v.s && v.s.vehicle_plate ? v.s.vehicle_plate : "";
+      const sp = t.s ? "S: " + t.s + (O.plecare && t.p ? "  |  P: " + t.p : "") : (v.lipsa ? "lipsă acces" : "vizitat");
+      return `<div class="v"><div class="vd">${rcvZiS(v.s.session_date)}-${rcvD2(v.s.session_date)}</div><div class="vs">${esc(sp)}</div>` +
+        (O.stationare && t.min != null ? `<div class="vt">TS: ${rcvTS(t.min)} min</div>` : "") +
+        (O.masina && mas ? `<div class="vm">${esc(mas)}</div>` : "") + (v.lipsa && t.s ? `<div class="vt">lipsă acces</div>` : "") + `</div>`; }).join("");
+    if(x.faraRuta) return `<div class="c-gri"><div class="vd">${rcvZiS(x.plan)}-${rcvD2(x.plan)}</div><div>fără înregistrare</div></div>`;
+    if(x.plan && !x.viitor) return `<div class="c-nv"><div class="vd">${rcvZiS(x.plan)}-${rcvD2(x.plan)}</div><div>nevizitat</div></div>`;
+    if(x.viitor) return `<div class="c-pl"><div class="vd">${rcvZiS(x.plan)}-${rcvD2(x.plan)}</div><div>programat</div></div>`;
+    return `<div class="c-gol"></div>`;
+  };
   const BUC = 5, grupe = []; for(let k = 0; k < d.W.length; k += BUC) grupe.push([k, Math.min(d.W.length, k + BUC)]);
-  const capT = (a, b) => `<tr><th class="z">Ziua din program</th><th class="t">Traseu</th>${d.W.slice(a, b).map(w => { const s = sInfo(w);
-      return `<th><div class="w">${d.etW(w)}</div><div class="wd">${dd(s.start)} – ${dd(s.end)}</div></th>`; }).join("")}${"<th class=\"x\"></th>".repeat(BUC - (b - a))}</tr>`;
-  const blocuri = d.loc.map((l, i) => `<section class="loc"><div class="lh"><div class="ln">${i + 1}</div><div class="la"><b>${esc([l.jud, l.loc].filter(Boolean).join(" / "))}</b> — ${esc(l.sat)}</div>
-      <div class="lp">${esc(l.prodT)}</div><div class="lf">${esc(l.fr || "—")}</div></div>
-    <div class="ld"><span><i>GPS</i> ${l.gps ? `<a href="https://www.google.com/maps?q=${l.gps.lat},${l.gps.lon}">${l.gps.lat.toFixed(6)}, ${l.gps.lon.toFixed(6)}</a>` : "—"}</span>
-      <span><i>Model</i> ${esc(l.model || "—")}</span><span><i>Serii</i> ${l.serii.length ? esc(l.serii.join(", ")) : "—"}</span>
-      ${l.contact.nume || l.contact.tel ? `<span><i>Contact</i> ${esc([l.contact.nume, l.contact.tel].filter(Boolean).join(" · "))}</span>` : ""}</div>
-    ${grupe.map(([a, b]) => `<table><thead>${capT(a, b)}</thead><tbody>${l.randuri.map(r => `<tr><td class="z">${esc(r.c.ziua || "—")}</td><td class="t">${esc(r.c.masina || "—")}</td>${r.cel.slice(a, b).map(x => `<td>${celula(x)}</td>`).join("")}${"<td class=\"x\"></td>".repeat(BUC - (b - a))}</tr>`).join("")}</tbody></table>`).join("")}</section>`).join("");
-  const html = `<!doctype html><html lang="ro"><head><meta charset="utf-8"><title>Raport vizite – ${esc(d.client)} – ${esc(d.per)}</title><style>
-  @page{size:A4 landscape;margin:14mm 12mm 14mm 12mm}
+  const capT = (a, b) => `<tr><th class="z">Zi program</th><th class="t">Traseu</th>${d.W.slice(a, b).map(w => { const s = sInfo(w);
+      return `<th><div class="w">${d.etW(w)}</div><div class="wd">${rcvD2(s.start)} – ${rcvD2(s.end)}</div></th>`; }).join("")}${'<th class="x"></th>'.repeat(BUC - (b - a))}</tr>`;
+  const info = (et, val) => `<div class="i"><span>${et}</span><b>${val}</b></div>`;
+  const blocuri = d.loc.map((l, i) => `<section class="loc">
+    <header class="lh"><div class="ln">${zi2(i + 1)}</div><div class="la"><div class="lj">${esc([l.jud, l.loc].filter(Boolean).join(" · "))}</div><div class="ls">${esc(l.sat)}</div></div>
+      <div class="chips"><span class="chip c1">${esc(l.prodT)}</span><span class="chip">${esc(l.fr || "—")}</span></div></header>
+    <div class="ig">${info("Coordonate GPS", l.gps ? `<a href="https://www.google.com/maps?q=${l.gps.lat},${l.gps.lon}">${l.gps.lat.toFixed(6)}, ${l.gps.lon.toFixed(6)}</a>` : "—")}
+      ${info("Model", esc(l.model || "—"))}${info("Serii", l.serii.length ? esc(l.serii.join(", ")) : "—")}
+      ${O.contact ? info("Persoană de contact", esc([l.contact.nume, l.contact.tel].filter(Boolean).join(" · ") || "—")) : ""}</div>
+    ${grupe.map(([a, b]) => `<table><thead>${capT(a, b)}</thead><tbody>${l.randuri.map(r => `<tr><td class="z">${esc(r.c.ziua || "—")}</td><td class="t">${esc(r.c.masina || "—")}</td>${r.cel.slice(a, b).map(x => `<td>${cel(x)}</td>`).join("")}${'<td class="x"></td>'.repeat(BUC - (b - a))}</tr>`).join("")}</tbody></table>`).join("")}
+  </section>`).join("");
+  const leg = ["S = ora sosirii", O.plecare ? "P = ora plecării" : "", O.stationare ? "TS = timp de staționare (ore:minute)" : ""].filter(Boolean).join(" · ");
+  const dep = depPrincipal() || "HUNEDOARA";
+  const html = `<!doctype html><html lang="ro"><head><meta charset="utf-8"><title>Raport vizite – ${esc(d.client)} – ${esc(d.per)}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"><style>
+  @page{size:A4 landscape;margin:13mm 12mm 13mm 12mm}
   *{box-sizing:border-box;-webkit-print-color-adjust:exact;print-color-adjust:exact}
-  html{background:#e9edeb} body{font-family:Inter,"Segoe UI",Arial,sans-serif;color:#15201a;margin:0;font-size:13px;line-height:1.35}
-  .foaie{width:273mm;max-width:100%;margin:18px auto 70px;background:#fff;padding:12mm 12mm 10mm;box-shadow:0 2px 14px rgba(0,0,0,.12);border-radius:4px}
-  .top{display:flex;justify-content:space-between;align-items:flex-end;gap:20px;border-bottom:3px solid #1b5e3a;padding-bottom:10px;margin-bottom:14px}
-  .brand{font-size:21px;font-weight:800;color:#1b5e3a;letter-spacing:.01em} .brand small{display:block;font-size:12px;font-weight:700;color:#4d5c54;letter-spacing:.08em;text-transform:uppercase;margin-top:2px}
-  h1{font-size:20px;margin:0 0 3px;text-align:right} .sub{color:#3d4a43;font-size:13px;text-align:right}
-  .kpi{display:flex;gap:12px;margin:0 0 16px} .kpi div{flex:1;border:1.5px solid #b9c7bf;border-radius:8px;padding:8px 14px}
-  .kpi span{display:block;font-size:11px;font-weight:700;color:#4d5c54;text-transform:uppercase;letter-spacing:.05em} .kpi b{display:block;font-size:20px;color:#1b5e3a;margin-top:2px}
-  .loc{margin:0 0 16px;break-inside:avoid;page-break-inside:avoid;border:1.5px solid #9fb3a7;border-radius:8px;overflow:hidden}
-  .lh{display:flex;align-items:center;gap:12px;background:#DDEFE3;padding:9px 12px;font-size:15px;border-bottom:1px solid #b9d6c3}
-  .ln{width:28px;height:28px;flex:0 0 28px;border-radius:50%;background:#1b5e3a;color:#fff;font-weight:800;display:flex;align-items:center;justify-content:center;font-size:14px}
-  .la{flex:1} .lp{font-weight:800;color:#1b5e3a;white-space:nowrap} .lf{background:#fff;border:1.5px solid #8fbf9f;border-radius:999px;padding:2px 11px;font-weight:700;white-space:nowrap}
-  .ld{display:flex;flex-wrap:wrap;gap:4px 26px;padding:7px 12px 8px 52px;background:#F3F9F5;border-bottom:1px solid #cfe3d6;font-size:13px}
-  .ld i{font-style:normal;font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:#4d5c54;margin-right:5px} .ld a{color:#1b5e3a;font-weight:700;text-decoration:none}
-  table{width:100%;border-collapse:collapse;table-layout:fixed} table+table{border-top:2px solid #9fb3a7}
-  th,td{border:1px solid #c9d5ce;padding:6px 6px;text-align:center;vertical-align:middle} tr>*:first-child{border-left:0} tr>*:last-child{border-right:0}
-  th{background:#EEF3F0;font-size:12px;color:#2b3832} th .w{font-weight:800;color:#15201a;font-size:15px} th .wd{font-weight:600;font-size:11.5px;margin-top:1px}
-  th.z,td.z{width:110px;text-align:left;font-weight:800;font-size:14px} th.z{font-size:12px} th.t,td.t{width:84px;text-align:left;color:#2b3832;font-size:13px} th.t{font-size:12px}
-  th.x,td.x{background:#fafbfa}
-  .v{background:#E1F2E6;border:1px solid #a9d3b6;border-radius:6px;padding:4px 4px;line-height:1.3} .v b{display:block;font-size:13px}
-  .v span{display:block;font-size:14px;color:#14532d;font-weight:800;margin-top:1px}
-  .nv{background:#FBE4E1;border:1px solid #eeb2aa;color:#a1231b;border-radius:6px;padding:4px;font-size:12.5px;font-weight:700;line-height:1.3}
-  .pl{color:#6b7a72;font-size:12px;line-height:1.3} .gol{color:#b9c4be}
-  .foot{margin-top:12px;color:#3d4a43;font-size:11.5px;display:flex;justify-content:space-between;gap:20px;border-top:1px solid #c9d5ce;padding-top:7px}
-  .bar{position:fixed;bottom:16px;right:16px;display:flex;gap:8px} .bar button{font:inherit;font-size:14px;font-weight:700;padding:9px 16px;border-radius:8px;border:0;background:#1b5e3a;color:#fff;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.2)}
+  :root{--g:#14532d;--g2:#1f7a45;--gl:#eaf5ee;--gb:#cfe5d7;--tx:#121a16;--mu:#5b6a62;--ln:#d5ddd8;--rd:#a32019;--rdl:#fcebe8}
+  html{background:#e7ebe9} body{font-family:Inter,"Segoe UI",Arial,sans-serif;color:var(--tx);margin:0;font-size:13px;line-height:1.35;font-feature-settings:"tnum" 1}
+  .foaie{width:273mm;max-width:100%;margin:20px auto 80px;background:#fff;padding:11mm 12mm 9mm;box-shadow:0 6px 30px rgba(20,40,30,.14);border-radius:6px}
+  .top{display:grid;grid-template-columns:auto 1fr auto;gap:16px;align-items:center;padding-bottom:12px;border-bottom:1px solid var(--ln)}
+  .logo{width:48px;height:48px;border-radius:10px;background:linear-gradient(135deg,var(--g2),var(--g));color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:18px;letter-spacing:.02em}
+  .firma b{display:block;font-size:19px;font-weight:800;color:var(--g);letter-spacing:.01em} .firma span{display:block;font-size:12px;font-weight:600;color:var(--mu);letter-spacing:.06em;text-transform:uppercase;margin-top:2px}
+  .doc{text-align:right} .doc .tt{font-size:11px;font-weight:700;color:var(--mu);letter-spacing:.12em;text-transform:uppercase} .doc h1{margin:2px 0 2px;font-size:21px;font-weight:800}
+  .doc .per{font-size:13px;color:#33413a} .doc .per b{color:var(--g)}
+  .acc{height:4px;background:linear-gradient(90deg,var(--g) 0 35%,var(--g2) 35% 70%,#9fd1b2 70%);border-radius:0 0 3px 3px;margin-bottom:14px}
+  .kpi{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:0 0 16px} .kpi div{border:1px solid var(--ln);border-left:4px solid var(--g2);border-radius:8px;padding:8px 12px;background:#fbfdfc}
+  .kpi span{display:block;font-size:10.5px;font-weight:700;color:var(--mu);text-transform:uppercase;letter-spacing:.08em} .kpi b{display:block;font-size:21px;font-weight:800;color:var(--g);margin-top:1px}
+  .loc{margin:0 0 14px;break-inside:avoid;page-break-inside:avoid;border:1px solid #b8c8be;border-radius:10px;overflow:hidden}
+  .lh{display:flex;align-items:center;gap:12px;padding:10px 14px;background:linear-gradient(180deg,#f2f9f4,#e6f3ea);border-bottom:1px solid var(--gb)}
+  .ln{font-size:13px;font-weight:800;color:#fff;background:var(--g);border-radius:7px;padding:5px 8px;letter-spacing:.04em}
+  .la{flex:1} .lj{font-size:11.5px;font-weight:700;color:var(--g2);letter-spacing:.08em;text-transform:uppercase} .ls{font-size:16px;font-weight:700;margin-top:1px}
+  .chips{display:flex;gap:6px} .chip{border:1px solid #9cc9ad;background:#fff;border-radius:999px;padding:3px 11px;font-weight:700;font-size:12.5px;white-space:nowrap} .chip.c1{background:var(--g);border-color:var(--g);color:#fff}
+  .ig{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));border-bottom:1px solid var(--ln)}
+  .ig .i{padding:7px 14px;border-right:1px solid var(--ln)} .ig .i:last-child{border-right:0}
+  .ig .i span{display:block;font-size:10px;font-weight:700;color:var(--mu);letter-spacing:.08em;text-transform:uppercase} .ig .i b{display:block;font-size:13px;font-weight:600;margin-top:1px} .ig a{color:var(--g);text-decoration:none}
+  table{width:100%;border-collapse:collapse;table-layout:fixed} table+table{border-top:2px solid #b8c8be}
+  th,td{border:1px solid var(--ln);padding:6px;text-align:center;vertical-align:middle} tr>*:first-child{border-left:0} tr>*:last-child{border-right:0} tbody tr:last-child td{border-bottom:0}
+  thead th{background:#f4f7f5;color:#2b3832} th .w{font-weight:800;font-size:14px;color:var(--tx)} th .wd{font-weight:600;font-size:11px;color:var(--mu);margin-top:1px}
+  th.z,td.z{width:98px;text-align:left} th.t,td.t{width:80px;text-align:left} th.z,th.t{font-size:10.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--mu)}
+  td.z{font-weight:800;font-size:13.5px} td.t{font-size:12.5px;color:#33413a} th.x,td.x{background:#fafbfa}
+  .v{background:#fff;border:1px solid #a9d3b6;border-left:4px solid var(--g2);border-radius:7px;padding:5px 6px 5px 7px;text-align:left;line-height:1.3}
+  .vd{font-size:13px;font-weight:800;color:var(--g);letter-spacing:.02em} .vs{font-size:13.5px;font-weight:700;margin-top:1px;white-space:nowrap}
+  .vt{font-size:12px;font-weight:600;color:#33413a} .vm{display:inline-block;margin-top:3px;font-size:11px;font-weight:700;letter-spacing:.04em;border:1px solid #c3cfc8;border-radius:4px;padding:0 5px;background:#f4f7f5}
+  .c-nv{background:var(--rdl);border:1px solid #efb7ae;border-left:4px solid var(--rd);border-radius:7px;padding:5px 7px;text-align:left;color:var(--rd);font-size:12px;font-weight:700} .c-nv .vd{color:var(--rd)}
+  .c-gri,.c-pl{border:1px dashed #c9d3cd;border-radius:7px;padding:5px 7px;text-align:left;color:#7b8a82;font-size:11.5px} .c-gri .vd,.c-pl .vd{color:#7b8a82;font-weight:700}
+  .c-gol{height:24px}
+  .foot{margin-top:12px;display:flex;justify-content:space-between;gap:18px;align-items:flex-start;border-top:1px solid var(--ln);padding-top:8px;font-size:11px;color:#3d4a43}
+  .lg{display:flex;flex-wrap:wrap;gap:6px 16px;align-items:center} .lg i{display:inline-block;width:12px;height:12px;border-radius:3px;vertical-align:-2px;margin-right:5px}
+  .bar{position:fixed;bottom:18px;right:18px} .bar button{font:inherit;font-size:14px;font-weight:700;padding:10px 18px;border-radius:9px;border:0;background:var(--g);color:#fff;cursor:pointer;box-shadow:0 4px 14px rgba(0,0,0,.25)}
   @media print{ html{background:#fff} .bar{display:none} .foaie{width:auto;margin:0;padding:0;box-shadow:none;border-radius:0} thead{display:table-header-group} }
   </style></head><body>
   <div class="bar"><button onclick="print()">🖨 Tipărește / Salvează PDF</button></div>
   <div class="foaie">
-  <div class="top"><div><div class="brand">EURO ECOLOGIC – DEPOZIT ${esc(depPrincipal() || "HUNEDOARA")}<small>Raport vizite de servisare</small></div></div>
-    <div><h1>${esc(d.client)}</h1><div class="sub">Perioada: <b>${esc(d.per)}</b> (${dd(d.d1)} – ${dd(d.d2)})</div></div></div>
-  <div class="kpi"><div><span>Locații</span><b>${d.loc.length}</b></div><div><span>Produse</span><b style="font-size:16px">${esc(d.tot.prod)}</b></div>
+  <div class="top"><div class="logo">EE</div><div class="firma"><b>EURO ECOLOGIC</b><span>Depozit ${esc(dep)}</span></div>
+    <div class="doc"><div class="tt">Raport vizite de servisare</div><h1>${esc(d.client)}</h1><div class="per">Perioada <b>${esc(d.per)}</b> · ${rcvD4(d.d1)} – ${rcvD4(d.d2)}</div></div></div>
+  <div class="acc"></div>
+  <div class="kpi"><div><span>Locații</span><b>${d.loc.length}</b></div><div><span>Produse</span><b style="font-size:16px;padding-top:4px">${esc(d.tot.prod)}</b></div>
     <div><span>Vizite efectuate</span><b>${d.tot.viz}</b></div><div><span>Planificate până azi</span><b>${d.tot.plan}</b></div></div>
   ${blocuri}
-  <div class="foot"><span><b>Verde</b> = vizită efectuată (ziua · data · ora sosirii) · <b>Roșu</b> = zi din program fără vizită · <b>Gri</b> = zi programată încă neajunsă / zi fără rută înregistrată</span><span>Generat ${dd(today())} · GestiuneEE</span></div>
-  </div>
-  </body></html>`;
+  <div class="foot"><div class="lg"><span><i style="background:#fff;border:1px solid #a9d3b6;border-left:4px solid #1f7a45"></i>vizită efectuată</span>
+      <span><i style="background:#fcebe8;border:1px solid #efb7ae;border-left:4px solid #a32019"></i>nevizitat</span>
+      <span><i style="border:1px dashed #c9d3cd"></i>programat / fără înregistrare</span><span>${esc(leg)}</span></div>
+    <div style="text-align:right;white-space:nowrap">Generat ${rcvD4(today())}<br>GestiuneEE · Euro Ecologic</div></div>
+  </div></body></html>`;
   const w = window.open("", "_blank"); if(!w){ toast("Browserul a blocat fereastra — permite ferestrele pop-up", true); return; }
   w.document.open(); w.document.write(html); w.document.close();
 }
 function rcvExcel(){
   const d = rcvDate(); if(!d || d.err){ toast(d ? d.err : "Alege clientul", true); return; }
-  const ZL = ["DUMINICA","LUNI","MARTI","MIERCURI","JOI","VINERI","SAMBATA"], rows = [];
+  const O = rcvOpt(), ZL = ["DUMINICA","LUNI","MARTI","MIERCURI","JOI","VINERI","SAMBATA"], rows = [];
   d.loc.forEach(l => l.randuri.forEach(r => r.cel.forEach((x, i) => {
     const baza = { CLIENT: d.client, JUDET: l.jud, LOCALITATE: l.loc, LOCATIE: l.sat, GPS: l.gps ? l.gps.lat.toFixed(6) + ", " + l.gps.lon.toFixed(6) : "",
-      PRODUSE: l.prodT, MODEL: l.model || "", SERII: l.serii.join(", "), "PERSOANA CONTACT": l.contact.nume, "TELEFON CONTACT": l.contact.tel, FRECVENTA: l.fr, "ZIUA DIN PROGRAM": r.c.ziua || "", TRASEU: r.c.masina || "", SAPTAMANA: d.etW(d.W[i]) };
-    if(x.ale.length) x.ale.forEach(v => rows.push({ ...baza, DATA: fmtD(v.s.session_date), ZIUA: ZL[new Date(v.s.session_date + "T12:00:00").getDay()],
-      "ORA SOSIRE": v.manual ? (v.ora || "") : rcvHm(v.arrive_time), STARE: v.manual && v.lipsa ? "LIPSA ACCES" : "VIZITAT", SURSA: v.manual ? "REGISTRU (cod " + v.cod + ")" : "APLICATIE SOFER" }));
-    else if(x.plan) rows.push({ ...baza, DATA: fmtD(x.plan), ZIUA: ZL[new Date(x.plan + "T12:00:00").getDay()], "ORA SOSIRE": "", STARE: x.viitor ? "PROGRAMAT" : x.faraRuta ? "FARA INREGISTRARE" : "NEVIZITAT" });
+      PRODUSE: l.prodT, MODEL: l.model || "", SERII: l.serii.join(", ") };
+    if(O.contact){ baza["PERSOANA CONTACT"] = l.contact.nume; baza["TELEFON CONTACT"] = l.contact.tel; }
+    Object.assign(baza, { FRECVENTA: l.fr, "ZIUA DIN PROGRAM": r.c.ziua || "", TRASEU: r.c.masina || "", SAPTAMANA: d.etW(d.W[i]) });
+    const rand = (data, t, stare, extra) => { const o = { ...baza, DATA: fmtD(data), ZIUA: ZL[new Date(data + "T12:00:00").getDay()], "ORA SOSIRE": t ? t.s : "" };
+      if(O.plecare) o["ORA PLECARE"] = t ? t.p : ""; if(O.stationare) o["TIMP STATIONARE"] = t && t.min != null ? rcvTS(t.min) : "";
+      if(O.masina) o.MASINA = extra || ""; o.STARE = stare; return o; };
+    if(x.ale.length) x.ale.forEach(v => { const r2 = rand(v.s.session_date, rcvTimpi(v), v.manual && v.lipsa ? "LIPSA ACCES" : "VIZITAT", !v.manual && v.s ? v.s.vehicle_plate : "");
+      r2.SURSA = v.manual ? "REGISTRU (cod " + v.cod + ")" : "APLICATIE SOFER"; rows.push(r2); });
+    else if(x.plan) rows.push(rand(x.plan, null, x.viitor ? "PROGRAMAT" : x.faraRuta ? "FARA INREGISTRARE" : "NEVIZITAT", ""));
   })));
   if(!rows.length){ toast("Nu e nimic de exportat", true); return; }
   const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(rows), "VIZITE");
