@@ -315,7 +315,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   .cu-plus{display:flex;gap:6px}
   .gf{display:grid;gap:12px;margin-bottom:12px}.gf:last-child{margin-bottom:0}
   .gf>div{min-width:0}
-  .g-cmd{grid-template-columns:150px minmax(130px,1.3fr) 62px minmax(120px,1.2fr) minmax(110px,1.1fr) minmax(110px,1.1fr)}
+  .g-cmd{grid-template-columns:150px 84px minmax(130px,1.3fr) 62px minmax(120px,1.2fr) minmax(110px,1.1fr) minmax(110px,1.1fr)}
   /* v7.94: „+ Produs” la comenzile din exterior */
   .g-xp{grid-template-columns:62px minmax(120px,1.2fr) minmax(110px,1.1fr) minmax(110px,1.1fr) auto;align-items:end}
   .mm-xp-r{border-top:1px dashed var(--bd);margin-top:12px;padding-top:10px}
@@ -1014,7 +1014,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
   <span id="rz-w"><button id="rz-reset" class="pictograma" title="Lățimi implicite — pune coloanele din tabelele acestei file înapoi cum erau">↺ Reset layout</button><i class="rz-sep">|</i></span>
   <span id="tz-w" title="Mărimea tabelului (doar tabelul, restul rămâne la fel), din 5 în 5%. Merge și cu Ctrl + rotița mausului, Ctrl + / Ctrl − / Ctrl 0. Dublu clic pe procent = scrii tu valoarea."><button class="pictograma" onclick="tzPas(-1)" aria-label="Micșorează tabelul">−</button><b id="tz-v" ondblclick="tzScrie()" title="Dublu clic = scrii mărimea (ex. 87), Enter">100%</b><input id="tz-in" type="number" min="30" max="300" step="5" style="display:none"><button class="pictograma" onclick="tzPas(1)" aria-label="Mărește tabelul">+</button></span>
-  <span class="ver">v7.94</span>
+  <span class="ver">v7.95</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -1517,6 +1517,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
         <h4>Comanda</h4>
         <div class="gf g-cmd">
           <div><label>Data</label><input type="date" id="mm-data"></div>
+          <div><label>Ora</label><input id="mm-ora" maxlength="20" placeholder="ex. 08:00" title="Ora la care trebuie să ajungă șoferul (ex. 08:00 sau 08:00-09:00) — apare în textul pentru șoferi"></div>
           <div><label>Tip comandă</label><select id="mm-tip"></select></div>
           <div><label>Bucăți</label><input type="number" id="mm-buc" value="1"></div>
           <div><label>Produs <button type="button" class="cat-plus" onclick="catRapid('mm','prod',this)" title="Categorie nouă în catalog, dacă produsul nu există încă">＋ nou</button></label><select id="mm-prod"></select></div>
@@ -1601,6 +1602,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
         <div id="mm-evp-per" class="muted" style="margin:-4px 0 8px"></div>
         <div class="grid3">
           <div><label>Ridicare programată</label><input id="mm-ev-rid" type="date" onchange="mmEvpDeseneaza()"></div>
+          <div><label>Ora ridicare</label><input id="mm-ev-rid-ora" maxlength="20" placeholder="ex. 18:00" oninput="mmEvpDeseneaza()" title="v7.95: ora ridicării — apare în textul de amplasare și în comanda EVENIMENT-R"></div>
         </div>
         <input type="hidden" id="mm-ev-serv">
         <div id="mm-ev-rinfo" class="muted" style="margin-top:8px"></div>
@@ -3428,7 +3430,7 @@ function openMiscare(id){
   document.querySelectorAll("#mm-flags .flag").forEach(f=>setFlag(f,r?(r[f.dataset.f]||"-"):(f.dataset.f==="waap"?"V":"-")));
   $("mm-cmd-nr").value = r ? (r.cmd_nr || "") : ""; $("mm-cmd-data").value = r ? (r.cmd_data || "") : ""; $("mm-cmd-canal").value = r ? (r.cmd_canal || "") : ""; mmCmdArata();   // v6.43
   $("mm-sp-rid").value = r && r.tip_miscare === "SPONSORIZARE-A" ? (r.ev_rid || "") : "";   // v7.30
-  $("mm-ev-rid").value = r ? (r.ev_rid || "") : ""; $("mm-ev-serv").value = r && Array.isArray(r.ev_serv) ? r.ev_serv.join(",") : ""; $("mm-ev-zi").value = ""; MM_EV_CU = !!(r && Array.isArray(r.ev_serv) && r.ev_serv.length);   // v6.79 / v6.80
+  $("mm-ev-rid").value = r ? (r.ev_rid || "") : ""; $("mm-ev-rid-ora").value = r ? (r.ev_rid_ora || "") : ""; $("mm-ora").value = r ? (r.ora || "") : "";   // v7.95 $("mm-ev-serv").value = r && Array.isArray(r.ev_serv) ? r.ev_serv.join(",") : ""; $("mm-ev-zi").value = ""; MM_EV_CU = !!(r && Array.isArray(r.ev_serv) && r.ev_serv.length);   // v6.79 / v6.80
   $("mm-sv-f").checked = r ? (r.tip_miscare === "SERVISARE" && !!r.desp_factureaza) : true; $("mm-sv-pret").value = r && r.tip_miscare === "SERVISARE" && r.desp_pret != null ? (+r.desp_pret).toFixed(2) : "";   // v6.44
   $("mm-sv-scad").value = r && r.tip_miscare === "SERVISARE" && r.desp_scadent != null ? r.desp_scadent : "";   // v6.48
   $("mm-sv-moneda").value = (r && r.desp_moneda) || "RON"; if(!$("mm-sv-moneda").value && $("mm-sv-moneda").options.length) $("mm-sv-moneda").selectedIndex = 0;   // v6.45
@@ -3447,7 +3449,7 @@ function openMiscare(id){
 }
 // v4.80 (cerut de Ovidiu, 08.10): ciornele comenzilor noi nesalvate (tabel `ciorne`, tip 'comanda').
 let MM_CIORNA = null, MM_CIORNE = [];
-const MM_CAMPURI = ["mm-contract","mm-dep","mm-data","mm-tip","mm-buc","mm-prod","mm-model","mm-mf","mm-client","mm-ctr","mm-anexa","mm-jud","mm-loc","mm-sat","mm-pers","mm-tel","mm-frecv","mm-zi","mm-traseu","mm-obs","mm-cmd-nr","mm-cmd-data","mm-cmd-canal","mm-sv-pret","mm-sv-moneda","mm-sv-scad","mm-ev-rid","mm-ev-serv"];
+const MM_CAMPURI = ["mm-contract","mm-dep","mm-data","mm-tip","mm-buc","mm-prod","mm-model","mm-mf","mm-client","mm-ctr","mm-anexa","mm-jud","mm-loc","mm-sat","mm-pers","mm-tel","mm-frecv","mm-zi","mm-traseu","mm-obs","mm-cmd-nr","mm-cmd-data","mm-cmd-canal","mm-sv-pret","mm-sv-moneda","mm-sv-scad","mm-ev-rid","mm-ev-serv","mm-ora","mm-ev-rid-ora"];
 function mmDate(){
   const d = Object.fromEntries(MM_CAMPURI.map(id => [id, $(id).value || ""]));
   d.acc = accCitite("mm-acc") || ""; d.flags = {}; d.xp = mmXpCitite().map(x => ({ buc: x.buc, produs: x.produs, model: x.model, model_fizic: x.model_fizic, accesorii: x.accesorii }));   // v7.94
@@ -3475,7 +3477,7 @@ function mmCiornaIa(id){
   $("mm-client").value = v("mm-client"); fillAnexeForClient();
   if(v("mm-ctr")){ $("mm-ctr").value = v("mm-ctr"); fillAnexeForContract(); cautaSincronizeaza("mm-ctr"); }
   if(v("mm-anexa") && ANX.some(a => a.id == v("mm-anexa"))) mmAnexaAlege(+v("mm-anexa"));
-  ["mm-jud","mm-loc","mm-sat","mm-pers","mm-tel","mm-frecv","mm-zi","mm-traseu","mm-obs","mm-cmd-nr","mm-cmd-data","mm-cmd-canal","mm-sv-pret","mm-sv-moneda","mm-sv-scad","mm-ev-rid","mm-ev-serv"].forEach(k => { $(k).value = v(k); }); if(!$("mm-sv-moneda").value) $("mm-sv-moneda").value = "RON"; MM_EV_CU = !!v("mm-ev-serv"); mmCmdArata(); mmEvpArata();
+  ["mm-jud","mm-loc","mm-sat","mm-pers","mm-tel","mm-frecv","mm-zi","mm-traseu","mm-obs","mm-cmd-nr","mm-cmd-data","mm-cmd-canal","mm-sv-pret","mm-sv-moneda","mm-sv-scad","mm-ev-rid","mm-ev-serv","mm-ora","mm-ev-rid-ora"].forEach(k => { $(k).value = v(k); }); if(!$("mm-sv-moneda").value) $("mm-sv-moneda").value = "RON"; MM_EV_CU = !!v("mm-ev-serv"); mmCmdArata(); mmEvpArata();
   document.querySelectorAll("#mm-flags .flag").forEach(f => setFlag(f, (d.flags || {})[f.dataset.f] || "-"));
   MM_PV = null; mmZile(); mmModClient(); mmSerii(true);
   mmXpReset(); if(mmExterior()) (d.xp || []).forEach(x => mmXpAdauga(x));   // v7.94
@@ -3616,10 +3618,15 @@ async function saveMiscare(genereaza){
       : !a.ev_de ? "Anexa " + (a.anexa || "") + " n-are perioada evenimentului → Facturare numără de la amplasare la ridicare." : "";
     if(msg && !confirm("⚠ " + msg + "\n\nOK = salvez comanda așa · Anulează = mă întorc să corectez")) return false;
     { const r = $("mm-ev-rid").value, d = $("mm-data").value, sv = evServLista();   // v6.79: programul evenimentului
-      if(r && d && r <= d && !confirm("⚠ Ridicarea programată (" + fmtD(r) + ") nu e după amplasare (" + fmtD(d) + ").\n\nSalvez așa?")) return false;
+      if(r && d && r < d && !confirm("⚠ Ridicarea programată (" + fmtD(r) + ") e înainte de amplasare (" + fmtD(d) + ").\n\nSalvez așa?")) return false;
       const af = sv.filter(z => (d && z < d) || (r && z >= r));
       if(af.length && !confirm("⚠ Zile de servisare în afara intervalului amplasare – ridicare: " + af.map(fmtD).join(", ") + ".\n\nSalvez așa?")) return false;
       if(genereaza && !r && !confirm("Nu ai pus „Ridicare programată” → comanda de ridicare NU se creează singură (o faci tu, ca până acum).\n\nContinui?")) return false; }
+  }
+  if(tip === "EVENIMENT-A" && mmExterior()){   // v7.95: ridicarea programată și la comanda din exterior (fără anexă)
+    const r = $("mm-ev-rid").value, d = $("mm-data").value;
+    if(r && d && r < d && !confirm("⚠ Ridicarea programată (" + fmtD(r) + ") e înainte de amplasare (" + fmtD(d) + ").\n\nSalvez așa?")) return false;
+    if(genereaza && !r && !confirm("Nu ai pus „Ridicare programată” → comanda de ridicare NU se creează singură (o faci tu, ca până acum).\n\nContinui?")) return false;
   }
   if(NEG.test(tip)) buc=-buc;
   // v4.76: scoasă avertizarea „anexa nu e de forma 1.0-S1 / -R1” — numerotarea anexelor o face Ovidiu, în stilul lui.
@@ -3640,7 +3647,8 @@ async function saveMiscare(genereaza){
     rec.locatii = MM_LS ? [{ anexa: true, nou: !!MM_LS.nou, jud: rec.jud, localitate: rec.loc || "", locatie: rec.sat || "", buc: Math.abs(buc), lat: r ? r.lat : null, lon: r ? r.lon : null, cod: r ? r.cod : mmLaNouCod() }] : null;
   }
   { const evp = tip === "EVENIMENT-A" && !mmExterior(), sv = evp ? evServLista() : [];   // v6.79: programul evenimentului
-    rec.ev_rid = evp ? ($("mm-ev-rid").value || null) : null; rec.ev_serv = sv.length ? sv : null;
+    rec.ev_rid = tip === "EVENIMENT-A" ? ($("mm-ev-rid").value || null) : null; rec.ev_serv = sv.length ? sv : null;   // v7.95: și la exterior
+    rec.ev_rid_ora = rec.ev_rid ? ($("mm-ev-rid-ora").value.trim() || null) : null; rec.ora = $("mm-ora").value.trim() || null;   // v7.95
     if(sv.length && !rec.traseu) rec.traseu = "Traseu-EV"; }
   if(SP_TIP.test(tip)){ rec.anexa_id = null; rec.ev_rid = tip === "SPONSORIZARE-A" ? ($("mm-sp-rid").value || null) : null;   // v7.30
     if(tip === "SPONSORIZARE-A" && rec.ev_rid && rec.data && rec.ev_rid <= rec.data && !confirm("⚠ Ridicarea estimată (" + fmtD(rec.ev_rid) + ") nu e după amplasare (" + fmtD(rec.data) + ").\n\nSalvez așa?")) return false; }
@@ -3706,6 +3714,8 @@ async function saveMiscare(genereaza){
     const multe = mmDocExtra().length;
     try{ textRid = await evRidCreeaza(salvat.id, rec); }catch(e){ toast("Ridicarea nu s-a putut crea: " + (e.message || e), true); }
     if(textRid && multe) toast("Comanda are mai multe produse: ridicarea generată e doar pentru produsul principal — pentru celelalte fă EVENIMENT-R separat", true);
+  } else if(genereaza && tip === "EVENIMENT-A" && rec.ev_rid && mmExterior()){   // v7.95: exterior → EVENIMENT-R cu toate produsele
+    try{ textRid = await evRidExterior(salvat.id, rec); }catch(e){ toast("Ridicarea nu s-a putut crea: " + (e.message || e), true); }
   }
   const largite = largesteFiltrele(rec);
   if(genereaza){
@@ -3901,9 +3911,10 @@ function mmEvSvMod(cu){
 }
 function mmEvpArata(){
   const s = $("mm-evp-sect"); if(!s) return;
-  const on = $("mm-tip").value === "EVENIMENT-A" && !mmExterior();
-  s.style.display = on ? "" : "none";
+  const ext = mmExterior(), ev = $("mm-tip").value === "EVENIMENT-A", on = ev && !ext;   // v7.95: la exterior doar ridicarea
+  s.style.display = ev ? "" : "none";
   $("mm-sv-ev").style.display = on ? "" : "none"; $("mm-sv-frecv-d").style.display = on ? "none" : ""; $("mm-sv-zile-d").style.display = on ? "none" : "";
+  if(ev && ext){ $("mm-evp-per").innerHTML = "Comandă din exterior (fără anexă): pune data și ora ridicării — la „Salvează și generează” se creează și comanda <b>EVENIMENT-R</b>, cu toate produsele."; mmEvpDeseneaza(); return; }
   if(!on) return;
   if(evServLista().length) MM_EV_CU = true;
   const a = ANX.find(x => x.id === (+$("mm-anexa").value || 0)), p = evPerAnexa(a);
@@ -3926,6 +3937,10 @@ function mmEvpDeseneaza(){
     (p ? ` <button type="button" class="btn sm sec" onclick="mmEvZiToate()" title="${esc(fmtD(p.de) + " – " + fmtD(p.pana))}">Toate zilele evenimentului</button>` : "") +
     (l.length ? ` <button type="button" class="btn sm sec" onclick="evServSet([])">Golește</button>` : "");
   const ri = $("mm-ev-rinfo"); if(!ri) return;
+  if(mmExterior()){ const o = $("mm-ev-rid-ora").value.trim();   // v7.95
+    ri.innerHTML = !r ? "Fără „Ridicare programată” comanda de ridicare nu se creează singură." :
+      "La <b>Salvează și generează</b>: comanda <b>EVENIMENT-R</b> pe <b>" + zsD(r) + "</b>" + (o ? ", ora <b>" + esc(o) + "</b>" : "") + ", cu toate produsele de mai sus, generată (fără anexă — comandă din exterior). Primești două texte: amplasarea și ridicarea.";
+    return; }
   const fin = a ? anexeLinie(a.id).find(x => x.tip_anexa === "R" && /FINAL/i.test(x.anexa || "")) : null;
   ri.innerHTML = !r ? "Fără „Ridicare programată” comanda de ridicare nu se creează singură." :
     "La <b>Salvează și generează</b>: " + (fin ? "anexa <b>" + esc(fin.anexa || "") + "</b> există (o folosesc)" : "se creează anexa internă <b>-R FINAL</b>") +
@@ -4006,6 +4021,43 @@ async function evRidCreeaza(aId, rec){
 }
 // Al doilea text în fereastra comenzii (RIDICARE); se ascunde singur la închiderea ferestrei.
 let cmdDoiInfo = "";
+// ── v7.95 (cerut de Ovidiu, 05.11): EVENIMENT-R la comanda din EXTERIOR (fără anexă) — aceleași produse, legate prin grup_id ──
+// Ridicarea se găsește după: EVENIMENT-R, același contract (gestiune), client, locație, de la data amplasării încolo.
+async function evRidExtGaseste(m){
+  const k = v => String(v || "").trim().toUpperCase();
+  const { data, error } = await db.from("miscari").select("*").eq("tip_miscare", "EVENIMENT-R").eq("contract", m.contract || "").gte("data", m.data).order("data").order("id").limit(300);
+  if(error) throw error;
+  const L = data || [], c = L.find(x => !(x.grup_id && x.grup_id !== x.id) && k(x.client) === k(m.client) && k(x.jud) === k(m.jud) && k(x.loc) === k(m.loc) && k(x.sat) === k(m.sat));
+  return c ? { c, copii: L.filter(x => x.grup_id === c.id && x.id !== c.id) } : null;
+}
+async function evRidExterior(aId, rec){
+  const zi = rec.ev_rid;
+  const prod = [{ buc: Math.abs(+rec.buc || 0), produs: rec.produs, model: rec.model, model_fizic: rec.model_fizic, accesorii: rec.accesorii }].concat(mmXpCitite());
+  const g = await evRidExtGaseste(rec);
+  if(g && ["V", "W"].includes(g.c.pv || "")){ cmdDoiInfo = "comanda " + g.c.id + " — PV de ridicare deja făcut, n-am schimbat-o"; return textComandaSalvata(g.c, g.copii); }
+  if(g && g.c.data !== zi && !confirm("Comanda de ridicare " + g.c.id + " există deja, pe " + fmtD(g.c.data) + ".\n\nO mut pe " + fmtD(zi) + "?\n\nOK = mut · Anulează = rămâne pe " + fmtD(g.c.data))){
+    cmdDoiInfo = "comanda " + g.c.id; return textComandaSalvata(g.c, g.copii); }
+  const baza = { data: zi, ora: rec.ev_rid_ora || null, tip_miscare: "EVENIMENT-R", client_id: null, client: rec.client, jud: rec.jud, loc: rec.loc, sat: rec.sat,
+    contract: rec.contract, depozit: rec.depozit, pers_resp: rec.pers_resp, telefon: rec.telefon, frecv_serv: null, zi_serv: null, traseu: rec.traseu || null,
+    contract_id: null, anexa_id: null, generat_la: new Date().toISOString(), din_telefon: false };
+  const rand = (p, grup) => Object.assign({}, baza, { buc: -Math.abs(+p.buc || 0), produs: p.produs, model: p.model || null, model_fizic: p.model_fizic || null, accesorii: p.accesorii || null, grup_id: grup });
+  let main;
+  if(g){
+    const { data, error } = await db.from("miscari").update(rand(prod[0], prod.length > 1 ? g.c.id : null)).eq("id", g.c.id).select("*").single(); if(error) throw error; main = data;
+    if(g.copii.length){ const e = (await db.from("miscari").delete().in("id", g.copii.map(x => x.id))).error; if(e) throw e; }
+  } else {
+    const nou = Object.assign(rand(prod[0], null), { observatii: null, rpt: "-", rt: "-", fac: "-", pv: rec.depozit && rec.depozit !== depPrincipal() ? "X" : "-", act: "V", waap: "V" });
+    const { data, error } = await db.from("miscari").insert(nou).select("*").single(); if(error) throw error; main = data;
+    if(prod.length > 1){ const e = (await db.from("miscari").update({ grup_id: main.id }).eq("id", main.id)).error; if(e) throw e; main.grup_id = main.id; }
+  }
+  let copii = [];
+  if(prod.length > 1){
+    const { data, error } = await db.from("miscari").insert(prod.slice(1).map(p => Object.assign(rand(p, main.id), { rpt: main.rpt, rt: main.rt, fac: main.fac, pv: main.pv, act: main.act, waap: main.waap }))).select("*");
+    if(error) throw error; copii = data || []; }
+  cmdDoiInfo = "comanda " + main.id + (g ? " — actualizată" : " — creată acum") + (copii.length ? " · " + (copii.length + 1) + " produse" : "");
+  toast("Ridicarea e " + (g ? "actualizată" : "creată") + ": comanda " + main.id + " (EVENIMENT-R, " + fmtD(zi) + (baza.ora ? ", ora " + baza.ora : "") + ")");
+  return textComandaSalvata(main, copii);
+}
 function cmdDoi(t){
   const on = typeof t === "string" && !!t;
   $("cmd-doi").style.display = on ? "" : "none"; $("cmd-cap1").style.display = on ? "" : "none";
@@ -4049,7 +4101,10 @@ async function copiazaComanda2(){
 }
 // Textul ridicării pentru o amplasare deja generată (butonul „Generează text comandă”).
 async function evRidTextExistent(){
-  if($("mm-tip").value !== "EVENIMENT-A" || mmExterior()) return null;
+  if($("mm-tip").value !== "EVENIMENT-A") return null;
+  if(mmExterior()){   // v7.95
+    const g = await evRidExtGaseste({ contract: $("mm-contract").value, data: $("mm-data").value, client: $("mm-client").value, jud: $("mm-jud").value, loc: $("mm-loc").value, sat: $("mm-sat").value }).catch(() => null);
+    if(!g) return null; cmdDoiInfo = "comanda " + g.c.id; return textComandaSalvata(g.c, g.copii); }
   const a = ANX.find(x => x.id === (+$("mm-anexa").value || 0)); if(!a) return null;
   const fin = anexeLinie(a.id).find(x => x.tip_anexa === "R" && /FINAL/i.test(x.anexa || "")); if(!fin) return null;
   const { data, error } = await db.from("miscari").select("*").eq("anexa_id", fin.id).eq("tip_miscare", "EVENIMENT-R").order("id").limit(1);
@@ -11286,6 +11341,7 @@ function textComandaDin(d){
   if(svlc){ L.push("COMANDA DIN DATA: " + dzL(d.data)); L.push("*SERVISARE" + (/cerere/i.test(d.frecv || "") ? " LA CERERE" : "") + "*"); }
   else { const evT = { "EVENIMENT-A": "AMPLASARE", "EVENIMENT-R": "RIDICARE" }[d.tip];   // v7.41: „EVENIMENT-A [ AMPLASARE ]”
     L.push((d.tip ? "*" + d.tip + (evT ? " [ " + evT + " ]" : "") + "*" : "") + "    " + dz(d.data)); }
+  if(String(d.ora || "").trim()) L.push("ORA " + (/RIDICARE|EVENIMENT-R|REDUCERE/.test(d.tip || "") ? "RIDICARE" : /SERVIS/.test(d.tip || "") ? "SERVISARE" : "AMPLASARE") + "  :  " + String(d.ora).trim());   // v7.95
   // v5.13: comanda pe toată anexa — toate produsele; mai multe locații = lista locațiilor (varianta B, Primăria)
   const toate = (Array.isArray(d.locatii) && d.locatii.length && !(d.locatii.length === 1 && !d.locatii[0].sv && (d.extra || []).length))   // v6.26; v7.94: o singură locație + mai multe produse → lista produselor: comanda din exterior pe mai multe locații
     ? d.locatii.filter(l => !(l.sv && l.stare === "N")).map(l => ({ buc: l.buc, produs: d.produs, model: d.model, acc: d.acc, jud: l.jud || d.jud, loc: l.localitate, sat: l.locatie, pers: l.sv ? (l.pers || "") : d.pers, tel: l.sv ? (l.tel || "") : d.tel, zi: l.sv ? (l.data || "") : "" }))   // v7.34
@@ -11336,6 +11392,7 @@ function textComandaDin(d){
   if(d.tip === "EVENIMENT-A"){ const p = evPerAnexa(a); if(p) ext.push("PERIOADA EVENIMENT  :  " + dz(p.de) + (p.pana !== p.de ? "  –  " + dz(p.pana) : "")); }   // v6.79
   if(a.data_ridicarii) ext.push("DATA RIDICARE  :  " + dz(a.data_ridicarii));
   else if(d.evRid && d.tip === "EVENIMENT-A") ext.push("DATA RIDICARE  :  " + dz(d.evRid));   // v6.79: ridicarea programată
+  if(d.tip === "EVENIMENT-A" && String(d.evRidOra || "").trim() && (d.evRid || a.data_ridicarii)) ext.push("ORA RIDICARE  :  " + String(d.evRidOra).trim());   // v7.95
   if(+a.transport) ext.push("TRANSPORT  :  " + a.transport);
   L.push("");
   let anxT = [...new Set([a.anexa, ...(d.extra || []).map(x => x.anexa)].filter(Boolean))].join(", ");   // v5.76: toate anexele de pe comandă
@@ -11373,6 +11430,7 @@ function textComanda(){
     jud: $("mm-jud").value, loc: $("mm-loc").value, sat: $("mm-sat").value, dep: $("mm-dep").value, cdep: $("mm-contract").value,
     pers: $("mm-pers").value, tel: $("mm-tel").value, frecv: $("mm-frecv").value, zile: $("mm-zi").value, traseu: $("mm-traseu").value, obs: $("mm-obs").value, extra: mmDocExtra(),
     evServ: $("mm-tip").value === "EVENIMENT-A" ? evServLista() : null, evRid: $("mm-ev-rid").value || null,
+    ora: $("mm-ora").value, evRidOra: $("mm-tip").value === "EVENIMENT-A" ? $("mm-ev-rid-ora").value : "",   // v7.95
     cmdNr: CMD_TIP($("mm-tip").value) ? $("mm-cmd-nr").value.trim() : "", cmdData: CMD_TIP($("mm-tip").value) ? $("mm-cmd-data").value : "",
     locatii: mmSvlMod() ? mmSvlCurate() : (() => { const x = !$("mm-anexa").value && MISC.find(q => q.id === +$("mm-id").value); return x && Array.isArray(x.locatii) ? x.locatii : null; })() });
 }
@@ -11381,15 +11439,15 @@ function serAlegeSalvata(m){
   const ids=serLocIds(m.anexa_id); if(!ids.length) ids.push(m.anexa_id);
   return serAlege(Math.abs(+m.buc||0), (SER||[]).filter(x=>ids.includes(x.anexa_id) && x.stare==="LA CLIENT"));
 }
-function textComandaSalvata(m){
+function textComandaSalvata(m, copii){   // v7.95: copii = produsele grupului, când nu sunt încă în MISC
   const ser = (SER || []).filter(x => x.miscare_ridicare_id === m.id);
   return textComandaDin({ tip: m.tip_miscare, data: m.data, client: m.client, anexa_id: m.anexa_id, contract_id: m.contract_id,
     buc: m.buc, produs: m.produs, model: [m.model, m.model_fizic].filter(Boolean).join(" "), acc: m.accesorii, ser: ser.length ? { lista: ser, alege: 0 } : serAlegeSalvata(m),
     jud: m.jud, loc: m.loc, sat: m.sat, dep: m.depozit, cdep: m.contract, pers: m.pers_resp, tel: m.telefon, frecv: m.frecv_serv, zile: m.zi_serv, traseu: m.traseu, obs: m.observatii,
-    evServ: m.tip_miscare === "EVENIMENT-A" && Array.isArray(m.ev_serv) ? m.ev_serv : null, evRid: m.ev_rid || null,
+    evServ: m.tip_miscare === "EVENIMENT-A" && Array.isArray(m.ev_serv) ? m.ev_serv : null, evRid: m.ev_rid || null, ora: m.ora || "", evRidOra: m.ev_rid_ora || "",
     cmdNr: m.cmd_nr || "", cmdData: m.cmd_data || "",
     locatii: !m.anexa_id && Array.isArray(m.locatii) ? m.locatii : null,
-    extra: m.grup_id === m.id ? (MISC || []).filter(x => x.grup_id === m.id && x.id !== m.id).sort((x, y) => x.id - y.id).map(x => ({ buc: x.buc, produs: x.produs, model: [x.model, x.model_fizic].filter(Boolean).join(" "), acc: x.accesorii, um: umAnexa(x.anexa_id), anexa: (ANX.find(z => z.id === x.anexa_id) || {}).anexa || "", jud: x.jud, loc: x.loc, sat: x.sat, pers: x.pers_resp, tel: x.telefon })) : [] });   // v5.13
+    extra: (copii || (m.grup_id === m.id ? (MISC || []).filter(x => x.grup_id === m.id && x.id !== m.id) : [])).slice().sort((x, y) => x.id - y.id).map(x => ({ buc: x.buc, produs: x.produs, model: [x.model, x.model_fizic].filter(Boolean).join(" "), acc: x.accesorii, um: umAnexa(x.anexa_id), anexa: (ANX.find(z => z.id === x.anexa_id) || {}).anexa || "", jud: x.jud, loc: x.loc, sat: x.sat, pers: x.pers_resp, tel: x.telefon })) });   // v5.13
 }
 function deschideComanda(){
   if(!$("mm-client").value.trim()){ toast("Alege întâi clientul", true); return; }
