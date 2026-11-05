@@ -1003,7 +1003,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
   <span id="rz-w"><button id="rz-reset" class="pictograma" title="Lățimi implicite — pune coloanele din tabelele acestei file înapoi cum erau">↺ Reset layout</button><i class="rz-sep">|</i></span>
   <span id="tz-w" title="Mărimea tabelului (doar tabelul, restul rămâne la fel), din 5 în 5%. Merge și cu Ctrl + rotița mausului, Ctrl + / Ctrl − / Ctrl 0. Dublu clic pe procent = scrii tu valoarea."><button class="pictograma" onclick="tzPas(-1)" aria-label="Micșorează tabelul">−</button><b id="tz-v" ondblclick="tzScrie()" title="Dublu clic = scrii mărimea (ex. 87), Enter">100%</b><input id="tz-in" type="number" min="30" max="300" step="5" style="display:none"><button class="pictograma" onclick="tzPas(1)" aria-label="Mărește tabelul">+</button></span>
-  <span class="ver">v7.76</span>
+  <span class="ver">v7.77</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -8745,10 +8745,13 @@ async function rcvTipar(){
   const O = rcvOpt();
   const cel = x => {
     if(x.ale.length) return x.ale.map(v => { const t = rcvTimpi(v), mas = !v.manual && v.s && v.s.vehicle_plate ? v.s.vehicle_plate : "";
-      const sp = t.s ? "S: " + t.s + (O.plecare && t.p ? "  |  P: " + t.p : "") : (v.lipsa ? "lipsă acces" : "vizitat");
-      return `<div class="v"><div class="vd">${rcvZiS(v.s.session_date)}-${rcvD4(v.s.session_date)}</div><div class="vs">${esc(sp)}</div>` +
+      // v7.77 (cerut de Ovidiu, 05.11): culorile din aplicație — vizitat verde, lipsă acces / sosit fără plecare portocaliu, omis roșu
+      const la = v.lipsa || v.obs === "LA", om = v.obs === "O", farP = !v.manual && v.arrive_time && !v.leave_time && !la && !om;
+      const st = om ? "s-om" : la || farP ? "s-la" : "s-ok", et = om ? "OMIS" : la ? "LIPSĂ ACCES" : farP ? "FĂRĂ PLECARE" : "";
+      const sp = t.s ? "S: " + t.s + (O.plecare && t.p ? "  |  P: " + t.p : "") : (la ? "" : om ? "" : "vizitat");
+      return `<div class="v ${st}">${et ? `<div class="ve">${et}</div>` : ""}<div class="vd">${rcvZiS(v.s.session_date)}-${rcvD4(v.s.session_date)}</div>${sp ? `<div class="vs">${esc(sp)}</div>` : ""}` +
         (O.stationare && t.min != null ? `<div class="vt">TS: ${rcvTS(t.min)} min</div>` : "") +
-        (O.masina && mas ? `<div class="vm">${esc(mas)}</div>` : "") + (v.lipsa && t.s ? `<div class="vt">lipsă acces</div>` : "") + `</div>`; }).join("");
+        (O.masina && mas ? `<div class="vm">${esc(mas)}</div>` : "") + `</div>`; }).join("");
     if(x.faraRuta) return `<div class="c-gri"><div class="vd">${rcvZiS(x.plan)}-${rcvD4(x.plan)}</div><div>fără înregistrare</div></div>`;
     if(x.plan && !x.viitor) return `<div class="c-nv"><div class="vd">${rcvZiS(x.plan)}-${rcvD4(x.plan)}</div><div>nevizitat</div></div>`;
     if(x.viitor) return `<div class="c-pl"><div class="vd">${rcvZiS(x.plan)}-${rcvD4(x.plan)}</div><div>programat</div></div>`;
@@ -8769,25 +8772,25 @@ async function rcvTipar(){
   const leg = ["S = ora sosirii", O.plecare ? "P = ora plecării" : "", O.stationare ? "TS = timp de staționare (ore:minute)" : ""].filter(Boolean).join(" · ");
   const dep = depPrincipal() || "HUNEDOARA";
   const html = `<!doctype html><html lang="ro"><head><meta charset="utf-8"><title>Raport vizite – ${esc(d.client)} – ${esc(d.per)}</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"><style>
+  <style>
   @page{size:A4 landscape;margin:13mm 12mm 13mm 12mm}
   *{box-sizing:border-box;-webkit-print-color-adjust:exact;print-color-adjust:exact}
-  :root{--g:#17275A;--g2:#2F55A4;--gl:#EEF2FA;--gb:#D3DCEF;--tx:#141A2E;--mu:#5E6A82;--ln:#D7DDEA;--rd:#B4232A;--rdl:#FCECEC;--vb:#BCCAE6;--vf:#F6F8FD}
-  html{background:#E6EAF2} body{font-family:Inter,"Segoe UI",Arial,sans-serif;color:var(--tx);margin:0;font-size:13px;line-height:1.35;font-feature-settings:"tnum" 1}
-  .foaie{width:273mm;max-width:100%;margin:20px auto 80px;background:#fff;padding:11mm 12mm 9mm;box-shadow:0 6px 30px rgba(23,39,90,.16);border-radius:6px}
+  :root{--g:#17275A;--g2:#2F55A4;--gl:#EEF2FA;--gb:#D3DCEF;--tx:#141A2E;--mu:#5E6A82;--ln:#D7DDEA;--rd:#B4232A;--rdl:#FCECEC;--vb:#BCCAE6;--vf:#F6F8FD;--ok:#15803d;--la:#C2570C}
+  html{background:#E6EAF2} body{font-family:Arial,Helvetica,sans-serif;color:var(--tx);margin:0;font-size:13px;line-height:1.35;font-feature-settings:"tnum" 1}
+  .foaie{width:273mm;max-width:100%;margin:20px auto 80px;background:#fff;padding:11mm 12mm 9mm;box-shadow:0 6px 30px rgba(23,39,90,.16);border-radius:3px}
   .top{display:grid;grid-template-columns:auto 1fr auto;gap:16px;align-items:center;padding-bottom:12px;border-bottom:1px solid var(--ln)}
   .logo img{display:block;height:50px;width:auto}
-  .firma{align-self:end;padding-bottom:4px;border-left:2px solid var(--gb);padding-left:14px} .firma span{display:block;font-size:12.5px;font-weight:700;color:var(--g2);letter-spacing:.1em;text-transform:uppercase}
+  .logo .dep{margin-top:6px;font-size:12.5px;font-weight:700;color:var(--g2);letter-spacing:.12em;text-transform:uppercase}
   .doc{text-align:right} .doc .tt{font-size:11px;font-weight:700;color:var(--mu);letter-spacing:.12em;text-transform:uppercase} .doc h1{margin:2px 0 2px;font-size:21px;font-weight:800}
   .doc .per{font-size:13px;color:#36405C} .doc .per b{color:var(--g)}
   .acc{height:4px;background:linear-gradient(90deg,var(--g) 0 45%,var(--g2) 45% 75%,#8FB1E8 75%);border-radius:0 0 3px 3px;margin-bottom:14px}
-  .kpi{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:0 0 16px} .kpi div{border:1px solid var(--ln);border-left:4px solid var(--g2);border-radius:8px;padding:8px 12px;background:#FAFBFE}
+  .kpi{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:0 0 16px} .kpi div{border:1px solid var(--ln);border-left:4px solid var(--g2);border-radius:3px;padding:8px 12px;background:#FAFBFE}
   .kpi span{display:block;font-size:10.5px;font-weight:700;color:var(--mu);text-transform:uppercase;letter-spacing:.08em} .kpi b{display:block;font-size:21px;font-weight:800;color:var(--g);margin-top:1px}
-  .loc{margin:0 0 14px;break-inside:avoid;page-break-inside:avoid;border:1px solid #B9C5DE;border-radius:10px;overflow:hidden}
+  .loc{margin:0 0 14px;break-inside:avoid;page-break-inside:avoid;border:1px solid #B9C5DE;border-radius:4px;overflow:hidden}
   .lh{display:flex;align-items:center;gap:12px;padding:10px 14px;background:linear-gradient(180deg,#F4F7FD,#E9EFFA);border-bottom:1px solid var(--gb)}
-  .ln{font-size:13px;font-weight:800;color:#fff;background:var(--g);border-radius:7px;padding:5px 8px;letter-spacing:.04em}
+  .ln{font-size:13px;font-weight:800;color:#fff;background:var(--g);border-radius:3px;padding:5px 8px;letter-spacing:.04em}
   .la{flex:1} .lj{font-size:11.5px;font-weight:700;color:var(--g2);letter-spacing:.08em;text-transform:uppercase} .ls{font-size:16px;font-weight:700;margin-top:1px}
-  .chips{display:flex;gap:6px} .chip{border:1px solid #9FB4DE;background:#fff;color:var(--g);border-radius:999px;padding:3px 11px;font-weight:700;font-size:12.5px;white-space:nowrap} .chip.c1{background:var(--g);border-color:var(--g);color:#fff}
+  .chips{display:flex;gap:6px} .chip{border:1px solid #9FB4DE;background:#fff;color:var(--g);border-radius:3px;padding:3px 11px;font-weight:700;font-size:12.5px;white-space:nowrap} .chip.c1{background:var(--g);border-color:var(--g);color:#fff}
   .ig{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));border-bottom:1px solid var(--ln)}
   .ig .i{padding:7px 14px;border-right:1px solid var(--ln)} .ig .i:last-child{border-right:0}
   .ig .i span{display:block;font-size:10px;font-weight:700;color:var(--mu);letter-spacing:.08em;text-transform:uppercase} .ig .i b{display:block;font-size:13px;font-weight:600;margin-top:1px} .ig a{color:var(--g);text-decoration:none}
@@ -8796,27 +8799,30 @@ async function rcvTipar(){
   thead th{background:#F3F5FA;color:#2A3450} th .w{font-weight:800;font-size:14px;color:var(--tx)} th .wd{font-weight:600;font-size:11px;color:var(--mu);margin-top:1px}
   th.z,td.z{width:98px;text-align:left} th.t,td.t{width:80px;text-align:left} th.z,th.t{font-size:10.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--mu)}
   td.z{font-weight:800;font-size:13.5px} td.t{font-size:12.5px;color:#36405C} th.x,td.x{background:#FAFBFD}
-  .v{background:var(--vf);border:1px solid var(--vb);border-left:4px solid var(--g2);border-radius:7px;padding:5px 6px 5px 7px;text-align:left;line-height:1.3}
-  .vd{font-size:13px;font-weight:800;color:var(--g);letter-spacing:.02em} .vs{font-size:13.5px;font-weight:700;margin-top:1px;white-space:nowrap}
-  .vt{font-size:12px;font-weight:600;color:#36405C} .vm{display:inline-block;margin-top:3px;font-size:11px;font-weight:700;letter-spacing:.04em;border:1px solid #B9C5DE;border-radius:4px;padding:0 5px;background:#fff;color:var(--g)}
-  .c-nv{background:var(--rdl);border:1px solid #F0B9BC;border-left:4px solid var(--rd);border-radius:7px;padding:5px 7px;text-align:left;color:var(--rd);font-size:12px;font-weight:700} .c-nv .vd{color:var(--rd)}
-  .c-gri,.c-pl{border:1px dashed #C6CEDF;border-radius:7px;padding:5px 7px;text-align:left;color:#7A849A;font-size:11.5px} .c-gri .vd,.c-pl .vd{color:#7A849A;font-weight:700}
+  .v{background:#fff;border:1px solid #CFD6E4;border-left:4px solid var(--ok);border-radius:3px;padding:5px 6px 5px 7px;text-align:left;line-height:1.3}
+  .vd{font-size:13px;font-weight:800;color:var(--g);letter-spacing:.02em}
+  .v.s-ok{border-left-color:var(--ok)} .v.s-la{border-left-color:var(--la);background:#FFF8F2} .v.s-om{border-left-color:var(--rd);background:var(--rdl)}
+  .ve{font-size:10.5px;font-weight:800;letter-spacing:.06em} .s-la .ve{color:var(--la)} .s-om .ve{color:var(--rd)} .vs{font-size:13.5px;font-weight:700;margin-top:1px;white-space:nowrap}
+  .vt{font-size:12px;font-weight:600;color:#36405C} .vm{display:inline-block;margin-top:3px;font-size:11px;font-weight:700;letter-spacing:.04em;border:1px solid #B9C5DE;border-radius:2px;padding:0 5px;background:#fff;color:var(--g)}
+  .c-nv{background:var(--rdl);border:1px solid #F0B9BC;border-left:4px solid var(--rd);border-radius:3px;padding:5px 7px;text-align:left;color:var(--rd);font-size:12px;font-weight:700} .c-nv .vd{color:var(--rd)}
+  .c-gri,.c-pl{border:1px dashed #C6CEDF;border-radius:3px;padding:5px 7px;text-align:left;color:#7A849A;font-size:11.5px} .c-gri .vd,.c-pl .vd{color:#7A849A;font-weight:700}
   .c-gol{height:24px}
   .foot{margin-top:12px;display:flex;justify-content:space-between;gap:18px;align-items:flex-start;border-top:1px solid var(--ln);padding-top:8px;font-size:11px;color:#3E4862}
-  .lg{display:flex;flex-wrap:wrap;gap:6px 16px;align-items:center} .lg i{display:inline-block;width:12px;height:12px;border-radius:3px;vertical-align:-2px;margin-right:5px}
-  .bar{position:fixed;bottom:18px;right:18px} .bar button{font:inherit;font-size:14px;font-weight:700;padding:10px 18px;border-radius:9px;border:0;background:var(--g);color:#fff;cursor:pointer;box-shadow:0 4px 14px rgba(23,39,90,.3)}
+  .lg{display:flex;flex-wrap:wrap;gap:6px 16px;align-items:center} .lg i{display:inline-block;width:12px;height:12px;border-radius:2px;vertical-align:-2px;margin-right:5px}
+  .bar{position:fixed;bottom:18px;right:18px} .bar button{font:inherit;font-size:14px;font-weight:700;padding:10px 18px;border-radius:4px;border:0;background:var(--g);color:#fff;cursor:pointer;box-shadow:0 4px 14px rgba(23,39,90,.3)}
   @media print{ html{background:#fff} .bar{display:none} .foaie{width:auto;margin:0;padding:0;box-shadow:none;border-radius:0} thead{display:table-header-group} }
   </style></head><body>
   <div class="bar"><button onclick="print()">🖨 Tipărește / Salvează PDF</button></div>
   <div class="foaie">
-  <div class="top"><div class="logo"><img src="${logo}" alt="Euro Ecologic"></div><div class="firma"><span>Depozit ${esc(dep)}</span></div>
+  <div class="top"><div class="logo"><img src="${logo}" alt="Euro Ecologic"><div class="dep">Depozit ${esc(dep)}</div></div><div></div>
     <div class="doc"><div class="tt">Raport vizite de servisare</div><h1>${esc(d.client)}</h1><div class="per">Perioada <b>${esc(d.per)}</b> · ${rcvD4(d.d1)} – ${rcvD4(d.d2)}</div></div></div>
   <div class="acc"></div>
   <div class="kpi"><div><span>Locații</span><b>${d.loc.length}</b></div><div><span>Produse</span><b style="font-size:16px;padding-top:4px">${esc(d.tot.prod)}</b></div>
     <div><span>Vizite efectuate</span><b>${d.tot.viz}</b></div><div><span>Planificate până azi</span><b>${d.tot.plan}</b></div></div>
   ${blocuri}
-  <div class="foot"><div class="lg"><span><i style="background:#F6F8FD;border:1px solid #BCCAE6;border-left:4px solid #2F55A4"></i>vizită efectuată</span>
-      <span><i style="background:#FCECEC;border:1px solid #F0B9BC;border-left:4px solid #B4232A"></i>nevizitat</span>
+  <div class="foot"><div class="lg"><span><i style="background:#fff;border:1px solid #CFD6E4;border-left:4px solid #15803d"></i>vizită efectuată</span>
+      <span><i style="background:#FFF8F2;border:1px solid #CFD6E4;border-left:4px solid #C2570C"></i>lipsă acces / fără plecare</span>
+      <span><i style="background:#FCECEC;border:1px solid #F0B9BC;border-left:4px solid #B4232A"></i>nevizitat / omis</span>
       <span><i style="border:1px dashed #C6CEDF"></i>programat / fără înregistrare</span><span>${esc(leg)}</span></div>
     <div style="text-align:right;white-space:nowrap">Generat ${rcvD4(today())}<br>GestiuneEE · Euro Ecologic</div></div>
   </div></body></html>`;
