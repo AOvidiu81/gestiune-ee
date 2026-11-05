@@ -1009,7 +1009,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
   <span id="rz-w"><button id="rz-reset" class="pictograma" title="Lățimi implicite — pune coloanele din tabelele acestei file înapoi cum erau">↺ Reset layout</button><i class="rz-sep">|</i></span>
   <span id="tz-w" title="Mărimea tabelului (doar tabelul, restul rămâne la fel), din 5 în 5%. Merge și cu Ctrl + rotița mausului, Ctrl + / Ctrl − / Ctrl 0. Dublu clic pe procent = scrii tu valoarea."><button class="pictograma" onclick="tzPas(-1)" aria-label="Micșorează tabelul">−</button><b id="tz-v" ondblclick="tzScrie()" title="Dublu clic = scrii mărimea (ex. 87), Enter">100%</b><input id="tz-in" type="number" min="30" max="300" step="5" style="display:none"><button class="pictograma" onclick="tzPas(1)" aria-label="Mărește tabelul">+</button></span>
-  <span class="ver">v7.79</span>
+  <span class="ver">v7.80</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -8766,16 +8766,28 @@ const rcvTS = min => min == null ? "" : zi2(Math.floor(min / 60)) + ":" + zi2(mi
 let RCV_LOGO = null;
 async function rcvLogo(){
   if(RCV_LOGO) return RCV_LOGO;
-  try { const b = await (await fetch("icons/logo-ee.png", { cache: "force-cache" })).blob();
+  // v7.80 (cerut de Ovidiu, 05.11): sigla la rezoluție mare (1036×300) pentru print clar; rezervă: sigla mică
+  try { let r = await fetch("icons/logo-ee-print.png", { cache: "force-cache" }); if(!r.ok) r = await fetch("icons/logo-ee.png", { cache: "force-cache" });
+    const b = await r.blob();
     RCV_LOGO = await new Promise(ok => { const r = new FileReader(); r.onload = () => ok(r.result); r.onerror = () => ok(null); r.readAsDataURL(b); }); }
   catch(e){ RCV_LOGO = null; }
   return RCV_LOGO || new URL("icons/logo-ee.png", location.href).href;
+}
+// v7.80: fontul Roboto (fonts/, OFL) pus în pagină ca data: — merge și fără internet, intră la „Salvează PDF”
+let RCV_FONT = null;
+async function rcvFont(){
+  if(RCV_FONT) return RCV_FONT;
+  const ia = async f => { try { const b = await (await fetch(f, { cache: "force-cache" })).blob();
+      return await new Promise(ok => { const r = new FileReader(); r.onload = () => ok(r.result); r.onerror = () => ok(null); r.readAsDataURL(b); }); } catch(e){ return null; } };
+  const lat = await ia("fonts/roboto-latin.woff2"), ext = await ia("fonts/roboto-latin-ext.woff2");
+  RCV_FONT = { lat: lat || new URL("fonts/roboto-latin.woff2", location.href).href, ext: ext || new URL("fonts/roboto-latin-ext.woff2", location.href).href };
+  return RCV_FONT;
 }
 async function rcvTipar(){
   const d = rcvDate(); if(!d || d.err){ toast(d ? d.err : "Alege clientul", true); return; }
   const w = window.open("", "_blank"); if(!w){ toast("Browserul a blocat fereastra — permite ferestrele pop-up", true); return; }
   w.document.write('<p style="font-family:Arial;padding:30px;color:#17275A">Se pregătește raportul…</p>');
-  const logo = await rcvLogo();
+  const logo = await rcvLogo(), fnt = await rcvFont();
   const O = rcvOpt();
   const cel = x => {
     if(x.ale.length) return x.ale.map(v => { const t = rcvTimpi(v), mas = !v.manual && v.s && v.s.vehicle_plate ? v.s.vehicle_plate : "";
@@ -8807,58 +8819,67 @@ async function rcvTipar(){
   const dep = depPrincipal() || "HUNEDOARA";
   const html = `<!doctype html><html lang="ro"><head><meta charset="utf-8"><title>Raport vizite – ${esc(d.client)} – ${esc(d.per)}</title>
   <style>
+  @font-face{font-family:Roboto;font-style:normal;font-weight:100 900;font-display:block;src:url(${fnt.ext}) format("woff2");unicode-range:U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF}
+  @font-face{font-family:Roboto;font-style:normal;font-weight:100 900;font-display:block;src:url(${fnt.lat}) format("woff2");unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}
   @page{size:A4 landscape;margin:13mm 12mm 13mm 12mm}
   *{box-sizing:border-box;-webkit-print-color-adjust:exact;print-color-adjust:exact}
-  :root{--g:#17275A;--g2:#2F55A4;--gl:#EEF2FA;--gb:#D3DCEF;--tx:#141A2E;--mu:#5E6A82;--ln:#D7DDEA;--rd:#B4232A;--rdl:#FCECEC;--vb:#BCCAE6;--vf:#F6F8FD;--ok:#15803d;--la:#C2570C}
-  html{background:#E6EAF2} body{font-family:Arial,Helvetica,sans-serif;color:var(--tx);margin:0;font-size:13px;line-height:1.35;font-feature-settings:"tnum" 1}
+  :root{--ff:Arial,Helvetica,sans-serif;--fs:0px;--g:#17275A;--g2:#2F55A4;--gl:#EEF2FA;--gb:#D3DCEF;--tx:#141A2E;--mu:#5E6A82;--ln:#D7DDEA;--rd:#B4232A;--rdl:#FCECEC;--vb:#BCCAE6;--vf:#F6F8FD;--ok:#15803d;--la:#C2570C}
+  html{background:#E6EAF2} body{font-family:var(--ff);color:var(--tx);margin:0;font-size:calc(13px + var(--fs));line-height:1.35;font-feature-settings:"tnum" 1}
   .foaie{width:273mm;max-width:100%;margin:20px auto 80px;background:#fff;padding:11mm 12mm 9mm;box-shadow:0 6px 30px rgba(23,39,90,.16);border-radius:3px}
   .top{display:grid;grid-template-columns:auto 1fr auto;gap:16px;align-items:center;padding-bottom:12px;border-bottom:1px solid var(--ln)}
   .logo img{display:block;height:50px;width:auto}
-  .logo .dep{margin-top:6px;font-size:12.5px;font-weight:700;color:var(--g2);letter-spacing:.12em;text-transform:uppercase}
-  .doc{text-align:right} .doc .tt{font-size:11px;font-weight:700;color:var(--mu);letter-spacing:.12em;text-transform:uppercase} .doc h1{margin:2px 0 2px;font-size:21px;font-weight:800}
-  .doc .per{font-size:13px;color:#36405C} .doc .per b{color:var(--g)}
+  .logo .dep{margin-top:6px;font-size:calc(12.5px + var(--fs));font-weight:700;color:var(--g2);letter-spacing:.12em;text-transform:uppercase}
+  .doc{text-align:right} .doc .tt{font-size:calc(11px + var(--fs));font-weight:700;color:var(--mu);letter-spacing:.12em;text-transform:uppercase} .doc h1{margin:2px 0 2px;font-size:calc(21px + var(--fs));font-weight:800}
+  .doc .per{font-size:calc(13px + var(--fs));color:#36405C} .doc .per b{color:var(--g)}
   .acc{height:4px;background:linear-gradient(90deg,var(--g) 0 45%,var(--g2) 45% 75%,#8FB1E8 75%);border-radius:0 0 3px 3px;margin-bottom:14px}
   .kpi{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:0 0 16px} .kpi div{border:1px solid var(--ln);border-left:4px solid var(--g2);border-radius:3px;padding:8px 12px;background:#FAFBFE}
-  .kpi span{display:block;font-size:10.5px;font-weight:700;color:var(--mu);text-transform:uppercase;letter-spacing:.08em} .kpi b{display:block;font-size:21px;font-weight:800;color:var(--g);margin-top:1px}
+  .kpi span{display:block;font-size:calc(10.5px + var(--fs));font-weight:700;color:var(--mu);text-transform:uppercase;letter-spacing:.08em} .kpi b{display:block;font-size:calc(21px + var(--fs));font-weight:800;color:var(--g);margin-top:1px}
   .loc{margin:0 0 14px;break-inside:avoid;page-break-inside:avoid;border:1px solid #B9C5DE;border-radius:4px;overflow:hidden}
   .lh{display:flex;align-items:center;gap:12px;padding:10px 14px;background:linear-gradient(180deg,#F4F7FD,#E9EFFA);border-bottom:1px solid var(--gb)}
-  .ln{font-size:13px;font-weight:800;color:#fff;background:var(--g);border-radius:3px;padding:5px 8px;letter-spacing:.04em}
-  .la{flex:1} .lj{font-size:11.5px;font-weight:700;color:var(--g2);letter-spacing:.08em;text-transform:uppercase} .ls{font-size:16px;font-weight:700;margin-top:1px}
-  .chips{display:flex;gap:6px} .chip{border:1px solid #9FB4DE;background:#fff;color:var(--g);border-radius:3px;padding:3px 11px;font-weight:700;font-size:12.5px;white-space:nowrap} .chip.c1{background:var(--g);border-color:var(--g);color:#fff}
+  .ln{font-size:calc(13px + var(--fs));font-weight:800;color:#fff;background:var(--g);border-radius:3px;padding:5px 8px;letter-spacing:.04em}
+  .la{flex:1} .lj{font-size:calc(11.5px + var(--fs));font-weight:700;color:var(--g2);letter-spacing:.08em;text-transform:uppercase} .ls{font-size:calc(16px + var(--fs));font-weight:700;margin-top:1px}
+  .chips{display:flex;gap:6px} .chip{border:1px solid #9FB4DE;background:#fff;color:var(--g);border-radius:3px;padding:3px 11px;font-weight:700;font-size:calc(12.5px + var(--fs));white-space:nowrap} .chip.c1{background:var(--g);border-color:var(--g);color:#fff}
   .ig{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));border-bottom:1px solid var(--ln)}
   .ig .i{padding:7px 14px;border-right:1px solid var(--ln)} .ig .i:last-child{border-right:0}
-  .ig .i span{display:block;font-size:10px;font-weight:700;color:var(--mu);letter-spacing:.08em;text-transform:uppercase} .ig .i b{display:block;font-size:13px;font-weight:600;margin-top:1px} .ig a{color:var(--g);text-decoration:none}
+  .ig .i span{display:block;font-size:calc(10px + var(--fs));font-weight:700;color:var(--mu);letter-spacing:.08em;text-transform:uppercase} .ig .i b{display:block;font-size:calc(13px + var(--fs));font-weight:600;margin-top:1px} .ig a{color:var(--g);text-decoration:none}
   table{width:100%;border-collapse:collapse;table-layout:fixed} table+table{border-top:2px solid #B9C5DE}
   th,td{border:1px solid var(--ln);padding:6px;text-align:center;vertical-align:middle} tr>*:first-child{border-left:0} tr>*:last-child{border-right:0} tbody tr:last-child td{border-bottom:0}
-  thead th{background:#F3F5FA;color:#2A3450} th .w{font-weight:800;font-size:14px;color:var(--tx)} th .wd{font-weight:600;font-size:11px;color:var(--mu);margin-top:1px}
-  th.z,td.z{width:98px;text-align:left} th.t,td.t{width:80px;text-align:left} th.z,th.t{font-size:10.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--mu)}
-  td.z{font-weight:800;font-size:13.5px} td.t{font-size:12.5px;color:#36405C} th.x,td.x{background:#FAFBFD}
+  thead th{background:#F3F5FA;color:#2A3450} th .w{font-weight:800;font-size:calc(14px + var(--fs));color:var(--tx)} th .wd{font-weight:600;font-size:calc(11px + var(--fs));color:var(--mu);margin-top:1px}
+  th.z,td.z{width:98px;text-align:left} th.t,td.t{width:80px;text-align:left} th.z,th.t{font-size:calc(10.5px + var(--fs));font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--mu)}
+  td.z{font-weight:800;font-size:calc(13.5px + var(--fs))} td.t{font-size:calc(12.5px + var(--fs));color:#36405C} th.x,td.x{background:#FAFBFD}
   .v{background:#fff;border:1px solid #CFD6E4;border-left:4px solid var(--ok);border-radius:3px;padding:5px 6px 5px 7px;text-align:left;line-height:1.3}
-  .vd{font-size:13px;font-weight:800;color:var(--g);letter-spacing:.02em}
+  .vd{font-size:calc(13px + var(--fs));font-weight:800;color:var(--g);letter-spacing:.02em}
   .v.s-ok{border-left-color:var(--ok)} .v.s-la{border-left-color:var(--la);background:#FFF8F2} .v.s-om{border-left-color:var(--rd);background:var(--rdl)}
-  .ve{font-size:10.5px;font-weight:800;letter-spacing:.06em} .s-la .ve{color:var(--la)} .s-om .ve{color:var(--rd)} .vs{font-size:13.5px;font-weight:700;margin-top:1px;white-space:nowrap}
-  .vt{font-size:12px;font-weight:600;color:#36405C} .vm{display:inline-block;margin-top:3px;font-size:11px;font-weight:700;letter-spacing:.04em;border:1px solid #B9C5DE;border-radius:2px;padding:0 5px;background:#fff;color:var(--g)}
-  .c-nv{background:var(--rdl);border:1px solid #F0B9BC;border-left:4px solid var(--rd);border-radius:3px;padding:5px 7px;text-align:left;color:var(--rd);font-size:12px;font-weight:700} .c-nv .vd{color:var(--rd)}
-  .c-gri,.c-pl{border:1px dashed #C6CEDF;border-radius:3px;padding:5px 7px;text-align:left;color:#7A849A;font-size:11.5px} .c-gri .vd,.c-pl .vd{color:#7A849A;font-weight:700}
+  .ve{font-size:calc(10.5px + var(--fs));font-weight:800;letter-spacing:.06em} .s-la .ve{color:var(--la)} .s-om .ve{color:var(--rd)} .vs{font-size:calc(13.5px + var(--fs));font-weight:700;margin-top:1px;white-space:nowrap}
+  .vt{font-size:calc(12px + var(--fs));font-weight:600;color:#36405C} .vm{display:inline-block;margin-top:3px;font-size:calc(11px + var(--fs));font-weight:700;letter-spacing:.04em;border:1px solid #B9C5DE;border-radius:2px;padding:0 5px;background:#fff;color:var(--g)}
+  .c-nv{background:var(--rdl);border:1px solid #F0B9BC;border-left:4px solid var(--rd);border-radius:3px;padding:5px 7px;text-align:left;color:var(--rd);font-size:calc(12px + var(--fs));font-weight:700} .c-nv .vd{color:var(--rd)}
+  .c-gri,.c-pl{border:1px dashed #C6CEDF;border-radius:3px;padding:5px 7px;text-align:left;color:#7A849A;font-size:calc(11.5px + var(--fs))} .c-gri .vd,.c-pl .vd{color:#7A849A;font-weight:700}
   .c-gol{height:24px}
-  .foot{margin-top:12px;display:flex;justify-content:space-between;gap:18px;align-items:flex-start;border-top:1px solid var(--ln);padding-top:8px;font-size:11px;color:#3E4862}
+  .foot{margin-top:12px;display:flex;justify-content:space-between;gap:18px;align-items:flex-start;border-top:1px solid var(--ln);padding-top:8px;font-size:calc(11px + var(--fs));color:#3E4862}
   .lg{display:flex;flex-wrap:wrap;gap:6px 16px;align-items:center} .lg i{display:inline-block;width:12px;height:12px;border-radius:2px;vertical-align:-2px;margin-right:5px}
-  .bar{position:fixed;bottom:18px;right:18px} .bar button{font:inherit;font-size:14px;font-weight:700;padding:10px 18px;border-radius:4px;border:0;background:var(--g);color:#fff;cursor:pointer;box-shadow:0 4px 14px rgba(23,39,90,.3)}
+  .bar{position:fixed;bottom:18px;right:18px;display:flex;gap:10px;align-items:center;background:#fff;border:1px solid #C9D3E8;border-radius:6px;padding:8px 10px;box-shadow:0 4px 18px rgba(23,39,90,.22);font-family:Arial,sans-serif}
+  .bar .gr{display:flex;align-items:center;gap:4px} .bar .gr span{font-size:12px;font-weight:700;color:#5E6A82;margin-right:2px}
+  .bar .o{font:700 12.5px Arial,sans-serif;padding:6px 10px;border-radius:4px;border:1px solid #C9D3E8;background:#fff;color:#17275A;cursor:pointer}
+  .bar .o.on{background:#17275A;border-color:#17275A;color:#fff}
+  .bar .pr{font:700 14px Arial,sans-serif;padding:9px 16px;border-radius:4px;border:0;background:#17275A;color:#fff;cursor:pointer}
   /* v7.78 (cerut de Ovidiu, 05.11): mai compact — 2–3 locații pe pagină (Primăria Hunedoara: 18 locații), text tot lizibil la print */
-  .loc{margin-bottom:9px} .lh{padding:6px 12px;gap:10px} .ln{font-size:12px;padding:3px 7px} .lj{font-size:10.5px} .ls{font-size:14.5px} .chip{font-size:12px;padding:2px 9px}
-  .ig .i{padding:4px 12px} .ig .i span{font-size:9.5px} .ig .i b{font-size:12.5px}
-  th,td{padding:4px 5px} th .w{font-size:13px} th .wd{font-size:10.5px} td.z{font-size:13px} td.t{font-size:12px}
-  .v,.c-nv,.c-gri,.c-pl{padding:3px 5px 3px 6px} .vd{font-size:12px} .vs{font-size:12.5px;margin-top:0} .vt{font-size:11px} .ve{font-size:9.5px}
-  .vm{margin-top:1px;font-size:10px} .c-gri,.c-pl{font-size:10.5px} .c-gol{height:16px}
-  .kpi{margin-bottom:12px} .kpi div{padding:6px 12px} .kpi b{font-size:19px} .top{padding-bottom:9px} .acc{margin-bottom:11px}
+  .loc{margin-bottom:9px} .lh{padding:6px 12px;gap:10px} .ln{font-size:calc(12px + var(--fs));padding:3px 7px} .lj{font-size:calc(10.5px + var(--fs))} .ls{font-size:calc(14.5px + var(--fs))} .chip{font-size:calc(12px + var(--fs));padding:2px 9px}
+  .ig .i{padding:4px 12px} .ig .i span{font-size:calc(9.5px + var(--fs))} .ig .i b{font-size:calc(12.5px + var(--fs))}
+  th,td{padding:4px 5px} th .w{font-size:calc(13px + var(--fs))} th .wd{font-size:calc(10.5px + var(--fs))} td.z{font-size:calc(13px + var(--fs))} td.t{font-size:calc(12px + var(--fs))}
+  .v,.c-nv,.c-gri,.c-pl{padding:3px 5px 3px 6px} .vd{font-size:calc(12px + var(--fs))} .vs{font-size:calc(12.5px + var(--fs));margin-top:0} .vt{font-size:calc(11px + var(--fs))} .ve{font-size:calc(9.5px + var(--fs))}
+  .vm{margin-top:1px;font-size:calc(10px + var(--fs))} .c-gri,.c-pl{font-size:calc(10.5px + var(--fs))} .c-gol{height:16px}
+  .kpi{margin-bottom:12px} .kpi div{padding:6px 12px} .kpi b{font-size:calc(19px + var(--fs))} .top{padding-bottom:9px} .acc{margin-bottom:11px}
+  th.z,td.z{width:calc(98px + 5 * var(--fs))} th.t,td.t{width:calc(80px + 3 * var(--fs))}   /* v7.80: coloanele cresc cu fontul */
   @media print{ html{background:#fff} .bar{display:none} .foaie{width:auto;margin:0;padding:0;box-shadow:none;border-radius:0} thead{display:table-header-group} }
   </style></head><body>
-  <div class="bar"><button onclick="print()">🖨 Tipărește / Salvează PDF</button></div>
+  <div class="bar"><div class="gr"><span>Font</span><button class="o" data-ff="Roboto">Roboto</button><button class="o" data-ff="Arial">Arial</button></div>
+    <div class="gr"><span>Mărime</span><button class="o" data-fs="0">Normal</button><button class="o" data-fs="2">+2</button><button class="o" data-fs="4">+4</button></div>
+    <button class="pr" onclick="document.fonts.ready.then(function(){ print(); })">🖨 Tipărește / Salvează PDF</button></div>
   <div class="foaie">
   <div class="top"><div class="logo"><img src="${logo}" alt="Euro Ecologic"><div class="dep">Depozit ${esc(dep)}</div></div><div></div>
     <div class="doc"><div class="tt">Raport vizite de servisare</div><h1>${esc(d.client)}</h1><div class="per">Perioada <b>${esc(d.per)}</b> · ${rcvD4(d.d1)} – ${rcvD4(d.d2)}</div></div></div>
   <div class="acc"></div>
-  <div class="kpi"><div><span>Locații</span><b>${d.loc.length}</b></div><div><span>Produse</span><b style="font-size:16px;padding-top:4px">${esc(d.tot.prod)}</b></div>
+  <div class="kpi"><div><span>Locații</span><b>${d.loc.length}</b></div><div><span>Produse</span><b style="font-size:calc(16px + var(--fs));padding-top:4px">${esc(d.tot.prod)}</b></div>
     <div><span>Vizite efectuate</span><b>${d.tot.viz}</b></div><div><span>Planificate până azi</span><b>${d.tot.plan}</b></div></div>
   ${blocuri}
   <div class="foot"><div class="lg"><span><i style="background:#fff;border:1px solid #CFD6E4;border-left:4px solid #15803d"></i>vizită efectuată</span>
@@ -8868,6 +8889,19 @@ async function rcvTipar(){
     <div style="text-align:right;white-space:nowrap">Generat ${rcvD4(today())}<br>GestiuneEE · Euro Ecologic</div></div>
   </div></body></html>`;
   w.document.open(); w.document.write(html); w.document.close();
+  rcvTipLeaga(w);
+}
+// v7.80 (cerut de Ovidiu, 05.11): în fereastra raportului — font Roboto / Arial și mărime Normal / +2 / +4 px (ținute minte, implicit Roboto +2)
+function rcvTipLeaga(w){
+  let T = { ff: "Roboto", fs: 2 }; try { Object.assign(T, JSON.parse(localStorage.getItem("rcv_tip") || "{}")); } catch(e){}
+  const D = w.document, R = D.documentElement.style;
+  const aplica = () => { R.setProperty("--ff", T.ff === "Roboto" ? "Roboto,Arial,Helvetica,sans-serif" : "Arial,Helvetica,sans-serif"); R.setProperty("--fs", T.fs + "px");
+    D.querySelectorAll(".bar [data-ff]").forEach(b => b.classList.toggle("on", b.dataset.ff === T.ff));
+    D.querySelectorAll(".bar [data-fs]").forEach(b => b.classList.toggle("on", +b.dataset.fs === +T.fs));
+    try { localStorage.setItem("rcv_tip", JSON.stringify(T)); } catch(e){} };
+  D.querySelectorAll(".bar [data-ff]").forEach(b => b.onclick = () => { T.ff = b.dataset.ff; aplica(); });
+  D.querySelectorAll(".bar [data-fs]").forEach(b => b.onclick = () => { T.fs = +b.dataset.fs; aplica(); });
+  aplica();
 }
 function rcvExcel(){
   const d = rcvDate(); if(!d || d.err){ toast(d ? d.err : "Alege clientul", true); return; }
