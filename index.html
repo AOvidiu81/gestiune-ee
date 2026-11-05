@@ -1003,7 +1003,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
   <span id="rz-w"><button id="rz-reset" class="pictograma" title="Lățimi implicite — pune coloanele din tabelele acestei file înapoi cum erau">↺ Reset layout</button><i class="rz-sep">|</i></span>
   <span id="tz-w" title="Mărimea tabelului (doar tabelul, restul rămâne la fel), din 5 în 5%. Merge și cu Ctrl + rotița mausului, Ctrl + / Ctrl − / Ctrl 0. Dublu clic pe procent = scrii tu valoarea."><button class="pictograma" onclick="tzPas(-1)" aria-label="Micșorează tabelul">−</button><b id="tz-v" ondblclick="tzScrie()" title="Dublu clic = scrii mărimea (ex. 87), Enter">100%</b><input id="tz-in" type="number" min="30" max="300" step="5" style="display:none"><button class="pictograma" onclick="tzPas(1)" aria-label="Mărește tabelul">+</button></span>
-  <span class="ver">v7.77</span>
+  <span class="ver">v7.78</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -8810,6 +8810,13 @@ async function rcvTipar(){
   .foot{margin-top:12px;display:flex;justify-content:space-between;gap:18px;align-items:flex-start;border-top:1px solid var(--ln);padding-top:8px;font-size:11px;color:#3E4862}
   .lg{display:flex;flex-wrap:wrap;gap:6px 16px;align-items:center} .lg i{display:inline-block;width:12px;height:12px;border-radius:2px;vertical-align:-2px;margin-right:5px}
   .bar{position:fixed;bottom:18px;right:18px} .bar button{font:inherit;font-size:14px;font-weight:700;padding:10px 18px;border-radius:4px;border:0;background:var(--g);color:#fff;cursor:pointer;box-shadow:0 4px 14px rgba(23,39,90,.3)}
+  /* v7.78 (cerut de Ovidiu, 05.11): mai compact — 2–3 locații pe pagină (Primăria Hunedoara: 18 locații), text tot lizibil la print */
+  .loc{margin-bottom:9px} .lh{padding:6px 12px;gap:10px} .ln{font-size:12px;padding:3px 7px} .lj{font-size:10.5px} .ls{font-size:14.5px} .chip{font-size:12px;padding:2px 9px}
+  .ig .i{padding:4px 12px} .ig .i span{font-size:9.5px} .ig .i b{font-size:12.5px}
+  th,td{padding:4px 5px} th .w{font-size:13px} th .wd{font-size:10.5px} td.z{font-size:13px} td.t{font-size:12px}
+  .v,.c-nv,.c-gri,.c-pl{padding:3px 5px 3px 6px} .vd{font-size:12px} .vs{font-size:12.5px;margin-top:0} .vt{font-size:11px} .ve{font-size:9.5px}
+  .vm{margin-top:1px;font-size:10px} .c-gri,.c-pl{font-size:10.5px} .c-gol{height:16px}
+  .kpi{margin-bottom:12px} .kpi div{padding:6px 12px} .kpi b{font-size:19px} .top{padding-bottom:9px} .acc{margin-bottom:11px}
   @media print{ html{background:#fff} .bar{display:none} .foaie{width:auto;margin:0;padding:0;box-shadow:none;border-radius:0} thead{display:table-header-group} }
   </style></head><body>
   <div class="bar"><button onclick="print()">🖨 Tipărește / Salvează PDF</button></div>
