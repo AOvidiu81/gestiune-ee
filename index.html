@@ -1009,7 +1009,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
   <span id="rz-w"><button id="rz-reset" class="pictograma" title="Lățimi implicite — pune coloanele din tabelele acestei file înapoi cum erau">↺ Reset layout</button><i class="rz-sep">|</i></span>
   <span id="tz-w" title="Mărimea tabelului (doar tabelul, restul rămâne la fel), din 5 în 5%. Merge și cu Ctrl + rotița mausului, Ctrl + / Ctrl − / Ctrl 0. Dublu clic pe procent = scrii tu valoarea."><button class="pictograma" onclick="tzPas(-1)" aria-label="Micșorează tabelul">−</button><b id="tz-v" ondblclick="tzScrie()" title="Dublu clic = scrii mărimea (ex. 87), Enter">100%</b><input id="tz-in" type="number" min="30" max="300" step="5" style="display:none"><button class="pictograma" onclick="tzPas(1)" aria-label="Mărește tabelul">+</button></span>
-  <span class="ver">v7.85</span>
+  <span class="ver">v7.87</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -5992,7 +5992,19 @@ let R_RANDURI = [], R_ANTET = [], R_NUME = "Raport", R_NUM = new Set();
 // Coloana de verificare (Rpt / FAC) de la capatul tabelului: doar pe ecran, nu intra in Excel.
 let R_EXTRA = [], R_EXTRA_T = "", R_MIS = [], R_CEL = [];   // v5.04: R_CEL[j][col] = "up" | "down" (Raport lună)
 // Facturare: starea fiecărui rând pe luna aleasă (ACTIV / INACTIV / NU FACTURAM) și avertizările.
-let R_AID = [], R_AVERT = [], R_RIDS = [], R_ROSU = [], R_FCOL = [], R_FNOTE = [], R_FCODB = [];   // R_FCOL (v6.67): Facturare — {col: "up" | "down"} = verde (amplasare / suplimentare) / roșu (ridicare / reducere)
+let R_AID = [], R_AVERT = [], R_RIDS = [], R_ROSU = [], R_FCOL = [], R_FNOTE = [], R_FCODB = [], R_FCONT = [];
+// v7.87: contractul unui rând din Facturare („În lucru”): din rând sau, la rândurile adăugate (servisare la cerere), după NR. CTR
+function factCtrDe(j){ const x = R_FX[j]; if(x && x.c) return x.c; const f = R_RANDURI[j]; return f ? CTR.find(c => c.nr_ctr === f[1]) || null : null; }
+// v7.87 (cerut de Ovidiu, 05.11): bifa „1 factură” pe contract, din Facturare „În lucru”
+async function factOFactura(ctrId){
+  const c = CTR.find(x => x.id === ctrId); if(!c) return;
+  const v = !c.fact_o_factura;
+  const { error } = await db.from("contracte").update({ fact_o_factura: v }).eq("id", ctrId);
+  if(error){ toast("Nu s-a salvat: " + error.message, true); return; }
+  c.fact_o_factura = v;
+  toast(v ? `${c.nr_ctr}: toate rândurile pe o singură factură (poziții separate)` : `${c.nr_ctr}: facturi separate, ca înainte`);
+  tcPastreaza("r-tbl", genereazaRaport);
+}   // R_FCOL (v6.67): Facturare — {col: "up" | "down"} = verde (amplasare / suplimentare) / roșu (ridicare / reducere)
    // R_ROSU (v6.11): rândurile din Facturare cu RIDICARE în luna aleasă   // R_RIDS (v4.83): pe fiecare rând din Raport lună, anexele și comenzile lui
 
 const zileInLuna = (an, luna) => new Date(an, luna, 0).getDate();
@@ -6445,11 +6457,25 @@ async function raportFacturare(){
         nota.up = `${t} în data de ${pct(f[22])}\n${anx} · ${prod}\n${per}`; }
       if(fc[23] === "down"){ const t = /REDUCERE/.test(st) || (/-R\d/i.test(anx) && !/FINAL/i.test(anx)) ? "REDUCERE" : /EVENIMENT/.test(st) ? "RIDICARE EVENIMENT" : "RIDICARE";
         nota.down = `${t} în data de ${pct(f[23])}\n${anx} · ${prod}\n${per} (ziua ${t === "REDUCERE" ? "reducerii" : "ridicării"} inclusă)`; }
-      return { f, ro: R_ROSU[j], nota, k1: idK(f[5]), k2: scK(f[27]) };
-    }).sort((a, b) => a.k1 - b.k1 || String(a.f[5] || "").localeCompare(String(b.f[5] || "")) || a.k2 - b.k2 || (+b.f[27] || 0) - (+a.f[27] || 0));
+      const c = factCtrDe(j);
+      return { f, ro: R_ROSU[j], nota, k1: idK(f[5]), k2: scK(f[27]), c, cl: String(f[4] || "").trim().toUpperCase() };
+    });
+    // v7.87 (cerut de Ovidiu, 05.11): rândurile unui client rămân lipite — clientul se așază după scadentul lui cel mai mare (FLORERO: 30)
+    const clK = new Map(); sel.forEach(x => clK.set(x.cl, Math.min(clK.has(x.cl) ? clK.get(x.cl) : 9, x.k2)));
+    sel.sort((a, b) => a.k1 - b.k1 || String(a.f[5] || "").localeCompare(String(b.f[5] || "")) || clK.get(a.cl) - clK.get(b.cl) || a.cl.localeCompare(b.cl) ||
+      ((a.c && a.c.id) || 0) - ((b.c && b.c.id) || 0));
+    // v7.87: contract cu „O singură factură” → rândurile lui (aceeași monedă și același document) = o factură cu mai multe poziții:
+    // primul rând are în DOCUMENT „1 FACTURĂ · N POZIȚII”, următoarele sunt în continuare (↳, italic)
+    const gk = x => x.c && x.c.fact_o_factura ? x.c.id + "|" + (x.f[20] || "") + "|" + (/^FACTURA /.test(x.f[0]) ? x.f[0] : "") : null;
+    const gN = new Map(); sel.forEach(x => { const k = gk(x); if(k) gN.set(k, (gN.get(k) || 0) + 1); });
+    const vazut = new Set(); sel.forEach(x => { const k = gk(x); x.g = k && gN.get(k) > 1 ? (vazut.has(k) ? "cont" : (vazut.add(k), "prim")) : ""; x.gn = k ? gN.get(k) : 0; });
     R_ROSU = sel.map(x => x.ro); R_FNOTE = sel.map(x => x.nota); R_FCOL = []; R_FCODB = sel.map(x => !!x.f._cod);   // v7.85: cod client → bold
+    R_FCONT = sel.map(x => x.g === "cont");
     // v6.47: coloana „DOCUMENT” = FACTURA AVANS / FACTURA PROFORMA (gol la factura obișnuită); v7.84: prima coloană
-    R_RANDURI = sel.map(({ f }) => [/^FACTURA /.test(f[0]) ? f[0] : ""].concat(idx.map(i => i === 8 && f._cod ? f._cod : f[i])));   // v7.13: doar codul clientului
+    R_RANDURI = sel.map(({ f, g, gn }) => { const doc = /^FACTURA /.test(f[0]) ? f[0] : "";
+      const r = [g === "prim" ? [doc, `1 FACTURĂ · ${gn} POZIȚII`].filter(Boolean).join(" · ") : doc].concat(idx.map(i => i === 8 && f._cod ? f._cod : f[i]));   // v7.13: doar codul clientului
+      if(g === "cont") r[2] = "↳ " + r[2];
+      return r; });
     R_ANTET = ["DOCUMENT","NR CTR","NUME CLIENT","ID","ATR.","NUMAR","ANEXA NR","JUD.","LOCALITATE","SAT / LOCATIE / STRADA","FORMA","PRODUS","TIP","UM","CANT.","PRET","MONEDA","INCEPUT LUNA","SFARSIT LUNA","NR. ZILE","VALOARE FARA TVA","VALOARE CU TVA","SCADENT"];
     R_NUM = new Set([14, 15, 19, 20, 21]); R_FMT2 = new Set([15, 20, 21]);
     R_EXTRA_T = ""; R_EXTRA = []; R_AID = []; R_AVERT = []; R_NUME = "Facturare_de_trimis";
@@ -7065,8 +7091,13 @@ async function raportLuna(){
   deseneazaRaport();
 }
 
+let FCTR_PRIM = new Map();
 function deseneazaRaport(){
   const fl = R_NUME === "Facturare";   // v6.89: lățimi fixe + ACC. doar la Facturare „În lucru”
+  // v7.87: butonul „1 factură” apare pe primul rând al fiecărui contract care are cel puțin 2 rânduri în luna aceasta
+  FCTR_PRIM = new Map();
+  if(fl){ const n = new Map(), prim = new Map(); R_RANDURI.forEach((f, j) => { const c = factCtrDe(j); if(!c) return; n.set(c.id, (n.get(c.id) || 0) + 1); if(!prim.has(c.id)) prim.set(c.id, j); });
+    prim.forEach((j, id) => { if(n.get(id) > 1) FCTR_PRIM.set(j, CTR.find(c => c.id === id)); }); }
   const rlf = R_NUME === "Raport_luna" && R_ACC.length === R_RANDURI.length;   // v6.91: la fel în Raport lună (ACC. după TIP)
   const accI = rlf ? 6 : -1, lx = fl || rlf;   // v7.06: Facturare fără coloana ACC. (TIP îngroșat)
   const lat = fl ? F_LAT.concat(R_EXTRA_T ? [F_LAT_FAC] : [])
@@ -7125,7 +7156,12 @@ function deseneazaRaport(){
           t = `<span class="fac-ac" title="${esc(R_FX[j].acInfo)}">${t}</span>`;
         if(fact && i === 3 && av.ctr)  t += ` <span class="warn-pill" title="Contractul a expirat la ${esc(fmtD(av.ctr))} — e nevoie de act adițional">⚠ act adițional</span>`;
         if(fact && i === 10 && av.anx) t += ` <span class="warn-pill" title="Anexa a expirat la ${esc(fmtD(av.anx))}; echipamentul nu e trecut pe RIDICARE, deci se facturează mai departe">⚠ act adițional</span>`;
-        if(R_NUME === "Facturare_de_trimis" && i === 6 && R_FCODB[j]) t = `<b>${t}</b>`;   // v7.85: codul clientului (CTP, ARL…) îngroșat
+        if(R_NUME === "Facturare_de_trimis" && i === 6 && R_FCODB[j]) t = `<b>${t}</b>`;
+        if(R_NUME === "Facturare_de_trimis" && R_FCONT[j]) t = `<i style="color:#36405C">${t}</i>`;   // v7.87: poziție în continuarea facturii
+        if(R_NUME === "Facturare_de_trimis" && i === 0 && /1 FACTURĂ/.test(String(v || ""))) t = `<b style="color:#4A2E8F">${t}</b>`;
+        if(fact && i === 1 && FCTR_PRIM.has(j)){ const c = FCTR_PRIM.get(j);
+          t += ` <button class="btn sm ${c.fact_o_factura ? "" : "sec"}" style="padding:1px 6px;font-size:10.5px${c.fact_o_factura ? ";background:#4A2E8F;border-color:#4A2E8F" : ""}" title="${c.fact_o_factura ? "Bifat: toate rândurile contractului merg pe o singură factură (fiecare rând = o poziție). Clic = facturi separate." : "Clic: toate rândurile contractului pe o singură factură (fiecare rând = o poziție)"}" onclick="event.stopPropagation();factOFactura(${c.id})">${c.fact_o_factura ? "☑" : "☐"} 1 factură</button>`; }
+        if(R_NUME === "Facturare_de_trimis" && i === 16 && /^EUR/i.test(String(v || ""))) t = `<b style="color:#0B5D1E">${t}</b>`;   // v7.86: EURO verde închis   // v7.85: codul clientului (CTP, ARL…) îngroșat
         if(R_ROSU[j] && ((fact && (i === 1 || i === 4)) || (R_NUME === "Facturare_de_trimis" && (i === 1 || i === 2))))
           t = `<span style="color:var(--red);font-weight:700">${t}</span>`;
         if(R_NUME === "Facturare_verificare"){   // v7.05: nr. factură, observație, pătratul de verificare
@@ -7444,6 +7480,9 @@ async function exportFactTrimis(){
       if(R_ROSU[j] && (i === iC || i === ix("NR CTR"))) c.font = Object.assign({}, c.font, { color: { argb: "FFB4232A" } });
       if(i === iD && v){ c.font = Object.assign({}, c.font, { bold: true, color: { argb: "FFC2570C" } }); }
       if(i === ix("ANEXA NR") && R_FCODB[j]) c.font = Object.assign({}, c.font, { bold: true });   // v7.85: cod client îngroșat
+      if(i === iM && /^EUR/i.test(String(v || ""))) c.font = Object.assign({}, c.font, { bold: true, color: { argb: "FF0B5D1E" } });   // v7.86: EURO verde închis
+      if(R_FCONT[j]){ c.font = Object.assign({}, c.font, { italic: true, bold: i === iM && /^EUR/i.test(String(v || "")) }); if(i === iC) c.alignment = Object.assign({}, c.alignment, { indent: 3 }); }   // v7.87
+      if(i === iD && /1 FACTURĂ/.test(String(v || ""))) c.font = Object.assign({}, c.font, { bold: true, color: { argb: "FF4A2E8F" } });
     });
     const pune = (i, C, nota) => { const c = ws.getCell(r, O + i); c.fill = umple(C.fill); c.font = Object.assign({}, c.font, { bold: true, color: { argb: C.font } });
       if(nota) c.note = { texts: [{ font: { size: 11, name: "Arial" }, text: nota }], margins: { insetmode: "auto" } }; };
