@@ -1009,7 +1009,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
   <span id="rz-w"><button id="rz-reset" class="pictograma" title="Lățimi implicite — pune coloanele din tabelele acestei file înapoi cum erau">↺ Reset layout</button><i class="rz-sep">|</i></span>
   <span id="tz-w" title="Mărimea tabelului (doar tabelul, restul rămâne la fel), din 5 în 5%. Merge și cu Ctrl + rotița mausului, Ctrl + / Ctrl − / Ctrl 0. Dublu clic pe procent = scrii tu valoarea."><button class="pictograma" onclick="tzPas(-1)" aria-label="Micșorează tabelul">−</button><b id="tz-v" ondblclick="tzScrie()" title="Dublu clic = scrii mărimea (ex. 87), Enter">100%</b><input id="tz-in" type="number" min="30" max="300" step="5" style="display:none"><button class="pictograma" onclick="tzPas(1)" aria-label="Mărește tabelul">+</button></span>
-  <span class="ver">v7.83</span>
+  <span class="ver">v7.84</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -5992,7 +5992,7 @@ let R_RANDURI = [], R_ANTET = [], R_NUME = "Raport", R_NUM = new Set();
 // Coloana de verificare (Rpt / FAC) de la capatul tabelului: doar pe ecran, nu intra in Excel.
 let R_EXTRA = [], R_EXTRA_T = "", R_MIS = [], R_CEL = [];   // v5.04: R_CEL[j][col] = "up" | "down" (Raport lună)
 // Facturare: starea fiecărui rând pe luna aleasă (ACTIV / INACTIV / NU FACTURAM) și avertizările.
-let R_AID = [], R_AVERT = [], R_RIDS = [], R_ROSU = [], R_FCOL = [];   // R_FCOL (v6.67): Facturare — {col: "up" | "down"} = verde (amplasare / suplimentare) / roșu (ridicare / reducere)
+let R_AID = [], R_AVERT = [], R_RIDS = [], R_ROSU = [], R_FCOL = [], R_FNOTE = [];   // R_FCOL (v6.67): Facturare — {col: "up" | "down"} = verde (amplasare / suplimentare) / roșu (ridicare / reducere)
    // R_ROSU (v6.11): rândurile din Facturare cu RIDICARE în luna aleasă   // R_RIDS (v4.83): pe fiecare rând din Raport lună, anexele și comenzile lui
 
 const zileInLuna = (an, luna) => new Date(an, luna, 0).getDate();
@@ -6433,11 +6433,25 @@ async function raportFacturare(){
     const idx = [1, 4, 5, 6, 7, 8, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 22, 23, 24, 25, 26, 27];   // v7.83: + NR. ZILE (24)
     // v7.14 (cerut de Ovidiu, 27.10): ce e deja FACTURAT în luna aleasă (factură făcută separat) nu mai intră în „Gata de trimis”; rămâne în Verificare
     const deTrimis = f => FACT_VAL(f[0]) && f[0] !== "FACTURAT" && f[0] !== "IN ASTEPTARE FACTURA";   // v7.16: nici cele cerute deja
-    R_ROSU = R_ROSU.filter((v, j) => deTrimis(R_RANDURI[j]));
-    // v6.47: ultima coloană „DOCUMENT” = FACTURA AVANS / FACTURA PROFORMA (gol la factura obișnuită)
-    R_RANDURI = R_RANDURI.filter(deTrimis).map(f => idx.map(i => i === 8 && f._cod ? f._cod : f[i]).concat([/^FACTURA /.test(f[0]) ? f[0] : ""]));   // v7.13: doar codul clientului
-    R_ANTET = ["NR CTR","NUME CLIENT","ID","ATR.","NUMAR","ANEXA NR","JUD.","LOCALITATE","SAT / LOCATIE / STRADA","FORMA","PRODUS","TIP","UM","CANT.","PRET","MONEDA","INCEPUT LUNA","SFARSIT LUNA","NR. ZILE","VALOARE FARA TVA","VALOARE CU TVA","SCADENT","DOCUMENT"];
-    R_NUM = new Set([13, 14, 18, 19, 20]); R_FMT2 = new Set([14, 19, 20]);
+    // v7.84 (cerut de Ovidiu, 05.11): DOCUMENT în față; ordinea: ID (CUI, CIF, CNP, COM, restul) → SCADENT (30, 15, 5, restul);
+    // pentru Excel: zilele de amplasare / suplimentare (verde) și ridicare / reducere (roșu), cu notă în celulă (R_FNOTE)
+    const idK = v => { const k = ["CUI", "CIF", "CNP", "COM"].indexOf(String(v || "").trim().toUpperCase()); return k < 0 ? 9 : k; };
+    const scK = v => { const k = [30, 15, 5].indexOf(+v); return k < 0 ? 9 : k; };
+    const pct = d => String(d || "").replace(/-/g, ".");
+    const sel = R_RANDURI.map((f, j) => ({ f, j })).filter(x => deTrimis(x.f)).map(({ f, j }) => {
+      const fc = R_FCOL[j] || {}, st = String(f[21] || "").toUpperCase(), anx = f._cod || f[8] || "", nota = {};
+      const prod = [f[18], f[15], f[16]].filter(v => v !== "" && v != null).join(" "), per = `Se facturează ${pct(f[22])} – ${pct(f[23])} = ${f[24]} zile`;
+      if(fc[22] === "up"){ const t = /SUPLIMENTARE/.test(st) || /-S\d/i.test(anx) ? "SUPLIMENTARE" : /EVENIMENT/.test(st) ? "AMPLASARE EVENIMENT" : "AMPLASARE";
+        nota.up = `${t} în data de ${pct(f[22])}\n${anx} · ${prod}\n${per}`; }
+      if(fc[23] === "down"){ const t = /REDUCERE/.test(st) || (/-R\d/i.test(anx) && !/FINAL/i.test(anx)) ? "REDUCERE" : /EVENIMENT/.test(st) ? "RIDICARE EVENIMENT" : "RIDICARE";
+        nota.down = `${t} în data de ${pct(f[23])}\n${anx} · ${prod}\n${per} (ziua ${t === "REDUCERE" ? "reducerii" : "ridicării"} inclusă)`; }
+      return { f, ro: R_ROSU[j], nota, k1: idK(f[5]), k2: scK(f[27]) };
+    }).sort((a, b) => a.k1 - b.k1 || String(a.f[5] || "").localeCompare(String(b.f[5] || "")) || a.k2 - b.k2 || (+b.f[27] || 0) - (+a.f[27] || 0));
+    R_ROSU = sel.map(x => x.ro); R_FNOTE = sel.map(x => x.nota); R_FCOL = [];
+    // v6.47: coloana „DOCUMENT” = FACTURA AVANS / FACTURA PROFORMA (gol la factura obișnuită); v7.84: prima coloană
+    R_RANDURI = sel.map(({ f }) => [/^FACTURA /.test(f[0]) ? f[0] : ""].concat(idx.map(i => i === 8 && f._cod ? f._cod : f[i])));   // v7.13: doar codul clientului
+    R_ANTET = ["DOCUMENT","NR CTR","NUME CLIENT","ID","ATR.","NUMAR","ANEXA NR","JUD.","LOCALITATE","SAT / LOCATIE / STRADA","FORMA","PRODUS","TIP","UM","CANT.","PRET","MONEDA","INCEPUT LUNA","SFARSIT LUNA","NR. ZILE","VALOARE FARA TVA","VALOARE CU TVA","SCADENT"];
+    R_NUM = new Set([14, 15, 19, 20, 21]); R_FMT2 = new Set([15, 20, 21]);
     R_EXTRA_T = ""; R_EXTRA = []; R_AID = []; R_AVERT = []; R_NUME = "Facturare_de_trimis";
     $("r-nota").textContent = "Varianta de trimis la sediu: doar rândurile de facturat (STARE LUNA = ACTIV, FACTURA AVANS sau FACTURA PROFORMA; ultima coloană spune dacă e avans / proformă). Rândurile deja FACTURAT sau IN ASTEPTARE FACTURA în luna aceasta (factură cerută / făcută separat, ex. eveniment) nu mai apar aici — rămân în Verificare. Schimbările se fac pe „În lucru”. Export Excel scoate exact acest tabel.";
   }
@@ -7111,7 +7125,7 @@ function deseneazaRaport(){
           t = `<span class="fac-ac" title="${esc(R_FX[j].acInfo)}">${t}</span>`;
         if(fact && i === 3 && av.ctr)  t += ` <span class="warn-pill" title="Contractul a expirat la ${esc(fmtD(av.ctr))} — e nevoie de act adițional">⚠ act adițional</span>`;
         if(fact && i === 10 && av.anx) t += ` <span class="warn-pill" title="Anexa a expirat la ${esc(fmtD(av.anx))}; echipamentul nu e trecut pe RIDICARE, deci se facturează mai departe">⚠ act adițional</span>`;
-        if(R_ROSU[j] && ((fact && (i === 1 || i === 4)) || (R_NUME === "Facturare_de_trimis" && (i === 0 || i === 1))))
+        if(R_ROSU[j] && ((fact && (i === 1 || i === 4)) || (R_NUME === "Facturare_de_trimis" && (i === 1 || i === 2))))
           t = `<span style="color:var(--red);font-weight:700">${t}</span>`;
         if(R_NUME === "Facturare_verificare"){   // v7.05: nr. factură, observație, pătratul de verificare
           if(i === 17) t = `<input class="fv-in" value="${esc(v || "")}" placeholder="nr." onchange="fvScrie(${j},'nr_factura',this.value)">`;
@@ -7368,74 +7382,98 @@ function verInapoi(salvat){
 // v7.83 (cerut de Ovidiu, 05.11): „Gata de trimis” → Excel aranjat pentru sediu: titlu, antet colorat, lățimi, filtre,
 // perioadele parțiale (mai puțin de o lună întreagă) evidențiate, totaluri pe RON și EUR (formule). xlsx-js-style (aceeași
 // bibliotecă, cu stiluri), încărcată doar aici; XLSX-ul obișnuit al aplicației rămâne neatins.
-let XLSX_STIL = null;
-function xlsxStil(){
-  if(XLSX_STIL) return Promise.resolve(XLSX_STIL);
-  return new Promise((ok, nu) => { const vechi = window.XLSX, sc = document.createElement("script");
-    sc.src = "https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js";
-    sc.onload = () => { XLSX_STIL = window.XLSX; window.XLSX = vechi; ok(XLSX_STIL); };
-    sc.onerror = () => { window.XLSX = vechi; nu(new Error("nu s-a încărcat biblioteca de Excel")); };
+let EXCELJS = null;
+function excelJs(){
+  if(EXCELJS) return Promise.resolve(EXCELJS);
+  if(window.ExcelJS) return Promise.resolve(EXCELJS = window.ExcelJS);
+  return new Promise((ok, nu) => { const sc = document.createElement("script");
+    sc.src = "https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js";
+    sc.onload = () => window.ExcelJS ? ok(EXCELJS = window.ExcelJS) : nu(new Error("ExcelJS lipsă"));
+    sc.onerror = () => nu(new Error("nu s-a încărcat biblioteca de Excel"));
     document.head.appendChild(sc); });
 }
+// v7.83–v7.84 (cerut de Ovidiu, 05.11): „Gata de trimis” → Excel pentru sediu. Coloana A goală (spațiu), font 14, titlu, antet
+// colorat și fixat (rândul 4) împreună cu coloanele până la NUME CLIENT, filtre, zebră, amplasare / suplimentare verde și
+// ridicare / reducere roșu (cu notă pe celulă), alte perioade parțiale galben, totaluri pe monede (formule SUMIF).
 async function exportFactTrimis(){
-  let X; try { X = await xlsxStil(); } catch(e){ toast("Excel aranjat indisponibil (" + e.message + ") — export simplu", true); return false; }
-  const an = +$("r-an").value, luna = +$("r-luna").value, zLuna = new Date(an, luna, 0).getDate();
-  const dep = depPrincipal() || "HUNEDOARA", n = R_ANTET.length, H = 4;   // rândul antetului (0-based: 3)
-  const NAVY = "17275A", GRI = "D7DDEA";
-  const b = { top: { style: "thin", color: { rgb: GRI } }, bottom: { style: "thin", color: { rgb: GRI } }, left: { style: "thin", color: { rgb: GRI } }, right: { style: "thin", color: { rgb: GRI } } };
-  const C = (v, st, t) => ({ v: v == null ? "" : v, t: t || (typeof v === "number" ? "n" : "s"), s: st });
-  const aoa = [];
-  aoa.push([C(`FACTURARE ${RCV_LUNI[luna - 1].toUpperCase()} ${an}`, { font: { name: "Arial", sz: 15, bold: true, color: { rgb: NAVY } } })]);
-  aoa.push([C(`EURO ECOLOGIC · DEPOZIT ${dep.toUpperCase()} · generat ${fmtD(today())} · ${R_RANDURI.length} rânduri`, { font: { name: "Arial", sz: 10, color: { rgb: "5E6A82" } } })]);
-  aoa.push([]);
-  aoa.push(R_ANTET.map(h => C(h, { font: { name: "Arial", sz: 9, bold: true, color: { rgb: "FFFFFF" } }, fill: { fgColor: { rgb: NAVY } },
-    alignment: { horizontal: "center", vertical: "center", wrapText: true }, border: b })));
-  const iZ = R_ANTET.indexOf("NR. ZILE"), iI = R_ANTET.indexOf("INCEPUT LUNA"), iS = R_ANTET.indexOf("SFARSIT LUNA"), iD = R_ANTET.indexOf("DOCUMENT");
-  const iM = R_ANTET.indexOf("MONEDA"), iV1 = R_ANTET.indexOf("VALOARE FARA TVA"), iV2 = R_ANTET.indexOf("VALOARE CU TVA");
+  let EJ; try { EJ = await excelJs(); } catch(e){ toast("Excel aranjat indisponibil (" + e.message + ") — export simplu", true); return false; }
+  const an = +$("r-an").value, luna = +$("r-luna").value, dep = depPrincipal() || "HUNEDOARA";
+  const n = R_ANTET.length, O = 2, H = 4;                       // O = prima coloană a tabelului (A rămâne goală); H = rândul antetului
+  const NAVY = "FF17275A", GRI = "FFC9D3E8", F = 14;
+  const ix = h => R_ANTET.indexOf(h), iI = ix("INCEPUT LUNA"), iS = ix("SFARSIT LUNA"), iZ = ix("NR. ZILE"), iD = ix("DOCUMENT"),
+        iM = ix("MONEDA"), iV1 = ix("VALOARE FARA TVA"), iV2 = ix("VALOARE CU TVA"), iC = ix("NUME CLIENT");
+  const wb = new EJ.Workbook(); wb.creator = "GestiuneEE";
+  const ws = wb.addWorksheet("Facturare", {
+    views: [{ state: "frozen", xSplit: O + iC, ySplit: H, zoomScale: 80 }],
+    pageSetup: { paperSize: 9, orientation: "landscape", fitToPage: true, fitToWidth: 1, fitToHeight: 0, printTitlesRow: `${H}:${H}`,
+                 margins: { left: 0.3, right: 0.3, top: 0.4, bottom: 0.4, header: 0.2, footer: 0.2 } } });
+  const LAT = { "DOCUMENT": 16, "NR CTR": 12, "NUME CLIENT": 30, "ID": 7, "ATR.": 7, "NUMAR": 13, "ANEXA NR": 16, "JUD.": 7, "LOCALITATE": 16,
+    "SAT / LOCATIE / STRADA": 30, "FORMA": 11, "PRODUS": 13, "TIP": 14, "UM": 7, "CANT.": 9, "PRET": 10, "MONEDA": 11, "INCEPUT LUNA": 14,
+    "SFARSIT LUNA": 14, "NR. ZILE": 9, "VALOARE FARA TVA": 15, "VALOARE CU TVA": 15, "SCADENT": 12 };
+  ws.getColumn(1).width = 3;
+  // lățimea după cel mai lung text din coloană (font 14), cel puțin cât e în LAT pentru antet, cu limită
+  const MAX = { "NUME CLIENT": 75, "SAT / LOCATIE / STRADA": 90, "LOCALITATE": 40, "ANEXA NR": 34, "TIP": 40 };
+  R_ANTET.forEach((h, i) => { const lung = R_RANDURI.reduce((m, f) => Math.max(m, String(f[i] == null ? "" : (R_FMT2.has(i) && !isNaN(+f[i]) ? (+f[i]).toFixed(2) : f[i])).length), 0);
+    const w = Math.ceil(lung * (i === iC ? 1.75 : 1.6) + 3);
+    ws.getColumn(O + i).width = Math.min(MAX[h] || 40, Math.max(LAT[h] || 8, w)); });
+  const bord = { top: { style: "thin", color: { argb: GRI } }, bottom: { style: "thin", color: { argb: GRI } }, left: { style: "thin", color: { argb: GRI } }, right: { style: "thin", color: { argb: GRI } } };
+  const umple = c => ({ type: "pattern", pattern: "solid", fgColor: { argb: c } });
+  // titlu
+  ws.getRow(1).height = 30; ws.getRow(2).height = 20; ws.getRow(3).height = 8;
+  Object.assign(ws.getCell(1, O), { value: `FACTURARE ${RCV_LUNI[luna - 1].toUpperCase()} ${an}`, font: { name: "Arial", size: 20, bold: true, color: { argb: NAVY } } });
+  Object.assign(ws.getCell(2, O), { value: `EURO ECOLOGIC · DEPOZIT ${dep.toUpperCase()} · generat ${fmtD(today())} · ${R_RANDURI.length} rânduri`, font: { name: "Arial", size: 12, color: { argb: "FF5E6A82" } } });
+  // antet
+  const ra = ws.getRow(H); ra.height = 42;
+  R_ANTET.forEach((h, i) => Object.assign(ws.getCell(H, O + i), { value: h, font: { name: "Arial", size: 12, bold: true, color: { argb: "FFFFFFFF" } }, fill: umple(NAVY),
+    alignment: { horizontal: "center", vertical: "middle", wrapText: true }, border: bord }));
+  // rânduri
+  const ultima = d => { const m = /^(\d{2})-(\d{2})-(\d{4})$/.exec(d || ""); return !!m && +m[1] === new Date(+m[3], +m[2], 0).getDate(); };
+  const VERDE = { fill: "FFC6EFCE", font: "FF006100" }, ROSU = { fill: "FFFFC7CE", font: "FF9C0006" }, GALBEN = { fill: "FFFFEB9C", font: "FF9C5700" };
   R_RANDURI.forEach((f, j) => {
-    const ultima = d => { const m = /^(\d{2})-(\d{2})-(\d{4})$/.exec(d || ""); return !!m && +m[1] === new Date(+m[3], +m[2], 0).getDate(); };
-    const partial = !(String(f[iI] || "").startsWith("01-") && ultima(f[iS])), zebra = j % 2 ? "F6F8FD" : "FFFFFF", rosu = R_ROSU[j];   // perioadă care nu e lună întreagă
-    aoa.push(f.map((v, i) => {
-      const num = R_NUM.has(i) && v !== "" && v != null && !isNaN(+v);
-      const st = { font: { name: "Arial", sz: 9, color: { rgb: "141A2E" } }, fill: { fgColor: { rgb: zebra } }, border: b,
-        alignment: { vertical: "center", horizontal: num || i === iI || i === iS || i === iZ ? (num ? "right" : "center") : "left" } };
-      if(R_FMT2.has(i)) st.numFmt = "0.00";
-      if(i === 1) st.font.bold = true;
-      if(partial && (i === iI || i === iS || i === iZ)){ st.fill = { fgColor: { rgb: "FFF1D6" } }; st.font.bold = true; st.font.color = { rgb: "9A4A00" }; }
-      if(i === iD && v){ st.font.bold = true; st.font.color = { rgb: "C2570C" }; }
-      if(rosu && (i === 0 || i === 1)) st.font.color = { rgb: "B4232A" };
-      return C(num ? +v : v, st, num ? "n" : "s");
-    }));
+    const r = H + 1 + j, row = ws.getRow(r); row.height = 22;
+    const no = R_FNOTE[j] || {}, partial = !(String(f[iI] || "").startsWith("01-") && ultima(f[iS])), zebra = j % 2 ? "FFF3F6FC" : "FFFFFFFF";
+    f.forEach((v, i) => {
+      const num = R_NUM.has(i) && v !== "" && v != null && !isNaN(+v), c = ws.getCell(r, O + i);
+      c.value = num ? +v : (v == null ? "" : v);
+      c.font = { name: "Arial", size: F, color: { argb: "FF141A2E" }, bold: i === iC };
+      c.fill = umple(zebra); c.border = bord;
+      const centru = i === iI || i === iS || i === iZ || i === iD || i === ix("SCADENT") || i === ix("ID") || i === ix("ATR.") || i === ix("JUD.") || i === ix("UM");
+      c.alignment = { vertical: "middle", horizontal: num && !centru ? "right" : centru ? "center" : "left", indent: centru ? 0 : 1 };
+      if(R_FMT2.has(i)) c.numFmt = "#,##0.00";
+      if(R_ROSU[j] && (i === iC || i === ix("NR CTR"))) c.font = Object.assign({}, c.font, { color: { argb: "FFB4232A" } });
+      if(i === iD && v){ c.font = Object.assign({}, c.font, { bold: true, color: { argb: "FFC2570C" } }); }
+    });
+    const pune = (i, C, nota) => { const c = ws.getCell(r, O + i); c.fill = umple(C.fill); c.font = Object.assign({}, c.font, { bold: true, color: { argb: C.font } });
+      if(nota) c.note = { texts: [{ font: { size: 11, name: "Arial" }, text: nota }], margins: { insetmode: "auto" } }; };
+    if(no.up) pune(iI, VERDE, no.up);
+    if(no.down) pune(iS, ROSU, no.down);
+    if(partial){ if(!no.up && !String(f[iI] || "").startsWith("01-")) pune(iI, GALBEN); if(!no.down && !ultima(f[iS])) pune(iS, GALBEN);
+      pune(iZ, no.up && !no.down ? VERDE : no.down && !no.up ? ROSU : GALBEN); }
   });
-  // totaluri pe monede (formule SUMIF, cu valoarea calculată deja)
-  const r1 = H + 1, rN = H + R_RANDURI.length, col = i => X.utils.encode_col(i);
-  aoa.push([]);
-  const tot = (mon) => { const s1 = R_RANDURI.reduce((t, f) => t + (f[iM] === mon ? +f[iV1] || 0 : 0), 0), s2 = R_RANDURI.reduce((t, f) => t + (f[iM] === mon ? +f[iV2] || 0 : 0), 0);
-    const st = { font: { name: "Arial", sz: 10, bold: true, color: { rgb: NAVY } }, fill: { fgColor: { rgb: "EEF2FA" } }, border: b, alignment: { horizontal: "right" } };
-    const row = new Array(n).fill(null).map(() => C("", {}));
-    row[iV1 - 3] = C("TOTAL " + mon, st); row[iV1 - 2] = C("", st); row[iV1 - 1] = C("", st);
-    row[iV1] = { t: "n", v: Math.round(s1 * 100) / 100, f: `SUMIF(${col(iM)}${r1}:${col(iM)}${rN},"${mon}",${col(iV1)}${r1}:${col(iV1)}${rN})`, s: Object.assign({ numFmt: "#,##0.00" }, st) };
-    row[iV2] = { t: "n", v: Math.round(s2 * 100) / 100, f: `SUMIF(${col(iM)}${r1}:${col(iM)}${rN},"${mon}",${col(iV2)}${r1}:${col(iV2)}${rN})`, s: Object.assign({ numFmt: "#,##0.00" }, st) };
-    return row; };
+  // totaluri pe monede
+  const r1 = H + 1, rN = H + R_RANDURI.length, L = i => ws.getColumn(O + i).letter;
   const monede = [...new Set(R_RANDURI.map(f => f[iM]).filter(Boolean))].sort((a, b2) => a === "RON" ? -1 : b2 === "RON" ? 1 : a.localeCompare(b2));
-  monede.forEach(m => aoa.push(tot(m)));
-  aoa.push([]);
-  aoa.push([C("Celulele portocalii la ÎNCEPUT / SFÂRȘIT / NR. ZILE = perioada nu e o lună calendaristică întreagă (amplasare, ridicare, reducere sau perioadă stabilită separat).", { font: { name: "Arial", sz: 9, italic: true, color: { rgb: "5E6A82" } } })]);
-  const ws = X.utils.aoa_to_sheet(aoa);
-  const LAT = { "NR CTR": 11, "NUME CLIENT": 34, "ID": 5, "ATR.": 5, "NUMAR": 11, "ANEXA NR": 17, "JUD.": 5, "LOCALITATE": 18, "SAT / LOCATIE / STRADA": 42,
-    "FORMA": 9, "PRODUS": 12, "TIP": 18, "UM": 5, "CANT.": 6, "PRET": 8, "MONEDA": 7, "INCEPUT LUNA": 11, "SFARSIT LUNA": 11, "NR. ZILE": 6,
-    "VALOARE FARA TVA": 13, "VALOARE CU TVA": 13, "SCADENT": 8, "DOCUMENT": 17 };
-  ws["!cols"] = R_ANTET.map(h => ({ wch: LAT[h] || 12 }));
-  ws["!rows"] = [{ hpt: 22 }, { hpt: 15 }, { hpt: 6 }, { hpt: 30 }];
-  const rT = H + R_RANDURI.length + 1, mer = [{ s: { r: 0, c: 0 }, e: { r: 0, c: 8 } }, { s: { r: 1, c: 0 }, e: { r: 1, c: 8 } }];
-  monede.forEach((m, k) => mer.push({ s: { r: rT + k, c: iV1 - 3 }, e: { r: rT + k, c: iV1 - 1 } }));
-  mer.push({ s: { r: rT + monede.length + 1, c: 0 }, e: { r: rT + monede.length + 1, c: 12 } });
-  ws["!merges"] = mer;
-  ws["!autofilter"] = { ref: `A${H}:${col(n - 1)}${rN}` };
-  ws["!margins"] = { left: 0.3, right: 0.3, top: 0.4, bottom: 0.4, header: 0.2, footer: 0.2 };
-  const wb = X.utils.book_new();
-  X.utils.book_append_sheet(wb, ws, "Facturare");
-  X.writeFile(wb, `Facturare_${RCV_LUNI[luna - 1]}_${an}_${dep}.xlsx`);
+  let rt = rN + 2;
+  monede.forEach(m => {
+    const s1 = R_RANDURI.reduce((t, f) => t + (f[iM] === m ? +f[iV1] || 0 : 0), 0), s2 = R_RANDURI.reduce((t, f) => t + (f[iM] === m ? +f[iV2] || 0 : 0), 0);
+    const st = c => Object.assign(c, { font: { name: "Arial", size: F, bold: true, color: { argb: NAVY } }, fill: umple("FFEEF2FA"), border: bord, alignment: { horizontal: "right", vertical: "middle" } });
+    ws.getRow(rt).height = 24;
+    ws.mergeCells(rt, O + iV1 - 3, rt, O + iV1 - 1); st(ws.getCell(rt, O + iV1 - 3)).value = "TOTAL " + m;
+    st(ws.getCell(rt, O + iV1)).value = { formula: `SUMIF(${L(iM)}${r1}:${L(iM)}${rN},"${m}",${L(iV1)}${r1}:${L(iV1)}${rN})`, result: Math.round(s1 * 100) / 100 };
+    st(ws.getCell(rt, O + iV2)).value = { formula: `SUMIF(${L(iM)}${r1}:${L(iM)}${rN},"${m}",${L(iV2)}${r1}:${L(iV2)}${rN})`, result: Math.round(s2 * 100) / 100 };
+    ws.getCell(rt, O + iV1).numFmt = ws.getCell(rt, O + iV2).numFmt = "#,##0.00";
+    rt++;
+  });
+  // legendă
+  rt++;
+  const leg = [[VERDE, "zi de amplasare / suplimentare (notă pe celulă)"], [ROSU, "zi de ridicare / reducere (notă pe celulă)"], [GALBEN, "perioadă care nu e lună întreagă din alt motiv (ex. perioadă stabilită separat)"]];
+  leg.forEach(([C, t]) => { const c = ws.getCell(rt, O); c.value = ""; c.fill = umple(C.fill); c.border = bord;
+    Object.assign(ws.getCell(rt, O + 1), { value: t, font: { name: "Arial", size: 12, italic: true, color: { argb: "FF5E6A82" } } }); rt++; });
+  ws.autoFilter = { from: { row: H, column: O }, to: { row: rN, column: O + n - 1 } };
+  const buf = await wb.xlsx.writeBuffer();
+  const url = URL.createObjectURL(new Blob([buf], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" }));
+  const a = document.createElement("a"); a.href = url; a.download = `Facturare_${RCV_LUNI[luna - 1]}_${an}_${dep}.xlsx`;
+  document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(url), 4000);
   return true;
 }
 async function exportRaport(){
