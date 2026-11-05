@@ -1009,7 +1009,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
   <span id="rz-w"><button id="rz-reset" class="pictograma" title="Lățimi implicite — pune coloanele din tabelele acestei file înapoi cum erau">↺ Reset layout</button><i class="rz-sep">|</i></span>
   <span id="tz-w" title="Mărimea tabelului (doar tabelul, restul rămâne la fel), din 5 în 5%. Merge și cu Ctrl + rotița mausului, Ctrl + / Ctrl − / Ctrl 0. Dublu clic pe procent = scrii tu valoarea."><button class="pictograma" onclick="tzPas(-1)" aria-label="Micșorează tabelul">−</button><b id="tz-v" ondblclick="tzScrie()" title="Dublu clic = scrii mărimea (ex. 87), Enter">100%</b><input id="tz-in" type="number" min="30" max="300" step="5" style="display:none"><button class="pictograma" onclick="tzPas(1)" aria-label="Mărește tabelul">+</button></span>
-  <span class="ver">v7.91</span>
+  <span class="ver">v7.92</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -7437,7 +7437,7 @@ async function exportFactTrimis(){
   let EJ; try { EJ = await excelJs(); } catch(e){ toast("Excel aranjat indisponibil (" + e.message + ") — export simplu", true); return false; }
   const an = +$("r-an").value, luna = +$("r-luna").value, dep = depPrincipal() || "HUNEDOARA";
   const n = R_ANTET.length, O = 2, H = 4;                       // O = prima coloană a tabelului (A rămâne goală); H = rândul antetului
-  const NAVY = "FF17275A", GRI = "FFC9D3E8", F = 14;
+  const NAVY = "FF17275A", GRI = "FFC9D3E8", F = 16;   // v7.92: font 16 de la rândul 5 în jos
   const ix = h => R_ANTET.indexOf(h), iI = ix("INCEPUT LUNA"), iS = ix("SFARSIT LUNA"), iZ = ix("NR. ZILE"), iD = ix("DOCUMENT"),
         iM = ix("MONEDA"), iV1 = ix("VALOARE FARA TVA"), iV2 = ix("VALOARE CU TVA"), iC = ix("NUME CLIENT");
   const wb = new EJ.Workbook(); wb.creator = "GestiuneEE";
@@ -7450,9 +7450,9 @@ async function exportFactTrimis(){
     "SFARSIT LUNA": 14, "NR. ZILE": 9, "VALOARE FARA TVA": 15, "VALOARE CU TVA": 15, "SCADENT": 12 };
   ws.getColumn(1).width = 3;
   // lățimea după cel mai lung text din coloană (font 14), cel puțin cât e în LAT pentru antet, cu limită
-  const MAX = { "NUME CLIENT": 75, "SAT / LOCATIE / STRADA": 90, "LOCALITATE": 40, "ANEXA NR": 34, "TIP": 40 };
+  const MAX = { "NUME CLIENT": 85, "SAT / LOCATIE / STRADA": 100, "LOCALITATE": 46, "ANEXA NR": 38, "TIP": 46 };
   R_ANTET.forEach((h, i) => { const lung = R_RANDURI.reduce((m, f) => Math.max(m, String(f[i] == null ? "" : (R_FMT2.has(i) && !isNaN(+f[i]) ? (+f[i]).toFixed(2) : f[i])).length), 0);
-    const w = Math.ceil(lung * (i === iC ? 1.75 : 1.6) + 3);
+    const w = Math.ceil(lung * (i === iC ? 2.0 : 1.83) + 3);   // v7.92: pentru font 16
     ws.getColumn(O + i).width = Math.min(MAX[h] || 40, Math.max(LAT[h] || 8, w)); });
   const bord = { top: { style: "thin", color: { argb: GRI } }, bottom: { style: "thin", color: { argb: GRI } }, left: { style: "thin", color: { argb: GRI } }, right: { style: "thin", color: { argb: GRI } } };
   const umple = c => ({ type: "pattern", pattern: "solid", fgColor: { argb: c } });
@@ -7468,7 +7468,7 @@ async function exportFactTrimis(){
   const ultima = d => { const m = /^(\d{2})-(\d{2})-(\d{4})$/.exec(d || ""); return !!m && +m[1] === new Date(+m[3], +m[2], 0).getDate(); };
   const VERDE = { fill: "FFC6EFCE", font: "FF006100" }, ROSU = { fill: "FFFFC7CE", font: "FF9C0006" }, GALBEN = { fill: "FFFFEB9C", font: "FF9C5700" };
   R_RANDURI.forEach((f, j) => {
-    const r = H + 1 + j, row = ws.getRow(r); row.height = 22;
+    const r = H + 1 + j, row = ws.getRow(r); row.height = 25;   // v7.92: rândurile de date 25
     const no = R_FNOTE[j] || {}, partial = !(String(f[iI] || "").startsWith("01-") && ultima(f[iS])), zebra = j % 2 ? "FFF3F6FC" : "FFFFFFFF";
     f.forEach((v, i) => {
       const num = R_NUM.has(i) && v !== "" && v != null && !isNaN(+v), c = ws.getCell(r, O + i);
@@ -7499,7 +7499,7 @@ async function exportFactTrimis(){
   monede.forEach(m => {
     const s1 = R_RANDURI.reduce((t, f) => t + (f[iM] === m ? +f[iV1] || 0 : 0), 0), s2 = R_RANDURI.reduce((t, f) => t + (f[iM] === m ? +f[iV2] || 0 : 0), 0);
     const st = c => Object.assign(c, { font: { name: "Arial", size: F, bold: true, color: { argb: NAVY } }, fill: umple("FFEEF2FA"), border: bord, alignment: { horizontal: "right", vertical: "middle" } });
-    ws.getRow(rt).height = 24;
+    ws.getRow(rt).height = 25;
     ws.mergeCells(rt, O + iV1 - 3, rt, O + iV1 - 1); st(ws.getCell(rt, O + iV1 - 3)).value = "TOTAL " + m;
     st(ws.getCell(rt, O + iV1)).value = { formula: `SUMIF(${L(iM)}${r1}:${L(iM)}${rN},"${m}",${L(iV1)}${r1}:${L(iV1)}${rN})`, result: Math.round(s1 * 100) / 100 };
     st(ws.getCell(rt, O + iV2)).value = { formula: `SUMIF(${L(iM)}${r1}:${L(iM)}${rN},"${m}",${L(iV2)}${r1}:${L(iV2)}${rN})`, result: Math.round(s2 * 100) / 100 };
