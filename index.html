@@ -193,6 +193,12 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   .rcv-opt{display:grid;grid-template-columns:1fr 1fr;gap:6px 14px;margin-top:4px}
   .rcv-opt label{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:500;text-transform:none;letter-spacing:0;margin:0;cursor:pointer;padding:7px 10px;border:1px solid var(--bd);border-radius:8px}
   .rcv-opt input{width:16px;height:16px;margin:0;flex:0 0 auto}
+  /* v7.79: Raport vizite client — alegerea locațiilor */
+  .rcv-locs{max-height:240px;overflow:auto;border:1px solid var(--bd);border-radius:8px;margin-top:5px}
+  .rcv-locs label{display:grid;grid-template-columns:18px 1fr auto;gap:8px;align-items:center;padding:6px 10px;border-bottom:1px solid var(--bd);margin:0;
+    font-size:13px;font-weight:500;text-transform:none;letter-spacing:0;cursor:pointer}
+  .rcv-locs label:last-child{border-bottom:0} .rcv-locs input{width:16px;height:16px;margin:0}
+  .rcv-locs .rl-a b{font-weight:700} .rcv-locs .rl-d{font-size:12px;color:var(--mut);white-space:nowrap}
   @media(max-width:600px){ .rcv-opt{grid-template-columns:1fr} }
   .pan-info .pi-t{font-size:11px;font-weight:700;letter-spacing:.06em;color:#1F5FD1;text-transform:uppercase}
   .pan-info .pi-ml{font-size:16px;font-weight:800;color:#1F5FD1}
@@ -1003,7 +1009,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
   <span id="rz-w"><button id="rz-reset" class="pictograma" title="Lățimi implicite — pune coloanele din tabelele acestei file înapoi cum erau">↺ Reset layout</button><i class="rz-sep">|</i></span>
   <span id="tz-w" title="Mărimea tabelului (doar tabelul, restul rămâne la fel), din 5 în 5%. Merge și cu Ctrl + rotița mausului, Ctrl + / Ctrl − / Ctrl 0. Dublu clic pe procent = scrii tu valoarea."><button class="pictograma" onclick="tzPas(-1)" aria-label="Micșorează tabelul">−</button><b id="tz-v" ondblclick="tzScrie()" title="Dublu clic = scrii mărimea (ex. 87), Enter">100%</b><input id="tz-in" type="number" min="30" max="300" step="5" style="display:none"><button class="pictograma" onclick="tzPas(1)" aria-label="Mărește tabelul">+</button></span>
-  <span class="ver">v7.78</span>
+  <span class="ver">v7.79</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -2162,6 +2168,10 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
     <div><label>De la luna</label><div style="display:flex;gap:6px"><select id="rcv-l1" onchange="rcvInfo()"></select><select id="rcv-an1" onchange="rcvInfo()" style="max-width:90px"></select></div></div>
     <div><label>Până la luna</label><div style="display:flex;gap:6px"><select id="rcv-l2" onchange="rcvInfo()"></select><select id="rcv-an2" onchange="rcvInfo()" style="max-width:90px"></select></div></div>
   </div>
+  <div id="rcv-locs-w" style="margin-top:12px;display:none"><div style="display:flex;align-items:flex-end;gap:8px"><label style="flex:1;margin:0">Locațiile clientului <span class="muted" id="rcv-locs-n"></span></label>
+      <button type="button" class="btn sec" style="padding:4px 10px;font-size:12px" onclick="rcvLocToate(true)">Toate</button>
+      <button type="button" class="btn sec" style="padding:4px 10px;font-size:12px" onclick="rcvLocToate(false)">Niciuna</button></div>
+    <div id="rcv-locs" class="rcv-locs"></div></div>
   <div style="margin-top:12px"><label>Ce mai apare în raport</label>
     <div class="rcv-opt">
       <label><input type="checkbox" id="rcv-o-masina" onchange="rcvOpt()"> Numărul mașinii</label>
@@ -8627,11 +8637,34 @@ function rcvDeschide(){
   if(!$("rcv-client").value && $("rr-caut").value) $("rcv-client").value = $("rr-caut").value;
   cautaAtaseaza($("rcv-client"), () => [...new Set((RR.cl || []).map(c => String(c.client || "").trim()).filter(Boolean))].sort().map(n => ({ v: n, t: n })),
     o => { $("rcv-client").value = o.v; rcvInfo(); });
-  $("rcv-client").oninput = rcvInfo;
+  $("rcv-client").oninput = () => rcvInfo();
   rcvOptIncarca(); $("mod-rcv").classList.add("on"); rcvInfo();
-  if(!RR_GATA) loadRR().then(rcvInfo);
+  if(!RR_GATA) loadRR().then(() => rcvInfo());
 }
-function rcvInfo(){
+// v7.79 (cerut de Ovidiu, 05.11): după ce alegi clientul apar locațiile lui — bifezi pentru care faci raportul
+let RCV_EXCL = new Set(), RCV_CL = null;
+const rcvLocCheie = c => [c.jud, c.localitate, c.locatie].map(v => rrNorm(v)).join("|");
+function rcvLocuri(){
+  const q = rrNorm($("rcv-client").value); if(!q || !RR_GATA) return [];
+  const m = new Map();
+  RR.cl.filter(c => rrNorm(c.client) === q).forEach(c => { const k = rcvLocCheie(c);
+    if(!m.has(k)) m.set(k, { k, jud: c.jud || "", loc: c.localitate || "", sat: c.locatie || "", t: 0, zile: [], st: [] });
+    const x = m.get(k); x.t = Math.max(x.t, +c.toalete || 0); if(c.ziua) x.zile.push(c.ziua); if(c.status) x.st.push(c.status); });
+  return [...m.values()].sort((a, b) => (a.loc + a.sat).localeCompare(b.loc + b.sat));
+}
+function rcvLocDeseneaza(){
+  const q = rrNorm($("rcv-client").value), L = rcvLocuri(), w = $("rcv-locs-w"); if(!w) return;
+  if(q !== RCV_CL){ RCV_CL = q; RCV_EXCL = new Set(); }
+  w.style.display = L.length ? "" : "none";
+  $("rcv-locs").innerHTML = L.map(x => `<label><input type="checkbox" data-k="${esc(x.k)}" ${RCV_EXCL.has(x.k) ? "" : "checked"} onchange="rcvLocBifa(this)">
+    <span class="rl-a"><b>${esc([x.jud, x.loc].filter(Boolean).join(" / "))}</b> — ${esc(x.sat)}</span>
+    <span class="rl-d">${x.t ? x.t + " T · " : ""}${esc([...new Set(x.zile)].join(", "))}${x.st.length && x.st.every(s => s !== "ACTIV") ? " · inactiv" : ""}</span></label>`).join("");
+  $("rcv-locs-n").textContent = L.length ? `(${L.length - L.filter(x => RCV_EXCL.has(x.k)).length} din ${L.length} bifate)` : "";
+}
+function rcvLocBifa(el){ const k = el.dataset.k; if(el.checked) RCV_EXCL.delete(k); else RCV_EXCL.add(k); rcvLocDeseneaza(); rcvInfo(true); }
+function rcvLocToate(da){ RCV_EXCL = da ? new Set() : new Set(rcvLocuri().map(x => x.k)); rcvLocDeseneaza(); rcvInfo(true); }
+function rcvInfo(faraLista){
+  if(!faraLista) rcvLocDeseneaza();
   const d = rcvDate(); const el = $("rcv-info"); if(!el) return;
   el.innerHTML = !d ? '<span class="muted">Alege clientul (numele de pe punctele de rută).</span>'
     : d.err ? `<span style="color:var(--red)">${esc(d.err)}</span>`
@@ -8644,7 +8677,8 @@ function rcvDate(){
   const a1 = +$("rcv-an1").value, l1 = +$("rcv-l1").value, a2 = +$("rcv-an2").value, l2 = +$("rcv-l2").value;
   const d1 = sIso(new Date(a1, l1 - 1, 1, 12)), d2 = sIso(new Date(a2, l2, 0, 12)), azi = today();
   if(d2 < d1) return { err: "„Până la” e înaintea lui „De la”." };
-  const puncte = RR.cl.filter(c => rrNorm(c.client) === q); if(!puncte.length) return { err: "Clientul nu are puncte de rută cu acest nume." };
+  const toate = RR.cl.filter(c => rrNorm(c.client) === q); if(!toate.length) return { err: "Clientul nu are puncte de rută cu acest nume." };
+  const puncte = toate.filter(c => !RCV_EXCL.has(rcvLocCheie(c))); if(!puncte.length) return { err: "Bifează cel puțin o locație." };   // v7.79
   const ses = {}; RR.sess.forEach(s => ses[s.id] = s);
   const ziRuta = new Set(RR.sess.map(s => s.session_date).filter(Boolean));   // zile în care s-a înregistrat măcar o rută
   // v7.71 (cerut de Ovidiu, 04.11): și codurile trecute de mână pe săptămână (Verificare rute → client_weeks, „0734-03” = sosire 07:34, 3 min)
