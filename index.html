@@ -316,6 +316,11 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   .gf{display:grid;gap:12px;margin-bottom:12px}.gf:last-child{margin-bottom:0}
   .gf>div{min-width:0}
   .g-cmd{grid-template-columns:150px minmax(130px,1.3fr) 62px minmax(120px,1.2fr) minmax(110px,1.1fr) minmax(110px,1.1fr)}
+  /* v7.94: „+ Produs” la comenzile din exterior */
+  .g-xp{grid-template-columns:62px minmax(120px,1.2fr) minmax(110px,1.1fr) minmax(110px,1.1fr) auto;align-items:end}
+  .mm-xp-r{border-top:1px dashed var(--bd);margin-top:12px;padding-top:10px}
+  .mm-xp-r .xp-t{font-size:12px;font-weight:600;color:var(--mut);margin-bottom:6px}
+  @media (max-width:700px){ .g-xp{grid-template-columns:62px 1fr 1fr} }
   .g-cc{grid-template-columns:1.3fr 1fr}
   .g-full{grid-template-columns:1fr}
   .g-loc{grid-template-columns:58px 1fr 1.3fr}
@@ -1009,7 +1014,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
   <span id="rz-w"><button id="rz-reset" class="pictograma" title="Lățimi implicite — pune coloanele din tabelele acestei file înapoi cum erau">↺ Reset layout</button><i class="rz-sep">|</i></span>
   <span id="tz-w" title="Mărimea tabelului (doar tabelul, restul rămâne la fel), din 5 în 5%. Merge și cu Ctrl + rotița mausului, Ctrl + / Ctrl − / Ctrl 0. Dublu clic pe procent = scrii tu valoarea."><button class="pictograma" onclick="tzPas(-1)" aria-label="Micșorează tabelul">−</button><b id="tz-v" ondblclick="tzScrie()" title="Dublu clic = scrii mărimea (ex. 87), Enter">100%</b><input id="tz-in" type="number" min="30" max="300" step="5" style="display:none"><button class="pictograma" onclick="tzPas(1)" aria-label="Mărește tabelul">+</button></span>
-  <span class="ver">v7.93</span>
+  <span class="ver">v7.94</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -1521,6 +1526,10 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
         <div id="mm-pan" class="pan-info"></div>
         <div class="gf g-full">
           <div><label>Accesorii</label><div id="mm-acc" class="acc-box"></div></div>
+        </div>
+        <div id="mm-xp-sect" style="display:none">
+          <div id="mm-xp"></div>
+          <div style="margin-top:10px;display:flex;align-items:center;gap:10px;flex-wrap:wrap"><button type="button" class="btn sm sec" onclick="mmXpAdauga()" title="Încă un produs pe aceeași comandă (aceeași dată, client, locație, responsabil, traseu) — un singur text pentru șoferi și un singur PV">+ Produs</button><span class="hint">comandă din exterior: pune aici celelalte produse care pleacă împreună</span></div>
         </div>
       </div>
 
@@ -3198,6 +3207,7 @@ function mmModClient(){
   $("mm-ctr").closest(".g-cc > div").style.display = ext ? "none" : "";
   $("mm-anexa").closest(".gf").style.display = ext ? "none" : "";
   if(ext){ $("mm-ctr").value = ""; $("mm-anexa").value = ""; }
+  mmXpArata();   // v7.94
   mmCarduri();
 }
 function mmCarduriExt(){
@@ -3428,7 +3438,7 @@ function openMiscare(id){
   if(r && r.anexa_id){ mmAnexaAlege(r.anexa_id); }
   MM_GEN = r && r.generat_la ? r.generat_la : null; MM_GEN0 = MM_GEN; mmStareGen();
   MM_PV = null; mmSerii(true); mmPvSerii(r ? r.id : null);
-  MM_FRATI = []; mmDoc(true); if(r && r.grup_id === r.id) mmFratiIncarca(r.id);   // v5.13
+  MM_FRATI = []; mmXpReset(); mmDoc(true); if(r && r.grup_id === r.id) mmFratiIncarca(r.id).then(() => { if(mmExterior() && +$("mm-id").value === r.id) mmXpDin(MM_FRATI); });   // v5.13; v7.94: produsele comenzii din exterior
   mmZile();
   mmAntet(); $("mod-m").classList.add("on");
   mmModClient(); mmExtIncarca(); mmEvpArata(); mmSpArata(); mmRiArata(); MM_LS = null; $("mm-sat").placeholder = ""; mmLsArata();   // v6.79 / v7.20 / v7.22 / v7.24
@@ -3440,7 +3450,7 @@ let MM_CIORNA = null, MM_CIORNE = [];
 const MM_CAMPURI = ["mm-contract","mm-dep","mm-data","mm-tip","mm-buc","mm-prod","mm-model","mm-mf","mm-client","mm-ctr","mm-anexa","mm-jud","mm-loc","mm-sat","mm-pers","mm-tel","mm-frecv","mm-zi","mm-traseu","mm-obs","mm-cmd-nr","mm-cmd-data","mm-cmd-canal","mm-sv-pret","mm-sv-moneda","mm-sv-scad","mm-ev-rid","mm-ev-serv"];
 function mmDate(){
   const d = Object.fromEntries(MM_CAMPURI.map(id => [id, $(id).value || ""]));
-  d.acc = accCitite("mm-acc") || ""; d.flags = {};
+  d.acc = accCitite("mm-acc") || ""; d.flags = {}; d.xp = mmXpCitite().map(x => ({ buc: x.buc, produs: x.produs, model: x.model, model_fizic: x.model_fizic, accesorii: x.accesorii }));   // v7.94
   document.querySelectorAll("#mm-flags .flag").forEach(f => { d.flags[f.dataset.f] = f.dataset.v || f.textContent; });
   return d;
 }
@@ -3468,6 +3478,7 @@ function mmCiornaIa(id){
   ["mm-jud","mm-loc","mm-sat","mm-pers","mm-tel","mm-frecv","mm-zi","mm-traseu","mm-obs","mm-cmd-nr","mm-cmd-data","mm-cmd-canal","mm-sv-pret","mm-sv-moneda","mm-sv-scad","mm-ev-rid","mm-ev-serv"].forEach(k => { $(k).value = v(k); }); if(!$("mm-sv-moneda").value) $("mm-sv-moneda").value = "RON"; MM_EV_CU = !!v("mm-ev-serv"); mmCmdArata(); mmEvpArata();
   document.querySelectorAll("#mm-flags .flag").forEach(f => setFlag(f, (d.flags || {})[f.dataset.f] || "-"));
   MM_PV = null; mmZile(); mmModClient(); mmSerii(true);
+  mmXpReset(); if(mmExterior()) (d.xp || []).forEach(x => mmXpAdauga(x));   // v7.94
   MM_CIORNA = id; mmCiorneDeseneaza();
 }
 async function mmCiornaSterge(id){
@@ -4479,11 +4490,13 @@ async function mmFratiIncarca(id){
 }
 // produsele bifate, pentru textul comenzii
 function mmDocExtra(){
+  if(mmExterior()) return mmXpExtra();   // v7.94
   const rid = NEG.test($("mm-tip").value);
   return mmDocRanduri().filter(x => MM_GR.has(x.id)).map(x => ({ buc: mmDocCant(x, rid), produs: x.produs, model: [x.model, x.model_fizic].filter(Boolean).join(" "), acc: x.accesorii, um: x.um || "BUC", anexa: x.anexa || "",
     jud: x.jud, loc: x.loc, sat: x.sat, pers: x.pers_contact, tel: x.telefon })).filter(x => x.buc);
 }
 async function mmDocSalveaza(id, rec){
+  if(mmExterior()) return mmXpSalveaza(id, rec);   // v7.94
   const rid = NEG.test(rec.tip_miscare);
   const vrut = mmDocRanduri().filter(x => MM_GR.has(x.id) && mmDocCant(x, rid));
   const pastrate = [];
@@ -4501,6 +4514,61 @@ async function mmDocSalveaza(id, rec){
   const scoase = MM_FRATI.filter(f => !pastrate.includes(f.id)).map(f => f.id);
   if(scoase.length){ const { error } = await db.from("miscari").delete().in("id", scoase); if(error) toast("Produsele debifate nu s-au scos de pe comandă: " + error.message, true); }
   await db.from("miscari").update({ grup_id: vrut.length ? id : null }).eq("id", id);
+  await mmFratiIncarca(id);
+}
+// ── v7.94 (cerut de Ovidiu, 05.11): comanda din EXTERIOR (contract pe depozit secundar, fără anexă la noi) cu mai multe produse ──
+// Ex. PLANTAM FAPTE BUNE: 1 TOALETA CLASIC + 1 LAVOAR cu accesoriile lui. Data, client, locație, responsabil, traseu, tip = comune.
+// Fiecare produs = un rând în `miscari` legat de rândul principal prin grup_id (ca la anexe) → un singur text, un singur PV.
+let MM_XP_K = 0;
+function mmXpArata(){ const e = $("mm-xp-sect"); if(e) e.style.display = mmExterior() ? "" : "none"; }
+function mmXpReset(){ const b = $("mm-xp"); if(b) b.innerHTML = ""; }
+function mmXpAdauga(x){
+  const k = ++MM_XP_K, p = "mm-xp" + k, d = document.createElement("div");
+  d.className = "mm-xp-r"; d.dataset.k = k; if(x && x.id) d.dataset.fid = x.id;
+  d.innerHTML = `<div class="xp-t">Produs ${$("mm-xp").children.length + 2}</div><div class="gf g-xp">` +
+    `<div><label>Bucăți</label><input type="number" min="1" id="${p}-buc" value="${x ? Math.abs(+x.buc || 0) || 1 : 1}"></div>` +
+    `<div><label>Produs</label><select id="${p}-prod"></select></div>` +
+    `<div><label>Tip</label><select id="${p}-model"></select></div>` +
+    `<div><label>Model</label><select id="${p}-mf"></select></div>` +
+    `<div><button type="button" class="btn sm sec" onclick="mmXpScoate(${k})" title="Scoate produsul de pe comandă">✕ Scoate</button></div></div>` +
+    `<div class="gf g-full" style="margin-top:6px"><div><label>Accesorii</label><div id="${p}-acc" class="acc-box"></div></div></div>`;
+  $("mm-xp").appendChild(d);
+  const lp = nomv("produs").slice(); if(x && x.produs && !lp.includes(x.produs)) lp.unshift(x.produs);
+  fill(p + "-prod", lp); $(p + "-prod").value = x ? (x.produs || "") : (lp[0] || "");
+  umpleModele(p + "-prod", p + "-model", x ? (x.model || "") : "", x ? (x.accesorii || "") : "");
+  umpleMF(p + "-prod", p + "-model", x ? (x.model_fizic || "") : "");
+  $(p + "-prod").addEventListener("change", () => umpleModele(p + "-prod", p + "-model"));
+  $(p + "-model").addEventListener("change", () => { umpleAcc(p + "-prod", p + "-model"); umpleMF(p + "-prod", p + "-model"); });
+  if(!x){ mmSchimbat(); $(p + "-prod").focus(); }
+}
+function mmXpNumeroteaza(){ [...document.querySelectorAll("#mm-xp .mm-xp-r .xp-t")].forEach((t, i) => { t.textContent = "Produs " + (i + 2); }); }
+function mmXpScoate(k){ const d = document.querySelector('#mm-xp .mm-xp-r[data-k="' + k + '"]'); if(d) d.remove(); mmXpNumeroteaza(); mmSchimbat(); }
+function mmXpDin(L){ mmXpReset(); (L || []).slice().sort((a, b) => a.id - b.id).forEach(x => mmXpAdauga(x)); }
+function mmXpCitite(){
+  return [...document.querySelectorAll("#mm-xp .mm-xp-r")].map(d => { const p = "mm-xp" + d.dataset.k;
+    return { k: d.dataset.k, fid: +d.dataset.fid || null, buc: Math.abs(Math.round(+$(p + "-buc").value || 0)), produs: $(p + "-prod").value,
+      model: $(p + "-model").value || null, model_fizic: $(p + "-mf").value || null, accesorii: accCitite(p + "-acc") }; })
+    .filter(x => x.buc && x.produs);
+}
+// pentru textul comenzii (aceeași locație și același responsabil ca produsul principal)
+function mmXpExtra(){
+  return mmXpCitite().map(x => ({ buc: x.buc, produs: x.produs, model: [x.model, x.model_fizic].filter(Boolean).join(" "), acc: x.accesorii, um: "BUC", anexa: "",
+    jud: $("mm-jud").value, loc: $("mm-loc").value, sat: $("mm-sat").value, pers: $("mm-pers").value, tel: $("mm-tel").value }));
+}
+async function mmXpSalveaza(id, rec){
+  const rid = NEG.test(rec.tip_miscare), pastrate = [];
+  for(const x of mmXpCitite()){
+    const r2 = Object.assign({}, rec, { buc: x.buc * (rid ? -1 : 1), produs: x.produs, model: x.model, model_fizic: x.model_fizic, accesorii: x.accesorii,
+      grup_id: id, locatii: null, anexa_id: null, contract_id: null, client_id: null });
+    const f = x.fid ? MM_FRATI.find(z => z.id === x.fid) : null;
+    const { data, error } = f ? await db.from("miscari").update(r2).eq("id", f.id).select("id").single() : await db.from("miscari").insert(r2).select("id").single();
+    if(error){ toast("Produsul " + (x.produs || "") + " nu s-a salvat pe comandă: " + error.message, true); if(f) pastrate.push(f.id); continue; }
+    pastrate.push(data.id);
+    const d = document.querySelector('#mm-xp .mm-xp-r[data-k="' + x.k + '"]'); if(d) d.dataset.fid = data.id;   // a doua salvare (generează) nu-l mai dublează
+  }
+  const scoase = MM_FRATI.filter(f => !pastrate.includes(f.id)).map(f => f.id);
+  if(scoase.length){ const { error } = await db.from("miscari").delete().in("id", scoase); if(error) toast("Produsele scoase nu s-au șters de pe comandă: " + error.message, true); }
+  await db.from("miscari").update({ grup_id: pastrate.length ? id : null }).eq("id", id);
   await mmFratiIncarca(id);
 }
 async function deleteMiscare(){
@@ -11219,7 +11287,7 @@ function textComandaDin(d){
   else { const evT = { "EVENIMENT-A": "AMPLASARE", "EVENIMENT-R": "RIDICARE" }[d.tip];   // v7.41: „EVENIMENT-A [ AMPLASARE ]”
     L.push((d.tip ? "*" + d.tip + (evT ? " [ " + evT + " ]" : "") + "*" : "") + "    " + dz(d.data)); }
   // v5.13: comanda pe toată anexa — toate produsele; mai multe locații = lista locațiilor (varianta B, Primăria)
-  const toate = (Array.isArray(d.locatii) && d.locatii.length)   // v6.26: comanda din exterior pe mai multe locații
+  const toate = (Array.isArray(d.locatii) && d.locatii.length && !(d.locatii.length === 1 && !d.locatii[0].sv && (d.extra || []).length))   // v6.26; v7.94: o singură locație + mai multe produse → lista produselor: comanda din exterior pe mai multe locații
     ? d.locatii.filter(l => !(l.sv && l.stare === "N")).map(l => ({ buc: l.buc, produs: d.produs, model: d.model, acc: d.acc, jud: l.jud || d.jud, loc: l.localitate, sat: l.locatie, pers: l.sv ? (l.pers || "") : d.pers, tel: l.sv ? (l.tel || "") : d.tel, zi: l.sv ? (l.data || "") : "" }))   // v7.34
     : [{ buc: d.buc, produs: d.produs, model: d.model, acc: d.acc, jud: d.jud, loc: d.loc, sat: d.sat, pers: d.pers, tel: d.tel }].concat(d.extra || []);
   const lk = x => [x.jud, x.loc, x.sat].map(v => String(v || "").trim().toUpperCase()).join("|");
