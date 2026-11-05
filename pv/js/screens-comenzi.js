@@ -41,6 +41,20 @@ function parseDay(iso) {
   return y ? new Date(y, m - 1, d) : null;
 }
 
+// v96: ora comenzii (GestiuneEE v7.95) — „Ora amplasare / ridicare / servisare”
+function oraEticheta(tip) {
+  return /RIDICARE|EVENIMENT-R|REDUCERE/.test(tip || '') ? 'Ora ridicare' : /SERVIS/.test(tip || '') ? 'Ora servisare' : 'Ora amplasare';
+}
+function oraRand(c) {
+  return c.ora ? el('div', { class: 'ca-ora' }, ['🕗 ', `${oraEticheta(c.tip_miscare)}: `, el('b', {}, [c.ora])]) : null;
+}
+function ridicareRand(c) {
+  if (c.tip_miscare !== 'EVENIMENT-A' || !(c.ev_rid || c.ev_rid_ora)) return null;
+  const z = c.ev_rid ? parseDay(c.ev_rid) : null;
+  const t = [z ? `${weekdayLabelRo(z)} ${formatDateRo(z)}` : '', c.ev_rid_ora ? `ora ${c.ev_rid_ora}` : ''].filter(Boolean).join(' · ');
+  return el('div', { class: 'ca-linie' }, ['↩ Ridicare: ', el('b', {}, [t])]);
+}
+
 function isoOf(date) {
   return `${date.getFullYear()}-${pad2(date.getMonth() + 1)}-${pad2(date.getDate())}`;
 }
@@ -147,6 +161,13 @@ async function citesteDinCloud() {
       rows.forEach((r) => { const x = z.get(r.id); if (x) { if (x.zi_serv) r.zi_servisare = x.zi_serv; r.traseu = x.traseu || ''; } });
     }
   } catch (e) { /* fara zile / traseu din comanda */ }
+  try {
+    const ro = await supabase.rpc('comenzi_active_ora');   // v96 (GestiuneEE v7.95): ora comenzii + ridicarea programata la eveniment
+    if (!ro.error) {
+      const o = new Map((ro.data || []).map((x) => [x.id, x]));
+      rows.forEach((r) => { const x = o.get(r.id); if (x) { r.ora = x.ora || ''; r.ev_rid = x.ev_rid || ''; r.ev_rid_ora = x.ev_rid_ora || ''; } });
+    }
+  } catch (e) { /* fara ora */ }
   try {
     const rl = await supabase.rpc('comenzi_active_locatii');   // v90: locatiile comenzii din exterior + PV pe fiecare
     if (!rl.error) {
@@ -330,7 +351,7 @@ export function buildComenziActive({ driver, car, depot, onFaraComanda, onStare,
         const unde = [c.loc, c.jud ? String(c.jud).toUpperCase() : ''].filter(Boolean).join(' - ');
         return el('div', { class: 'ca-card ca-restrans', style: `border-left-color:${accent}`, onclick: () => { deschise.add(c.id); renderLista(); } }, [
           el('div', { class: 'ca-tip ca-tip-rand', style: `color:${accent}` }, [el('span', {}, [tipLabel]), el('span', { class: 'ca-sageata' }, ['▾'])]),
-          el('div', { class: 'ca-rezumat' }, [[c.client || '—', unde].filter(Boolean).join('  |  ')]),
+          el('div', { class: 'ca-rezumat' }, [[c.client || '—', unde, c.ora || ''].filter(Boolean).join('  |  ')]),   // v96: + ora
           c.pv_facut_de ? el('div', { class: 'ca-stare ca-pv' }, [`✔ PV facut de ${c.pv_facut_de}`]) : null,
         ]);
       }
@@ -367,6 +388,7 @@ export function buildComenziActive({ driver, car, depot, onFaraComanda, onStare,
             ? el('div', { class: 'ca-tip ca-tip-rand', style: `color:${accent}`, onclick: (e) => { e.stopPropagation(); deschise.delete(c.id); renderLista(); } }, [el('span', {}, [tipLabel]), el('span', { class: 'ca-sageata' }, ['▴ restrânge'])])
             : el('div', { class: 'ca-tip', style: `color:${accent}` }, [tipLabel]),
           el('div', { class: 'ca-client' }, [c.client || '—']),
+          oraRand(c), ridicareRand(c),   // v96
           el('div', { class: 'ca-linie' }, [`📍 ${locs.length} locații · ${locs.filter((L) => L[0].pv_facut_de).length} cu PV`]),
           btnPreiau(c) ? el('div', { class: 'ca-actiuni' }, [btnPreiau(c)]) : null,
           c.preluat_de ? el('div', { class: 'ca-stare' }, [`👤 Preluat de ${c.preluat_de === driver.name ? 'tine' : c.preluat_de}, ${oraDin(c.preluat_la)}`]) : null,
@@ -380,6 +402,7 @@ export function buildComenziActive({ driver, car, depot, onFaraComanda, onStare,
           ? el('div', { class: 'ca-tip ca-tip-rand', style: `color:${accent}`, onclick: (e) => { e.stopPropagation(); deschise.delete(c.id); renderLista(); } }, [el('span', {}, [tipLabel]), el('span', { class: 'ca-sageata' }, ['▴ restrânge'])])
           : el('div', { class: 'ca-tip', style: `color:${accent}` }, [tipLabel]),
         el('div', { class: 'ca-client' }, [c.client || '—']),
+        oraRand(c), ridicareRand(c),   // v96
         adresa ? el('div', { class: 'ca-linie' }, ['📍 ', adresa]) : null,
         ...locs[0].map((x) => el('div', { class: 'ca-linie' }, ['📦 ', prodX(x)])),   // s32: toate produsele comenzii
         seriiText(c.serii) ? el('div', { class: 'ca-linie' }, ['🔢 Serii de ridicat: ', seriiText(c.serii)]) : null,
