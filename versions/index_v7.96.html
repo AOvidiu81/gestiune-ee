@@ -2040,6 +2040,11 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
         <div class="maf"><label>Monedă</label><select id="ma-moneda"></select></div>
         <div class="maf"><label>Scadent (zile)</label><input type="number" id="ma-scad" value="30"></div>
       </div>
+      <!-- v7.96 (cerut de Ovidiu, 07.11): „La facturare: un singur rând” (v5.12) — mutat aici din sumarul de sus, cu explicație; doar la 2+ produse -->
+      <div class="maf sc-box" id="ma-ur-box" style="display:none">
+        <label class="sc-sw"><input type="checkbox" id="ma-ur" onchange="MA_UN_RAND=this.checked;$('ma-ur-box').classList.toggle('on', this.checked)"><span class="sc-tr"></span>
+          <span class="sc-tx"><b>La facturare: produsele identice într-un singur rând</b><small>Fără bifă: fiecare produs de pe anexă = un rând în Facturare (ex. toaletă + container = 2 rânduri). Cu bifă: produsele <b>identice</b> (același produs, preț, monedă și perioadă) se adună într-un rând — ex. Primăria, 30 toalete pe 20 locații = 1 rând „30 buc × zile × preț”. Produsele diferite rămân mereu pe rânduri separate.</small></span></label>
+      </div>
       <!-- v7.02 (cerut de Ovidiu, 25.10): facturare în avans — în Facturare rândul pornește în fiecare lună ca FACTURA AVANS (implicit la persoane fizice) -->
       <div class="maf sc-box" id="ma-fa-box">
         <label class="sc-sw"><input type="checkbox" id="ma-fa" onchange="$('ma-fa-box').classList.toggle('on', this.checked)"><span class="sc-tr"></span>
@@ -5271,7 +5276,9 @@ function maRanduri(){
     (MA_RAND.length > 1 ? `<button type="button" class="x" title="Scoate produsul de pe anexă" onclick="event.stopPropagation();maRandScoate(${i})">✕</button>` : "") + `</span>`).join("") +
     /* v7.96: „+ Adaugă produs pe anexă” e la titlul Produse */
     // v5.12 (cazul Primăriei, 09.10): toate rândurile cu același produs, preț și perioadă = un singur rând la facturare
-    (MA_RAND.length > 1 ? `<label style="margin-left:10px;display:inline-flex;gap:5px;align-items:center;cursor:pointer" title="Ex. Primăria: 30 de toalete pe 20 de locații = un rând (30 buc × zile × preț)"><input type="checkbox" ${MA_UN_RAND ? "checked" : ""} onchange="MA_UN_RAND=this.checked">La facturare: un singur rând</label>` : "");
+    "";
+  // v7.96 (cerut de Ovidiu, 07.11): bifa „un singur rând” mutată jos, la Produse, cu explicație — apare doar cu 2+ produse
+  { const b = $("ma-ur-box"), c = $("ma-ur"); if(b && c){ b.style.display = MA_RAND.length > 1 ? "" : "none"; c.checked = !!MA_UN_RAND; b.classList.toggle("on", c.checked); } }
 }
 function maRandAlege(i){ if(i === MA_I) return; maRandPastreaza(); maRandArata(i); }
 // v5.70: eticheta produsului curent („1. 1 CONTAINER SANITAR”) se scrie pe loc, cât completezi — înainte rămânea „1. 0 ?”
