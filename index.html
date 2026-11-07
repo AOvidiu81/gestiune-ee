@@ -1017,7 +1017,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
   <span id="rz-w"><button id="rz-reset" class="pictograma" title="Lățimi implicite — pune coloanele din tabelele acestei file înapoi cum erau">↺ Reset layout</button><i class="rz-sep">|</i></span>
   <span id="tz-w" title="Mărimea tabelului (doar tabelul, restul rămâne la fel), din 5 în 5%. Merge și cu Ctrl + rotița mausului, Ctrl + / Ctrl − / Ctrl 0. Dublu clic pe procent = scrii tu valoarea."><button class="pictograma" onclick="tzPas(-1)" aria-label="Micșorează tabelul">−</button><b id="tz-v" ondblclick="tzScrie()" title="Dublu clic = scrii mărimea (ex. 87), Enter">100%</b><input id="tz-in" type="number" min="30" max="300" step="5" style="display:none"><button class="pictograma" onclick="tzPas(1)" aria-label="Mărește tabelul">+</button></span>
-  <span class="ver">v8.01</span>
+  <span class="ver">v8.02</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -1599,16 +1599,17 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
         <div class="gf g-full">
           <div><label>Accesorii</label><div id="mm-acc" class="acc-box"></div></div>
         </div>
+        <!-- v8.02: tabelul de produse al anexei e acum în secțiunea 4 -->
+        <div id="mm-doc-sect" style="display:none;margin-top:10px;padding:8px 10px;border:1px solid var(--bd);border-radius:8px">
+          <div style="font-weight:600;margin-bottom:4px">Toate produsele pe această comandă <span class="hint">bifează ce pleacă acum (și din alte anexe ale contractului)</span></div>
+          <div id="mm-doc"></div>
+        </div>
         <div id="mm-xp-sect" style="display:none">
           <div id="mm-xp"></div>
           <div style="margin-top:10px;display:flex;align-items:center;gap:10px;flex-wrap:wrap"><button type="button" class="btn sm sec" onclick="mmXpAdauga()" title="Încă un produs pe aceeași comandă (aceeași dată, client, locație, responsabil, traseu) — un singur text pentru șoferi și un singur PV">+ Produs</button><span class="hint">comandă din exterior: pune aici celelalte produse care pleacă împreună</span></div>
         </div>
       </div>
 
-      <div class="sect" id="mm-doc-sect" style="display:none">
-        <h4>Produse pe această comandă <span class="hint">bifează ce pleacă acum (și din alte anexe ale contractului)</span></h4>
-        <div id="mm-doc"></div>
-      </div>
       <div class="sect" id="mm-serii-sect" style="display:none">
         <h4>Serii pe punct <span class="hint">bifează ce se ridică cu această comandă</span></h4>
         <div id="mm-serii"></div>
@@ -3502,6 +3503,19 @@ function openAnexaScurta(b, tip){
   $("ma-info").innerHTML = "Pe linia <b>" + esc(baza.anexa || "") + "</b> · " + esc(baza.jud || "") + " " + esc(baza.loc || "") + " – " + esc(baza.sat || "") + " · " + esc(baza.produs || "") + " " + esc(baza.model || "") +
     "<br>Acum la client: <b>" + acum + "</b> buc. " + (fin ? "<b>Ridicare finală:</b> pleacă tot de la locație; data = ziua ridicării. După PV, „✓ Închide ridicarea” (butonul verde din Edit) închide locația. " : "") + "Scrie <b>câte bucăți " + (lit === "R" ? "se reduc" : "se adaugă") + "</b>" + (lit === "R" ? " (apare cu minus; merge scris și fără semn)" : "") + ", data și prețul pe bucată (același ca pe anexa de bază). Restul vine din anexa de bază.";
   maCampuri(true); maEtichete(lit, fin);
+  // v8.02 (cerut de Ovidiu, 07.11): același act -S / -R și pe celelalte produse ale anexei (anexă cu mai multe produse, ex. Dramirom nr. 3)
+  MA_SCURT.frati = [];
+  if(!fin && baza.doc_id){
+    const fr = ANX.filter(x => x.doc_id === baza.doc_id && x.id !== baza.id && !x.linie_id && !x.tip_anexa && !x.data_ridicarii).sort((x, y) => x.id - y.id)
+      .filter(x => lit === "S" || cantLinie(x.id) > 0);
+    if(fr.length){
+      MA_SCURT.frati = fr.map(x => ({ id: x.id, acum: cantLinie(x.id) }));
+      $("ma-info").innerHTML += `<div style="margin-top:8px;padding:8px 10px;border:1px solid var(--bd);border-radius:8px">` +
+        `<b>Același act și pe celelalte produse ale anexei</b> <span class="muted">— scrie câte bucăți ${lit === "R" ? "se reduc" : "se adaugă"} (0 = produsul nu se schimbă)</span>` +
+        fr.map(x => `<div style="display:flex;align-items:center;gap:8px;margin-top:6px"><input type="number" min="0" id="ma-sx-${x.id}" value="0" style="width:70px"> ` +
+          `<span>${esc([x.produs, x.model, x.model_fizic].filter(Boolean).join(" "))}${mmLocK(x) !== mmLocK(baza) ? " · " + esc([x.loc, x.sat].filter(Boolean).join(" – ")) : ""} <span class="muted">(acum la client: ${cantLinie(x.id)})</span></span></div>`).join("") + `</div>`;
+    }
+  }
   $("ma-cant").focus();
 }
 function intoarceInMiscare(ce, id){
@@ -4875,7 +4889,7 @@ function mmDocRanduri(){
   alte.forEach(x => { const u = anexaUltima(x.id); MM_ALTE.add(u.id); l.push(u); });
   return l.filter(x => !rid || cantLinie(x.id) > 0);
 }
-const mmDocCant = (x, rid) => rid ? cantLinie(x.id) : Math.abs(+x.cant || 0);
+const mmDocCant = (x, rid) => rid && !($("mm-tip").value === "REDUCERE" && x.tip_anexa === "R" && !/FINAL/i.test(x.anexa || "")) ? cantLinie(x.id) : Math.abs(+x.cant || 0);   // v8.02: la REDUCERE pe act -R = bucățile actului
 const mmLocK = x => [x.jud, x.loc, x.sat].map(v => String(v || "").trim().toUpperCase()).join("|");
 function mmDocEt(x, rid, multiLoc, buc){
   const q = buc != null ? buc : mmDocCant(x, rid);
@@ -4887,7 +4901,8 @@ function mmDoc(reset){
   const sect = $("mm-doc-sect"), l = mmDocRanduri();
   if(!l.length){ sect.style.display = "none"; MM_GR = new Set(); return; }
   sect.style.display = "";
-  if(reset) MM_GR = new Set((+$("mm-id").value ? l.filter(x => mmFrateAl(x)) : l.filter(x => !MM_ALTE.has(x.id))).map(x => x.id));
+  if(reset){ const a1 = ANX.find(x => x.id == $("mm-anexa").value), act = a1 && a1.tip_anexa && LS_TIP.test($("mm-tip").value) ? String(a1.anexa || "").trim() : null;   // v8.02: la -S / -R doar produsele de pe același act
+    MM_GR = new Set((+$("mm-id").value ? l.filter(x => mmFrateAl(x)) : l.filter(x => !MM_ALTE.has(x.id) && (!act || String(x.anexa || "").trim() === act))).map(x => x.id)); }
   const rid = NEG.test($("mm-tip").value), a0 = ANX.find(x => x.id == $("mm-anexa").value);
   const multiLoc = new Set([a0, ...l].map(mmLocK)).size > 1;
   $("mm-doc").innerHTML = `<div class="muted" style="margin-bottom:6px">Anexa aleasă: <b>${esc(mmDocEt(Object.assign({}, a0, { produs: $("mm-prod").value, model: $("mm-model").value, accesorii: accCitite("mm-acc") }), rid, multiLoc, Math.abs(+$("mm-buc").value || 0)))}</b></div>` +
@@ -5760,6 +5775,23 @@ async function saveAnexa_(dupa){
   }
   if(id){ const {error}=await db.from("anexe").update(rec).eq("id",id); if(error){toast(error.message,true);return;} }
   else { const {data,error}=await db.from("anexe").insert(rec).select("id").single(); if(error){toast(error.message,true);return;} noulId=data.id; }
+  if(!id && MA_SCURT && (MA_SCURT.frati || []).length){   // v8.02: același act -S / -R pe celelalte produse ale anexei
+    const R = MA_SCURT.lit === "R", puse = [];
+    for(const f of MA_SCURT.frati){
+      const q = Math.abs(Math.round(+(($("ma-sx-" + f.id) || {}).value) || 0)); if(!q) continue;
+      const x = ANX.find(z => z.id === f.id); if(!x) continue;
+      if(R && q > f.acum && !confirm("Reduci " + q + " bucăți de " + (x.produs || "") + ", dar la client sunt " + f.acum + ". Salvez așa?")) continue;
+      const r2 = { contract_id: rec.contract_id, anexa: rec.anexa, data_emitere: rec.data_emitere, data_livrarii: rec.data_livrarii || rec.data_emitere, data_ridicarii: null, data_expirare: null, expirare_text: null,
+        jud: x.jud || null, loc: x.loc || null, sat: x.sat || null, forma: x.forma || "CHIRIE", produs: x.produs, model: x.model || null, model_fizic: x.model_fizic || null,
+        accesorii: x.accesorii || null, um: x.um || "BUC", cant: R ? -q : q, pret: +x.pret || 0, moneda: x.moneda || "RON", scadent: +x.scadent || 30, status: rec.status,
+        depozit: x.depozit || rec.depozit || null, contract_depozit: x.contract_depozit || rec.contract_depozit || null, transport: 0,
+        pers_contact: rec.pers_contact || x.pers_contact || null, telefon: rec.telefon || x.telefon || null, ev_de: null, ev_pana: null, linie_id: x.id, tip_anexa: MA_SCURT.lit };
+      const { error } = await db.from("anexe").insert(r2);
+      if(error){ toast("Produsul " + (x.produs || "") + " nu s-a pus pe act: " + error.message, true); continue; }
+      puse.push(q + " " + (x.produs || ""));
+    }
+    if(puse.length) toast("Pe același act " + (rec.anexa || "") + ": și " + puse.join(", "));
+  }
   if(MA_STERSE.length){ const {error}=await db.from("anexe").delete().in("id",MA_STERSE); if(error) toast("Rândurile scoase nu s-au putut șterge: "+error.message,true); MA_STERSE=[]; }
   if(!id && MA_CIORNA){ await db.from("ciorne").delete().eq("id", MA_CIORNA); MA_CIORNA = null; }   // ciorna folosită nu mai rămâne
   toast("Anexă salvată");
