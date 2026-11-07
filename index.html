@@ -1014,7 +1014,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
   <span id="rz-w"><button id="rz-reset" class="pictograma" title="Lățimi implicite — pune coloanele din tabelele acestei file înapoi cum erau">↺ Reset layout</button><i class="rz-sep">|</i></span>
   <span id="tz-w" title="Mărimea tabelului (doar tabelul, restul rămâne la fel), din 5 în 5%. Merge și cu Ctrl + rotița mausului, Ctrl + / Ctrl − / Ctrl 0. Dublu clic pe procent = scrii tu valoarea."><button class="pictograma" onclick="tzPas(-1)" aria-label="Micșorează tabelul">−</button><b id="tz-v" ondblclick="tzScrie()" title="Dublu clic = scrii mărimea (ex. 87), Enter">100%</b><input id="tz-in" type="number" min="30" max="300" step="5" style="display:none"><button class="pictograma" onclick="tzPas(1)" aria-label="Mărește tabelul">+</button></span>
-  <span class="ver">v7.99</span>
+  <span class="ver">v8.00</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -3257,7 +3257,7 @@ function mmCarduri(){
     return grupH + `<div class="mm-card${rid ? " rid" : ""}" data-id="${a.id}" onclick="mmCardAlege(${a.id})" title="Alege această anexă">` +
       `<div><span class="an">${esc(a.anexa || "(fără număr)")}</span><span class="ct">${esc(fmtD(d(a)))}${rid ? " · ridicată" : ""}</span>${cap && lista.filter(x => baza(x).id === b0.id).length > 1 ? '<span class="nou">ULTIMA</span>' : ""}</div>` +
       `<div>${esc(loc)}</div><div>${esc(prod)}</div>` +
-      `<div class="mu">${esc(cont)}</div><div class="mu">${esc(serv)}</div></div>`;
+      `<div class="mu">${esc(cont)}</div>` + (anxServText(a.id) ? `<div class="mu" title="${esc("Frecvența pe anexă (istoric):\n" + anxServIstoric(a.id))}">${esc(anxServText(a.id))}</div>` : "") + `<div class="mu">${esc(serv)}</div></div>`;   // v8.00
   }).join("");
   mmCarduriSel();
 }
@@ -3662,8 +3662,54 @@ function aaVechi(aid){
   const u = actLista(a).filter(x => x.frecv || x.zile || x.traseu).pop();
   const m = (MISC || []).filter(x => ids.includes(x.anexa_id) && (x.frecv_serv || x.zi_serv)).sort((x, y) => (x.data || "") < (y.data || "") ? 1 : -1)[0];
   const p = (PCT || []).find(x => (x.anexe_ids || []).map(Number).includes(aid));
+  const sa = anxServ(aid);   // v8.00: frecvența valabilă azi pe anexă (cu actele adiționale) are întâietate
+  if(sa && (sa.frecv || sa.zile)) return { frecv: sa.frecv || (m && m.frecv_serv) || "", zile: sa.zile || (m && m.zi_serv) || "", traseu: (u && u.traseu) || (m && m.traseu) || "" };
   return { frecv: (u && u.frecv) || (m && m.frecv_serv) || a.frecv_servisare || (p && typeof szNom === "function" ? szNom(p.frecventa) : "") || "",
            zile: (u && u.zile) || (m && m.zi_serv) || a.zi_servisare || "", traseu: (u && u.traseu) || (m && m.traseu) || "" };
+}
+// v8.00 (hotărât de Ovidiu, 07.11): frecvența „adevărată” stă pe ANEXĂ, cu istoric prin actele adiționale (anexe.actualizari).
+// Comanda o propune / o completează pe anexă dacă anexa n-o are; schimbarea ulterioară = MODIFICARE ANEXĂ (sau act -S). Ruta: tot de mână.
+function anxServ(aid, zi){
+  const a = ANX.find(x => x.id === aid); if(!a) return null;
+  const lin = anexeLinie(aid), b = lin.find(x => !x.tip_anexa) || a, z = zi || today();
+  const acte = [...new Map(lin.flatMap(x => actLista(x)).filter(u => u.frecv || u.zile || u.traseu).map(u => [u.de_la + "|" + (u.frecv || "") + "|" + (u.zile || ""), u])).values()].sort((x, y) => x.de_la < y.de_la ? -1 : 1);
+  let frecv = b.frecv_servisare || a.frecv_servisare || "", zile = b.zi_servisare || a.zi_servisare || "";
+  acte.filter(u => u.de_la <= z).forEach(u => { if(u.frecv) frecv = u.frecv; if(u.zile) zile = u.zile; });
+  const viitor = acte.filter(u => u.de_la > z);
+  return { frecv, zile, acte, viitor, baza: { frecv: b.frecv_servisare || "", zile: b.zi_servisare || "" } };
+}
+const anxZileT = z => String(z || "").split(",").map(x => faraDiac(x).trim().toUpperCase()).filter(Boolean).map(x => (ZI_RUTE[x] || x).slice(0, 2)).join("+");
+function anxServText(aid){
+  const s = anxServ(aid); if(!s || (!s.frecv && !s.zile && !s.viitor.length)) return "";
+  let t = "Servisare: " + [s.frecv, anxZileT(s.zile)].filter(Boolean).join(" · ");
+  if(s.viitor.length) t += " → din " + fmtD(s.viitor[0].de_la) + ": " + [s.viitor[0].frecv, anxZileT(s.viitor[0].zile)].filter(Boolean).join(" · ");
+  return t;
+}
+function anxServIstoric(aid){
+  const s = anxServ(aid); if(!s) return "";
+  const r = [];
+  if(s.baza.frecv || s.baza.zile) r.push("la amplasare: " + [s.baza.frecv, anxZileT(s.baza.zile)].filter(Boolean).join(" · "));
+  s.acte.forEach(u => r.push("din " + fmtD(u.de_la) + (u.act_nr ? " (act " + u.act_nr + ")" : "") + ": " + [u.frecv, anxZileT(u.zile)].filter(Boolean).join(" · ")));
+  return r.join("\n");
+}
+// La salvarea comenzii: anexa care n-are frecvență / zile le primește de pe comandă (doar câmpurile goale; nu suprascrie).
+async function mmServPeAnexa(rec){
+  try{
+    if(!rec || !rec.anexa_id || (!rec.frecv_serv && !rec.zi_serv)) return;
+    const lin = anexeLinie(rec.anexa_id); let schimbat = 0;
+    for(const x of lin){
+      const upd = {};
+      if(rec.frecv_serv && !x.frecv_servisare) upd.frecv_servisare = rec.frecv_serv;
+      if(rec.zi_serv && !x.zi_servisare) upd.zi_servisare = rec.zi_serv;
+      if(!Object.keys(upd).length) continue;
+      const { error } = await db.from("anexe").update(upd).eq("id", x.id);
+      if(error){ toast("Frecvența nu s-a putut pune pe anexă: " + error.message, true); return; }
+      Object.assign(x, upd); schimbat++;
+    }
+    const s = anxServ(rec.anexa_id, rec.data);
+    if(!schimbat && s && rec.frecv_serv && szN(s.frecv) && szN(s.frecv) !== szN(rec.frecv_serv) && $("mm-tip").value !== MM_MODIF)
+      toast("Atenție: pe anexă frecvența rămâne " + s.frecv + " (comanda are " + rec.frecv_serv + "). Pentru schimbare: tipul MODIFICARE ANEXĂ.", true);
+  }catch(e){ toast("Frecvența nu s-a putut pune pe anexă: " + (e.message || e), true); }
 }
 function mmModifArata(){
   const on = mmModif(), m = $("mod-m"); m.classList.toggle("mm-modif", on); $("mm-aa").style.display = on ? "" : "none";
@@ -3968,6 +4014,7 @@ async function saveMiscareBaza(genereaza){
   if(id && dataVeche && rec.data && dataVeche !== rec.data) await mmDataAnexa(rec, dataVeche);
   if(!id && MM_CIORNA){ await db.from("ciorne").delete().eq("id", MM_CIORNA); MM_CIORNA = null; $("mm-ciorne").innerHTML = ""; }   // v4.80: ciorna folosită nu mai rămâne
   await mmDocSalveaza(salvat.id, rec);   // v5.13: celelalte produse ale anexei
+  await mmServPeAnexa(rec);   // v8.00: frecvența / zilele pe anexă, dacă lipsesc
   await mmSeriiSalveaza(salvat.id);
   let textRid = null;   // v6.79: EVENIMENT-A cu ridicare programată → anexa -R FINAL + comanda EVENIMENT-R, generată
   if(genereaza && tip === "EVENIMENT-A" && rec.ev_rid && rec.anexa_id){
