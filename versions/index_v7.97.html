@@ -2403,6 +2403,27 @@ let TOAST_CEAS = null;
 function toast(m, err){ const t=$("toast"); t.textContent=m; t.style.background=err?"#b3261e":"#222"; t.classList.add("on");
   clearTimeout(TOAST_CEAS); TOAST_CEAS = setTimeout(()=>t.classList.remove("on"), Math.min(9000, 2600 + String(m).length*40)); }
 function closeModal(id){ $(id).classList.remove("on"); }
+// ── v7.97 (cerut de Ovidiu, 07.11): lista de frecvențe la Comandă nouă și Anexă — doar cele folosite, în ordinea lui, + „altă frecvență…” ──
+// Nomenclatorul din bază rămâne neatins (rutele / planificarea îl folosesc în continuare). O valoare veche care nu e în listă
+// (ex. la o comandă deschisă) se adaugă singură în listă, ca să nu se piardă la salvare.
+const FRECV_LISTA = ["1 / Sap", "2 / Sap", "2 / Luna", "1 / Luna", "La Cerere", "Zilnic", "Conf.Contract", "4 / Sap"];
+function frecvUmple(id){
+  const s = $(id); if(!s) return;
+  if(!s._frecv){ s._frecv = true;
+    const d = Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, "value");
+    Object.defineProperty(s, "value", { configurable: true, get(){ return d.get.call(this); },
+      set(v){ v = v == null ? "" : String(v);
+        if(v && v !== "__alta" && ![...this.options].some(o => o.value === v)) this.insertBefore(new Option(v, v), this.querySelector('option[value="__alta"]'));
+        d.set.call(this, v); } });
+    s.addEventListener("focus", () => { s.dataset.prev = s.value; });
+    s.addEventListener("change", () => { if(s.value !== "__alta") return;
+      const t = (prompt("Altă frecvență (ex. 3 / Sap, 1 / 2 Sap):", "") || "").trim();
+      s.value = t || s.dataset.prev || ""; s.dispatchEvent(new Event("input", { bubbles: true })); });
+  }
+  const cur = s.value;
+  s.innerHTML = '<option value=""></option>' + FRECV_LISTA.map(v => `<option value="${esc(v)}">${esc(v)}</option>`).join("") + '<option value="__alta">altă frecvență…</option>';
+  if(cur) s.value = cur;
+}
 function fill(sel, arr, blank){ const s=$(sel); if(!s) return; const cur=s.value; s.innerHTML=(blank!==undefined?`<option value="">${blank}</option>`:"")+arr.map(v=>`<option value="${esc(v)}">${esc(v)}</option>`).join(""); if(cur) s.value=cur; }
 
 // ---- Depozitul principal ----------------------------------------------------
@@ -2623,7 +2644,7 @@ function fillAll(){
   fill("f-tip",nomv("tip_miscare"),"Toate"); fill("mm-tip",nomv("tip_miscare"));
   fill("f-prod",nomv("produs"),"Toate"); fill("mm-prod",nomv("produs")); fill("si-prod",nomv("produs")); fill("ma-prod",nomv("produs"));
   umpleModele("mm-prod","mm-model"); umpleModele("ma-prod","ma-model");
-  fill("mm-frecv",nomv("frecv_servisare"),""); fill("ma-frecv",nomv("frecv_servisare"),"");
+  frecvUmple("mm-frecv"); frecvUmple("ma-frecv");   // v7.97: lista lui Ovidiu (07.11), nu toată lista din nomenclator
   fill("mc-idtip",nomv("id_tip")); fill("mc-atr",nomv("atr"),"");
   fill("mk-stare",nomv("stare")); fill("ma-forma",nomv("forma")); fill("ma-um",nomv("um")); fill("ma-moneda",nomv("moneda")); fill("ma-scm",nomv("moneda")); fill("mm-sv-moneda",nomv("moneda"));   // v6.45
   const y=new Date().getFullYear(); const yrs=[]; for(let i=y;i>=2023;i--) yrs.push(i); fill("f-an",yrs,"Toți"); $("f-an").value="";   /* v6.12 (cerut de Ovidiu, 15.10): Comenzi pornesc pe „Toți” anii */
