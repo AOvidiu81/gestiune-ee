@@ -5370,6 +5370,20 @@ function maVerifica(){
   // v7.96: niciun produs de pe anexă fără „Produs” ales (produsul nou pornește gol)
   if(MA_RAND.length > 1){ maRandPastreaza(); const i = MA_RAND.findIndex(r => !String(r.produs || "").trim());
     if(i >= 0){ maRandArata(i); toast("Alege produsul la rândul " + (i + 1) + " (sau scoate-l cu ✕)", true); $("ma-prod").focus(); return; } }
+  // v7.96 (cerut de Ovidiu, 07.11): avertisment înainte de salvare dacă ai uitat ceva (preț, cantitate, locație, date, nr. anexă)
+  { maRandPastreaza(); const R = MA_RAND.length ? MA_RAND : [maRecForm()], multi = R.length > 1, lip = [], E = (r, i) => multi ? " — produsul " + (i + 1) + " (" + (r.produs || "?") + ")" : "";
+    if(!String($("ma-an").value || "").trim()){ toast("Scrie numărul anexei (Anexa nr.)", true); $("ma-an").focus(); return; }
+    if(!$("ma-de").value) lip.push("• Data emiterii anexei");
+    R.forEach((r, i) => {
+      if(!(+r.pret > 0) && !/SPONS|GRATU/i.test(r.forma || "")) lip.push("• Prețul e 0" + E(r, i));
+      if(!(Math.abs(+r.cant || 0) > 0)) lip.push("• Cantitatea e 0" + E(r, i));
+      if(!String(r.loc || "").trim() && !String(r.sat || "").trim()) lip.push("• Locația de amplasare e goală" + E(r, i));
+      if(!r.data_livrarii) lip.push("• Data amplasării e goală" + E(r, i));
+    });
+    if(lip.length){
+      const i0 = R.findIndex(r => !(+r.pret > 0) && !/SPONS|GRATU/i.test(r.forma || ""));
+      if(!confirm("⚠ Ai uitat să completezi:\n\n" + [...new Set(lip)].join("\n") + "\n\nOK = salvează așa · Anulează = mă întorc să completez")){
+        if(multi && i0 >= 0){ maRandArata(i0); $("ma-pret").focus(); } return; } } }
   const d = maDate(), nou = !$("ma-id").value;
   $("ma-conf-t").textContent = nou ? "Creați această anexă?" : "Salvați modificările anexei?";
   $("ma-conf-ok").textContent = nou ? "Creează anexa" : "Salvează modificările";
