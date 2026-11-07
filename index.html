@@ -1947,6 +1947,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   #ma-ctx{font-size:13px;font-weight:400;color:var(--mut);margin-left:6px}
   #mod-a .ma-sect>h4{margin:12px 0 8px;font-size:11px;letter-spacing:.09em;text-transform:uppercase;color:var(--mut);font-weight:700;display:flex;gap:10px;align-items:center}
   #mod-a .ma-sect>h4:after{content:"";flex:1;height:1px;background:var(--bd)}
+  #mod-a .ma-plus-prod{text-transform:none;letter-spacing:0;font-weight:600;margin:0 4px 0 6px}
   #mod-a .ma-g{display:grid;gap:10px;margin-bottom:10px}
   /* v6.87: panoul „Servisare la cerere” din anexă */
   #mod-a .sc-box{border:1px solid var(--bd);border-radius:10px;padding:10px 12px;margin:2px 0 12px;background:var(--card2,transparent);transition:border-color .15s}
@@ -2022,7 +2023,8 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
       </div>
     </div>
     <div class="ma-sect">
-      <h4>Produse</h4>
+      <!-- v7.96 (cerut de Ovidiu, 07.11): butonul de produs nou mutat aici, sus rămâne doar sumarul produselor -->
+      <h4>Produse <button type="button" class="btn sm sec ma-plus-prod" onclick="maRandNou()" title="Încă un produs (sau încă o locație) pe aceeași anexă">+ Adaugă produs pe anexă</button></h4>
       <div class="ma-g c5">
         <div class="maf"><label>Forma</label><select id="ma-forma" onchange="maEvArata()"></select></div>
         <div class="maf"><label>Produs <button type="button" class="cat-plus" onclick="catRapid('ma','prod',this)" title="Categorie nouă în catalog, dacă produsul nu există încă">＋ nou</button></label><select id="ma-prod"></select></div>
@@ -5267,7 +5269,7 @@ function maRanduri(){
   const multiLoc = new Set(MA_RAND.map(r => [r.jud, r.loc, r.sat].join("|"))).size > 1;
   el.innerHTML = "<span class='muted'>Produse pe anexă:</span>" + MA_RAND.map((r, i) => `<span class="ch${i === MA_I ? " sel" : ""}" onclick="maRandAlege(${i})" title="Arată produsul ${i + 1}">${i === MA_I ? "<b>" : ""}${esc(maRandEticheta(r, i, multiLoc))}${i === MA_I ? "</b>" : ""}` +
     (MA_RAND.length > 1 ? `<button type="button" class="x" title="Scoate produsul de pe anexă" onclick="event.stopPropagation();maRandScoate(${i})">✕</button>` : "") + `</span>`).join("") +
-    `<button type="button" class="btn sm sec" onclick="maRandNou()" title="Încă un produs (sau încă o locație) pe aceeași anexă">+ Produs</button>` +
+    /* v7.96: „+ Adaugă produs pe anexă” e la titlul Produse */
     // v5.12 (cazul Primăriei, 09.10): toate rândurile cu același produs, preț și perioadă = un singur rând la facturare
     (MA_RAND.length > 1 ? `<label style="margin-left:10px;display:inline-flex;gap:5px;align-items:center;cursor:pointer" title="Ex. Primăria: 30 de toalete pe 20 de locații = un rând (30 buc × zile × preț)"><input type="checkbox" ${MA_UN_RAND ? "checked" : ""} onchange="MA_UN_RAND=this.checked">La facturare: un singur rând</label>` : "");
 }
