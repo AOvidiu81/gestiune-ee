@@ -5284,7 +5284,10 @@ function maRandNou(){
   // locația, persoana de contact, datele și moneda rămân; produsul, cantitatea, prețul și servisarea se scriu din nou
   MA_RAND.push({ jud: c.jud, loc: c.loc, sat: c.sat, forma: c.forma, moneda: c.moneda, scadent: c.scadent, depozit: c.depozit, contract_depozit: c.contract_depozit,
     data_livrarii: c.data_livrarii, data_ridicarii: c.data_ridicarii, pers_contact: c.pers_contact, telefon: c.telefon, status: c.status, um: "BUC", cant: 1, pret: 0 });
-  maRandArata(MA_RAND.length - 1); $("ma-prod").focus();
+  maRandArata(MA_RAND.length - 1);
+  // v7.96 (cerut de Ovidiu, 07.11): produsul nou pornește GOL (nu se mai copiază ultimul produs) — îl alegi tu; sus apare „? ”
+  $("ma-prod").value = ""; umpleModele("ma-prod", "ma-model", "", ""); umpleMF("ma-prod", "ma-model", "");
+  maRandPastreaza(); maRanduri(); $("ma-prod").focus();
 }
 function maRandScoate(i){
   maRandPastreaza(); const r = MA_RAND[i];
@@ -5357,6 +5360,9 @@ function maGoleste(){
   MA_CIORNA = null; maCiorneDeseneaza();
 }
 function maVerifica(){
+  // v7.96: niciun produs de pe anexă fără „Produs” ales (produsul nou pornește gol)
+  if(MA_RAND.length > 1){ maRandPastreaza(); const i = MA_RAND.findIndex(r => !String(r.produs || "").trim());
+    if(i >= 0){ maRandArata(i); toast("Alege produsul la rândul " + (i + 1) + " (sau scoate-l cu ✕)", true); $("ma-prod").focus(); return; } }
   const d = maDate(), nou = !$("ma-id").value;
   $("ma-conf-t").textContent = nou ? "Creați această anexă?" : "Salvați modificările anexei?";
   $("ma-conf-ok").textContent = nou ? "Creează anexa" : "Salvează modificările";
