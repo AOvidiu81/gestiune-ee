@@ -1014,7 +1014,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
   <span id="rz-w"><button id="rz-reset" class="pictograma" title="Lățimi implicite — pune coloanele din tabelele acestei file înapoi cum erau">↺ Reset layout</button><i class="rz-sep">|</i></span>
   <span id="tz-w" title="Mărimea tabelului (doar tabelul, restul rămâne la fel), din 5 în 5%. Merge și cu Ctrl + rotița mausului, Ctrl + / Ctrl − / Ctrl 0. Dublu clic pe procent = scrii tu valoarea."><button class="pictograma" onclick="tzPas(-1)" aria-label="Micșorează tabelul">−</button><b id="tz-v" ondblclick="tzScrie()" title="Dublu clic = scrii mărimea (ex. 87), Enter">100%</b><input id="tz-in" type="number" min="30" max="300" step="5" style="display:none"><button class="pictograma" onclick="tzPas(1)" aria-label="Mărește tabelul">+</button></span>
-  <span class="ver">v7.98</span>
+  <span class="ver">v7.99</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -1462,6 +1462,15 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   .mm-card .ct{font-size:11px;color:var(--mut);margin-left:6px}
   .mm-card .mu{color:var(--mut)}
   #mod-m .lux-cap{cursor:move;user-select:none}
+  /* v7.99: MODIFICARE ANEXĂ */
+  #mod-m .mm-aa{margin-top:10px;padding:10px 12px;border:1px solid var(--bd);border-left:4px solid #f08c00;border-radius:8px}
+  #mod-m .mm-aa-t{font-weight:700;font-size:13px;margin-bottom:8px}
+  .g-aa{grid-template-columns:150px 150px 160px 1fr}
+  @media (max-width:700px){ .g-aa{grid-template-columns:1fr 1fr} }
+  #mod-m .mm-aa-sum{font-size:13px;margin-top:4px}
+  #mod-m.mm-modif .mm-s[data-s="4"], #mod-m.mm-modif .mm-s[data-s="5"]{opacity:.55;pointer-events:none}
+  #mod-m.mm-modif #mm-doc-sect, #mod-m.mm-modif #mm-serii-sect, #mod-m.mm-modif #mm-desp-sect, #mod-m.mm-modif #mm-evp-sect,
+  #mod-m.mm-modif #mm-sp-sect, #mod-m.mm-modif #mm-cmd-sect, #mod-m.mm-modif #mm-ev-info, #mod-m.mm-modif #mm-gen, #mod-m.mm-modif #mm-caz{display:none!important}
   /* v7.98: caseta cazului A / B / C / D (gestiune × depozit) */
   #mod-m .mm-caz{margin-top:10px;padding:8px 12px;border:1px solid var(--bd);border-left:4px solid var(--acc,#3b82f6);border-radius:8px;font-size:13px;line-height:1.5}
   #mod-m .mm-caz:empty{display:none}
@@ -1561,6 +1570,17 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
           <div><label>Tip comandă</label><select id="mm-tip"></select></div>
           <div><label>Data</label><input type="date" id="mm-data"></div>
           <div><label>Ora</label><input id="mm-ora" maxlength="20" placeholder="ex. 08:00" title="Ora la care trebuie să ajungă șoferul (ex. 08:00 sau 08:00-09:00) — apare în textul pentru șoferi"></div>
+        </div>
+        <!-- v7.99 (cerut de Ovidiu, 07.11): MODIFICARE ANEXĂ = act adițional la aceeași anexă, fără mișcare de stoc -->
+        <div id="mm-aa" class="mm-aa" style="display:none">
+          <div class="mm-aa-t">Act adițional — ce se schimbă <span class="hint">anexa rămâne aceeași (bucăți, serii, stoc); <b>Data</b> de mai sus = valabil de la</span></div>
+          <div class="gf g-aa">
+            <div><label>Act adițional nr.</label><input id="mm-aa-nr" placeholder="scris de tine"></div>
+            <div><label>Data actului</label><input type="date" id="mm-aa-data"></div>
+            <div><label>Preț nou / buc <span class="hint" id="mm-aa-pv"></span></label><input type="number" step="0.01" min="0" id="mm-aa-pret" placeholder="gol = rămâne"></div>
+            <div><label>Motiv</label><input id="mm-aa-obs" placeholder="ex. servisare de 2 ori pe săptămână"></div>
+          </div>
+          <div id="mm-aa-sum" class="mm-aa-sum"></div>
         </div>
       </div>
 
@@ -2647,7 +2667,7 @@ function fillAll(){
   // HUNEDOARA si ascundea comenzile celorlalte depozite chiar la deschiderea filei.)
   // O singura data: daca Ovidiu schimba filtrul, alegerea lui ramane.
   if(!DEP_PRESELECTAT && DEP.length){ const P=depPrincipal(); pune("st-dep",P); pune("cl-dep",P); DEP_PRESELECTAT=true; }
-  fill("f-tip",nomv("tip_miscare"),"Toate"); fill("mm-tip",nomv("tip_miscare"));
+  fill("f-tip",nomv("tip_miscare"),"Toate"); fill("mm-tip",nomv("tip_miscare")); { const t = $("mm-tip"); if(t && ![...t.options].some(o => o.value === "MODIFICARE ANEXA")) t.add(new Option("MODIFICARE ANEXĂ", "MODIFICARE ANEXA")); }   // v7.99
   fill("f-prod",nomv("produs"),"Toate"); fill("mm-prod",nomv("produs")); fill("si-prod",nomv("produs")); fill("ma-prod",nomv("produs"));
   umpleModele("mm-prod","mm-model"); umpleModele("ma-prod","ma-model");
   frecvUmple("mm-frecv"); frecvUmple("ma-frecv");   // v7.97: lista lui Ovidiu (07.11), nu toată lista din nomenclator
@@ -3478,6 +3498,7 @@ function intoarceInMiscare(ce, id){
   return true;
 }
 function openMiscare(id){
+  ["mm-aa-nr","mm-aa-data","mm-aa-pret","mm-aa-obs"].forEach(x => { const e = $(x); if(e) e.value = ""; }); MM_AA_K = ""; MM_AA_VECHI = null;   // v7.99
   ["mm-contract","mm-dep"].forEach(x => { const e = $(x); if(e) delete e.dataset.manual; }); { const h = $("mm-gest-hint"); if(h) h.textContent = ""; }   // v7.98
   { const vf = $("mm-verif"); if(vf) vf.classList.remove("on"); }   // v7.97
   { const f=id?MISC.find(x=>x.id===id):null; if(f && f.grup_id && f.grup_id!==f.id && MISC.some(x=>x.id===f.grup_id)) return openMiscare(f.grup_id); }   // v5.13: produsul se editează din comanda principală
@@ -3627,9 +3648,83 @@ function mmCaz(){
     r("Anexa:", gH ? "a noastră, la contractul " + esc(P) + " (facturăm noi)" : "fără anexă a noastră" + (z === "D" ? " (servisările preluate le discutăm separat)" : ""));
   if(el.innerHTML !== html) el.innerHTML = html;
 }
+// ── v7.99 (cerut de Ovidiu, 07.11): tipul MODIFICARE ANEXĂ — la capătul listei, NU e mișcare de marfă și NU se salvează ca o comandă.
+// Aceleași bucăți, aceeași locație; se schimbă frecvența / zilele / traseul și / sau prețul de la o dată → act adițional la aceeași anexă,
+// ținut în anexe.actualizari (mecanismul „Actualizare anexă” din v5.99). Facturarea se desparte la dată DOAR dacă se schimbă prețul.
+// Prețul nou trece pe toate rândurile liniei cu același produs (-S / -R incluse, amplasate înainte de dată); frecvența / zilele / traseul pe toată linia.
+// Ruta șoferilor: tot de mână (Puncte de rută → ⋯ → 📅), cum a hotărât Ovidiu. După salvare se deschide Registrul completat (ACT ADITIONAL).
+const MM_MODIF = "MODIFICARE ANEXA";
+let MM_AA_VECHI = null, MM_AA_K = "";
+const mmModif = () => $("mm-tip").value === MM_MODIF;
+function aaVechi(aid){
+  const a = ANX.find(x => x.id === aid); if(!a) return { frecv: "", zile: "", traseu: "" };
+  const ids = anexeLinie(aid).map(x => x.id);
+  const u = actLista(a).filter(x => x.frecv || x.zile || x.traseu).pop();
+  const m = (MISC || []).filter(x => ids.includes(x.anexa_id) && (x.frecv_serv || x.zi_serv)).sort((x, y) => (x.data || "") < (y.data || "") ? 1 : -1)[0];
+  const p = (PCT || []).find(x => (x.anexe_ids || []).map(Number).includes(aid));
+  return { frecv: (u && u.frecv) || (m && m.frecv_serv) || a.frecv_servisare || (p && typeof szNom === "function" ? szNom(p.frecventa) : "") || "",
+           zile: (u && u.zile) || (m && m.zi_serv) || a.zi_servisare || "", traseu: (u && u.traseu) || (m && m.traseu) || "" };
+}
+function mmModifArata(){
+  const on = mmModif(), m = $("mod-m"); m.classList.toggle("mm-modif", on); $("mm-aa").style.display = on ? "" : "none";
+  if(!on){ MM_AA_K = ""; return; }
+  const aid = +$("mm-anexa").value || 0, a = ANX.find(x => x.id === aid), k = "on|" + aid;
+  if(k !== MM_AA_K){ MM_AA_K = k; MM_AA_VECHI = a ? aaVechi(aid) : null;
+    if(!$("mm-aa-data").value) $("mm-aa-data").value = today();
+    $("mm-aa-pv").textContent = a ? "acum " + fmtPret(a.pret) + " " + (a.moneda || "") : "";
+    if(MM_AA_VECHI){ $("mm-frecv").value = MM_AA_VECHI.frecv; $("mm-zi").value = MM_AA_VECHI.zile; mmZile(); $("mm-traseu").value = MM_AA_VECHI.traseu; } }
+  const v = MM_AA_VECHI || {}, f = $("mm-frecv").value, z = $("mm-zi").value, t = $("mm-traseu").value, pr = $("mm-aa-pret").value, ch = [];
+  if(!a){ $("mm-aa-sum").innerHTML = "<span class='muted'>Alege anexa la secțiunea 2.</span>"; return; }
+  if(f !== (v.frecv || "")) ch.push("frecvență " + esc(v.frecv || "—") + " → <b>" + esc(f || "—") + "</b>");
+  if(z !== (v.zile || "")) ch.push("zile " + esc((v.zile || "—").replace(/,/g, "+")) + " → <b>" + esc((z || "—").replace(/,/g, "+")) + "</b>");
+  if(t !== (v.traseu || "")) ch.push("traseu " + esc(v.traseu || "—") + " → <b>" + esc(t || "—") + "</b>");
+  if(pr !== "") ch.push("preț " + esc(fmtPret(a.pret)) + " → <b>" + esc(fmtPret(+pr)) + " " + esc(a.moneda || "") + "</b>");
+  const html = ch.length ? "Se schimbă: " + ch.join(" · ") : "<span class='muted'>Nimic schimbat încă — schimbă frecvența / zilele / traseul la secțiunea 6 sau scrie prețul nou.</span>";
+  if($("mm-aa-sum").innerHTML !== html) $("mm-aa-sum").innerHTML = html;
+}
+async function mmModifSalveaza(){
+  const aid = +$("mm-anexa").value || 0, a = ANX.find(x => x.id === aid);
+  if(!a){ toast("Alege anexa la care faci actul adițional (secțiunea 2)", true); return false; }
+  const de = $("mm-data").value, nr = $("mm-aa-nr").value.trim(), ad = $("mm-aa-data").value || null, pr = $("mm-aa-pret").value, obs = $("mm-aa-obs").value.trim();
+  if(!de){ toast("Scrie Data (valabil de la)", true); $("mm-data").focus(); return false; }
+  if(!nr){ toast("Scrie numărul actului adițional", true); $("mm-aa-nr").focus(); return false; }
+  const amp = a.data_livrarii || a.data_emitere;
+  if(amp && de <= amp){ toast("Data trebuie să fie după amplasarea anexei (" + fmtD(amp) + "). Pentru o greșeală pe anexă, corecteaz-o cu Edit.", true); return false; }
+  const v = MM_AA_VECHI || {}, f = $("mm-frecv").value, z = $("mm-zi").value, t = $("mm-traseu").value;
+  const sf = f !== (v.frecv || ""), sz = z !== (v.zile || ""), st = t !== (v.traseu || ""), sp = pr !== "";
+  if(!sf && !sz && !st && !sp){ toast("Nu se schimbă nimic — schimbă frecvența / zilele / traseul sau scrie prețul nou", true); return false; }
+  if(sf && !sp && !confirm("⚠ Se schimbă frecvența, dar prețul rămâne " + fmtPret(a.pret) + " " + (a.moneda || "") + ".\n\nOK = salvez așa · Anulează = scriu prețul nou")){ $("mm-aa-pret").focus(); return false; }
+  const u = { de_la: de, pret: sp ? +pr : null, frecv: sf ? f : null, zile: sz ? z : null, traseu: st ? t : null, model: null, act_nr: nr, act_data: ad, obs: obs || null, creat_la: new Date().toISOString() };
+  const linie = anexeLinie(aid).filter(x => x.id === aid || !((x.data_livrarii || x.data_emitere) && (x.data_livrarii || x.data_emitere) >= de));
+  if(linie.some(x => actLista(x).some(y => y.de_la === de))){ toast("Există deja un act adițional din " + fmtD(de) + " pe această anexă — vezi ✎ Actualizare anexă", true); return false; }
+  const puse = [];
+  for(const x of linie){
+    const ux = Object.assign({}, u); if(x.produs !== a.produs) ux.pret = null;   // prețul nou doar pe același produs
+    if(ux.pret == null && !ux.frecv && !ux.zile && !ux.traseu) continue;
+    const l = actLista(x).map(y => Object.assign({}, y)); l.push(ux); l.sort((p, q) => p.de_la < q.de_la ? -1 : 1);
+    const { error } = await db.from("anexe").update({ actualizari: l }).eq("id", x.id);
+    if(error){ toast("Nu s-a salvat pe " + (x.anexa || "") + ": " + error.message, true); return false; }
+    puse.push(x.anexa || "");
+  }
+  if(MM_CIORNA){ await db.from("ciorne").delete().eq("id", MM_CIORNA); MM_CIORNA = null; }
+  closeModal("mod-m"); await reloadClienti();
+  toast("Act adițional " + nr + " salvat pe " + [...new Set(puse)].join(", ") + " — din " + fmtD(de) +
+    (sp ? " · facturarea ia prețul nou de la dată" : " · facturarea nu se schimbă (același preț)") +
+    (sf || sz || st ? " · Nu uita: ruta o schimbi în Puncte de rută → ⋯ → 📅 din " + fmtD(de) : ""), false);
+  // Registrul documente, completat (ca la anexe): alegi PRIMIT / IN ASTEPTARE și apeși Salvează
+  try{
+    const c = CTR.find(x => x.id === a.contract_id) || {}, k = CLI.find(x => x.id === c.client_id) || {};
+    const ce = [sf ? "frecvență " + f : "", sz ? "zile " + z.replace(/,/g, "+") : "", st ? "traseu " + t : "", sp ? "preț " + fmtPret(+pr) + " " + (a.moneda || "") : ""].filter(Boolean).join(", ");
+    await loadDoc(); DOC_COADA = [];
+    docDeschide(null, { data: ad || today(), ref: (c.nr_ctr || "").toUpperCase(), den: k.nume || $("mm-client").value || "", strim: "TRIMIS", sprim: "IN ASTEPTARE", tip: "ACT ADITIONAL",
+      nota: `Act adițional <b>${esc(nr)}</b> la <b>${esc(a.anexa || "")}</b>, din ${esc(fmtD(de))}. Verifică și apasă <b>Salvează</b>; actul e deja pe anexă, aici se trece doar în registru.`,
+      obs: [(a.anexa || "") + " · AA " + nr, "din " + fmtD(de), ce].filter(Boolean).join(" · ") });
+  }catch(e){ console.error(e); toast("Registrul nu s-a putut deschide: " + (e.message || e), true); }
+  return true;
+}
 function mmPasi(){
   const m = $("mod-m"); if(!m || !m.classList.contains("on")) return;
-  mmCaz(); if(!$("mm-contract").value) mmGestPropune();
+  mmCaz(); if(!$("mm-contract").value) mmGestPropune(); mmModifArata();   // v7.99
   const ok = mmPasiOk(); let tot = true;
   m.querySelectorAll(".mm-s").forEach(sc => { const n = +sc.dataset.s;
     sc.classList.toggle("gata", !!ok[n]); sc.classList.toggle("asteapta", !tot); if(!ok[n]) tot = false; });
@@ -3761,6 +3856,7 @@ function mmVerifInchide(){ $("mm-verif").classList.remove("on"); }
 function mmVerifMergi(id){ mmVerifInchide(); const e = $(id); if(!e) return; e.scrollIntoView({ block: "center" }); setTimeout(() => e.focus(), 50);
   e.classList.add("mv-rosu"); setTimeout(() => e.classList.remove("mv-rosu"), 2500); }
 async function saveMiscare(genereaza, fortat){
+  if(mmModif()) return mmModifSalveaza();   // v7.99: MODIFICARE ANEXĂ = act adițional, nu comandă
   if(!fortat && $("mm-tip").value !== "SERVISARE"){ const { B, W } = mmVerifLista(); if(B.length || W.length){ mmVerifArata(B, W, genereaza); return false; } }
   return saveMiscareBaza(genereaza);
 }
@@ -10205,6 +10301,7 @@ function actDesparte(b){
   const rez = []; let cur = Object.assign({}, b);
   for(const u of L){
     const d = dtz(u.de_la); if(!d) continue;
+    if((u.pret == null || u.pret === "") && !u.model) continue;   // v7.99: act doar de frecvență / zile / traseu → facturarea nu se desparte
     if(cur.end && d > cur.end) break;
     if(!cur.start || d <= cur.start){ cur.a = actAplica(cur.a, u); continue; }
     rez.push(Object.assign({}, cur, { end: zi(d, -1), deschis: false }));
@@ -10228,7 +10325,7 @@ function actDeseneaza(){
   const a = ACT.a, n = ACT.nou;
   const modele = (NOM.model || []).filter(x => !x.parinte || x.parinte === a.produs).map(x => x.valoare);
   let h = `<div class="mu-s"><h4>Actualizări existente</h4>` + (ACT.lista.length ? `<table class="mu-tab">` + ACT.lista.map((u, i) =>
-    `<tr><td>din <b>${esc(fmtD(u.de_la))}</b></td><td>${u.pret != null && u.pret !== "" ? "preț <b>" + esc(fmtPret(u.pret) + " " + (a.moneda || "")) + "</b>" : ""}${u.frecv ? " · frecvență <b>" + esc(u.frecv) + "</b>" : ""}${u.model ? " · tip <b>" + esc(u.model) + "</b>" : ""}</td>` +
+    `<tr><td>din <b>${esc(fmtD(u.de_la))}</b></td><td>${u.pret != null && u.pret !== "" ? "preț <b>" + esc(fmtPret(u.pret) + " " + (a.moneda || "")) + "</b>" : ""}${u.frecv ? " · frecvență <b>" + esc(u.frecv) + "</b>" : ""}${u.zile ? " · zile <b>" + esc(String(u.zile).replace(/,/g, "+")) + "</b>" : ""}${u.traseu ? " · traseu <b>" + esc(u.traseu) + "</b>" : ""}${u.model ? " · tip <b>" + esc(u.model) + "</b>" : ""}</td>` +
     `<td>${u.act_nr ? "act ad. " + esc(u.act_nr) + (u.act_data ? " / " + esc(fmtD(u.act_data)) : "") : ""}${u.obs ? " · " + esc(u.obs) : ""}</td>` +
     `<td><button type="button" class="btn sm sec" title="Scoate actualizarea" onclick="ACT.lista.splice(${i},1);actDeseneaza()">✕</button></td></tr>`).join("") + `</table>`
     : `<div class="muted" style="font-size:13px">Nicio actualizare încă.</div>`) + `</div>`;
