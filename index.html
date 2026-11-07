@@ -325,6 +325,9 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   .g-full{grid-template-columns:1fr}
   .g-loc{grid-template-columns:58px 1fr 1.3fr}
   .g-resp{grid-template-columns:2fr 1fr}
+  .g-lreper{grid-template-columns:1fr} .g-lreper input{text-transform:uppercase}   /* v8.01 */
+  .mm-resp-x{display:none} .mm-resp-x.on{display:grid}
+  .mm-resp-add{background:none;border:0;color:var(--accent,#2563eb);cursor:pointer;font-size:12px;padding:2px 0}
   #mm-buc,#mm-jud{text-align:center;padding-left:4px;padding-right:4px}
   #mm-buc.minus{color:var(--red);font-weight:700}
   .fl-grup{display:inline-flex;gap:3px;flex-wrap:nowrap}
@@ -1014,7 +1017,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
   <span id="rz-w"><button id="rz-reset" class="pictograma" title="Lățimi implicite — pune coloanele din tabelele acestei file înapoi cum erau">↺ Reset layout</button><i class="rz-sep">|</i></span>
   <span id="tz-w" title="Mărimea tabelului (doar tabelul, restul rămâne la fel), din 5 în 5%. Merge și cu Ctrl + rotița mausului, Ctrl + / Ctrl − / Ctrl 0. Dublu clic pe procent = scrii tu valoarea."><button class="pictograma" onclick="tzPas(-1)" aria-label="Micșorează tabelul">−</button><b id="tz-v" ondblclick="tzScrie()" title="Dublu clic = scrii mărimea (ex. 87), Enter">100%</b><input id="tz-in" type="number" min="30" max="300" step="5" style="display:none"><button class="pictograma" onclick="tzPas(1)" aria-label="Mărește tabelul">+</button></span>
-  <span class="ver">v8.00</span>
+  <span class="ver">v8.01</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -1624,12 +1627,25 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
         <div class="gf g-loc">
           <div><label>Județ</label><input id="mm-jud" maxlength="3"></div>
           <div><label>Loc. / Com.</label><input id="mm-loc"></div>
-          <div><label>Sat / Str. / Locație</label><input id="mm-sat"></div>
+          <div><label>Sat / Str. / Nr.</label><input id="mm-sat" placeholder="ex. STRADA GHIOCEILOR NR 7"></div>
+        </div>
+        <!-- v8.01 (cerut de Ovidiu, 07.11): „Locație” (șantier / reper) separată; se scrie la capătul adresei între [ ] → apare la fel în Raport lună, Facturare, Rute -->
+        <div class="gf g-lreper">
+          <div><label>Locație (șantier / reper) <span class="hint" style="text-transform:none;letter-spacing:0">se adaugă la adresă: … [ KAUFLAND IASI ]</span></label><input id="mm-sat-loc" placeholder="ex. KAUFLAND IASI"></div>
         </div>
         <div class="gf g-resp">
           <div><label>Responsabil șantier / locație</label><input id="mm-pers" placeholder="cine primește marfa la fața locului"></div>
           <div><label>Telefon responsabil</label><input id="mm-tel"></div>
         </div>
+        <div class="gf g-resp mm-resp-x" id="mm-resp-2">
+          <div><label>Responsabil 2</label><input id="mm-pers2"></div>
+          <div><label>Telefon 2</label><input id="mm-tel2"></div>
+        </div>
+        <div class="gf g-resp mm-resp-x" id="mm-resp-3">
+          <div><label>Responsabil 3</label><input id="mm-pers3"></div>
+          <div><label>Telefon 3</label><input id="mm-tel3"></div>
+        </div>
+        <button type="button" class="mm-resp-add" id="mm-resp-add" onclick="mmRespAdauga()">+ încă un responsabil (max. 3)</button>
         <div id="mm-ls" class="mm-ls" style="display:none"></div>
         <div id="mm-svl" style="display:none"></div>
       </div>
@@ -3777,6 +3793,42 @@ function mmPasi(){
 }
 ["input","change","click"].forEach(ev => document.querySelector("#mod-m .lux-corp").addEventListener(ev, () => setTimeout(mmPasi, 0)));
 setInterval(mmPasi, 800);   // prinde și completările făcute de aplicație (anexă aleasă, comandă deschisă)
+// v8.01 (cerut de Ovidiu, 07.11): „Locație” (șantier / reper) separată de stradă și până la 3 responsabili — FĂRĂ coloane noi în bază.
+// mm-sat.value întoarce „STRADA … NR 7 [ KAUFLAND IASI ]” (așa se salvează în sat, ca până acum), iar la încărcare se desparte înapoi.
+// mm-pers / mm-tel.value întorc responsabilii uniți cu „; ” (pers_resp / telefon, pers_contact pe anexă); la încărcare se despart pe rânduri.
+(function(){
+  const D = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value");
+  const nat = (e, v) => v === undefined ? D.get.call(e) : D.set.call(e, v);
+  const sat = $("mm-sat"), rep = $("mm-sat-loc");
+  if(sat && rep){
+    const desparte = v => { const m = /^(.*?)\s*\[\s*([^\]]*?)\s*\]\s*$/.exec(String(v || "")); return m ? [m[1], m[2]] : [String(v || ""), null]; };
+    let ORIG = null;   // adresa exact cum a venit (ca să nu se schimbe cheia locației: virgule, spații, litere mici)
+    Object.defineProperty(sat, "value", { configurable: true,
+      get(){ if(document.activeElement === sat) return nat(sat);   // în timp ce scrii strada (căutarea de străzi) — doar strada
+        if(ORIG && ORIG.s === nat(sat) && ORIG.r === nat(rep)) return ORIG.v;
+        const s = nat(sat).trim(), r = nat(rep).trim().toUpperCase(); return r ? (s ? s + " [ " + r + " ]" : "[ " + r + " ]") : s; },
+      set(v){ const [s, r] = desparte(v); nat(sat, s); if(r !== null) nat(rep, r); else if(document.activeElement !== sat) nat(rep, "");
+        ORIG = { v: String(v || ""), s: nat(sat), r: nat(rep) }; } });
+    rep.addEventListener("input", () => { if(typeof mmSchimbat === "function") mmSchimbat(); });
+    rep.addEventListener("change", () => { sat.dispatchEvent(new Event("change")); });
+  }
+  const P = ["mm-pers", "mm-pers2", "mm-pers3"].map($), T = ["mm-tel", "mm-tel2", "mm-tel3"].map($);
+  if(P.every(Boolean) && T.every(Boolean)){
+    const randuri = () => [0, 1, 2].map(i => [nat(P[i]).trim(), nat(T[i]).trim()]).filter(r => r[0] || r[1]);
+    const arata = () => { [1, 2].forEach(i => $("mm-resp-" + (i + 1)).classList.toggle("on", !!(nat(P[i]).trim() || nat(T[i]).trim()) || $("mm-resp-" + (i + 1)).dataset.deschis === "1"));
+      const b = $("mm-resp-add"); if(b) b.style.display = $("mm-resp-3").classList.contains("on") ? "none" : ""; };
+    const pune = (lst, campuri) => { const p = String(lst || "").split(/\s*;\s*/); campuri.forEach((e, i) => { const x = i < 2 ? (p[i] || "") : p.slice(2).join("; "); nat(e, x === "-" ? "" : x); }); };
+    Object.defineProperty(P[0], "value", { configurable: true,
+      get(){ const r = randuri(); return r.length > 1 ? r.map(x => x[0] || "-").join("; ") : nat(P[0]); },
+      set(v){ ["2", "3"].forEach(i => delete $("mm-resp-" + i).dataset.deschis); pune(v, P); arata(); } });
+    Object.defineProperty(T[0], "value", { configurable: true,
+      get(){ const r = randuri(); return r.length > 1 ? r.map(x => x[1] || "-").join("; ") : nat(T[0]); },
+      set(v){ pune(v, T); arata(); } });
+    P.concat(T).slice(1).forEach(e => { if(e !== T[0]) e.addEventListener("input", () => { if(typeof mmSchimbat === "function") mmSchimbat(); }); });
+    window.mmRespAdauga = () => { const x = !$("mm-resp-2").classList.contains("on") ? "2" : "3"; $("mm-resp-" + x).dataset.deschis = "1"; arata(); $("mm-pers" + x).focus(); };
+    arata();
+  }
+})();
 function mmSchimbat(){ if(MM_GEN){ MM_GEN = null; mmStareGen(); } if(typeof mmEvInfo === "function") mmEvInfo(); }   // v6.71: și informarea la evenimente
 ["input","change"].forEach(ev => document.querySelector("#mod-m .lux-corp").addEventListener(ev, mmSchimbat));
 $("mm-flags").addEventListener("click", mmSchimbat);
