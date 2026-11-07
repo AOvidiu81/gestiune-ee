@@ -1014,7 +1014,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
   <span id="rz-w"><button id="rz-reset" class="pictograma" title="Lățimi implicite — pune coloanele din tabelele acestei file înapoi cum erau">↺ Reset layout</button><i class="rz-sep">|</i></span>
   <span id="tz-w" title="Mărimea tabelului (doar tabelul, restul rămâne la fel), din 5 în 5%. Merge și cu Ctrl + rotița mausului, Ctrl + / Ctrl − / Ctrl 0. Dublu clic pe procent = scrii tu valoarea."><button class="pictograma" onclick="tzPas(-1)" aria-label="Micșorează tabelul">−</button><b id="tz-v" ondblclick="tzScrie()" title="Dublu clic = scrii mărimea (ex. 87), Enter">100%</b><input id="tz-in" type="number" min="30" max="300" step="5" style="display:none"><button class="pictograma" onclick="tzPas(1)" aria-label="Mărește tabelul">+</button></span>
-  <span class="ver">v7.95</span>
+  <span class="ver">v7.96</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -1462,6 +1462,19 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   .mm-card .ct{font-size:11px;color:var(--mut);margin-left:6px}
   .mm-card .mu{color:var(--mut)}
   #mod-m .lux-cap{cursor:move;user-select:none}
+  /* v7.96 (cerut de Ovidiu, 07.11): Comandă nouă în ordinea lui — secțiuni 1–6 numerotate, bifă verde când e completată,
+     estompată până completezi deasupra (dar se poate scrie oricând) */
+  #mod-m .mm-s h4{display:flex;align-items:center;gap:8px}
+  #mod-m .mm-nr{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:50%;background:#e6ebe8;color:#4a5a52;font-size:12px;font-weight:700;flex:0 0 auto}
+  #mod-m .mm-ok{display:none;margin-left:auto;color:#2f9e44;font-weight:700;font-size:15px}
+  #mod-m .mm-s.gata .mm-nr{background:#2f9e44;color:#fff}
+  #mod-m .mm-s.gata .mm-ok{display:inline}
+  #mod-m .mm-s{transition:opacity .2s}
+  #mod-m .mm-s.asteapta{opacity:.5}
+  #mod-m .mm-s.asteapta:hover,#mod-m .mm-s.asteapta:focus-within{opacity:1}
+  .g-tip{grid-template-columns:minmax(150px,1.4fr) 150px 110px}
+  .g-prod{grid-template-columns:62px minmax(120px,1.2fr) minmax(110px,1.1fr) minmax(110px,1.1fr)}
+  @media (max-width:700px){ .g-tip{grid-template-columns:1fr 1fr} .g-tip>div:first-child{grid-column:1/-1} .g-prod{grid-template-columns:62px 1fr} }
 </style>
 <style>
   /* v5.44 (cerut de Ovidiu, 12.10): toate ferestrele — bară albastră, se mută, se redimensionează,
@@ -1505,20 +1518,38 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
       <input type="hidden" id="mm-id">
       <div id="mm-ciorne" style="display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:-6px 0 12px;font-size:12px"></div>
 
-      <div class="sect">
-        <h4>Contract | Depozit</h4>
+      <div class="sect mm-s" data-s="1">
+        <h4><span class="mm-nr">1</span>Contract | Depozit<span class="mm-ok" title="completat">✓</span></h4>
         <div class="gf g-cc">
           <div><label>Contract (gestiune)</label><select id="mm-contract"></select></div>
           <div><label>Depozit</label><select id="mm-dep"></select></div>
         </div>
       </div>
 
-      <div class="sect">
-        <h4>Comanda</h4>
-        <div class="gf g-cmd">
+      <div class="sect mm-s" data-s="2">
+        <h4><span class="mm-nr">2</span>Client și contract <span class="hint">clientul există → îl alegi; nu există → +</span><span class="mm-ok" title="completat">✓</span></h4>
+        <div class="gf g-cc">
+          <div><label>Client / societate / beneficiar</label><div class="cu-plus"><input id="mm-client" placeholder="scrie orice bucată din nume"><button type="button" class="btn sec plus" title="Client nou" onclick="clientNouDinMiscare()">+</button></div><datalist id="dl-clienti"></datalist></div>
+          <div><label>Contract</label><div class="cu-plus"><select id="mm-ctr"><option value="">— toate —</option></select><button type="button" class="btn sec plus" title="Contract nou pentru acest client" onclick="contractNouDinMiscare()">+</button></div></div>
+        </div>
+        <div class="gf g-full">
+          <div><label>Anexă <span class="hint">locația contractată</span></label><div class="cu-plus"><select id="mm-anexa"><option value="">— alege din anexe —</option></select><button type="button" class="btn sec plus" title="Anexă nouă pe contractul ales" onclick="anexaNouaDinMiscare()">+</button><button type="button" class="btn sec plus" title="Editează anexa aleasă (zile de servisare, frecvență, preț…) și te întorci în comandă" onclick="anexaEditDinMiscare()">✎</button><button type="button" class="btn sec plus" title="Seriile locației (aceeași listă pentru amplasare, suplimentare, reducere, ridicare și pentru ruta șoferilor)" onclick="mmSeriiDeschide()">🔢</button></div></div>
+        </div>
+        <div id="mm-carduri" class="mm-carduri"></div>
+      </div>
+
+      <div class="sect mm-s" data-s="3">
+        <h4><span class="mm-nr">3</span>Tipul comenzii<span class="mm-ok" title="completat">✓</span></h4>
+        <div class="gf g-tip">
+          <div><label>Tip comandă</label><select id="mm-tip"></select></div>
           <div><label>Data</label><input type="date" id="mm-data"></div>
           <div><label>Ora</label><input id="mm-ora" maxlength="20" placeholder="ex. 08:00" title="Ora la care trebuie să ajungă șoferul (ex. 08:00 sau 08:00-09:00) — apare în textul pentru șoferi"></div>
-          <div><label>Tip comandă</label><select id="mm-tip"></select></div>
+        </div>
+      </div>
+
+      <div class="sect mm-s" data-s="4">
+        <h4><span class="mm-nr">4</span>Produse<span class="mm-ok" title="completat">✓</span></h4>
+        <div class="gf g-prod">
           <div><label>Bucăți</label><input type="number" id="mm-buc" value="1"></div>
           <div><label>Produs <button type="button" class="cat-plus" onclick="catRapid('mm','prod',this)" title="Categorie nouă în catalog, dacă produsul nu există încă">＋ nou</button></label><select id="mm-prod"></select></div>
           <div><label>Tip <button type="button" class="cat-plus" onclick="catRapid('mm','model',this)" title="Tip nou la categoria aleasă, dacă nu există încă">＋ nou</button></label><select id="mm-model"></select></div>
@@ -1532,33 +1563,6 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
           <div id="mm-xp"></div>
           <div style="margin-top:10px;display:flex;align-items:center;gap:10px;flex-wrap:wrap"><button type="button" class="btn sm sec" onclick="mmXpAdauga()" title="Încă un produs pe aceeași comandă (aceeași dată, client, locație, responsabil, traseu) — un singur text pentru șoferi și un singur PV">+ Produs</button><span class="hint">comandă din exterior: pune aici celelalte produse care pleacă împreună</span></div>
         </div>
-      </div>
-
-      <div class="sect">
-        <h4>Client și contract</h4>
-        <div class="gf g-cc">
-          <div><label>Client / societate / beneficiar</label><div class="cu-plus"><input id="mm-client" placeholder="scrie orice bucată din nume"><button type="button" class="btn sec plus" title="Client nou" onclick="clientNouDinMiscare()">+</button></div><datalist id="dl-clienti"></datalist></div>
-          <div><label>Contract</label><div class="cu-plus"><select id="mm-ctr"><option value="">— toate —</option></select><button type="button" class="btn sec plus" title="Contract nou pentru acest client" onclick="contractNouDinMiscare()">+</button></div></div>
-        </div>
-        <div class="gf g-full">
-          <div><label>Anexă <span class="hint">locația contractată</span></label><div class="cu-plus"><select id="mm-anexa"><option value="">— alege din anexe —</option></select><button type="button" class="btn sec plus" title="Anexă nouă pe contractul ales" onclick="anexaNouaDinMiscare()">+</button><button type="button" class="btn sec plus" title="Editează anexa aleasă (zile de servisare, frecvență, preț…) și te întorci în comandă" onclick="anexaEditDinMiscare()">✎</button><button type="button" class="btn sec plus" title="Seriile locației (aceeași listă pentru amplasare, suplimentare, reducere, ridicare și pentru ruta șoferilor)" onclick="mmSeriiDeschide()">🔢</button></div></div>
-        </div>
-        <div id="mm-carduri" class="mm-carduri"></div>
-      </div>
-
-      <div class="sect">
-        <h4>Locația de livrare</h4>
-        <div class="gf g-loc">
-          <div><label>Județ</label><input id="mm-jud" maxlength="3"></div>
-          <div><label>Loc. / Com.</label><input id="mm-loc"></div>
-          <div><label>Sat / Str. / Locație</label><input id="mm-sat"></div>
-        </div>
-        <div class="gf g-resp">
-          <div><label>Responsabil șantier / locație</label><input id="mm-pers" placeholder="cine primește marfa la fața locului"></div>
-          <div><label>Telefon responsabil</label><input id="mm-tel"></div>
-        </div>
-        <div id="mm-ls" class="mm-ls" style="display:none"></div>
-        <div id="mm-svl" style="display:none"></div>
       </div>
 
       <div class="sect" id="mm-doc-sect" style="display:none">
@@ -1578,12 +1582,27 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
         </div>
       </div>
 
-      <div class="sect">
-        <h4>Servisare</h4>
-        <!-- v7.26 (cerut de Ovidiu, 29.10): Servisare refăcut — întâi zilele (butoane mari), apoi frecvența și traseul, compacte -->
+      <div class="sect mm-s" data-s="5">
+        <h4><span class="mm-nr">5</span>Locația de livrare<span class="mm-ok" title="completat">✓</span></h4>
+        <div class="gf g-loc">
+          <div><label>Județ</label><input id="mm-jud" maxlength="3"></div>
+          <div><label>Loc. / Com.</label><input id="mm-loc"></div>
+          <div><label>Sat / Str. / Locație</label><input id="mm-sat"></div>
+        </div>
+        <div class="gf g-resp">
+          <div><label>Responsabil șantier / locație</label><input id="mm-pers" placeholder="cine primește marfa la fața locului"></div>
+          <div><label>Telefon responsabil</label><input id="mm-tel"></div>
+        </div>
+        <div id="mm-ls" class="mm-ls" style="display:none"></div>
+        <div id="mm-svl" style="display:none"></div>
+      </div>
+
+      <div class="sect mm-s" data-s="6">
+        <h4><span class="mm-nr">6</span>Servisare și observații <span class="hint">frecvență → zile → traseu</span><span class="mm-ok" title="completat">✓</span></h4>
+        <!-- v7.26 (cerut de Ovidiu, 29.10): Servisare refăcut, compact. v7.96 (07.11): ordinea frecvență → zile → traseu; observațiile mutate aici -->
         <div class="sv-rand">
-          <div id="mm-sv-zile-d" class="sv-zile"><label>Zile servisare</label><input type="hidden" id="mm-zi"><div class="zile-bife zile-pill" id="mm-zile-b"><label class="" title="Luni"><input type="checkbox" value="LUNI" onchange="mmZiCiteste()"><span>L</span></label><label class="" title="Marți"><input type="checkbox" value="MARTI" onchange="mmZiCiteste()"><span>Ma</span></label><label class="" title="Miercuri"><input type="checkbox" value="MIERCURI" onchange="mmZiCiteste()"><span>Mi</span></label><label class="" title="Joi"><input type="checkbox" value="JOI" onchange="mmZiCiteste()"><span>J</span></label><label class="" title="Vineri"><input type="checkbox" value="VINERI" onchange="mmZiCiteste()"><span>V</span></label><label class="we" title="Sâmbătă"><input type="checkbox" value="SAMBATA" onchange="mmZiCiteste()"><span>S</span></label><label class="we" title="Duminică"><input type="checkbox" value="DUMINICA" onchange="mmZiCiteste()"><span>D</span></label></div></div>
           <div id="mm-sv-frecv-d" class="sv-mic"><label>Frecvență</label><select id="mm-frecv"><option value=""></option></select></div>
+          <div id="mm-sv-zile-d" class="sv-zile"><label>Zile servisare</label><input type="hidden" id="mm-zi"><div class="zile-bife zile-pill" id="mm-zile-b"><label class="" title="Luni"><input type="checkbox" value="LUNI" onchange="mmZiCiteste()"><span>L</span></label><label class="" title="Marți"><input type="checkbox" value="MARTI" onchange="mmZiCiteste()"><span>Ma</span></label><label class="" title="Miercuri"><input type="checkbox" value="MIERCURI" onchange="mmZiCiteste()"><span>Mi</span></label><label class="" title="Joi"><input type="checkbox" value="JOI" onchange="mmZiCiteste()"><span>J</span></label><label class="" title="Vineri"><input type="checkbox" value="VINERI" onchange="mmZiCiteste()"><span>V</span></label><label class="we" title="Sâmbătă"><input type="checkbox" value="SAMBATA" onchange="mmZiCiteste()"><span>S</span></label><label class="we" title="Duminică"><input type="checkbox" value="DUMINICA" onchange="mmZiCiteste()"><span>D</span></label></div></div>
           <div class="sv-mic"><label>Traseu</label><select id="mm-traseu"><option value=""></option><option>Traseu I</option><option>Traseu II</option><option>Traseu III</option><option>Traseu-EV</option></select></div>
         </div>
         <div id="mm-sv-ev" style="display:none;margin-top:8px">
@@ -1594,6 +1613,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
           </div>
           <div id="mm-ev-zile" style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-top:8px"></div>
         </div>
+        <div style="margin-top:12px"><label>Observații</label><textarea id="mm-obs" rows="2"></textarea></div>
       </div>
 
       <div class="sect ev-info" id="mm-ev-info" style="display:none"></div>
@@ -1645,10 +1665,6 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
         </div>
       </div>
 
-      <div class="sect">
-        <h4>Observații</h4>
-        <textarea id="mm-obs" rows="2"></textarea>
-      </div>
     </div>
 
     <div class="lux-jos">
@@ -3513,6 +3529,30 @@ function mmStareGen(){
   $("mm-save").style.display = ok ? "none" : "";
   $("mm-text").style.display = ok ? "" : "none";
 }
+// ── v7.96 (cerut de Ovidiu, 07.11): pașii 1–6 ai Comenzii noi — bifă verde când secțiunea e completată ──
+// Nu blochează nimic și nu schimbă ce se salvează; doar arată unde mai ai de completat. Fără modificări în bază.
+function mmPasiOk(){
+  const v = id => { const e = $(id); return e ? String(e.value || "").trim() : ""; };
+  const ext = typeof mmExterior === "function" && mmExterior(), tip = v("mm-tip");
+  const evSv = !!document.querySelector('#mod-m input[name="mm-ev-sv"]:checked');
+  const svl = typeof MM_SVL !== "undefined" && Array.isArray(MM_SVL) && MM_SVL.length && $("mm-svl") && $("mm-svl").style.display !== "none";
+  return {
+    1: !!(v("mm-contract") && v("mm-dep")),
+    2: !!(v("mm-client") && (ext || v("mm-ctr"))),
+    3: !!(tip && v("mm-data")),
+    4: !!(Math.abs(+v("mm-buc") || 0) > 0 && v("mm-prod")),
+    5: !!(v("mm-loc") || v("mm-sat") || svl),
+    6: !!(v("mm-frecv") || evSv || /RIDICARE|REDUCERE|-R$/.test(tip))
+  };
+}
+function mmPasi(){
+  const m = $("mod-m"); if(!m || !m.classList.contains("on")) return;
+  const ok = mmPasiOk(); let tot = true;
+  m.querySelectorAll(".mm-s").forEach(sc => { const n = +sc.dataset.s;
+    sc.classList.toggle("gata", !!ok[n]); sc.classList.toggle("asteapta", !tot); if(!ok[n]) tot = false; });
+}
+["input","change","click"].forEach(ev => document.querySelector("#mod-m .lux-corp").addEventListener(ev, () => setTimeout(mmPasi, 0)));
+setInterval(mmPasi, 800);   // prinde și completările făcute de aplicație (anexă aleasă, comandă deschisă)
 function mmSchimbat(){ if(MM_GEN){ MM_GEN = null; mmStareGen(); } if(typeof mmEvInfo === "function") mmEvInfo(); }   // v6.71: și informarea la evenimente
 ["input","change"].forEach(ev => document.querySelector("#mod-m .lux-corp").addEventListener(ev, mmSchimbat));
 $("mm-flags").addEventListener("click", mmSchimbat);
