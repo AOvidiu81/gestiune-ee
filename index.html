@@ -1014,7 +1014,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
   <span id="rz-w"><button id="rz-reset" class="pictograma" title="Lățimi implicite — pune coloanele din tabelele acestei file înapoi cum erau">↺ Reset layout</button><i class="rz-sep">|</i></span>
   <span id="tz-w" title="Mărimea tabelului (doar tabelul, restul rămâne la fel), din 5 în 5%. Merge și cu Ctrl + rotița mausului, Ctrl + / Ctrl − / Ctrl 0. Dublu clic pe procent = scrii tu valoarea."><button class="pictograma" onclick="tzPas(-1)" aria-label="Micșorează tabelul">−</button><b id="tz-v" ondblclick="tzScrie()" title="Dublu clic = scrii mărimea (ex. 87), Enter">100%</b><input id="tz-in" type="number" min="30" max="300" step="5" style="display:none"><button class="pictograma" onclick="tzPas(1)" aria-label="Mărește tabelul">+</button></span>
-  <span class="ver">v7.96</span>
+  <span class="ver">v7.97</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -1462,6 +1462,17 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   .mm-card .ct{font-size:11px;color:var(--mut);margin-left:6px}
   .mm-card .mu{color:var(--mut)}
   #mod-m .lux-cap{cursor:move;user-select:none}
+  /* v7.97: „Înainte de salvare — verifică” */
+  #mod-m .box.lux{position:relative}
+  #mm-verif{position:absolute;left:0;right:0;bottom:0;background:var(--card);padding:22px 24px 18px;display:none;flex-direction:column;overflow:auto;z-index:6}
+  #mm-verif.on{display:flex}
+  #mm-verif h3{margin:0 0 12px}
+  #mm-verif ul{list-style:none;margin:0 0 12px;padding:0}
+  #mm-verif li{padding:8px 10px;margin-bottom:6px;border-radius:8px;cursor:pointer;font-size:14px;border:1px solid var(--bd)}
+  #mm-verif li.b{border-left:4px solid #e03131} #mm-verif li.w{border-left:4px solid #f08c00}
+  #mm-verif li:hover{background:rgba(127,127,127,.08)}
+  #mm-verif .mv-jos{display:flex;gap:10px;margin-top:auto;padding-top:12px}
+  #mod-m .mv-rosu{outline:2px solid #e03131;outline-offset:1px}
   /* v7.96 (cerut de Ovidiu, 07.11): Comandă nouă în ordinea lui — secțiuni 1–6 numerotate, bifă verde când e completată,
      estompată până completezi deasupra (dar se poate scrie oricând) */
   #mod-m .mm-s h4{display:flex;align-items:center;gap:8px}
@@ -1676,6 +1687,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
       <button class="btn" id="mm-save" onclick="saveMiscare()">Salvează</button>
       <button class="btn" id="mm-text" onclick="deschideComanda()" style="display:none">Generează text comandă</button>
     </div>
+    <div id="mm-verif"></div>
   </div>
 </div>
 
@@ -3439,6 +3451,7 @@ function intoarceInMiscare(ce, id){
   return true;
 }
 function openMiscare(id){
+  { const vf = $("mm-verif"); if(vf) vf.classList.remove("on"); }   // v7.97
   { const f=id?MISC.find(x=>x.id===id):null; if(f && f.grup_id && f.grup_id!==f.id && MISC.some(x=>x.id===f.grup_id)) return openMiscare(f.grup_id); }   // v5.13: produsul se editează din comanda principală
   const r=id?MISC.find(x=>x.id===id):null;
   $("mm-title").textContent=r?"Editare comandă":"Comandă nouă"; $("mm-id").value=r?r.id:""; $("mm-del").style.display=r?"":"none";
@@ -3647,7 +3660,48 @@ async function mmDataAnexa(rec, dataVeche){
   Object.assign(a, upd); await reloadClienti();
   toast(nume + " mutată pe " + fmtD(rec.data));
 }
-async function saveMiscare(genereaza){
+// ── v7.97 (cerut de Ovidiu, 07.11): „Înainte de salvare — verifică” la Comandă nouă ──
+// ⛔ = nu se poate salva până nu completezi; ⚠ = poți apăsa „Salvează așa”. SERVISAREA rămâne neatinsă (cum e acum).
+function mmVerifLista(){
+  const v = id => String(($(id) || {}).value || "").trim(), ext = mmExterior(), tip = v("mm-tip"), B = [], W = [];
+  if(!tip) B.push(["Tipul comenzii nu e ales", "mm-tip"]);
+  if(!v("mm-data")) B.push(["Lipsește data comenzii", "mm-data"]);
+  if(!v("mm-client")) B.push(["Clientul nu e ales", "mm-client"]);
+  if(!ext && !v("mm-ctr")) B.push(["Contractul nu e ales", "mm-ctr"]);
+  if(!ext && /^(AMPLASARE|SUPLIMENTARE|REDUCERE|RIDICARE|EVENIMENT-A|EVENIMENT-R)$/.test(tip) && !(+v("mm-anexa")))
+    B.push(["Anexa nu e aleasă (sau creată cu + lângă Anexă) — fără anexă comanda nu intră în Facturare", "mm-anexa"]);
+  if(!(Math.abs(+v("mm-buc") || 0) > 0)) B.push(["Bucăți = 0", "mm-buc"]);
+  if(!v("mm-prod")) B.push(["Produsul nu e ales", "mm-prod"]);
+  const svl = typeof MM_SVL !== "undefined" && Array.isArray(MM_SVL) && MM_SVL.length && $("mm-svl").style.display !== "none";
+  if(!v("mm-loc") && !v("mm-sat") && !svl) W.push(["Locația de livrare e goală", "mm-loc"]);
+  if(/^(AMPLASARE|SUPLIMENTARE|EVENIMENT-A)$/.test(tip) && !v("mm-pers")) W.push(["Responsabilul de la locație e gol", "mm-pers"]);
+  if(/^(AMPLASARE|SUPLIMENTARE)$/.test(tip)){
+    const f = v("mm-frecv"), z = v("mm-zi").split(",").filter(Boolean), m = f.match(/^(\d+)\s*\/\s*Sap/i);
+    if(!f) W.push(["Frecvența de servisare e goală", "mm-frecv"]);
+    if(m && +m[1] !== z.length) W.push(["Frecvența „" + f + "” nu se potrivește cu zilele bifate (" + z.length + ")", "mm-frecv"]);
+    if(m && !ext && !v("mm-traseu")) W.push(["Traseul e gol — punctul nu ajunge pe rută", "mm-traseu"]);
+  }
+  return { B, W };
+}
+function mmVerifArata(B, W, gen){
+  const el = $("mm-verif"), li = (x, c) => `<li class="${c}" onclick="mmVerifMergi('${x[1]}')" title="Du-mă la câmp">${c === "b" ? "⛔" : "⚠"} ${esc(x[0])}</li>`;
+  el.innerHTML = `<h3>Înainte de salvare — verifică</h3>` +
+    (B.length ? `<p class="muted">Astea trebuie completate, altfel comanda nu se salvează:</p><ul>${B.map(x => li(x, "b")).join("")}</ul>` : "") +
+    (W.length ? `<p class="muted">Astea lipsesc, dar poți salva și așa:</p><ul>${W.map(x => li(x, "w")).join("")}</ul>` : "") +
+    `<p class="muted" style="font-size:12px">Apasă pe un rând ca să ajungi direct la câmp.</p>` +
+    `<div class="mv-jos"><div style="flex:1"></div><button class="btn sec" onclick="mmVerifInchide()">Înapoi la completat</button>` +
+    (B.length ? "" : `<button class="btn" onclick="mmVerifInchide();saveMiscare(${gen ? "true" : "false"}, true)">Salvează așa</button>`) + `</div>`;
+  const cap = el.parentElement.querySelector(".lux-cap"); el.style.top = (cap ? cap.offsetHeight : 0) + "px";
+  el.classList.add("on");
+}
+function mmVerifInchide(){ $("mm-verif").classList.remove("on"); }
+function mmVerifMergi(id){ mmVerifInchide(); const e = $(id); if(!e) return; e.scrollIntoView({ block: "center" }); setTimeout(() => e.focus(), 50);
+  e.classList.add("mv-rosu"); setTimeout(() => e.classList.remove("mv-rosu"), 2500); }
+async function saveMiscare(genereaza, fortat){
+  if(!fortat && $("mm-tip").value !== "SERVISARE"){ const { B, W } = mmVerifLista(); if(B.length || W.length){ mmVerifArata(B, W, genereaza); return false; } }
+  return saveMiscareBaza(genereaza);
+}
+async function saveMiscareBaza(genereaza){
   const tip=$("mm-tip").value; let buc=Math.abs(+$("mm-buc").value||0); if(!buc){toast("Introdu numărul de bucăți",true);return false;}
   { const aid = +$("mm-anexa").value || null;   // v6.68
     if(FARA_ACT(tip) && aid && !mmExterior() && lipsaFinal(aid)){
