@@ -1014,7 +1014,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
   <span id="rz-w"><button id="rz-reset" class="pictograma" title="Lățimi implicite — pune coloanele din tabelele acestei file înapoi cum erau">↺ Reset layout</button><i class="rz-sep">|</i></span>
   <span id="tz-w" title="Mărimea tabelului (doar tabelul, restul rămâne la fel), din 5 în 5%. Merge și cu Ctrl + rotița mausului, Ctrl + / Ctrl − / Ctrl 0. Dublu clic pe procent = scrii tu valoarea."><button class="pictograma" onclick="tzPas(-1)" aria-label="Micșorează tabelul">−</button><b id="tz-v" ondblclick="tzScrie()" title="Dublu clic = scrii mărimea (ex. 87), Enter">100%</b><input id="tz-in" type="number" min="30" max="300" step="5" style="display:none"><button class="pictograma" onclick="tzPas(1)" aria-label="Mărește tabelul">+</button></span>
-  <span class="ver">v7.97</span>
+  <span class="ver">v7.98</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -1462,6 +1462,11 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   .mm-card .ct{font-size:11px;color:var(--mut);margin-left:6px}
   .mm-card .mu{color:var(--mut)}
   #mod-m .lux-cap{cursor:move;user-select:none}
+  /* v7.98: caseta cazului A / B / C / D (gestiune × depozit) */
+  #mod-m .mm-caz{margin-top:10px;padding:8px 12px;border:1px solid var(--bd);border-left:4px solid var(--acc,#3b82f6);border-radius:8px;font-size:13px;line-height:1.5}
+  #mod-m .mm-caz:empty{display:none}
+  #mod-m .mm-caz b.cz{display:inline-block;min-width:22px;text-align:center;border-radius:6px;background:var(--acc,#3b82f6);color:#fff;margin-right:6px;padding:0 5px}
+  #mod-m .mm-caz .cz-r{display:grid;grid-template-columns:170px 1fr;gap:6px} #mod-m .mm-caz .cz-r span:first-child{color:var(--mut)}
   /* v7.97: „Înainte de salvare — verifică” */
   #mod-m .box.lux{position:relative}
   #mm-verif{position:absolute;left:0;right:0;bottom:0;background:var(--card);padding:22px 24px 18px;display:none;flex-direction:column;overflow:auto;z-index:6}
@@ -1532,9 +1537,10 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
       <div class="sect mm-s" data-s="1">
         <h4><span class="mm-nr">1</span>Contract | Depozit<span class="mm-ok" title="completat">✓</span></h4>
         <div class="gf g-cc">
-          <div><label>Contract (gestiune)</label><select id="mm-contract"></select></div>
-          <div><label>Depozit</label><select id="mm-dep"></select></div>
+          <div><label>Contract (gestiune) <span class="hint" id="mm-gest-hint"></span></label><select id="mm-contract"></select></div>
+          <div><label>Depozit <span class="hint">de unde pleacă marfa</span></label><select id="mm-dep"></select></div>
         </div>
+        <div id="mm-caz" class="mm-caz"></div>
       </div>
 
       <div class="sect mm-s" data-s="2">
@@ -3472,6 +3478,7 @@ function intoarceInMiscare(ce, id){
   return true;
 }
 function openMiscare(id){
+  ["mm-contract","mm-dep"].forEach(x => { const e = $(x); if(e) delete e.dataset.manual; }); { const h = $("mm-gest-hint"); if(h) h.textContent = ""; }   // v7.98
   { const vf = $("mm-verif"); if(vf) vf.classList.remove("on"); }   // v7.97
   { const f=id?MISC.find(x=>x.id===id):null; if(f && f.grup_id && f.grup_id!==f.id && MISC.some(x=>x.id===f.grup_id)) return openMiscare(f.grup_id); }   // v5.13: produsul se editează din comanda principală
   const r=id?MISC.find(x=>x.id===id):null;
@@ -3586,8 +3593,43 @@ function mmPasiOk(){
     6: !!(v("mm-frecv") || evSv || /RIDICARE|REDUCERE|-R$/.test(tip))
   };
 }
+// ── v7.98 (cerut de Ovidiu, 07.11): gestiunea PROPUSĂ din contract (ex. „1314 HD” → HUNEDOARA), se poate schimba
+// (clienți cu șantiere în alte zone, livrați din alte depozite = cazul B: gestiunea rămâne HD, se schimbă doar depozitul).
+// Caseta cazului spune ce se întâmplă cu stocul, închiriatele și anexa — exact cum le socotește aplicația (Stoc: închiriate pe gestiune, stoc pe depozit).
+function gestDinContract(k){
+  if(!k) return ""; const m = String(k.nr_ctr || "").trim().match(/([A-Za-z]+\d*)\s*$/);
+  const d = m && DEP.find(x => String(x.cod || "").toUpperCase() === m[1].toUpperCase()); return d ? d.nume : "";
+}
+function mmGestPropune(){
+  if($("mm-id").value) return;
+  const c = $("mm-contract"), h = $("mm-gest-hint"); let k = CTR.find(x => x.id === +$("mm-ctr").value);
+  if(!k){ const cl = CLI.find(x => x.nume.toLowerCase() === String($("mm-client").value || "").trim().toLowerCase());
+    const ks = cl ? CTR.filter(x => x.client_id === cl.id) : [], gs = [...new Set(ks.map(gestDinContract).filter(Boolean))];
+    if(gs.length === 1) k = ks.find(x => gestDinContract(x) === gs[0]); }
+  const g = gestDinContract(k); if(!g){ h.textContent = ""; return; }
+  h.textContent = "propusă din contractul " + (k.nr_ctr || "");
+  if(!c.dataset.manual && c.value !== g){ c.value = g; c.dispatchEvent(new Event("change", { bubbles: true })); }
+  const d = $("mm-dep"); if(!d.value){ d.value = g; d.dispatchEvent(new Event("change", { bubbles: true })); }
+}
+["mm-contract","mm-dep"].forEach(id => $(id).addEventListener("change", e => { if(e.isTrusted) $(id).dataset.manual = "1"; }));
+$("mm-client").addEventListener("change", () => setTimeout(mmGestPropune, 0));
+$("mm-ctr").addEventListener("change", () => setTimeout(mmGestPropune, 0));
+function mmCaz(){
+  const el = $("mm-caz"); if(!el) return; const g = $("mm-contract").value, d = $("mm-dep").value, P = depPrincipal();
+  if(!g || !d){ el.innerHTML = ""; return; }
+  const gH = g === P, dH = d === P, z = gH ? (dH ? "A" : "B") : (dH ? "C" : "D");
+  const r = (a, b) => `<div class="cz-r"><span>${a}</span><span>${b}</span></div>`;
+  const T = { A: "comanda gestiunii " + P + ", marfa din depozitul " + P, B: "comanda gestiunii " + P + ", marfa din depozitul " + d,
+              C: "comanda gestiunii " + g + ", marfa din depozitul " + P, D: "comanda gestiunii " + g + ", marfa din depozitul " + d };
+  const html = `<div><b class="cz">${z}</b><b>${esc(T[z])}</b></div>` +
+    r("Stoc " + P + ":", dH ? "<b>se mișcă</b> (scade la amplasare / suplimentare, crește la reducere / ridicare)" : "<b>neatins</b> — marfa e a depozitului " + esc(d)) +
+    r("Închiriate " + P + ":", gH ? "<b>da</b> — contractul e al nostru" : "<b>nu</b> — sunt ale gestiunii " + esc(g)) +
+    r("Anexa:", gH ? "a noastră, la contractul " + esc(P) + " (facturăm noi)" : "fără anexă a noastră" + (z === "D" ? " (servisările preluate le discutăm separat)" : ""));
+  if(el.innerHTML !== html) el.innerHTML = html;
+}
 function mmPasi(){
   const m = $("mod-m"); if(!m || !m.classList.contains("on")) return;
+  mmCaz(); if(!$("mm-contract").value) mmGestPropune();
   const ok = mmPasiOk(); let tot = true;
   m.querySelectorAll(".mm-s").forEach(sc => { const n = +sc.dataset.s;
     sc.classList.toggle("gata", !!ok[n]); sc.classList.toggle("asteapta", !tot); if(!ok[n]) tot = false; });
