@@ -1018,7 +1018,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
   <span id="rz-w"><button id="rz-reset" class="pictograma" title="Lățimi implicite — pune coloanele din tabelele acestei file înapoi cum erau">↺ Reset layout</button><i class="rz-sep">|</i></span>
   <span id="tz-w" title="Mărimea tabelului (doar tabelul, restul rămâne la fel), din 5 în 5%. Merge și cu Ctrl + rotița mausului, Ctrl + / Ctrl − / Ctrl 0. Dublu clic pe procent = scrii tu valoarea."><button class="pictograma" onclick="tzPas(-1)" aria-label="Micșorează tabelul">−</button><b id="tz-v" ondblclick="tzScrie()" title="Dublu clic = scrii mărimea (ex. 87), Enter">100%</b><input id="tz-in" type="number" min="30" max="300" step="5" style="display:none"><button class="pictograma" onclick="tzPas(1)" aria-label="Mărește tabelul">+</button></span>
-  <span class="ver">v8.09</span>
+  <span class="ver">v8.10</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -2915,7 +2915,39 @@ function schImpacheteaza(l){
   const s = { ...l[0] }; if(l.length > 1) s.apoi = l.slice(1);
   return s;
 }
+// v8.10 (cerut de Ovidiu, 08.11 — PLANTAM FAPTE BUNE): evenimentul fără anexă (din exterior) are punctul C<comanda EVENIMENT-A>.
+// Punctele C… ale evenimentelor de la aceeași adresă (același client), încă active.
+function evExtPuncte(m, pe, ms){
+  const key = extCheie(m.jud, m.loc, m.sat);
+  const ids = new Set((ms || MISC).filter(x => x.tip_miscare === "EVENIMENT-A" && !x.anexa_id && extNorm(x.client) === extNorm(m.client) && extCheie(x.jud, x.loc, x.sat) === key).map(x => x.id));
+  return (pe || []).filter(p => { const k = /^C(\d+)(-[A-Z]{2})?$/.exec(p.client_key || ""); return k && ids.has(+k[1]) && p.status !== "INACTIV"; });
+}
+// Din ziua de după ridicarea programată (ev_rid) punctele C… ale evenimentului trec singure pe INACTIV — doar dacă la adresă
+// nu mai e alt eveniment în curs / fără dată de ridicare și nici comenzi care nu sunt de eveniment (închiriere obișnuită).
+let EV_EXT_ZI = "";
+async function evExtStinge(){
+  const azi = today(); if(EV_EXT_ZI === azi) return;
+  const { data: ms, error } = await db.from("miscari").select("id,tip_miscare,client,jud,loc,sat,ev_rid").is("anexa_id", null).limit(5000);
+  if(error) return;
+  const gr = new Map();
+  (ms || []).forEach(x => { const k = extNorm(x.client) + "#" + extCheie(x.jud, x.loc, x.sat); if(!gr.has(k)) gr.set(k, []); gr.get(k).push(x); });
+  const ids = [];
+  gr.forEach(l => {
+    const a = l.filter(x => x.tip_miscare === "EVENIMENT-A"); if(!a.length) return;
+    if(l.some(x => !/^EVENIMENT-[AR]$/.test(x.tip_miscare || ""))) return;
+    if(a.some(x => !x.ev_rid || x.ev_rid >= azi)) return;
+    a.forEach(x => ids.push(x.id));
+  });
+  if(ids.length){
+    const { data: pe } = await db.from("clients").select("id,client_key,status").like("client_key", "C%").limit(5000);
+    const st = (pe || []).filter(p => { const k = /^C(\d+)(-[A-Z]{2})?$/.exec(p.client_key || ""); return k && ids.includes(+k[1]) && p.status !== "INACTIV"; });
+    if(st.length){ const { error: e2 } = await db.from("clients").update({ status: "INACTIV", updated_at: new Date().toISOString() }).in("id", st.map(p => p.id));
+      if(e2){ console.warn("evenimente fără anexă:", e2.message); return; } }
+  }
+  EV_EXT_ZI = azi;
+}
 async function aplicaSchimbariRute(){
+  try{ await evExtStinge(); }catch(e){ console.warn("evenimente fără anexă", e); }
   try{
     const { data } = await db.from("clients").select("id,schimbare").not("schimbare","is",null).limit(2000);
     for(const p of (data || [])){
@@ -4817,6 +4849,11 @@ async function riDeschide(id){
     let c = null;
     try{ c = await spreRute(r.id, true); }catch(e){ console.error(e); }
     o.calc = c || { nu: "nu am putut calcula punctul de rută (vezi mesajul de sus)" };
+    if(r.tip_miscare === "EVENIMENT-R" && !r.anexa_id && !livrExterior(r)){   // v8.10: eveniment fără anexă → punctul C… pe INACTIV
+      const [{ data: pe }, { data: ms }] = await Promise.all([db.from("clients").select("id,client_key,status,ziua").like("client_key", "C%").limit(5000),
+        db.from("miscari").select("id,tip_miscare,anexa_id,client,jud,loc,sat").eq("tip_miscare", "EVENIMENT-A").is("anexa_id", null).eq("client", r.client || "").limit(5000)]);
+      o.evPct = evExtPuncte(r, pe, ms); o.calc = { ev: true, ext: true };
+    }
     if(o.calc.coada && r.tip_miscare === "REDUCERE" && !(Array.isArray(r.locatii) && r.locatii[0] && r.locatii[0].anexa) && o.calc.coada.some(x => RI_MULTILOC.test(x.orig.client_key || "")) && o.calc.coada.some(x => x.rec.status !== "INACTIV")){ o.rute = false; o.multiLoc = true; }
     if(r.anexa_id){
       const loc = serLocIds(r.anexa_id);
@@ -4886,7 +4923,7 @@ function riRender(){
       rt = cb("ri-rt-" + k, o.rute, false, `<b>Punctul de rută</b> + <b>RT = V</b>` + (r.rt === "V" ? ' <span class="muted">(RT era deja V — se recalculează din anexe, nu scade de două ori)</span>' : ""),
         o.calc.coada.map(x => x.nota).join("<br>") + (o.multiLoc ? '<br><span style="color:var(--t-warn)">⚠ Puncte pe locații: la reducere nu știu de pe care locație pleacă — scade de mână din „→ Rute” (nebifat).</span>' : ""));
     } else if(o.calc.ev){
-      rt = o.evPct.length ? cb("ri-ev-" + k, o.ev && !!(p && p.ultima), false, `<b>Punctele evenimentului → INACTIV</b> acum`, o.evPct.map(x => esc(x.client_key)).join(", ") + " — altfel se sting singure din ziua de după ridicarea programată")
+      rt = o.evPct.length ? cb("ri-ev-" + k, o.ev && (o.calc.ext || !!(p && p.ultima)), false, `<b>Punctele evenimentului → INACTIV</b> acum`, o.evPct.map(x => esc(x.client_key)).join(", ") + " — altfel se sting singure din ziua de după ridicarea programată")
         : '<div class="ri-r muted">Punctele evenimentului sunt deja inactive. RT nu contează la EVENIMENT-R.</div>';
     } else {
       rt = `<div class="ri-r"><span class="muted">Punct de rută: ${esc(o.calc.nu)}.</span>` + (o.calc.rute ? ` <button type="button" class="btn sm" style="background:#f08c00;border-color:#f08c00" onclick="closeModal('mod-ri');spreRute(${r.id})">→ Rute</button>` : "") + `</div>`;
@@ -4944,9 +4981,10 @@ async function riSalveaza(){
         const { error } = await db.from("miscari").update({ rt: "V" }).eq("id", r.id); if(error) return gres(error);
         pune(r.id, "rt", "V"); facute.push(o.calc.coada.length + (o.calc.coada.length === 1 ? " punct de rută" : " puncte de rută") + " + RT");
       }
-      if(o.calc.ev && o.ev && o.evPct.length && p && p.ultima){
+      if(o.calc.ev && o.ev && o.evPct.length && (o.calc.ext || (p && p.ultima))){
         const { error } = await db.from("clients").update({ status: "INACTIV", updated_at: new Date().toISOString() }).in("id", o.evPct.map(x => x.id)); if(error) return gres(error);
         facute.push(o.evPct.length + " puncte eveniment → INACTIV");
+        if(o.calc.ext && r.rt !== "V"){ const { error: e3 } = await db.from("miscari").update({ rt: "V" }).eq("id", r.id); if(e3) return gres(e3); pune(r.id, "rt", "V"); }   // v8.10
       }
       const de = o.ser.filter(x => o.bif.has(x.id) && x.stare === "LA CLIENT");
       if(de.length){
@@ -8289,7 +8327,7 @@ async function loadAtentie(){
   const prag = new Date(Date.now() - (+$("t-prag").value || 30) * 86400000).toISOString().slice(0, 10);
 
   const [pct, mis, doc, fper, rid] = await Promise.all([
-    db.from("clients").select("client_key,client,jud,localitate,locatie,ziua,masina,frecventa,lat,lon"),
+    db.from("clients").select("client_key,client,jud,localitate,locatie,ziua,masina,frecventa,lat,lon,status,toalete,containere,garduri"),
     db.from("miscari").select("*").is("client_id", null),
     db.from("documente").select("*").or("status_prim.is.null,status_prim.neq.PRIMIT").lt("data_trimitere", prag).order("data_trimitere"),
     db.from("facturare_perioada").select("*"),
@@ -8297,7 +8335,8 @@ async function loadAtentie(){
   ]);
   await incarcaNote();
   // v6.22 (15.10): comenzile pe contract din alt depozit (MURES, ARAD…) sunt fără client în baza lui intenționat — nu se semnalează
-  const P = pct.data || [], M = (mis.data || []).filter(m => !ctrExterior(m)), D = doc.data || [];
+  // v8.10 (cerut de Ovidiu, 08.11 — PLANTAM FAPTE BUNE C314): în listele cu puncte de rută doar punctele ACTIVE cu produse
+  const P = (pct.data || []).filter(p => p.status !== "INACTIV" && prodPunct(p) > 0), M = (mis.data || []).filter(m => !ctrExterior(m)), D = doc.data || [];
   const numeClient = c => { const k = CLI.find(x => x.id === c.client_id); return k ? k.nume : ""; };
 
   AT = [];
