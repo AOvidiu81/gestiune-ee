@@ -1018,7 +1018,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
   <span id="rz-w"><button id="rz-reset" class="pictograma" title="Lățimi implicite — pune coloanele din tabelele acestei file înapoi cum erau">↺ Reset layout</button><i class="rz-sep">|</i></span>
   <span id="tz-w" title="Mărimea tabelului (doar tabelul, restul rămâne la fel), din 5 în 5%. Merge și cu Ctrl + rotița mausului, Ctrl + / Ctrl − / Ctrl 0. Dublu clic pe procent = scrii tu valoarea."><button class="pictograma" onclick="tzPas(-1)" aria-label="Micșorează tabelul">−</button><b id="tz-v" ondblclick="tzScrie()" title="Dublu clic = scrii mărimea (ex. 87), Enter">100%</b><input id="tz-in" type="number" min="30" max="300" step="5" style="display:none"><button class="pictograma" onclick="tzPas(1)" aria-label="Mărește tabelul">+</button></span>
-  <span class="ver">v8.17</span>
+  <span class="ver">v8.18</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -5488,7 +5488,6 @@ function cdNou(){
     </div>
     <div class="row" style="margin-top:16px;justify-content:flex-end"><div style="flex:1"></div>
       <div style="flex:0"><button class="btn sec" onclick="this.closest('.modal').remove()">Renunță</button></div>
-      <div style="flex:0"><button class="btn sec" onclick="cdnGata('pdf')" title="Foaie de completat de mână — se tipărește sau se salvează ca PDF">📄 Creează PDF</button></div>
       <div style="flex:0"><button class="btn" onclick="cdnGata('link')">🔗 Creează link</button></div></div>
     <div id="cdn-rez"></div></div>`;
   document.body.appendChild(w); feFereastra(w); cdnCat();
@@ -5653,21 +5652,12 @@ async function cdTrimiteTot(id, canal){   // link + PDF împreună
   toast("PDF descărcat („" + f.name + "”) — atașează-l în " + (canal === "wa" ? "WhatsApp" : "e-mail"), false);
 }
 // butoanele de trimis, aceleași peste tot (fereastra nouă, lista de pe PC, telefon)
-function cdButoane(x, cls){
+function cdButoane(x, cls){   // v8.18 (cerut de Ovidiu, 08.11): doar linkul — Copiază · WhatsApp · E-mail (PDF-ul scos din butoane)
   const c = cls || "btn sm sec", tel = String((x.precompletat || {}).telefon || "").replace(/\D/g, "").replace(/^0/, "40"), t = cdText(x).split("\n\n")[0];
   return `<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
-    <b style="font-size:12px;min-width:92px">Link + PDF:</b>
-    <button class="${c}" onclick="cdTrimiteTot(${x.id},'mail')">✉ E-mail</button>
-    <button class="${c}" onclick="cdTrimiteTot(${x.id},'wa')">💬 WhatsApp</button>
-    ${navigator.share ? `<button class="${c}" onclick="cdTrimiteTot(${x.id},'share')">📤 Trimite…</button>` : ""}</div>
-  <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-top:6px">
-    <b style="font-size:12px;min-width:92px">Doar linkul:</b>
     <button class="${c}" onclick="cdCopiaza(${x.id})">📋 Copiază</button>
     <button class="${c}" onclick="window.open('https://wa.me/${tel}?text=${encodeURIComponent(t)}','_blank')">💬 WhatsApp</button>
-    <button class="${c}" onclick="location.href='mailto:${esc(encodeURIComponent((x.precompletat || {}).email || ""))}?subject=${encodeURIComponent("Date pentru contract - Euro Ecologic")}&body=${encodeURIComponent(t)}'">✉ E-mail</button></div>
-  <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-top:6px">
-    <b style="font-size:12px;min-width:92px">Doar PDF-ul:</b>
-    <button class="${c}" onclick="cdPdf(${x.id})">📄 Descarcă PDF</button></div>`;
+    <button class="${c}" onclick="location.href='mailto:${esc(encodeURIComponent((x.precompletat || {}).email || ""))}?subject=${encodeURIComponent("Date pentru contract - Euro Ecologic")}&body=${encodeURIComponent(t)}'">✉ E-mail</button></div>`;
 }
 function cdTrimiteFer(id){   // din listă: fereastra cu toate opțiunile
   const x = CD.find(y => y.id === id); if(!x) return;
