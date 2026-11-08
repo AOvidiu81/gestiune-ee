@@ -1018,7 +1018,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
   <span id="rz-w"><button id="rz-reset" class="pictograma" title="Lățimi implicite — pune coloanele din tabelele acestei file înapoi cum erau">↺ Reset layout</button><i class="rz-sep">|</i></span>
   <span id="tz-w" title="Mărimea tabelului (doar tabelul, restul rămâne la fel), din 5 în 5%. Merge și cu Ctrl + rotița mausului, Ctrl + / Ctrl − / Ctrl 0. Dublu clic pe procent = scrii tu valoarea."><button class="pictograma" onclick="tzPas(-1)" aria-label="Micșorează tabelul">−</button><b id="tz-v" ondblclick="tzScrie()" title="Dublu clic = scrii mărimea (ex. 87), Enter">100%</b><input id="tz-in" type="number" min="30" max="300" step="5" style="display:none"><button class="pictograma" onclick="tzPas(1)" aria-label="Mărește tabelul">+</button></span>
-  <span class="ver">v8.23</span>
+  <span class="ver">v8.24</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -1755,6 +1755,9 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   #mod-c .mc-r{display:grid;gap:10px;margin-bottom:10px}
   #mod-c .r3{grid-template-columns:150px 150px 1fr} #mod-c .r2{grid-template-columns:1fr 1fr} #mod-c .r4{grid-template-columns:90px 130px 1fr 160px}
   #mod-c .r3.pf{grid-template-columns:150px 1fr}
+  /* v8.24 (cerut de Ovidiu, 08.11): J / IBAN / Banca pe măsura conținutului; observațiile pe toată lățimea */
+  #mod-c .r3.mc-ban{grid-template-columns:150px minmax(260px,1.6fr) 1fr}
+  #mod-c textarea#mc-obs{width:100%;box-sizing:border-box;min-height:110px}
   @media(max-width:600px){ #mod-c .r3,#mod-c .r2,#mod-c .r4,#mod-c .r3.pf{grid-template-columns:1fr} }
   #mc-ciorne{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:-4px 0 12px;font-size:12px}
   #mc-ciorne:empty{display:none}
@@ -1813,7 +1816,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
     </div>
     <!-- v8.05 (cerut de Ovidiu, 08.11): datele firmei pentru acte (contract / anexă) — din ANAF, se pot corecta -->
     <div class="mc-r"><div><label>Sediu (pentru acte)</label><input id="mc-sediu" placeholder="Jud. …, Loc. …, Str. … nr. …"></div></div>
-    <div class="mc-r r3">
+    <div class="mc-r r3 mc-ban">
       <div><label>Nr. Reg. Com. (J)</label><input id="mc-j" placeholder="J20/40/2016"></div>
       <div><label>IBAN</label><input id="mc-iban" style="text-transform:uppercase" oninput="mcBancaDinIban()"></div>
       <div><label>Banca</label><input id="mc-banca" placeholder="se completează din IBAN"></div>
