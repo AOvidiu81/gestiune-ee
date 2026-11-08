@@ -1017,7 +1017,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
   <span id="rz-w"><button id="rz-reset" class="pictograma" title="Lățimi implicite — pune coloanele din tabelele acestei file înapoi cum erau">↺ Reset layout</button><i class="rz-sep">|</i></span>
   <span id="tz-w" title="Mărimea tabelului (doar tabelul, restul rămâne la fel), din 5 în 5%. Merge și cu Ctrl + rotița mausului, Ctrl + / Ctrl − / Ctrl 0. Dublu clic pe procent = scrii tu valoarea."><button class="pictograma" onclick="tzPas(-1)" aria-label="Micșorează tabelul">−</button><b id="tz-v" ondblclick="tzScrie()" title="Dublu clic = scrii mărimea (ex. 87), Enter">100%</b><input id="tz-in" type="number" min="30" max="300" step="5" style="display:none"><button class="pictograma" onclick="tzPas(1)" aria-label="Mărește tabelul">+</button></span>
-  <span class="ver">v8.04</span>
+  <span class="ver">v8.05</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -1562,7 +1562,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
           <div><label>Contract</label><div class="cu-plus"><select id="mm-ctr"><option value="">— toate —</option></select><button type="button" class="btn sec plus" title="Contract nou pentru acest client" onclick="contractNouDinMiscare()">+</button></div></div>
         </div>
         <div class="gf g-full">
-          <div><label>Anexă <span class="hint">locația contractată</span></label><div class="cu-plus"><select id="mm-anexa"><option value="">— alege din anexe —</option></select><button type="button" class="btn sec plus" title="Anexă nouă pe contractul ales" onclick="anexaNouaDinMiscare()">+</button><button type="button" class="btn sec plus" title="Editează anexa aleasă (zile de servisare, frecvență, preț…) și te întorci în comandă" onclick="anexaEditDinMiscare()">✎</button><button type="button" class="btn sec plus" title="Seriile locației (aceeași listă pentru amplasare, suplimentare, reducere, ridicare și pentru ruta șoferilor)" onclick="mmSeriiDeschide()">🔢</button></div></div>
+          <div><label>Anexă <span class="hint">locația contractată</span></label><div class="cu-plus"><select id="mm-anexa"><option value="">— alege din anexe —</option></select><button type="button" class="btn sec plus" title="Anexă nouă pe contractul ales" onclick="anexaNouaDinMiscare()">+</button><button type="button" class="btn sec plus" title="Editează anexa aleasă (zile de servisare, frecvență, preț…) și te întorci în comandă" onclick="anexaEditDinMiscare()">✎</button><button type="button" class="btn sec plus" title="Seriile locației (aceeași listă pentru amplasare, suplimentare, reducere, ridicare și pentru ruta șoferilor)" onclick="mmSeriiDeschide()">🔢</button><button type="button" class="btn sec plus" title="Generează actul în Word: Anexa + Proces verbal, completat din anexa aleasă, contract și client (modelul tău). Se descarcă — îl verifici, îl salvezi ca PDF în D: și îl trimiți la semnat." onclick="actGenereazaAnexaPV()">📄</button></div></div>
         </div>
         <div id="mm-carduri" class="mm-carduri"></div>
       </div>
@@ -1781,6 +1781,13 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
     <div class="mc-r r2">
       <div><label>Telefon</label><input id="mc-tel"></div>
       <div><label>E-mail</label><input id="mc-email"></div>
+    </div>
+    <!-- v8.05 (cerut de Ovidiu, 08.11): datele firmei pentru acte (contract / anexă) — din ANAF, se pot corecta -->
+    <div class="mc-r"><div><label>Sediu (pentru acte)</label><input id="mc-sediu" placeholder="Jud. …, Loc. …, Str. … nr. …"></div></div>
+    <div class="mc-r r3">
+      <div><label>Nr. Reg. Com. (J)</label><input id="mc-j" placeholder="J20/40/2016"></div>
+      <div><label>IBAN</label><input id="mc-iban" style="text-transform:uppercase" oninput="mcBancaDinIban()"></div>
+      <div><label>Banca</label><input id="mc-banca" placeholder="se completează din IBAN"></div>
     </div>
     <div><label>Observații</label><textarea id="mc-obs" rows="2"></textarea></div>
     <div class="row" style="margin-top:14px;justify-content:flex-end">
@@ -3407,6 +3414,56 @@ function contractNouDinMiscare(){
   MM_INTOARCERE = "contract"; openContract(null, c.id);
 }
 // ✎ lângă Anexă, în comandă: deschide anexa aleasă cu tot formularul; după Salvează comanda se recompletează din ea.
+// ── v8.05 (cerut de Ovidiu, 07–08.11): GENERAREA ACTELOR din aplicație — Anexa + PV din modelul lui (modele/anexa_pv.docx, locuri {…}).
+// Datele: anexa aleasă (și celelalte produse ale ei, doc_id), contractul, clientul (sediu / J / IBAN din ANAF), comanda (responsabil, telefon, depozit).
+// Denumirea produsului = cea din aplicație (aceeași ca în Raport lună și Facturare). Lipsă → „______”, de completat în Word.
+const actScript = src => new Promise((ok, nu) => { if(document.querySelector(`script[src="${src}"]`)) return ok(); const e = document.createElement("script"); e.src = src; e.onload = ok; e.onerror = () => nu(new Error("nu s-a putut încărca " + src)); document.head.appendChild(e); });
+const actD = d => d ? fmtD(d).replace(/-/g, ".") : "";
+const actPad = n => { const x = Math.abs(+n || 0); return x < 10 ? "0" + x : String(x); };
+const actMon = m => /^RON$/i.test(m || "") || !m ? "Lei" : /^EUR/i.test(m) ? "Euro" : m;
+const actFrecv = f => String(f || "").replace(/\s*\/\s*Sap\b\.?/i, " / Saptamana").replace(/\s*\/\s*Luna\b/i, " / Luna");
+async function actGenereazaAnexaPV(){
+  const a = ANX.find(x => x.id == $("mm-anexa").value);
+  if(!a){ toast("Alege întâi anexa (secțiunea 2), apoi apasă 📄", true); return; }
+  const k = CTR.find(x => x.id === a.contract_id) || {}, c = CLI.find(x => x.id === k.client_id) || {};
+  const rows = (a.doc_id ? ANX.filter(x => x.doc_id === a.doc_id && String(x.anexa || "").trim() === String(a.anexa || "").trim()) : [a]).sort((x, y) => x.id - y.id);
+  const den = r => [r.produs, r.model, r.model_fizic].filter(Boolean).join(" ");
+  const multi = rows.length > 1, sv = (typeof anxServ === "function" && anxServ(a.id)) || {};
+  const zile = String(sv.zile || $("mm-zi").value || "").split(",").map(z => faraDiac(z).trim().toUpperCase()).filter(z => ZI_RUTE[z]).map(z => ZI_RUTE[z]);
+  const dLiv = a.data_livrarii || a.data_emitere;
+  const date = {
+    anexa_nr: String(a.anexa || "").replace(/^\s*ANEXA\s*(NR\.?)?\s*/i, "").replace(/^(\d)(?!\d)/, "0$1"),
+    anexa_data: actD(a.data_emitere), contract_nr: k.nr_ctr || "", contract_data: actD(k.data_emitere),
+    produs: rows.map(den).join(" / "),
+    cantitate: multi ? rows.map(r => actPad(r.cant) + " " + (r.um || "BUC")).join(" / ") : actPad(a.cant), um: multi ? "" : (a.um || "BUC"),
+    pret_eticheta: "Pret / Zi / buc",
+    pret: rows.map(r => (+r.pret || 0).toFixed(2)).join(" / "), moneda: actMon(a.moneda),
+    perioada: actD(dLiv) + " - " + (a.data_expirare ? actD(a.data_expirare) : (a.expirare_text || "Nedeterminata")),
+    data_livrarii: actD(dLiv), transport: +a.transport ? (+a.transport).toFixed(2) + " " + actMon(a.moneda) + " + TVA" : "Gratuit",
+    frecventa: actFrecv(sv.frecv || a.frecv_servisare || $("mm-frecv").value) || "______",
+    zi_servisare: zile.length ? zile.join(", ") : "*Conform ruta",
+    amplasament: [a.sat, a.loc].filter(Boolean).join(", ") + (a.jud ? " / " + a.jud : ""),
+    persoana_contact: $("mm-pers").value || a.pers_contact || "", telefon: $("mm-tel").value || a.telefon || "",
+    client: c.nume || "", client_sediu: c.sediu || "", client_cui: c.cui ? (c.id_tip === "CNP" ? "CNP: " : "CUI: ") + ((c.atr || "") + " " + c.cui).trim() : "",
+    client_j: c.nr_reg_com || "", reprezentant: c.pers_resp || "", reprezentant_functie: c.reprezentant_functie || "",
+    depozit: a.depozit || $("mm-dep").value || "HUNEDOARA",
+    produse: rows.map(r => ({ den: r.produs || "", bucati: actPad(r.cant), model: [r.model, r.model_fizic].filter(Boolean).join(" "), serie: "E-" }))
+  };
+  try{
+    toast("Se pregătește actul…");
+    await actScript("lib/pizzip.min.js"); await actScript("lib/docxtemplater.min.js");
+    const rsp = await fetch("modele/anexa_pv.docx", { cache: "no-cache" }); if(!rsp.ok) throw new Error("modelul nu s-a găsit (modele/anexa_pv.docx)");
+    const zip = new PizZip(await rsp.arrayBuffer());
+    const doc = new window.docxtemplater(zip, { paragraphLoop: true, linebreaks: true, nullGetter: () => "______" });
+    Object.keys(date).forEach(x => { if(date[x] === "") date[x] = "______"; });
+    doc.render(date);
+    const blob = doc.getZip().generate({ type: "blob", mimeType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document" });
+    const nume = [String(a.anexa || "ANEXA").trim(), "PV", c.nume || "", k.nr_ctr || "", fmtD(a.data_emitere)].filter(Boolean).join(" - ").replace(/[\\/:*?"<>|]+/g, " ") + ".docx";
+    const u = URL.createObjectURL(blob), l = document.createElement("a"); l.href = u; l.download = nume; document.body.appendChild(l); l.click(); l.remove(); setTimeout(() => URL.revokeObjectURL(u), 5000);
+    const lips = [!c.sediu && "sediul", !c.nr_reg_com && c.id_tip !== "CNP" && "nr. Reg. Com.", !c.pers_resp && "reprezentantul"].filter(Boolean);
+    toast("Actul s-a descărcat: " + nume + (lips.length ? " — lipsesc la client: " + lips.join(", ") + " (completează la client / ANAF)" : ""), !!lips.length);
+  }catch(e){ toast("Actul nu s-a putut genera: " + (e.message || e), true); }
+}
 function anexaEditDinMiscare(){
   const a = ANX.find(x => x.id == $("mm-anexa").value);
   if(!a){ toast("Alege întâi anexa pe care vrei s-o editezi", true); return; }
@@ -5054,6 +5111,7 @@ function openClient(id){
   const c=id?CLI.find(x=>x.id===id):null; $("mc-title").textContent=c?"Editare client":"Client nou"; $("mc-id").value=c?c.id:"";
   $("mc-nume").value=c?c.nume:""; $("mc-idtip").value=c?(c.id_tip||"CUI"):"CUI"; $("mc-atr").value=c?(c.atr||""):"RO"; $("mc-cui").value=c?(c.cui||""):"";
   $("mc-pers").value=c?(c.pers_resp||""):""; $("mc-tel").value=c?(c.telefon||""):""; $("mc-email").value=c?(c.email||""):""; $("mc-obs").value=c?(c.observatii||""):"";
+  $("mc-sediu").value=c?(c.sediu||""):""; $("mc-j").value=c?(c.nr_reg_com||""):""; $("mc-iban").value=c?(c.iban||""):""; $("mc-banca").value=c?(c.banca||""):"";   // v8.05
   $("mc-func").value=c?(c.reprezentant_functie||""):"";
   $("mc-ci-serie").value=c?(c.ci_serie||""):""; $("mc-ci-nr").value=c?(c.ci_numar||""):""; $("mc-ci-elib").value=c?(c.ci_eliberat_de||""):""; $("mc-ci-exp").value=c?(c.ci_expira||""):"";
   MC_CIORNA = null; $("mc-conf").classList.remove("on"); $("mc-ciorne").innerHTML = "";
@@ -5158,12 +5216,21 @@ async function mcAnaf(){
     ${rand("mca-atr", true, "Atribut fiscal", atrNou || "(gol — neplătitor de TVA)")}
     ${rand("mca-obs", true, "Observații (se adaugă)", obs)}
     ${d.telefon ? rand("mca-tel", !$("mc-tel").value.trim(), "Telefon", d.telefon) : ""}
+    ${rand("mca-sediu", true, "Sediu (pentru acte)", sediu)}
+    ${d.nr_reg_com ? rand("mca-j", true, "Nr. Reg. Com.", d.nr_reg_com) : ""}
+    ${d.iban ? rand("mca-iban", !$("mc-iban").value.trim(), "IBAN", d.iban + (bancaDinIban(d.iban) ? " · " + bancaDinIban(d.iban) : "")) : ""}
     <div class="row" style="margin-top:6px;justify-content:flex-end"><div style="flex:1"></div>
       <div style="flex:0"><button type="button" class="btn sm sec" onclick="$('mc-anaf').innerHTML=''">Închide</button></div>
       <div style="flex:0"><button type="button" class="btn sm" onclick="mcAnafAplica()">Completează</button></div></div>
   </div>`;
-  P.dataset.obs = obs; P.dataset.atr = atrNou;
+  P.dataset.obs = obs; P.dataset.atr = atrNou; P.dataset.sediu = sediu;
 }
+// v8.05: banca după codul din IBAN (RO.. XXXX ...)
+const BANCI_IBAN = { RNCB:"BCR", BRDE:"BRD", BTRL:"Banca Transilvania", RZBR:"Raiffeisen Bank", INGB:"ING Bank", CECE:"CEC Bank", TREZ:"Trezoreria Statului",
+  BACX:"UniCredit Bank", PIRB:"First Bank", OTPV:"OTP Bank", BRMA:"Banca Românească", UGBI:"Garanti BBVA", LIBR:"Libra Internet Bank", CARP:"Patria Bank",
+  BPOS:"Banca Comercială Feroviara", EGNA:"Exim Banca Românească", CRCO:"ProCredit Bank", INTE:"Intesa Sanpaolo", DAFB:"Alpha Bank", WBAN:"Banca Transilvania (ex. Idea)", REVO:"Revolut" };
+function bancaDinIban(iban){ const m = /^RO\d{2}([A-Z]{4})/.exec(String(iban || "").replace(/\s+/g, "").toUpperCase()); return m ? (BANCI_IBAN[m[1]] || "") : ""; }
+function mcBancaDinIban(){ const b = bancaDinIban($("mc-iban").value); if(b && !$("mc-banca").value.trim()) $("mc-banca").value = b; }
 function mcAnafAplica(){
   const d = MC_ANAF, P = $("mc-anaf"); if(!d) return;
   const bif = id => $(id) && $(id).checked;
@@ -5171,6 +5238,9 @@ function mcAnafAplica(){
   if(bif("mca-atr")) $("mc-atr").value = P.dataset.atr;
   if(bif("mca-obs")){ const o = $("mc-obs").value.trim(); if(!o.includes(P.dataset.obs)) $("mc-obs").value = (o ? o + "\n" : "") + P.dataset.obs; }
   if(bif("mca-tel")) $("mc-tel").value = d.telefon;
+  if(bif("mca-sediu")) $("mc-sediu").value = P.dataset.sediu || "";   // v8.05
+  if(bif("mca-j")) $("mc-j").value = d.nr_reg_com || "";
+  if(bif("mca-iban")){ $("mc-iban").value = d.iban || ""; const b = bancaDinIban(d.iban); if(b) $("mc-banca").value = b; }
   P.innerHTML = ""; mcCuiVerif(); toast("Completat din ANAF — verifică și salvează");
 }
 // v4.77 (cerut de Ovidiu, 08.10): ciornele clienților nesalvați, ținute în bază (tabel `ciorne`, tip 'client').
@@ -5239,7 +5309,8 @@ function mcVerifica(){
 function confSubBara(id){ const cf = $(id), cap = cf.parentElement.querySelector(".lux-cap");
   cf.parentElement.scrollTop = 0; cf.style.top = (cap ? cap.offsetHeight : 0) + "px"; }
 async function saveClient(dupa){
-  const rec={nume:$("mc-nume").value.trim().toUpperCase(),id_tip:$("mc-idtip").value,atr:$("mc-atr").value||null,cui:$("mc-cui").value||null,pers_resp:$("mc-pers").value||null,telefon:$("mc-tel").value||null,email:$("mc-email").value||null,observatii:$("mc-obs").value||null,reprezentant_functie:$("mc-func").value.trim()||null};
+  const rec={nume:$("mc-nume").value.trim().toUpperCase(),id_tip:$("mc-idtip").value,atr:$("mc-atr").value||null,cui:$("mc-cui").value||null,pers_resp:$("mc-pers").value||null,telefon:$("mc-tel").value||null,email:$("mc-email").value||null,observatii:$("mc-obs").value||null,reprezentant_functie:$("mc-func").value.trim()||null,
+    sediu:$("mc-sediu").value.trim()||null,nr_reg_com:$("mc-j").value.trim()||null,iban:$("mc-iban").value.replace(/\s+/g,"").toUpperCase()||null,banca:$("mc-banca").value.trim()||null};   // v8.05
   { const pf = rec.id_tip === "CNP";   // v6.57: cartea de identitate doar la persoane fizice; Atribut fiscal doar la firme
     if(pf){ rec.atr = null; if(rec.cui) rec.cui = rec.cui.replace(/\s/g, ""); }
     rec.ci_serie = pf ? ($("mc-ci-serie").value.trim().toUpperCase() || null) : null; rec.ci_numar = pf ? ($("mc-ci-nr").value.trim() || null) : null;
