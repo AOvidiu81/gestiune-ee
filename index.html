@@ -1018,7 +1018,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
   <span id="rz-w"><button id="rz-reset" class="pictograma" title="Lățimi implicite — pune coloanele din tabelele acestei file înapoi cum erau">↺ Reset layout</button><i class="rz-sep">|</i></span>
   <span id="tz-w" title="Mărimea tabelului (doar tabelul, restul rămâne la fel), din 5 în 5%. Merge și cu Ctrl + rotița mausului, Ctrl + / Ctrl − / Ctrl 0. Dublu clic pe procent = scrii tu valoarea."><button class="pictograma" onclick="tzPas(-1)" aria-label="Micșorează tabelul">−</button><b id="tz-v" ondblclick="tzScrie()" title="Dublu clic = scrii mărimea (ex. 87), Enter">100%</b><input id="tz-in" type="number" min="30" max="300" step="5" style="display:none"><button class="pictograma" onclick="tzPas(1)" aria-label="Mărește tabelul">+</button></span>
-  <span class="ver">v8.19</span>
+  <span class="ver">v8.20</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -5553,12 +5553,12 @@ function cdCampuri(cat, felul){
     L.push(["sediu","Adresa sediului"],["iban", cat === "INSTITUTIE" ? "Cont IBAN (Trezorerie)" : "Cont IBAN"],["banca", cat === "INSTITUTIE" ? "Trezoreria" : "Banca"],
       ["reprezentant","Semnează — nume"],["functie","Semnează — funcția"],["semnatari","Alți semnatari (nume — funcția)"],["telefon","Telefon"],["email","E-mail"],["email_efactura","E-mail facturi"]);
   }
-  L.push(["notif_adresa","Adresa pentru notificări"],["notif_atentie","În atenția"],["livrare_adresa","Adresa de livrare"],["livrare_gps","GPS livrare"],["contact_nume","Persoana de contact la locație"],["contact_tel","Telefonul ei"],["produse","Produse și bucăți"]);
+  L.push(["notif_adresa","Adresa pentru notificări"],["notif_atentie","În atenția"],["livrare_adresa","Adresa de livrare"],["livrare_gps","GPS livrare"],["contact_nume","Persoana de contact la locație"],["contact_tel","Telefonul ei"],["contacte_extra","Alte persoane de contact"],["produse","Produse (bucăți, tip, igienizare)"]);   // v8.20
   if(felul === "eveniment") L.push(["eveniment","Evenimentul (zile, ore, servisări)"]); else L.push(["perioada_de","Perioada — de la"],["perioada_pana","Perioada — până la"],["perioada_text","Perioada (text)"]);
   L.push(["observatii","Observații"]);
   return L;
 }
-const cdVal = (k, v) => k === "semnatari" ? (Array.isArray(v) ? v.map(s => [s.nume, s.functie].filter(Boolean).join(" — ")).join("; ") : "") : /^(ci_expira|perioada_de|perioada_pana)$/.test(k) && v ? fmtD(v) : (v == null ? "" : String(v));
+const cdVal = (k, v) => k === "contacte_extra" ? (Array.isArray(v) ? v.map(c => [c.nume, c.telefon].filter(Boolean).join(" ")).join("; ") : "") : k === "semnatari" ? (Array.isArray(v) ? v.map(s => [s.nume, s.functie].filter(Boolean).join(" — ")).join("; ") : "") : /^(ci_expira|perioada_de|perioada_pana)$/.test(k) && v ? fmtD(v) : (v == null ? "" : String(v));
 function cdVezi(id){
   const x = CD.find(y => y.id === id); if(!x) return;
   const R = x.raspuns || {}, L = cdCampuri(x.categorie, x.felul);
@@ -5584,6 +5584,7 @@ function cdCreeazaClient(id){
   const cui = String(R.cui || "").toUpperCase().replace(/\s+/g, " ").trim(), ro = /^RO\s?/.test(cui);
   const obs = [R.email_efactura && "E-mail facturi: " + R.email_efactura, (R.notif_adresa || R.notif_atentie) && "Notificări: " + [R.notif_adresa, R.notif_atentie && "în atenția " + R.notif_atentie].filter(Boolean).join(", "),
     R.livrare_adresa && "Livrare: " + R.livrare_adresa + (R.livrare_gps ? " (GPS " + R.livrare_gps + ")" : ""), (R.contact_nume || R.contact_tel) && "Contact locație: " + [R.contact_nume, R.contact_tel].filter(Boolean).join(" "),
+    Array.isArray(R.contacte_extra) && R.contacte_extra.length && "Alte contacte locație: " + R.contacte_extra.map(c => [c.nume, c.telefon].filter(Boolean).join(" ")).join("; "),
     R.produse && "Produse: " + R.produse, R.eveniment && "Eveniment: " + R.eveniment, (R.perioada_de || R.perioada_pana || R.perioada_text) && "Perioada: " + [R.perioada_de && fmtD(R.perioada_de), R.perioada_pana && fmtD(R.perioada_pana), R.perioada_text].filter(Boolean).join(" – "),
     R.observatii && "Observații client: " + R.observatii].filter(Boolean);
   $("mc-nume").value = (pf ? R.nume : R.denumire) || "";
