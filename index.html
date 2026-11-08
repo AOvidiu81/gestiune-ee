@@ -1105,11 +1105,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   </div>
   <div class="muted" id="st-nota" style="margin:-4px 0 12px"></div>
   <div id="stoc-grid" class="stoc-grid"></div>
-  <div class="card" style="margin-top:14px">
-    <details><summary>Tabel stoc (format Excel: ÎNCHIRIATE / DEPOZIT / TOTAL)</summary>
-      <div class="tw" style="margin-top:8px"><table id="stoc-tbl"></table></div>
-    </details>
-  </div>
+  <!-- v8.11: tabelul „format Excel” scos (cerut de Ovidiu, 08.11) -->
   <!-- v8.11 (cerut de Ovidiu, 08.11): raportul de stoc la o dată aleasă — ce era real în depozit în acea zi, pe modele, și ce urmează -->
   <div class="card" style="margin-top:14px">
     <h3 style="margin:0 0 8px;color:var(--g)">Raport stoc la data</h3>
@@ -2760,7 +2756,7 @@ function renderStoc(){
     const g=k=>colT.map(p=>{if(esteAscuns(dep,p)) return "<td></td>";const r=byDep[dep].find(x=>x.produs===p);return `<td>${r?r[k]:0}</td>`;}).join("");
     h+=`<tr><td rowspan="3"><b>${esc(dep)}</b></td><td>ÎNCHIRIATE</td>${g("inchiriate")}</tr><tr><td>DEPOZIT</td>${g("in_depozit")}</tr><tr><td><b>TOTAL</b></td>${g("total")}</tr>`;
   });
-  $("stoc-tbl").innerHTML=h;
+  if($("stoc-tbl")) $("stoc-tbl").innerHTML=h;
 }
 const cheieAsc=(dep,p)=>dep+"|"+p;
 const esteAscuns=(dep,p)=>nomv("stoc_ascuns").includes(cheieAsc(dep,p));
@@ -2878,21 +2874,54 @@ async function raportStoc(){
     return h + `</div>`;
   }).join("");
 }
-function exportRaportStoc(){
+async function exportRaportStoc(){
+  // v8.11 (cerut de Ovidiu, 08.11): același format ca exportul Raport lună (verde, Calibri 12 / titluri 14, coloana A goală)
   if(!SR){ toast("Apasă întâi „Arată”", true); return; }
-  const A = [], U = [], AL = [];
-  SR.rez.forEach(r => {
-    A.push({ DEPOZIT: r.dep, PRODUS: r.prod, MODEL: "", INCHIRIATE: r.inch, DEPOZIT_STOC: r.depo, TOTAL: r.inch + r.depo });
-    if(r.mod){ Object.entries(r.mod).filter(([, v]) => v).forEach(([nm, v]) => A.push({ DEPOZIT: r.dep, PRODUS: r.prod, MODEL: nm, INCHIRIATE: "", DEPOZIT_STOC: v, TOTAL: "" }));
-      if(r.faraModel) A.push({ DEPOZIT: r.dep, PRODUS: r.prod, MODEL: "FARA MODEL (ASTEAPTA PV)", INCHIRIATE: "", DEPOZIT_STOC: r.faraModel, TOTAL: "" }); }
-    r.urm.forEach(x => U.push({ DEPOZIT: r.dep, DATA: x.m.data, TIP: x.m.tip_miscare, CLIENT: x.m.client || "", PRODUS: r.prod, DIN_DEPOZIT: x.m.depozit || "", DEPOZIT_STOC: x.dDep || "", INCHIRIATE: x.dInch || "", PV: x.m.pv || "-" }));
-    r.alerte.forEach(a => AL.push({ DEPOZIT: r.dep, PRODUS: r.prod, ALERTA: a }));
+  let ExcelJS; try{ ExcelJS = await expLib("exceljs"); }catch(e){ toast("Nu s-a putut încărca ExcelJS: " + e.message, true); return; }
+  const zi = SR.zi, ziT = fmtD(zi), deps = [...new Set(SR.rez.map(r => r.dep))];
+  const VERDE = "FF1B5E3A", BORD = { style: "thin", color: { argb: "FFC9D3CD" } }, tot = { top: BORD, left: BORD, bottom: BORD, right: BORD };
+  const T = 12, TT = 14, NOTA = { name: "Calibri", italic: true, size: 10, color: { argb: "FF6B7A72" } };
+  const plin = argb => ({ type: "pattern", pattern: "solid", fgColor: { argb } }), sg = v => v > 0 ? "+" + v : v;
+  const wb = new ExcelJS.Workbook(); wb.creator = "GestiuneEE"; wb.created = new Date();
+  const w = wb.addWorksheet("STOC " + ziT.replace(/\//g, "."), { pageSetup: { orientation: "portrait", paperSize: 9, fitToPage: true, fitToWidth: 1, fitToHeight: 0, margins: { left: .4, right: .4, top: .5, bottom: .5, header: .2, footer: .2 } } });
+  w.getColumn(1).width = 2.5; [24, 44, 13, 13, 13, 16, 10].forEach((x, i) => { w.getColumn(i + 2).width = x; });
+  let r = 1;
+  const cel = (c, v, f, al, fill) => { const x = w.getCell(r, c); x.value = v; x.font = { name: "Calibri", size: T, ...(f || {}) }; if(al) x.alignment = al; if(fill) x.fill = plin(fill); return x; };
+  cel(2, "RAPORT STOC LA DATA DE " + ziT + (deps.length === 1 ? " — DEPOZIT " + deps[0] : ""), { bold: true, size: TT, color: { argb: VERDE } }); w.getRow(r).height = 20; r++;
+  cel(2, "Euro Ecologic · generat " + new Date().toLocaleString("ro-RO") + " · comenzile până la " + ziT + " inclusiv; cele de după la „Urmează”").font = NOTA; r += 2;
+  const cap = t => { const h = w.getRow(r); h.height = 30; t.forEach((v, i) => { const c = h.getCell(i + 2); c.value = v; c.font = { name: "Calibri", bold: true, size: T, color: { argb: "FFFFFFFF" } }; c.fill = plin(VERDE); c.border = tot; c.alignment = { horizontal: i < 2 ? "left" : "center", vertical: "middle", wrapText: true }; }); r++; };
+  const rand = (v, j, o) => { const x = w.getRow(r); x.height = 16; v.forEach((t, i) => { const c = x.getCell(i + 2); c.value = t === "" ? null : t; c.border = tot;
+    c.font = { name: "Calibri", size: T, bold: !!(o && o.bold), italic: !!(o && o.it), color: o && o.cul ? { argb: o.cul } : undefined };
+    c.alignment = { horizontal: i < 2 ? "left" : "center", vertical: "middle", indent: i === 1 && o && o.ind ? 1 : 0 };
+    if(o && o.fill) c.fill = plin(o.fill); else if(j % 2) c.fill = plin("FFF6F8F7"); }); r++; };
+  const titlu = t => { cel(2, t, { bold: true, size: TT, color: { argb: VERDE } }); w.getRow(r).height = 20; r++; };
+  deps.forEach(dep => {
+    const L = SR.rez.filter(x => x.dep === dep);
+    titlu("DEPOZIT " + dep + " — STOC LA " + ziT);
+    cap(["PRODUS", "MODEL", "ÎNCHIRIATE", "DEPOZIT", "TOTAL", "Stoc inițial din"]);
+    let j = 0;
+    L.forEach(x => {
+      rand([x.prod, x.mod ? "toate modelele" : "", x.inch, x.depo, x.inch + x.depo, x.ref ? fmtD(x.ref) : "început"], 0, { bold: true, fill: "FFE6F3EA" });
+      if(x.mod){ Object.entries(x.mod).filter(([, v]) => v).forEach(([nm, v]) => rand(["", nm, "", v, "", ""], ++j, { ind: true }));
+        if(x.faraModel) rand(["", "fără model (așteaptă PV)", "", x.faraModel, "", ""], ++j, { ind: true, it: true, cul: "FF6B7A72" }); }
+    });
+    const al = L.flatMap(x => x.alerte.map(a => x.prod + ": " + a));
+    al.forEach(a => { cel(2, "⚠ " + a, { size: 11, bold: true, color: { argb: "FFB3261E" } }); r++; });
+    const as = L.flatMap(x => x.astepta.map(y => ({ ...y, prod: x.prod })));
+    if(as.length){ r++; titlu("Fără serie confirmată — modelul se știe după PV");
+      cap(["PRODUS", "COMANDA", "DATA", "BUCĂȚI", "PV", "Client"]);
+      as.forEach((y, k) => rand([y.prod, y.m.tip_miscare + " · " + y.m.id, fmtD(y.m.data), (y.iese ? "−" : "+") + y.lipsa, y.pv ? "are PV" : "fără PV", y.m.client || ""], k)); }
+    const U = L.flatMap(x => x.urm.map(y => ({ ...y, prod: x.prod }))).sort((a, b) => (a.m.data || "").localeCompare(b.m.data || ""));
+    if(U.length){ r++; titlu("URMEAZĂ — comenzile după " + ziT);
+      cap(["DATA", "TIP · Client", "PRODUS", "DEPOZIT", "ÎNCHIRIATE", "PV"]);
+      U.forEach((y, k) => rand([fmtD(y.m.data), y.m.tip_miscare + " · " + (y.m.client || "") + (y.m.depozit !== dep ? " (din " + (y.m.depozit || "?") + ")" : ""), y.prod, y.dDep ? sg(y.dDep) : "", y.dInch ? sg(y.dInch) : "", y.m.pv || "-"], k));
+      const fin = L.filter(x => x.urm.some(y => y.dDep)).map(x => x.prod + " " + (x.depo + x.urm.reduce((a, y) => a + y.dDep, 0)));
+      if(fin.length){ cel(2, "După toate, în depozit: " + fin.join(" · "), { bold: true, color: { argb: VERDE } }); r++; } }
+    r += 2;
   });
-  const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(A), "STOC " + SR.zi);
-  if(U.length) XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(U), "URMEAZA");
-  if(AL.length) XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(AL), "ALERTE");
-  XLSX.writeFile(wb, `Stoc_la_${SR.zi}.xlsx`);
+  cel(2, "Modelele pornesc de la numărătoarea din Administrare → Stoc inițial → Modele și se mișcă doar din seriile din PV-urile comenzilor plecate din depozit (amplasare −1, ridicare +1).").font = NOTA;
+  const buf = await wb.xlsx.writeBuffer();
+  expDescarca(new Blob([buf], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" }), `STOC LA ${zi.split("-").reverse().join(".")}${deps.length === 1 ? " - DEPOZIT " + deps[0] : ""}.xlsx`);
 }
 // v6.33 (cerut de Ovidiu, 17.10): inventarul produselor casate / pierdute — comenzile DAUNA / FURT + seriile cu aceste stări
 let CAS = [];
@@ -14201,7 +14230,10 @@ async function expExcel(D, an, luna, nz, lunaT, ultima, sufix){
   const ordT = EXP_GRUPE.flatMap(g => g[1]); const tipuri = [...peTip.keys()].sort((a, b) => ((ordT.indexOf(a) + 1) || 99) - ((ordT.indexOf(b) + 1) || 99) || a.localeCompare(b));
   const peDep = new Map(); lunHD.filter(m => m.tip_miscare !== "SERVISARE").forEach(m => { const k = m.depozit || "—"; const x = peDep.get(k) || { n: 0, in: 0, out: 0 }; const b = +m.buc || 0; if(unu(m)) x.n++; if(b >= 0) x.in += b; else x.out += -b; peDep.set(k, x); });
   // stocul la ultima zi, ca în Stoc: produsele vizibile la depozit, rânduri ÎNCHIRIATE / DEPOZIT / TOTAL
-  const stoc = expStoc(D.pana || [], D.si || []).filter(x => x.depozit === PRINC);
+  // v8.11 (cerut de Ovidiu, 08.11): stocul la ziua raportului (parțial = ziua până la care e completat, final = ultima zi), nu cu comenzile de după
+  const refISO = zL && zL < nz ? `${an}-${zi2(luna)}-${zi2(zL)}` : `${an}-${zi2(luna)}-${zi2(nz)}`;
+  const stoc = expStoc((D.pana || []).filter(m => (m.data || "") <= refISO), D.si || []).filter(x => x.depozit === PRINC);
+  let SRM = []; try{ await loadSIM(); if(simDe(PRINC, "").length || SIM.some(x => x.depozit === PRINC)) SRM = (await srCalc(refISO, PRINC)).filter(x => x.mod); }catch(e){ console.warn("stoc pe modele:", e); }
   const ordP = nomv("produs"), poz = p => { const i = ordP.indexOf(p); return i < 0 ? 1e6 : i; };
   const stP = [...new Set([...ordP, ...stoc.map(x => x.produs)])].filter(p => !esteAscuns(PRINC, p)).sort((a, b) => poz(a) - poz(b) || a.localeCompare(b));
   const sv = (p, k) => (stoc.find(x => x.produs === p) || {})[k] || 0;
@@ -14239,13 +14271,25 @@ async function expExcel(D, an, luna, nz, lunaT, ultima, sufix){
   const tabel = (cap, rows, fmt, st) => { capR(cap); rows.forEach((v, j) => randR(v, j, fmt && fmt(j), st)); r++; };
   const nota = t => { const c = s2.getCell(r, 2); c.value = t; c.font = NOTA; r += 2; };
   // 1) STOC HUNEDOARA la ultima zi (ca în Stoc)
-  titlu("STOC " + PRINC + " LA " + ultima);
+  titlu("STOC " + PRINC + " LA " + ziRef);
   capR([""].concat(stP, ["TOTAL"]));
   [["ÎNCHIRIATE", "inch"], ["DEPOZIT", "dep"], ["TOTAL", "t"]].forEach(([e, k], j) => {
     const v = stP.map(p => k === "t" ? sv(p, "inch") + sv(p, "dep") : sv(p, k));
     randR([e].concat(v, [v.reduce((a, b) => a + b, 0)]), j, k === "t");
   });
-  nota("Ca în Stoc: ÎNCHIRIATE = la clienți, DEPOZIT = în depozit, socotit cu comenzile până la " + ultima + "." + (!(D.si || []).some(s => s.depozit === PRINC) ? " Stocul inițial nu e completat (Administrare → Stoc inițial), de aceea DEPOZIT poate ieși cu minus." : ""));
+  nota("ÎNCHIRIATE = la clienți, DEPOZIT = în depozit, socotit cu comenzile până la " + ziRef + " inclusiv (cele de după nu intră)." + (!(D.si || []).some(s => s.depozit === PRINC) ? " Stocul inițial nu e completat (Administrare → Stoc inițial), de aceea DEPOZIT poate ieși cu minus." : ""));
+  // v8.11: inventarul din depozit pe modele (numărătoarea + seriile din PV-uri)
+  if(SRM.length){
+    titlu("DEPOZIT " + PRINC + " PE MODELE LA " + ziRef);
+    const rows = [], bold = [];
+    SRM.forEach(x => { bold.push(rows.length); rows.push([x.prod, "TOTAL " + x.prod, x.depo]);
+      Object.entries(x.mod).filter(([, v]) => v).forEach(([nm, v]) => rows.push(["", nm, v]));
+      if(x.faraModel) rows.push(["", "fără model (așteaptă PV)", x.faraModel]); });
+    capR(["PRODUS", "MODEL", "În depozit"]); rows.forEach((v, j) => randR(v, j, bold.includes(j), 2));
+    const al = SRM.flatMap(x => x.alerte.map(a => x.prod + ": " + a));
+    if(al.length){ al.forEach(a => { const c = s2.getCell(r, 2); c.value = "⚠ " + a; c.font = { size: 11, bold: true, color: { argb: "FFB3261E" } }; r++; }); }
+    r++; nota("Pornește de la numărătoarea din Stoc inițial (" + fmtD(SRM[0].ref) + ") și se mișcă din seriile din PV-urile comenzilor plecate din " + PRINC + " (amplasare −1, ridicare +1). „Fără model” = bucăți ieșite / intrate fără serie confirmată.");
+  }
   // 2) LA DATA DE … — pe produs și tip, cu filtru
   titlu("LA DATA DE " + ziRef + " — pe categorie de produs");
   r = tbl(s2, r, 2, capCat, catR, 1) + 1;
