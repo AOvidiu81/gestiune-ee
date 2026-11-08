@@ -1018,7 +1018,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
   <span id="rz-w"><button id="rz-reset" class="pictograma" title="Lățimi implicite — pune coloanele din tabelele acestei file înapoi cum erau">↺ Reset layout</button><i class="rz-sep">|</i></span>
   <span id="tz-w" title="Mărimea tabelului (doar tabelul, restul rămâne la fel), din 5 în 5%. Merge și cu Ctrl + rotița mausului, Ctrl + / Ctrl − / Ctrl 0. Dublu clic pe procent = scrii tu valoarea."><button class="pictograma" onclick="tzPas(-1)" aria-label="Micșorează tabelul">−</button><b id="tz-v" ondblclick="tzScrie()" title="Dublu clic = scrii mărimea (ex. 87), Enter">100%</b><input id="tz-in" type="number" min="30" max="300" step="5" style="display:none"><button class="pictograma" onclick="tzPas(1)" aria-label="Mărește tabelul">+</button></span>
-  <span class="ver">v8.14</span>
+  <span class="ver">v8.15</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -2402,6 +2402,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
     <button id="mb-t-cmd" class="on" onclick="mobFila('cmd')"><span class="mb-ico">📋</span>Comenzi</button>
     <button class="mb-urg" onclick="mobUrgenta()"><span class="mb-ico">＋</span>Comandă urgentă</button>
     <button id="mb-t-stoc" onclick="mobFila('stoc')"><span class="mb-ico">📦</span>Stoc</button>
+    <button id="mb-t-fisa" onclick="mobFila('fisa')"><span class="mb-ico">📝</span>Fișă</button><!-- v8.15 (cerut de Ovidiu, 08.11) -->
   </div>
   <div class="mb-sheet" id="mb-form">
     <div class="mb-sus"><b id="mb-form-t">Comandă urgentă</b><button class="mb-x" onclick="mobInchide('mb-form')">✕</button></div>
@@ -13538,8 +13539,8 @@ async function mobIncarca(){
   MOB_L = data || []; MISC = MOB_L;   // textul WhatsApp caută celelalte produse ale comenzii în MISC
 }
 function mobFila(f){
-  MOB_F = f; $("mb-t-cmd").classList.toggle("on", f === "cmd"); $("mb-t-stoc").classList.toggle("on", f === "stoc");
-  if(f === "stoc") mobStoc(); else mobComenzi();
+  MOB_F = f; $("mb-t-cmd").classList.toggle("on", f === "cmd"); $("mb-t-stoc").classList.toggle("on", f === "stoc"); $("mb-t-fisa").classList.toggle("on", f === "fisa");
+  if(f === "stoc") mobStoc(); else if(f === "fisa") mobFisa(); else mobComenzi();
   $("mb-corp").scrollTop = 0;
 }
 const mobCl = clStare;
@@ -13609,6 +13610,55 @@ async function mobTrimiteSalvata(id){
 async function mobCopiaza(id){
   const m = MOB_L.find(x => x.id === id); if(!m) return;
   try{ await navigator.clipboard.writeText(textComandaSalvata(m)); toast("Textul a fost copiat"); }catch(e){ toast("Nu s-a putut copia", true); }
+}
+// ================= v8.15 (cerut de Ovidiu, 08.11): fișa „Date contract” pe telefon =================
+let MOB_CD = { cat: "SOCIETATE", fel: "perioada" };
+async function mobFisa(){
+  const ch = (n, v, t) => `<button class="${MOB_CD[n] === v ? "on" : ""}" onclick="MOB_CD.${n}='${v}';mobFisaForm()">${t}</button>`;
+  $("mb-corp").innerHTML = `<div id="mb-cd-form"></div><h4 style="margin:16px 0 8px">Fișe trimise</h4><div id="mb-cd-lista" class="mb-m">Se încarcă…</div>`;
+  mobFisaForm(); await cdLoad(); mobFisaLista();
+}
+function mobFisaForm(){
+  const ch = (n, v, t) => `<button class="${MOB_CD[n] === v ? "on" : ""}" onclick="MOB_CD.${n}='${v}';mobFisaForm()">${t}</button>`, pf = MOB_CD.cat === "PF";
+  const val = id => esc(($(id) || {}).value || "");
+  $("mb-cd-form").innerHTML = `<div class="mb-card"><div class="mb-cl">📝 Fișă „Date contract” nouă</div>
+    <div class="mb-m" style="margin:6px 0 4px">Cine e clientul?</div><div class="mb-chips">${CD_CAT.map(([k, ic, t]) => ch("cat", k, ic + " " + t)).join("")}</div>
+    <div class="mb-m" style="margin:2px 0 4px">Ce fel de contract?</div><div class="mb-chips">${ch("fel", "perioada", "📅 Pe perioadă")}${ch("fel", "eveniment", "🎪 Eveniment")}</div>
+    <input id="mb-cd-nume" placeholder="${pf ? "Nume și prenume" : "Denumire"} (opțional)" value="${val("mb-cd-nume")}" style="margin-bottom:8px">
+    <input id="mb-cd-tel" type="tel" placeholder="Telefon client (pentru WhatsApp)" value="${val("mb-cd-tel")}" style="margin-bottom:8px">
+    <button class="btn" style="width:100%" onclick="mobFisaCreeaza()">🔗 Creează link</button><div id="mb-cd-rez"></div></div>`;
+}
+async function mobFisaCreeaza(){
+  const nume = $("mb-cd-nume").value.trim().toUpperCase(), tel = $("mb-cd-tel").value.trim(), pre = {};
+  if(nume){ if(MOB_CD.cat === "PF") pre.nume = nume; else pre.denumire = nume; }
+  if(tel) pre.telefon = tel;
+  const { data, error } = await db.from("cereri_date").insert({ cod: cdCod(), categorie: MOB_CD.cat, felul: MOB_CD.fel, precompletat: pre }).select("*").single();
+  if(error){ toast(error.message, true); return; }
+  CD.unshift(data); mobFisaLista();
+  const link = cdLink(data), txt = "Bună ziua! Pentru redactarea contractului cu Euro Ecologic, vă rugăm completați datele aici: " + link;
+  $("mb-cd-rez").innerHTML = `<div style="margin-top:10px;padding:10px;border-radius:10px;background:var(--gl,#e6f3ea)"><b>✓ Linkul e gata</b> (expiră în 14 zile)
+    <div class="mb-chips" style="margin-top:8px">
+      ${navigator.share ? `<button onclick="navigator.share({title:'Date pentru contract',text:${esc(JSON.stringify(txt))}}).catch(()=>{})">📤 Trimite…</button>` : ""}
+      <button onclick="location.href='https://wa.me/${esc(tel.replace(/\D/g, "").replace(/^0/, "40"))}?text=${encodeURIComponent(txt)}'">💬 WhatsApp</button>
+      <button onclick="navigator.clipboard.writeText('${esc(link)}').then(()=>toast('Link copiat'))">📋 Copiază</button></div></div>`;
+}
+function mobFisaLista(){
+  const e = $("mb-cd-lista"); if(!e) return;
+  if(!CD.length){ e.textContent = "Nicio fișă în lucru."; return; }
+  const azi = new Date().toISOString();
+  e.innerHTML = CD.map(x => { const exp = x.stare === "trimisa" && x.expira_la < azi;
+    const st = x.stare === "completata" ? `<b style="color:#15803d">✔ completată</b>` : exp ? `<span style="color:var(--red)">expirată</span>` : `așteaptă clientul`;
+    return `<div class="mb-card"><div class="mb-r1"><span>${fmtD(x.created_at.slice(0, 10))} · ${esc(CAT_ET[x.categorie] || x.categorie)}${x.felul === "eveniment" ? " · eveniment" : ""}</span><span>${st}</span></div>
+      <div class="mb-cl">${esc(cdNume(x))}</div>
+      <div class="mb-chips" style="margin:6px 0 0">${x.stare === "completata" ? `<button onclick="mobFisaVezi(${x.id})">Vezi datele</button><span class="mb-m" style="align-self:center">clientul îl creezi de pe PC</span>`
+        : `<button onclick="cdCopiaza(${x.id})">📋 Copiază link</button>${exp ? `<button onclick="cdPrelungeste(${x.id}).then(mobFisaLista)">Prelungește</button>` : ""}`}</div></div>`; }).join("");
+}
+function mobFisaVezi(id){
+  const x = CD.find(y => y.id === id); if(!x) return; const R = x.raspuns || {};
+  $("mb-det-t").textContent = cdNume(x);
+  $("mb-det-corp").innerHTML = cdCampuri(x.categorie, x.felul).map(([k, l]) => { const v = cdVal(k, R[k]); return v ? `<div style="margin-bottom:8px"><div class="mb-m">${esc(l)}</div><b>${esc(v)}</b></div>` : ""; }).join("") +
+    (x.ci_path ? `<button class="btn sec" style="width:100%" onclick="actVezi('${esc(x.ci_path)}')">🪪 Vezi copia CI</button>` : "");
+  $("mb-det").classList.add("on");
 }
 function mobStoc(){
   const byDep = {}; (STOC || []).forEach(r => { (byDep[r.depozit] = byDep[r.depozit] || []).push(r); });
