@@ -1018,7 +1018,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
   <span id="rz-w"><button id="rz-reset" class="pictograma" title="Lățimi implicite — pune coloanele din tabelele acestei file înapoi cum erau">↺ Reset layout</button><i class="rz-sep">|</i></span>
   <span id="tz-w" title="Mărimea tabelului (doar tabelul, restul rămâne la fel), din 5 în 5%. Merge și cu Ctrl + rotița mausului, Ctrl + / Ctrl − / Ctrl 0. Dublu clic pe procent = scrii tu valoarea."><button class="pictograma" onclick="tzPas(-1)" aria-label="Micșorează tabelul">−</button><b id="tz-v" ondblclick="tzScrie()" title="Dublu clic = scrii mărimea (ex. 87), Enter">100%</b><input id="tz-in" type="number" min="30" max="300" step="5" style="display:none"><button class="pictograma" onclick="tzPas(1)" aria-label="Mărește tabelul">+</button></span>
-  <span class="ver">v8.10</span>
+  <span class="ver">v8.11</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -1109,6 +1109,17 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
     <details><summary>Tabel stoc (format Excel: ÎNCHIRIATE / DEPOZIT / TOTAL)</summary>
       <div class="tw" style="margin-top:8px"><table id="stoc-tbl"></table></div>
     </details>
+  </div>
+  <!-- v8.11 (cerut de Ovidiu, 08.11): raportul de stoc la o dată aleasă — ce era real în depozit în acea zi, pe modele, și ce urmează -->
+  <div class="card" style="margin-top:14px">
+    <h3 style="margin:0 0 8px;color:var(--g)">Raport stoc la data</h3>
+    <div class="row noprint">
+      <div><label>Stoc la data</label><input id="sr-zi" type="date"></div>
+      <div style="flex:0"><label>&nbsp;</label><button class="btn" onclick="raportStoc()">Arată</button></div>
+      <div style="flex:0"><label>&nbsp;</label><button class="btn sec" onclick="exportRaportStoc()">Export Excel</button></div>
+    </div>
+    <p class="muted" style="margin:8px 0 0">Depozitul ales sus (sau toate). Intră doar comenzile cu data <b>până la ziua aleasă inclusiv</b>; cele de după apar la „Urmează”. Modelele pornesc de la numărătoarea din <b>Administrare → Stoc inițial → Modele</b> și se mișcă doar din seriile din PV-urile comenzilor plecate din acel depozit (amplasare −1, ridicare +1). Bucățile ieșite / intrate fără serie confirmată stau pe rândul „fără model (așteaptă PV)”.</p>
+    <div id="sr-rez" style="margin-top:10px"></div>
   </div>
 </section>
 
@@ -1385,6 +1396,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
       <div><label>Data referință</label><input id="si-data" type="date"></div>
       <div style="flex:0"><label>&nbsp;</label><button class="btn" onclick="saveStocInitial()">Salvează</button></div>
     </div>
+    <div id="sim-ed" style="display:none;margin-top:14px;border-top:1px solid var(--bd);padding-top:12px"></div>
   </div>
 
   <div class="card" id="a-card-curat" style="display:none">
@@ -2707,6 +2719,8 @@ function fillAll(){
 
 // ================= STOC =================
 async function loadStoc(){
+  loadSIM().then(() => { if($("si-tbl")) renderStocInitial(); });   // v8.11
+  if($("sr-zi") && !$("sr-zi").value) $("sr-zi").value = today();
   const {data,error}=await db.from("v_stoc").select("*").order("depozit").order("produs");
   if(error){toast(error.message,true);return;}
   STOC=data; renderStoc();
@@ -2773,6 +2787,113 @@ function exportStoc(){
   const wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,ws,"STOC"); XLSX.writeFile(wb,`Stoc_${today()}.xlsx`);
 }
 const today=()=>new Date().toISOString().slice(0,10);
+// v8.11 (cerut de Ovidiu, 08.11): raportul de stoc la o dată — ce era real în depozit / la clienți în acea zi (comenzile până la ziua
+// aleasă inclusiv, de la data de referință a stocului inițial), depozitul pe modele (numărătoarea + seriile din PV-urile comenzilor
+// plecate din depozit) și „Urmează” (comenzile de după). Fila Stoc de sus rămâne ca înainte (cu tot cu comenzile viitoare).
+let SR = null;
+const srEfect = () => { const e = {}; (NOM.tip_miscare || []).forEach(r => { e[r.valoare] = r.efect_stoc || "niciun"; }); return e; };
+async function srCalc(zi, depF){
+  const [mi, se, si] = await Promise.all([
+    db.from("miscari").select("id,grup_id,data,tip_miscare,contract,depozit,produs,buc,client,pv,pv_facut_la").limit(20000),
+    db.from("serii").select("id,produs,model,serie,stare,data_amplasarii,data_ridicarii,miscare_amplasare_id,miscare_ridicare_id").limit(20000),
+    db.from("stoc_initial").select("*") ]);
+  if(mi.error || se.error || si.error) throw (mi.error || se.error || si.error);
+  await loadSIM();
+  const EF = srEfect(), M = (mi.data || []).map(m => ({ ...m, ef: EF[m.tip_miscare] || "niciun", buc: +m.buc || 0 })).filter(m => m.ef !== "niciun");
+  const SIx = {}; (si.data || []).forEach(r => { SIx[r.depozit + "|" + r.produs] = r; });
+  const fDep = depF !== undefined ? depF : $("st-dep").value;
+  const chei = new Set(Object.keys(SIx));
+  M.forEach(m => { if(m.depozit && m.produs) chei.add(m.depozit + "|" + m.produs); if(m.contract && m.produs && /inchiriere|pierdere/.test(m.ef)) chei.add(m.contract + "|" + m.produs); });
+  const efDep = m => m.ef === "inchiriere" ? -m.buc : m.ef === "depozit_in" ? m.buc : m.ef === "depozit_out" ? -Math.abs(m.buc) : 0;
+  const efInch = m => /inchiriere|pierdere/.test(m.ef) ? m.buc : 0;
+  const grupDe = m => m.grup_id || m.id;
+  const rez = [];
+  [...chei].sort().forEach(k => {
+    const [dep, prod] = k.split("|"); if(fDep && dep !== fDep) return;
+    if(typeof esteAscuns === "function" && esteAscuns(dep, prod)) return;
+    const s0 = SIx[k] || null, ref = s0 && s0.data_referinta || null;
+    const inR = d => (!ref || (d || "") >= ref) && (d || "") <= zi;
+    const inch = (s0 ? +s0.inchiriate || 0 : 0) + M.filter(m => m.contract === dep && m.produs === prod && inR(m.data)).reduce((a, m) => a + efInch(m), 0);
+    const ord = M.filter(m => m.depozit === dep && m.produs === prod && inR(m.data));
+    const depo = (s0 ? +s0.in_depozit || 0 : 0) + ord.reduce((a, m) => a + efDep(m), 0);
+    // modelele: doar unde există numărătoarea pe modele
+    const l0 = simDe(dep, prod); let mod = null, faraModel = null, alerte = [], astepta = [];
+    if(l0.length && ref){
+      mod = {}; l0.forEach(x => { mod[x.model] = +x.in_depozit || 0; });
+      const t0 = l0.reduce((a, x) => a + (+x.in_depozit || 0), 0);
+      if(t0 !== (+s0.in_depozit || 0)) alerte.push(`numărătoarea pe modele (${t0}) nu dă „În depozit” (${+s0.in_depozit || 0}) din Stoc inițial`);
+      // comenzile plecate din acest depozit (toate produsele — seria poate sta pe altă comandă din același grup)
+      const din = M.filter(m => m.depozit === dep && m.ef === "inchiriere" && inR(m.data));
+      const idDin = new Set(din.map(m => m.id)), grDin = new Set(din.map(grupDe));
+      const ser = (se.data || []).filter(x => x.produs === prod);
+      const leg = {};   // pe grup: câte serii s-au mișcat
+      ser.forEach(x => {
+        const nm = x.model || "FĂRĂ MODEL";
+        if(x.miscare_amplasare_id && idDin.has(x.miscare_amplasare_id) && x.data_amplasarii && x.data_amplasarii >= ref && x.data_amplasarii <= zi){
+          mod[nm] = (mod[nm] || 0) - 1; const g = grupDe(M.find(m => m.id === x.miscare_amplasare_id)); leg[g + "+"] = (leg[g + "+"] || 0) + 1; }
+        if(x.miscare_ridicare_id && idDin.has(x.miscare_ridicare_id) && x.stare !== "LA CLIENT" && x.data_ridicarii && x.data_ridicarii >= ref && x.data_ridicarii <= zi){
+          mod[nm] = (mod[nm] || 0) + 1; const g = grupDe(M.find(m => m.id === x.miscare_ridicare_id)); leg[g + "-"] = (leg[g + "-"] || 0) + 1; }
+      });
+      // comenzile fără (toate) seriile confirmate → modelul nu se știe încă
+      const gr = {}; ord.filter(m => m.ef === "inchiriere").forEach(m => { const c = grupDe(m) + (m.buc < 0 ? "-" : "+"); (gr[c] = gr[c] || { l: [], n: 0 }).l.push(m); gr[c].n += Math.abs(m.buc); });
+      Object.entries(gr).forEach(([c, o]) => { const lipsa = o.n - (leg[c] || 0); if(lipsa > 0){ const m = o.l[0];
+        astepta.push({ m, lipsa, iese: c.endsWith("+"), pv: !!(m.pv_facut_la || ["V", "W"].includes(m.pv)) }); } });
+      const tm = Object.values(mod).reduce((a, x) => a + x, 0); faraModel = depo - tm;
+      Object.entries(mod).forEach(([nm, v]) => { if(v < 0) alerte.push(`modelul ${nm} iese pe minus (${v}) — o serie amplasată fără să fie în numărătoare?`); });
+      const asteptat = astepta.reduce((a, x) => a + (x.iese ? -x.lipsa : x.lipsa), 0);
+      if(faraModel !== asteptat) alerte.push(`pe modele nu coincide cu totalul: fără model ${faraModel}, din comenzile fără serii ar trebui ${asteptat}`);
+      if(areSerie(prod)) astepta.filter(x => x.pv).forEach(x => alerte.push(`comanda ${x.m.id} (${x.m.tip_miscare} ${fmtD(x.m.data)}, ${x.m.client || ""}) are PV, dar ${x.lipsa} buc fără serie confirmată`));
+    }
+    const urm = M.filter(m => m.produs === prod && (m.data || "") > zi && (m.depozit === dep || (m.contract === dep && /inchiriere|pierdere/.test(m.ef))))
+      .map(m => ({ m, dDep: m.depozit === dep ? efDep(m) : 0, dInch: m.contract === dep ? efInch(m) : 0 })).filter(x => x.dDep || x.dInch)
+      .sort((a, b) => (a.m.data || "").localeCompare(b.m.data || "") || a.m.id - b.m.id);
+    if(!inch && !depo && !urm.length && !mod) return;
+    rez.push({ dep, prod, ref, inch, depo, mod, faraModel, astepta, alerte, urm });
+  });
+  return rez;
+}
+async function raportStoc(){
+  const zi = $("sr-zi").value || today(); $("sr-zi").value = zi;
+  $("sr-rez").innerHTML = '<p class="muted">Calculez…</p>';
+  let rez; try{ rez = await srCalc(zi); }catch(e){ $("sr-rez").innerHTML = ""; toast(e.message || String(e), true); return; }
+  SR = { zi, rez };
+  const sg = v => v > 0 ? "+" + v : String(v);
+  const deps = [...new Set(rez.map(r => r.dep))];
+  $("sr-rez").innerHTML = !rez.length ? '<p class="muted">Nimic de arătat pentru depozitul ales.</p>' : deps.map(dep => {
+    const L = rez.filter(r => r.dep === dep);
+    let h = `<div class="stoc" style="margin-bottom:12px"><h4>${esc(dep)} — stoc la ${fmtD(zi)}</h4><div class="st-w"><table class="st-t"><tr><th>Produs</th><th>Închiriate</th><th>Depozit</th><th>Total</th><th>De la</th></tr>` +
+      L.map(r => `<tr><td><b>${esc(r.prod)}</b></td><td>${r.inch}</td><td><b>${r.depo}</b></td><td class="st-tot">${r.inch + r.depo}</td><td class="muted">${r.ref ? fmtD(r.ref) : "început"}</td></tr>` +
+        (r.mod ? Object.entries(r.mod).filter(([, v]) => v).concat(r.faraModel ? [["fără model (așteaptă PV)", r.faraModel]] : []).map(([nm, v]) => `<tr><td style="padding-left:16px" class="${/^fără/.test(nm) ? "muted" : ""}">· ${esc(nm)}</td><td></td><td>${v}</td><td></td><td></td></tr>`).join("") : "")).join("") + `</table></div>`;
+    const al = L.filter(r => r.alerte.length);
+    if(al.length) h += `<div class="st-av" style="color:var(--t-err)">` + al.map(r => r.alerte.map(a => `⚠ <b>${esc(r.prod)}</b>: ${esc(a)}`).join("<br>")).join("<br>") + `</div>`;
+    const as = L.filter(r => r.astepta.length);
+    if(as.length) h += `<div class="st-av">Fără serie confirmată (modelul se știe după PV): ` + as.map(r => r.astepta.map(x => `${esc(r.prod)} ${x.iese ? "−" : "+"}${x.lipsa} · ${esc(x.m.tip_miscare)} ${fmtD(x.m.data)} ${esc(x.m.client || "")} (comanda ${x.m.id}${x.pv ? ", are PV" : ", fără PV"})`).join("; ")).join("; ") + `</div>`;
+    const U = L.flatMap(r => r.urm.map(x => ({ ...x, prod: r.prod })));
+    if(U.length){
+      const fin = {}; L.forEach(r => { fin[r.prod] = r.depo + r.urm.reduce((a, x) => a + x.dDep, 0); });
+      h += `<details open style="margin-top:10px"><summary><b>Urmează</b> (${U.length} ${U.length === 1 ? "comandă" : "comenzi"} după ${fmtD(zi)})</summary><div class="tw"><table style="margin-top:6px"><tr><th>Data</th><th>Tip</th><th>Client</th><th>Produs</th><th>Depozit</th><th>Închiriate</th><th>PV</th></tr>` +
+        U.sort((a, b) => (a.m.data || "").localeCompare(b.m.data || "")).map(x => `<tr><td>${fmtD(x.m.data)}</td><td>${esc(x.m.tip_miscare)}</td><td>${esc(x.m.client || "")}${x.m.depozit !== dep ? ` <span class="muted">(din ${esc(x.m.depozit || "?")})</span>` : ""}</td><td>${esc(x.prod)}</td><td>${x.dDep ? sg(x.dDep) : ""}</td><td>${x.dInch ? sg(x.dInch) : ""}</td><td>${esc(x.m.pv || "-")}</td></tr>`).join("") +
+        `</table></div><div class="muted" style="margin-top:6px">După toate: în depozit ${Object.entries(fin).filter(([p]) => L.find(r => r.prod === p && r.urm.some(x => x.dDep))).map(([p, v]) => `${esc(p)} <b>${v}</b>`).join(" · ") || "fără schimbări"}</div></details>`;
+    }
+    return h + `</div>`;
+  }).join("");
+}
+function exportRaportStoc(){
+  if(!SR){ toast("Apasă întâi „Arată”", true); return; }
+  const A = [], U = [], AL = [];
+  SR.rez.forEach(r => {
+    A.push({ DEPOZIT: r.dep, PRODUS: r.prod, MODEL: "", INCHIRIATE: r.inch, DEPOZIT_STOC: r.depo, TOTAL: r.inch + r.depo });
+    if(r.mod){ Object.entries(r.mod).filter(([, v]) => v).forEach(([nm, v]) => A.push({ DEPOZIT: r.dep, PRODUS: r.prod, MODEL: nm, INCHIRIATE: "", DEPOZIT_STOC: v, TOTAL: "" }));
+      if(r.faraModel) A.push({ DEPOZIT: r.dep, PRODUS: r.prod, MODEL: "FARA MODEL (ASTEAPTA PV)", INCHIRIATE: "", DEPOZIT_STOC: r.faraModel, TOTAL: "" }); }
+    r.urm.forEach(x => U.push({ DEPOZIT: r.dep, DATA: x.m.data, TIP: x.m.tip_miscare, CLIENT: x.m.client || "", PRODUS: r.prod, DIN_DEPOZIT: x.m.depozit || "", DEPOZIT_STOC: x.dDep || "", INCHIRIATE: x.dInch || "", PV: x.m.pv || "-" }));
+    r.alerte.forEach(a => AL.push({ DEPOZIT: r.dep, PRODUS: r.prod, ALERTA: a }));
+  });
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(A), "STOC " + SR.zi);
+  if(U.length) XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(U), "URMEAZA");
+  if(AL.length) XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(AL), "ALERTE");
+  XLSX.writeFile(wb, `Stoc_la_${SR.zi}.xlsx`);
+}
 // v6.33 (cerut de Ovidiu, 17.10): inventarul produselor casate / pierdute — comenzile DAUNA / FURT + seriile cu aceste stări
 let CAS = [];
 async function loadCasate(){
@@ -6583,8 +6704,56 @@ async function redenumeste(id){
   if(e){ toast(e.message,true); return; }
   toast(tinta ? "Unit în „"+nume+"”" : "Redenumit în „"+nou+"”"); await init(); if(MISC.length) loadMiscari(); renderProduse();
 }
+// v8.11 (cerut de Ovidiu, 08.11): stocul din depozit pe modele la data numărătorii (stoc_initial_model); suma trebuie să dea „În depozit”
+let SIM = [];
+async function loadSIM(){ const { data, error } = await db.from("stoc_initial_model").select("*").order("depozit").order("produs").order("model"); if(!error) SIM = data || []; }
+const simDe = (dep, prod) => SIM.filter(x => x.depozit === dep && x.produs === prod);
+function simCel(r){
+  const l = simDe(r.depozit, r.produs); if(!l.length) return `<span class="muted">—</span>`;
+  const t = l.reduce((a, x) => a + (+x.in_depozit || 0), 0), ok = t === (+r.in_depozit || 0);
+  return ok ? `<span style="color:#2E8B3C" title="${esc(l.map(x => x.model + " " + x.in_depozit).join(", "))}">${l.length} modele = ${t} ✓</span>`
+    : `<span style="color:var(--t-err);font-weight:600" title="${esc(l.map(x => x.model + " " + x.in_depozit).join(", "))}">⚠ modele ${t} ≠ ${+r.in_depozit || 0}</span>`;
+}
 function renderStocInitial(){
-  $("si-tbl").innerHTML=`<tr><th>Depozit</th><th>Produs</th><th>Închiriate</th><th>În depozit</th><th>Data referință</th><th></th></tr>`+SI.map(r=>`<tr><td>${esc(r.depozit)}</td><td>${esc(r.produs)}</td><td>${r.inchiriate}</td><td>${r.in_depozit}</td><td>${fmtD(r.data_referinta)}</td><td><button class="btn sm sec" onclick="editSI(${r.id})">Edit</button></td></tr>`).join("");
+  $("si-tbl").innerHTML=`<tr><th>Depozit</th><th>Produs</th><th>Închiriate</th><th>În depozit</th><th>Data referință</th><th>Pe modele</th><th></th></tr>`+SI.map(r=>`<tr><td>${esc(r.depozit)}</td><td>${esc(r.produs)}</td><td>${r.inchiriate}</td><td>${r.in_depozit}</td><td>${fmtD(r.data_referinta)}</td><td>${simCel(r)}</td><td style="white-space:nowrap"><button class="btn sm sec" onclick="editSI(${r.id})">Edit</button> <button class="btn sm sec" onclick="simDeschide(${r.id})">Modele</button></td></tr>`).join("");
+}
+let SIM_ED = null;
+function simDeschide(id){
+  const r = SI.find(x => x.id === id); if(!r) return;
+  SIM_ED = { r, rand: simDe(r.depozit, r.produs).map(x => ({ model: x.model, n: +x.in_depozit || 0 })) };
+  if(!SIM_ED.rand.length) SIM_ED.rand.push({ model: "", n: 0 });
+  simRender(); $("sim-ed").scrollIntoView({ behavior: "smooth", block: "center" });
+}
+function simModeleProdus(prod){ return [...new Set([...(NOM.model_fizic || []), ...(NOM.model || [])].filter(m => m.parinte === prod).map(m => m.valoare))]; }
+function simRender(){
+  const e = $("sim-ed"), P = SIM_ED; if(!P){ e.style.display = "none"; return; }
+  const t = P.rand.reduce((a, x) => a + (+x.n || 0), 0), baza = +P.r.in_depozit || 0, ok = t === baza;
+  e.style.display = "";
+  e.innerHTML = `<h4 style="margin:0 0 6px">${esc(P.r.depozit)} · ${esc(P.r.produs)} — în depozit pe modele la ${fmtD(P.r.data_referinta)}</h4>
+    <datalist id="dl-sim">${simModeleProdus(P.r.produs).map(v => `<option value="${esc(v)}">`).join("")}</datalist>
+    <table class="st-t" style="max-width:420px"><tr><th>Model</th><th>Bucăți</th><th></th></tr>` +
+    P.rand.map((x, i) => `<tr><td><input list="dl-sim" value="${esc(x.model)}" oninput="SIM_ED.rand[${i}].model=this.value.toUpperCase()" onchange="simRender()"></td><td><input type="number" min="0" style="width:80px" value="${x.n}" oninput="SIM_ED.rand[${i}].n=+this.value||0;simTot()"></td><td><button class="btn sm sec" onclick="SIM_ED.rand.splice(${i},1);simRender()">✕</button></td></tr>`).join("") +
+    `</table><div class="row" style="margin-top:8px;align-items:center">
+      <div style="flex:0"><button class="btn sm sec" onclick="SIM_ED.rand.push({model:'',n:0});simRender()">+ model</button></div>
+      <div id="sim-tot" style="flex:1;font-weight:600;color:${ok ? "#2E8B3C" : "var(--t-err)"}">${simTotTxt(t, baza)}</div>
+      <div style="flex:0"><button class="btn sec" onclick="SIM_ED=null;simRender()">Închide</button></div>
+      <div style="flex:0"><button class="btn" onclick="simSalveaza()">Salvează modelele</button></div></div>`;
+}
+const simTotTxt = (t, baza) => t === baza ? `Suma pe modele = ${t} ✓ (cât „În depozit”)` : `⚠ Suma pe modele = ${t}, dar „În depozit” = ${baza} — nu coincid (diferență ${t - baza > 0 ? "+" : ""}${t - baza})`;
+function simTot(){ const P = SIM_ED, t = P.rand.reduce((a, x) => a + (+x.n || 0), 0), baza = +P.r.in_depozit || 0, d = $("sim-tot"); if(!d) return;
+  d.textContent = simTotTxt(t, baza); d.style.color = t === baza ? "#2E8B3C" : "var(--t-err)"; }
+async function simSalveaza(){
+  const P = SIM_ED; if(!P) return;
+  const rand = P.rand.map(x => ({ model: String(x.model || "").trim().toUpperCase(), n: Math.max(0, +x.n || 0) })).filter(x => x.model);
+  const dubl = rand.map(x => x.model).filter((m, i, a) => a.indexOf(m) !== i);
+  if(dubl.length){ toast("Modelul " + dubl[0] + " apare de două ori", true); return; }
+  const t = rand.reduce((a, x) => a + x.n, 0), baza = +P.r.in_depozit || 0;
+  if(t !== baza && !confirm("Suma pe modele (" + t + ") nu dă „În depozit” (" + baza + ").\n\nSalvez așa? Rămâne alerta „nu coincid” până corectezi.")) return;
+  const { error: e1 } = await db.from("stoc_initial_model").delete().eq("depozit", P.r.depozit).eq("produs", P.r.produs);
+  if(e1){ toast(e1.message, true); return; }
+  if(rand.length){ const { error: e2 } = await db.from("stoc_initial_model").insert(rand.map(x => ({ depozit: P.r.depozit, produs: P.r.produs, model: x.model, in_depozit: x.n, updated_at: new Date().toISOString() })));
+    if(e2){ toast(e2.message, true); return; } }
+  await loadSIM(); SIM_ED = null; simRender(); renderStocInitial(); toast("Modelele au fost salvate");
 }
 function editSI(id){ const r=SI.find(x=>x.id===id); $("si-dep").value=r.depozit; $("si-prod").value=r.produs; $("si-inch").value=r.inchiriate; $("si-dep2").value=r.in_depozit; $("si-data").value=r.data_referinta; window.scrollTo({top:0,behavior:"smooth"}); }
 async function saveStocInitial(){
@@ -8452,6 +8621,13 @@ async function loadAtentie(){
       P.filter(p => !(p.masina || "").trim())
        .map(p => ({ id: "p" + p.client_key, ctx: "fara_masina",
                     v: [p.client_key || "", p.client || "", p.localitate || "", p.ziua || "", p.frecventa || ""] })));
+
+  // v8.11 (cerut de Ovidiu, 08.11): stocul pe modele nu coincide cu totalul produsului (la azi)
+  try{ await loadSIM(); if(SIM.length){ const sr = await srCalc(today(), ""); const al = [];
+    sr.forEach(r => r.alerte.forEach((t, i) => al.push({ id: "sm" + r.dep + "|" + r.prod + "|" + i, ctx: t, v: [r.dep, r.prod, r.depo, r.faraModel || 0, t] })));
+    add("stoc_modele", "Stoc pe modele — nu coincide",
+      "Suma pe modele din depozit nu dă totalul produsului sau o comandă cu PV n-are seriile confirmate. Detalii: Stoc → Raport stoc la data; numărătoarea: Administrare → Stoc inițial → Modele.",
+      ["Depozit", "Produs", "În depozit", "Fără model", "Ce nu coincide"], al); } }catch(e){ console.warn("stoc pe modele:", e); }
 
   // v6.68 (cerut de Ovidiu, 22.10): ridicările finale fără anexa -R FINAL (facturarea nu se oprește la data ridicării)
   add("rid_fara_final", "Ridicări fără anexă finală",
