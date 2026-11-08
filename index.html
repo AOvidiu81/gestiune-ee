@@ -1018,7 +1018,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
   <span id="rz-w"><button id="rz-reset" class="pictograma" title="Lățimi implicite — pune coloanele din tabelele acestei file înapoi cum erau">↺ Reset layout</button><i class="rz-sep">|</i></span>
   <span id="tz-w" title="Mărimea tabelului (doar tabelul, restul rămâne la fel), din 5 în 5%. Merge și cu Ctrl + rotița mausului, Ctrl + / Ctrl − / Ctrl 0. Dublu clic pe procent = scrii tu valoarea."><button class="pictograma" onclick="tzPas(-1)" aria-label="Micșorează tabelul">−</button><b id="tz-v" ondblclick="tzScrie()" title="Dublu clic = scrii mărimea (ex. 87), Enter">100%</b><input id="tz-in" type="number" min="30" max="300" step="5" style="display:none"><button class="pictograma" onclick="tzPas(1)" aria-label="Mărește tabelul">+</button></span>
-  <span class="ver">v8.25</span>
+  <span class="ver">v8.26</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -5363,6 +5363,9 @@ function renderClienti(){
     if(!q) return true;
     return potrivesteCautarea(c.nume+" "+(c.cui||"")+" "+ks.map(k=>k.nr_ctr).join(" "), q);
   });
+  // v8.26 (cerut de Ovidiu, 08.11): sus clienții activi cu contract, apoi cei fără contract („—”), jos cei INACTIVI; în fiecare grup după nume
+  const grupCl=c=>c.activ===false?2:(ctrPt(c).length?0:1);
+  list.sort((a,b)=>grupCl(a)-grupCl(b)||String(a.nume||"").localeCompare(String(b.nume||""),"ro"));
   $("c-list").innerHTML=list.map(c=>{
     const ks=ctrPt(c);
     return `<div class="card"><details ${q?"open":""}><summary><span class="c-nr" title="Numărul contractului">${ks.length?ks.map(k=>"CTR "+esc(k.nr_ctr||"?")).join(", "):"—"}</span>${esc(c.nume)} <span class="muted">${esc(c.id_tip||"")} ${esc(c.atr||"")} ${esc(c.cui||"")}</span>${c.activ===false?` <span class="badge" title="Închis la ultima ridicare">INACTIV</span> <button class="btn sm sec noprint" onclick="event.preventDefault();clientReactiveaza(${c.id})">Reactivează</button>`:""} <button class="btn sm sec noprint" onclick="event.preventDefault();openClient(${c.id})">Edit</button></summary>`+
