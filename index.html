@@ -1018,7 +1018,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
   <span id="rz-w"><button id="rz-reset" class="pictograma" title="Lățimi implicite — pune coloanele din tabelele acestei file înapoi cum erau">↺ Reset layout</button><i class="rz-sep">|</i></span>
   <span id="tz-w" title="Mărimea tabelului (doar tabelul, restul rămâne la fel), din 5 în 5%. Merge și cu Ctrl + rotița mausului, Ctrl + / Ctrl − / Ctrl 0. Dublu clic pe procent = scrii tu valoarea."><button class="pictograma" onclick="tzPas(-1)" aria-label="Micșorează tabelul">−</button><b id="tz-v" ondblclick="tzScrie()" title="Dublu clic = scrii mărimea (ex. 87), Enter">100%</b><input id="tz-in" type="number" min="30" max="300" step="5" style="display:none"><button class="pictograma" onclick="tzPas(1)" aria-label="Mărește tabelul">+</button></span>
-  <span class="ver">v8.16</span>
+  <span class="ver">v8.17</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -5434,6 +5434,34 @@ function cdRender(){
         (x.stare === "completata" ? `<button class="btn sm" onclick="cdVezi(${x.id})">Vezi / creează client</button> ` : `<button class="btn sm sec" onclick="cdTrimiteFer(${x.id})">📤 Trimite</button> ${exp ? `<button class="btn sm sec" onclick="cdPrelungeste(${x.id})">Prelungește</button> ` : ""}`) +
         `<button class="btn sm sec" onclick="cdAnuleaza(${x.id})" title="Anulează fișa (linkul nu mai merge)">✕</button></td></tr>`; }).join("") + "</table></div>";
 }
+// v8.17 (cerut de Ovidiu, 08.11): ferestrele făcute din cod au și ele ‒ minimizează · ☐ mărește · ✕ închide, se mută de bara
+// albastră (dublu-clic = înapoi la loc și mărime) și se redimensionează din colțul dreapta-jos — ca toate celelalte.
+function feFereastra(m, inchide){
+  const box = m.querySelector(".box"), cap = m.querySelector(".lux-cap"); if(!box || !cap) return;
+  const SV = { min: '<svg viewBox="0 0 12 12"><path d="M1 6.5h10"/></svg>', max: '<svg viewBox="0 0 12 12"><rect x="1.5" y="1.5" width="9" height="9"/></svg>',
+    rest: '<svg viewBox="0 0 12 12"><rect x="1.5" y="3.5" width="7" height="7"/><path d="M3.5 3.5V1.5h7v7h-2"/></svg>', x: '<svg viewBox="0 0 12 12"><path d="M1.5 1.5l9 9M10.5 1.5l-9 9"/></svg>' };
+  Object.assign(box.style, { resize: "both", overflow: "auto", maxHeight: "96vh", minWidth: "360px", minHeight: "200px", position: "relative" });
+  cap.style.cursor = "move"; cap.style.userSelect = "none"; cap.title = "Trage de aici ca să muți fereastra; dublu-clic = înapoi la loc";
+  let chip = null, dx = 0, dy = 0, start = null;
+  const scoateChip = () => { m.classList.remove("fe-min"); if(chip){ chip.remove(); chip = null; } };
+  const g = document.createElement("span"); g.className = "fe-btns";
+  g.innerHTML = `<button type="button" class="fe-mn" title="Minimizează">${SV.min}</button><button type="button" class="fe-mx" title="Mărește pe tot ecranul">${SV.max}</button><button type="button" class="fe-x" title="Închide">${SV.x}</button>`;
+  g.addEventListener("mousedown", e => e.stopPropagation()); g.addEventListener("dblclick", e => e.stopPropagation());
+  g.querySelector(".fe-mn").onclick = () => { m.classList.add("fe-min");
+    if(!chip){ let b = $("fe-bara"); if(!b){ b = document.createElement("div"); b.id = "fe-bara"; document.body.appendChild(b); }
+      chip = document.createElement("button"); chip.type = "button"; chip.onclick = scoateChip; b.appendChild(chip); }
+    chip.textContent = "▣ " + cap.textContent.trim(); chip.title = "Deschide din nou fereastra"; chip.style.background = getComputedStyle(cap).backgroundColor; };
+  g.querySelector(".fe-mx").onclick = () => { box.classList.toggle("fe-max"); const mare = box.classList.contains("fe-max");
+    g.querySelector(".fe-mx").innerHTML = mare ? SV.rest : SV.max; g.querySelector(".fe-mx").title = mare ? "Înapoi la mărimea de dinainte" : "Mărește pe tot ecranul"; };
+  g.querySelector(".fe-x").onclick = () => { scoateChip(); (inchide || (() => m.remove()))(); };
+  cap.appendChild(g);
+  const mv = e => { if(!start) return; dx = e.clientX - start.x; dy = Math.max(e.clientY - start.y, -start.top); box.style.transform = "translate(" + dx + "px," + dy + "px)"; };
+  const up = () => { start = null; };
+  cap.addEventListener("mousedown", e => { if(e.target.closest("button")) return; start = { x: e.clientX - dx, y: e.clientY - dy, top: box.getBoundingClientRect().top - dy }; e.preventDefault(); });
+  document.addEventListener("mousemove", mv); document.addEventListener("mouseup", up);
+  cap.addEventListener("dblclick", () => { dx = dy = 0; box.style.transform = ""; box.style.width = ""; box.style.height = ""; box.classList.remove("fe-max"); });
+  new MutationObserver(() => { if(!m.isConnected){ scoateChip(); document.removeEventListener("mousemove", mv); document.removeEventListener("mouseup", up); } }).observe(document.body, { childList: true });
+}
 // v8.13 (cerut de Ovidiu, 08.11): fereastră cu bife în loc de întrebări una după alta
 const CD_CAT = [["SOCIETATE","🏢","Societate","SRL, SA…"],["PFA","👤","PFA / II / IF","persoană fizică autorizată, întreprindere"],["INSTITUTIE","🏛️","Instituție publică","primărie, școală, spital"],
   ["ONG","🤝","ONG","asociație, fundație, club"],["PF","🪪","Persoană fizică","cu copia buletinului"],["ALTELE","📄","Altele","cabinet, parohie, firmă străină"]];
@@ -5463,7 +5491,7 @@ function cdNou(){
       <div style="flex:0"><button class="btn sec" onclick="cdnGata('pdf')" title="Foaie de completat de mână — se tipărește sau se salvează ca PDF">📄 Creează PDF</button></div>
       <div style="flex:0"><button class="btn" onclick="cdnGata('link')">🔗 Creează link</button></div></div>
     <div id="cdn-rez"></div></div>`;
-  document.body.appendChild(w); cdnCat();
+  document.body.appendChild(w); feFereastra(w); cdnCat();
 }
 function cdnCat(){
   const k = (document.querySelector('input[name="cdn-cat"]:checked') || {}).value;
@@ -5544,7 +5572,7 @@ function cdVezi(id){
       <div style="flex:0"><button class="btn sec" onclick="this.closest('.modal').remove()">Închide</button></div>
       <div style="flex:0"><button class="btn sec" onclick="cdRedeschide(${x.id})" title="Clientul poate corecta din același link">Redeschide linkul</button></div>
       <div style="flex:0"><button class="btn" onclick="cdCreeazaClient(${x.id})">Creează client</button></div></div></div>`;
-  document.body.appendChild(w);
+  document.body.appendChild(w); feFereastra(w);
 }
 async function cdRedeschide(id){
   const { error } = await db.from("cereri_date").update({ stare: "trimisa", expira_la: new Date(Date.now() + 14 * 864e5).toISOString(), updated_at: new Date().toISOString() }).eq("id", id);
@@ -5648,7 +5676,7 @@ function cdTrimiteFer(id){   // din listă: fereastra cu toate opțiunile
   w.innerHTML = `<div class="box" style="max-width:560px"><h3 class="lux-cap cap-mut">Trimite fișa — ${esc(cdNume(x))}</h3>
     <input readonly value="${esc(cdLink(x))}" style="width:100%;margin:0 0 10px" onclick="this.select()">${cdButoane(x)}
     <div class="row" style="margin-top:14px;justify-content:flex-end"><div style="flex:0"><button class="btn" onclick="this.closest('.modal').remove()">Gata</button></div></div></div>`;
-  document.body.appendChild(w);
+  document.body.appendChild(w); feFereastra(w);
 }
 
 function openClient(id){
