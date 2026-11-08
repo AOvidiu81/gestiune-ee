@@ -1017,7 +1017,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
   <span id="rz-w"><button id="rz-reset" class="pictograma" title="Lățimi implicite — pune coloanele din tabelele acestei file înapoi cum erau">↺ Reset layout</button><i class="rz-sep">|</i></span>
   <span id="tz-w" title="Mărimea tabelului (doar tabelul, restul rămâne la fel), din 5 în 5%. Merge și cu Ctrl + rotița mausului, Ctrl + / Ctrl − / Ctrl 0. Dublu clic pe procent = scrii tu valoarea."><button class="pictograma" onclick="tzPas(-1)" aria-label="Micșorează tabelul">−</button><b id="tz-v" ondblclick="tzScrie()" title="Dublu clic = scrii mărimea (ex. 87), Enter">100%</b><input id="tz-in" type="number" min="30" max="300" step="5" style="display:none"><button class="pictograma" onclick="tzPas(1)" aria-label="Mărește tabelul">+</button></span>
-  <span class="ver">v8.02</span>
+  <span class="ver">v8.03</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -6055,6 +6055,17 @@ async function serSalveaza(){
   SR_ROWS.forEach(r=>{ if(r.serie) r.serie=serFormat(r.serie); });   // v5.26: și seriile vechi (72782 → EE-72782)
   const dub=serDubluri(SR_ROWS, SER, SR_PUNCT ? null : a.id);
   if(dub.length && !confirm("Atenție, serie deja la client:\n\n"+dub.map(d=>"• "+d.serie+" — "+d.unde).join("\n")+"\n\nSalvezi oricum?")) return;
+  // v8.03 (cerut de Ovidiu, 08.11 — PLANTAM FAPTE BUNE): serii trecute DUPĂ ce ridicarea a fost închisă rămâneau „LA CLIENT” (🔢 2/0 portocaliu)
+  const ridCmd = r => { const c = SR_CMD; if(!c) return null;
+    const l = (MISC || []).filter(x => /^(RIDICARE|EVENIMENT-R|REDUCERE)$/.test(x.tip_miscare || "") && x.client === c.client && x.produs === r.produs && extCheie(x.jud, x.loc, x.sat) === extCheie(a.jud, a.loc, a.sat))
+      .sort((x, y) => (x.data || "") < (y.data || "") ? 1 : -1); return l[0] || null; };
+  const puneRid = (r, zi) => { r.stare = "RIDICATA"; const c = ridCmd(r); r.data_ridicarii = r.data_ridicarii || zi || (c && c.data) || today(); if(c && !r.miscare_ridicare_id) r.miscare_ridicare_id = c.id; };
+  { const cuData = SR_ROWS.filter(r => r.stare === "LA CLIENT" && r.data_ridicarii && r.data_ridicarii <= today());
+    if(cuData.length && confirm("Ai completat data ridicării, dar starea a rămas LA CLIENT la:\n\n" + cuData.map(r => "• " + (r.produs || "") + " " + (r.serie || "fără serie") + " — ridicată " + fmtD(r.data_ridicarii)).join("\n") +
+      "\n\nOK = le trec RIDICATA\nAnulează = rămân LA CLIENT")) cuData.forEach(r => puneRid(r)); }
+  const LP0=SR_PUNCT ? SR_LOCS.find(x=>x.key===SR_PUNCT) : null, tot0=SR_PUNCT ? (LP0?LP0.n:0) : cantLocatie(a.id);
+  { const lc = SR_ROWS.filter(r => r.stare === "LA CLIENT");
+    if(lc.length && tot0 === 0 && confirm("Pe această locație nu mai e niciun produs la client (ridicarea e închisă), dar " + lc.length + (lc.length === 1 ? " serie e" : " serii sunt") + " LA CLIENT.\n\nOK = le trec RIDICATA (cu data și comanda ridicării)\nAnulează = rămân LA CLIENT")) lc.forEach(r => puneRid(r)); }
   const laClient=SR_ROWS.filter(r=>r.stare==="LA CLIENT").length;
   const LP=SR_PUNCT ? SR_LOCS.find(x=>x.key===SR_PUNCT) : null;
   const totS=SR_PUNCT ? (LP?LP.n:0) : cantLocatie(a.id);
@@ -6062,7 +6073,8 @@ async function serSalveaza(){
   const baza=r=>({anexa_id:r.anexa_id||a.id,contract_id:a.contract_id,client_id:k?k.client_id:null,jud:a.jud||null,loc:a.loc||null,sat:a.sat||null,
     ...(SR_CMD ? { miscare_amplasare_id: r.miscare_amplasare_id || SR_CMD.id } : {}),
     produs:r.produs,tip:r.tip||null,model:r.model||null,serie:(r.serie||"").trim()||null,stare:r.stare||"LA CLIENT",
-    data_amplasarii:r.data_amplasarii||null,data_ridicarii:r.data_ridicarii||null,observatii:(r.observatii||"").trim()||null,punct:r.punct||null});
+    data_amplasarii:r.data_amplasarii||null,data_ridicarii:r.data_ridicarii||null,observatii:(r.observatii||"").trim()||null,punct:r.punct||null,
+    ...(r.miscare_ridicare_id ? { miscare_ridicare_id: r.miscare_ridicare_id } : {})});   // v8.03
   const noi=SR_ROWS.filter(r=>!r.id).map(baza);
   if(noi.length){ const {error}=await db.from("serii").insert(noi); if(error){toast(error.message,true);return;} }
   for(const r of SR_ROWS.filter(r=>r.id)){
