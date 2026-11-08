@@ -1018,7 +1018,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
   <span id="rz-w"><button id="rz-reset" class="pictograma" title="Lățimi implicite — pune coloanele din tabelele acestei file înapoi cum erau">↺ Reset layout</button><i class="rz-sep">|</i></span>
   <span id="tz-w" title="Mărimea tabelului (doar tabelul, restul rămâne la fel), din 5 în 5%. Merge și cu Ctrl + rotița mausului, Ctrl + / Ctrl − / Ctrl 0. Dublu clic pe procent = scrii tu valoarea."><button class="pictograma" onclick="tzPas(-1)" aria-label="Micșorează tabelul">−</button><b id="tz-v" ondblclick="tzScrie()" title="Dublu clic = scrii mărimea (ex. 87), Enter">100%</b><input id="tz-in" type="number" min="30" max="300" step="5" style="display:none"><button class="pictograma" onclick="tzPas(1)" aria-label="Mărește tabelul">+</button></span>
-  <span class="ver">v8.08</span>
+  <span class="ver">v8.09</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -3486,8 +3486,12 @@ async function actGenereazaAnexaPV(){
       : tip === "SUPLIMENTARE" ? "Suplimentare produse la locatia existenta" : "",
     titlu_tabel: rid ? "REFERITOR LA PRODUSELE RIDICATE" : "REFERITOR LA CANTITATEA SI COSTUL PRODUSELOR",
     randuri, titlu_cond: rid ? "*Conditii pentru ridicare :" : "*Conditii minime de acceptare pentru livrare :", conditii: rid ? ACT_COND_RIDICARE : ACT_COND_LIVRARE,
-    client: c.nume || "", client_sediu: c.sediu || "", client_cui: c.cui ? (c.id_tip === "CNP" ? "CNP: " : "CUI: ") + ((c.atr || "") + " " + c.cui).trim() : "",
+    client: c.nume || "", client_sediu: c.sediu || "", client_id_et: c.id_tip === "CNP" ? "CNP" : "CUI", client_cui: c.cui ? ((c.atr || "") + " " + c.cui).trim() : "",
     client_j: c.nr_reg_com || "", reprezentant: c.pers_resp || "", reprezentant_functie: c.reprezentant_functie || "",
+    // v8.09 (cerut de Ovidiu, 08.11): părțile contractante în formatul nou (ca în contractul PJ 2026) — prestatorul cu datele actuale, beneficiarul complet
+    reprezentant_functie_mic: String(c.reprezentant_functie || "administrator").toLowerCase(),
+    client_email: c.email || "", client_tel: c.telefon || "", client_banca: c.banca || "",
+    client_iban: String(c.iban || "").replace(/\s+/g, "").toUpperCase().replace(/(.{4})(?=.)/g, "$1 "),
     persoana_contact: pers, telefon: tel, amplasament,
     pv_tip: PV_TIP[tip] || tip, pv_verb: rid ? "RIDICA" : tip === "SERVISARE" ? "SERVISEAZA" : "AMPLASEAZA", data_op: actD(dOp),
     pv_dep_a: rid ? "Retur" : "Livrat", pv_dep_b: rid ? "IN" : "DIN", pv_loc_b: rid ? "RIDICARE" : "AMPLASARE",   // v8.08: IN / DIN și RIDICARE / AMPLASARE îngroșate
@@ -3502,7 +3506,7 @@ async function actGenereazaAnexaPV(){
     const rsp = await fetch("modele/anexa_pv.docx", { cache: "no-cache" }); if(!rsp.ok) throw new Error("modelul nu s-a găsit (modele/anexa_pv.docx)");
     const zip = new PizZip(await rsp.arrayBuffer());
     const doc = new window.docxtemplater(zip, { paragraphLoop: true, linebreaks: true, nullGetter: () => "______" });
-    Object.keys(date).forEach(x => { if(date[x] === "" && x !== "info") date[x] = "______"; });
+    Object.keys(date).forEach(x => { if(date[x] === "" && !["info", "client_email", "client_tel", "client_iban", "client_banca"].includes(x)) date[x] = "______"; });
     doc.render(date);
     const blob = doc.getZip().generate({ type: "blob", mimeType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document" });
     const nume = [String(a.anexa || "ANEXA").trim(), rid ? "PV RIDICARE" : "PV", c.nume || "", k.nr_ctr || "", fmtD(dOp)].filter(Boolean).join(" - ").replace(/[\\/:*?"<>|]+/g, " ") + ".docx";
