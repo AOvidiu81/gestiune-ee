@@ -1018,7 +1018,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
   <span id="rz-w"><button id="rz-reset" class="pictograma" title="Lățimi implicite — pune coloanele din tabelele acestei file înapoi cum erau">↺ Reset layout</button><i class="rz-sep">|</i></span>
   <span id="tz-w" title="Mărimea tabelului (doar tabelul, restul rămâne la fel), din 5 în 5%. Merge și cu Ctrl + rotița mausului, Ctrl + / Ctrl − / Ctrl 0. Dublu clic pe procent = scrii tu valoarea."><button class="pictograma" onclick="tzPas(-1)" aria-label="Micșorează tabelul">−</button><b id="tz-v" ondblclick="tzScrie()" title="Dublu clic = scrii mărimea (ex. 87), Enter">100%</b><input id="tz-in" type="number" min="30" max="300" step="5" style="display:none"><button class="pictograma" onclick="tzPas(1)" aria-label="Mărește tabelul">+</button></span>
-  <span class="ver">v8.11</span>
+  <span class="ver">v8.12</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -1163,9 +1163,12 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
       <div class="search"><label>Caută client / CUI / contract</label><input id="c-q" oninput="renderClienti()"></div>
       <div><label>Depozit contract</label><select id="cl-dep" onchange="renderClienti()"><option value="">Toate</option></select></div>
       <div style="flex:0"><button class="btn" onclick="openClient()">+ Client nou</button></div>
+      <div style="flex:0"><button class="btn sec" onclick="cdNou()" title="Trimite clientului fișa „Date contract” (link online sau PDF)">📋 Fișă date contract</button></div>
       <div style="flex:0"><button class="btn sec" onclick="exportClienti()">Export Excel</button></div>
     </div>
   </div>
+  <!-- v8.12 (cerut de Ovidiu, 08.11): fișele „Date contract” trimise clienților (link online / PDF) -->
+  <div class="card noprint" id="cd-card" style="display:none"></div>
   <div class="card noprint ver-banda" id="c-ver" style="display:none"></div>
   <div id="c-list"></div>
 </section>
@@ -1769,8 +1772,18 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
     <input type="hidden" id="mc-id">
     <div id="mc-ciorne"></div>
     <div class="mc-r"><div><label>Client / societate / beneficiar</label><input id="mc-nume"></div></div>
+    <!-- v8.12 (cerut de Ovidiu, 08.11): categoria alege formularea părților în contract -->
+    <div class="mc-r r2">
+      <div><label>Categorie (pentru contract)</label><select id="mc-cat" onchange="mcCatSchimbat(true)">
+        <option value="SOCIETATE">Societate (SRL, SA…)</option><option value="PFA">PFA / Întreprindere individuală / familială</option>
+        <option value="INSTITUTIE">Instituție publică / Primărie</option><option value="ONG">ONG (asociație, fundație, club)</option>
+        <option value="PF">Persoană fizică</option><option value="ALTELE">Altele</option></select></div>
+      <div><label>&nbsp;</label><label style="display:flex;align-items:center;gap:6px;font-weight:500;margin:0;cursor:pointer" title="Ex. Primăria Hunedoara: contractul e al lor — aplicația nu-l generează, doar Anexa + PV; numărul lor se trece pe contract">
+        <input type="checkbox" id="mc-emite" style="width:auto"> Contractul îl emite clientul</label></div>
+    </div>
+    <div class="mc-r" id="mc-inreg-w" style="display:none"><div><label id="mc-inreg-l">Înregistrare</label><input id="mc-inreg" placeholder="ex. Registrul Asociațiilor și Fundațiilor de pe lângă Judecătoria Deva, nr. 23/2002"></div></div>
     <div class="mc-r r3">
-      <div><label>Tip ID</label><select id="mc-idtip" onchange="mcCuiVerif()"></select></div>
+      <div><label>Tip ID</label><select id="mc-idtip" onchange="mcCuiVerif();mcCatDinIdtip()"></select></div>
       <div id="mc-atr-w"><label>Atribut fiscal</label><select id="mc-atr"><option value=""></option></select></div>
       <div><label>Număr</label><div style="display:flex;gap:6px"><input id="mc-cui" oninput="mcCuiVerif()" onblur="mcCuiRO()" style="flex:1;min-width:0">
         <button type="button" class="btn sm sec" id="mc-anaf-b" onclick="mcAnaf()" title="Caută firma la ANAF după CUI/CIF (denumire, sediu, TVA, stare, bilanț)">ANAF</button></div>
@@ -1782,11 +1795,17 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
       <div><label>Număr</label><input id="mc-ci-nr" maxlength="10"></div>
       <div><label>Eliberat de</label><input id="mc-ci-elib" placeholder="SPCLEP Deva"></div>
       <div><label>Data expirării</label><input id="mc-ci-exp" type="date" onchange="mcCuiVerif()"><div id="mc-ci-info" style="font-size:12px;margin-top:3px"></div></div>
+      <div style="grid-column:1/-1"><label>Copia CI (pentru Anexa CI la contract)</label><div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+        <span id="mc-ci-copie" class="muted">—</span>
+        <button type="button" class="btn sm sec" onclick="$('mc-ci-fis').click()">📎 Încarcă copia CI</button>
+        <input type="file" id="mc-ci-fis" accept="image/*,application/pdf" style="display:none" onchange="mcCiIncarca(this)"></div></div>
     </div>
     <div class="mc-r r2">
       <div><label>Reprezentant legal</label><input id="mc-pers" placeholder="nume și prenume"></div>
       <div><label>Funcția</label><input id="mc-func" list="dl-functii" placeholder="Administrator, Director general, Primar…"><datalist id="dl-functii"><option value="Administrator"><option value="Director general"><option value="Director"><option value="Primar"><option value="Asociat unic"><option value="Președinte"><option value="Beneficiar"></datalist></div>
     </div>
+    <!-- v8.12: alți semnatari la beneficiar (consilier juridic, Vizat CFP…) — apar în chenarul de semnături -->
+    <div class="mc-r" id="mc-semn-w"><div><label>Alți semnatari (opțional) <button type="button" class="btn sm sec" onclick="mcSemnAd('','')" style="margin-left:6px">+ semnatar</button></label><div id="mc-semn"></div></div></div>
     <div class="mc-r r2">
       <div><label>Telefon</label><input id="mc-tel"></div>
       <div><label>E-mail</label><input id="mc-email"></div>
@@ -5346,6 +5365,175 @@ function renderClienti(){
   }).join("")||'<p class="muted">Niciun client.</p>';
   verBandaAct();
 }
+// ================= v8.12 (cerut de Ovidiu, 08.11): CATEGORIE CLIENT + FIȘA „DATE CONTRACT” (link online / PDF) =================
+const CAT_ET = { SOCIETATE: "Societate", PFA: "PFA / II / IF", INSTITUTIE: "Instituție publică", ONG: "ONG", PF: "Persoană fizică", ALTELE: "Altele" };
+const catDinClient = c => c.id_tip === "CNP" ? "PF" : /^(MUNICIPIUL|ORASUL|COMUNA|PRIMARIA|JUDETUL|CONSILIUL)/i.test(c.nume || "") ? "INSTITUTIE" : "SOCIETATE";
+let MC_CI_PATH = null, MC_CERERE = null, MC_CAT_MANA = false;
+function mcCatSchimbat(deMana){
+  if(deMana) MC_CAT_MANA = true; else MC_CAT_MANA = false;
+  const k = $("mc-cat").value, inr = k === "ONG" || k === "ALTELE";
+  $("mc-inreg-w").style.display = inr ? "" : "none";
+  $("mc-inreg-l").textContent = k === "ONG" ? "Înscrisă în Registrul Asociațiilor și Fundațiilor (instanța, nr.)" : "Înregistrată la / în baza";
+  $("mc-semn-w").style.display = k === "PF" ? "none" : "";
+  if(deMana){ if(k === "PF" && $("mc-idtip").value !== "CNP"){ $("mc-idtip").value = "CNP"; mcCuiVerif(); }
+    if(k !== "PF" && $("mc-idtip").value === "CNP"){ $("mc-idtip").value = ["INSTITUTIE","ONG"].includes(k) ? "CIF" : "CUI"; mcCuiVerif(); }
+    if(!$("mc-func").value.trim()) $("mc-func").value = { PFA: "Titular", INSTITUTIE: "Primar", ONG: "Președinte", PF: "Beneficiar" }[k] || ""; }
+}
+function mcCatDinIdtip(){ if(MC_CAT_MANA) return; const t = $("mc-idtip").value; $("mc-cat").value = t === "CNP" ? "PF" : t === "CIF" ? "INSTITUTIE" : "SOCIETATE"; mcCatSchimbat(false); }
+function mcSemnAd(n, f){
+  const d = document.createElement("div"); d.style.cssText = "display:flex;gap:6px;margin-top:6px";
+  d.innerHTML = `<input placeholder="Nume și prenume" value="${esc(n || "")}" style="flex:1"><input placeholder="Funcția (Consilier juridic, Vizat CFP…)" value="${esc(f || "")}" style="flex:1" list="dl-semn"><button type="button" class="btn sm sec" title="Scoate">✕</button>`;
+  d.querySelector("button").onclick = () => d.remove(); $("mc-semn").appendChild(d);
+  if(!$("dl-semn")){ const l = document.createElement("datalist"); l.id = "dl-semn"; l.innerHTML = ["Consilier juridic","Vizat CFP","Director economic","Contabil șef","Secretar general"].map(v => `<option value="${v}">`).join(""); document.body.appendChild(l); }
+}
+const mcSemnLista = () => [...$("mc-semn").children].map(d => { const i = d.querySelectorAll("input"); return { nume: i[0].value.trim(), functie: i[1].value.trim() }; }).filter(x => x.nume || x.functie);
+function mcCiCopieArata(){
+  $("mc-ci-copie").innerHTML = MC_CI_PATH ? `<a href="#" onclick="event.preventDefault();actVezi('${esc(MC_CI_PATH)}')">✓ copia CI atașată — vezi</a>` : "nicio copie";
+}
+async function actVezi(cale){
+  const { data, error } = await db.storage.from("acte").createSignedUrl(cale, 120);
+  if(error){ toast(error.message, true); return; } window.open(data.signedUrl, "_blank");
+}
+async function mcCiIncarca(inp){
+  const f = inp.files[0]; inp.value = ""; if(!f) return;
+  const id = +$("mc-id").value || 0;
+  if(!id){ toast("Salvează întâi clientul, apoi încarcă copia CI", true); return; }
+  if(f.size > 8 * 1024 * 1024){ toast("Fișierul e prea mare (max. 8 MB)", true); return; }
+  const ext = f.type === "application/pdf" ? "pdf" : f.type === "image/png" ? "png" : "jpg";
+  const cale = `clienti/${id}/ci_${Date.now()}.${ext}`;
+  const { error } = await db.storage.from("acte").upload(cale, f, { contentType: f.type || "image/jpeg", upsert: true });
+  if(error){ toast(error.message, true); return; }
+  const { error: e2 } = await db.from("clienti").update({ ci_path: cale }).eq("id", id);
+  if(e2){ toast(e2.message, true); return; }
+  MC_CI_PATH = cale; mcCiCopieArata(); const c = CLI.find(x => x.id === id); if(c) c.ci_path = cale; toast("Copia CI a fost salvată");
+}
+
+// ---------- fișa „Date contract” ----------
+let CD = [];
+const cdBaza = () => /github\.io$/.test(location.host) ? location.href.replace(/[^/]*([?#].*)?$/, "") : "https://aovidiu81.github.io/gestiune-ee/";
+const cdLink = x => cdBaza() + "date-contract.html?c=" + x.cod;
+const cdCod = () => { const a = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789", v = crypto.getRandomValues(new Uint32Array(32)); return [...v].map(n => a[n % a.length]).join(""); };
+const cdNume = x => ((x.raspuns || {}).denumire || (x.raspuns || {}).nume || (x.precompletat || {}).denumire || (x.precompletat || {}).nume || "(fără nume)");
+async function cdLoad(){
+  const { data, error } = await db.from("cereri_date").select("*").in("stare", ["trimisa", "completata"]).order("created_at", { ascending: false }).limit(100);
+  if(error){ $("cd-card").style.display = "none"; return; }
+  CD = data || []; cdRender();
+}
+function cdRender(){
+  const e = $("cd-card"); if(!CD.length){ e.style.display = "none"; return; }
+  const azi = new Date().toISOString();
+  e.style.display = "";
+  e.innerHTML = `<h3 style="margin:0 0 8px;color:var(--g)">📋 Fișe „Date contract” (${CD.length})</h3><div class="tw"><table><tr><th>Trimisă</th><th>Client</th><th>Categorie</th><th>Stare</th><th></th></tr>` +
+    CD.map(x => { const exp = x.stare === "trimisa" && x.expira_la < azi;
+      const st = x.stare === "completata" ? `<b style="color:var(--t-ok,#15803d)">✔ completată ${fmtD((x.completat_la || "").slice(0, 10))}</b>` : exp ? `<span style="color:var(--red)">expirată</span>` : `<span class="muted">așteaptă clientul (până la ${fmtD(x.expira_la.slice(0, 10))})</span>`;
+      return `<tr><td>${fmtD(x.created_at.slice(0, 10))}</td><td><b>${esc(cdNume(x))}</b></td><td>${esc(CAT_ET[x.categorie] || x.categorie)}${x.felul === "eveniment" ? " · eveniment" : ""}</td><td>${st}</td><td style="white-space:nowrap">` +
+        (x.stare === "completata" ? `<button class="btn sm" onclick="cdVezi(${x.id})">Vezi / creează client</button> ` : `<button class="btn sm sec" onclick="cdCopiaza(${x.id})">Copiază link</button> <button class="btn sm sec" onclick="cdPdf(${x.id})">PDF</button> ${exp ? `<button class="btn sm sec" onclick="cdPrelungeste(${x.id})">Prelungește</button> ` : ""}`) +
+        `<button class="btn sm sec" onclick="cdAnuleaza(${x.id})" title="Anulează fișa (linkul nu mai merge)">✕</button></td></tr>`; }).join("") + "</table></div>";
+}
+function cdNou(){
+  const k = prompt("Categoria clientului:\n\n1 = Societate (SRL, SA…)\n2 = PFA / Întreprindere individuală\n3 = Instituție publică / Primărie\n4 = ONG (asociație, fundație)\n5 = Persoană fizică\n6 = Altele\n\nScrie cifra:", "1");
+  if(k === null) return;
+  const cat = ["SOCIETATE","PFA","INSTITUTIE","ONG","PF","ALTELE"][(+k || 1) - 1] || "SOCIETATE";
+  const ev = confirm("Este un EVENIMENT (câteva zile, cu program)?\n\nOK = eveniment · Anulează = închiriere pe perioadă");
+  const nume = prompt(cat === "PF" ? "Numele clientului (opțional — îl completează el):" : "Denumirea clientului (opțional — o completează el; la CUI se ia din ANAF):", "");
+  if(nume === null) return;
+  cdCreeaza(cat, ev ? "eveniment" : "perioada", nume.trim().toUpperCase());
+}
+async function cdCreeaza(cat, felul, nume){
+  const pre = {}; if(nume){ if(cat === "PF") pre.nume = nume; else pre.denumire = nume; }
+  const rec = { cod: cdCod(), categorie: cat, felul, precompletat: pre };
+  const { data, error } = await db.from("cereri_date").insert(rec).select("*").single();
+  if(error){ toast(error.message, true); return; }
+  CD.unshift(data); cdRender();
+  const link = cdLink(data);
+  try{ await navigator.clipboard.writeText(link); }catch(_){}
+  prompt("Linkul a fost copiat. Trimite-l clientului (e-mail / WhatsApp). Expiră în 14 zile.\n\nDacă clientul nu vrea online: butonul „PDF” din listă.", link);
+}
+async function cdCopiaza(id){ const x = CD.find(y => y.id === id); if(!x) return; const l = cdLink(x); try{ await navigator.clipboard.writeText(l); toast("Link copiat"); }catch(_){ prompt("Copiază linkul:", l); } }
+async function cdPrelungeste(id){
+  const { error } = await db.from("cereri_date").update({ expira_la: new Date(Date.now() + 14 * 864e5).toISOString(), updated_at: new Date().toISOString() }).eq("id", id);
+  if(error){ toast(error.message, true); return; } toast("Linkul merge încă 14 zile"); cdLoad();
+}
+async function cdAnuleaza(id){
+  const x = CD.find(y => y.id === id); if(!x || !confirm("Anulezi fișa „" + cdNume(x) + "”? Linkul nu mai funcționează.")) return;
+  const { error } = await db.from("cereri_date").update({ stare: "anulata", updated_at: new Date().toISOString() }).eq("id", id);
+  if(error){ toast(error.message, true); return; } cdLoad();
+}
+// câmpurile fișei, pe categorie (aceleași ca în date-contract.html)
+function cdCampuri(cat, felul){
+  const L = [];
+  if(cat === "PF") L.push(["nume","Nume și prenume"],["cnp","CNP"],["ci_serie","CI seria"],["ci_numar","CI numărul"],["ci_emis_de","CI emisă de"],["ci_expira","CI valabilă până la"],["domiciliu","Domiciliul"],["telefon","Telefon"],["email","E-mail"]);
+  else {
+    L.push(["cui", cat === "INSTITUTIE" || cat === "ONG" ? "CIF" : "CUI"]);
+    if(cat === "SOCIETATE" || cat === "PFA") L.push(["nr_reg", cat === "PFA" ? "Nr. Registrul Comerțului (F / J)" : "Nr. Registrul Comerțului (J)"]);
+    L.push(["denumire","Denumirea"]);
+    if(cat === "ONG") L.push(["inregistrare","Înscrisă în Registrul Asociațiilor și Fundațiilor (instanța, nr.)"]);
+    if(cat === "ALTELE") L.push(["inregistrare","Înregistrată la / în baza"]);
+    L.push(["sediu","Adresa sediului"],["iban", cat === "INSTITUTIE" ? "Cont IBAN (Trezorerie)" : "Cont IBAN"],["banca", cat === "INSTITUTIE" ? "Trezoreria" : "Banca"],
+      ["reprezentant","Semnează — nume"],["functie","Semnează — funcția"],["semnatari","Alți semnatari (nume — funcția)"],["telefon","Telefon"],["email","E-mail"],["email_efactura","E-mail facturi"]);
+  }
+  L.push(["notif_adresa","Adresa pentru notificări"],["notif_atentie","În atenția"],["livrare_adresa","Adresa de livrare"],["livrare_gps","GPS livrare"],["contact_nume","Persoana de contact la locație"],["contact_tel","Telefonul ei"],["produse","Produse și bucăți"]);
+  if(felul === "eveniment") L.push(["eveniment","Evenimentul (zile, ore, servisări)"]); else L.push(["perioada_de","Perioada — de la"],["perioada_pana","Perioada — până la"],["perioada_text","Perioada (text)"]);
+  L.push(["observatii","Observații"]);
+  return L;
+}
+const cdVal = (k, v) => k === "semnatari" ? (Array.isArray(v) ? v.map(s => [s.nume, s.functie].filter(Boolean).join(" — ")).join("; ") : "") : /^(ci_expira|perioada_de|perioada_pana)$/.test(k) && v ? fmtD(v) : (v == null ? "" : String(v));
+function cdVezi(id){
+  const x = CD.find(y => y.id === id); if(!x) return;
+  const R = x.raspuns || {}, L = cdCampuri(x.categorie, x.felul);
+  const w = document.createElement("div"); w.className = "modal on"; w.id = "mod-cd";
+  w.innerHTML = `<div class="box" style="max-width:760px"><h3 class="lux-cap cap-mut">Fișa „Date contract” — ${esc(cdNume(x))}</h3>
+    <p class="muted" style="margin:0 0 8px">${esc(CAT_ET[x.categorie] || x.categorie)}${x.felul === "eveniment" ? " · eveniment" : ""} · completată ${fmtD((x.completat_la || "").slice(0, 10))}. Verifică datele${x.ci_path ? " și copia CI" : ""}, apoi „Creează client” (se deschide fișa clientului completată — o mai poți corecta înainte de Salvează).</p>
+    <div class="tw"><table>${L.map(([k, l]) => `<tr><td style="width:38%">${esc(l)}</td><td><b>${esc(cdVal(k, R[k])) || '<span class="muted">—</span>'}</b></td></tr>`).join("")}</table></div>
+    ${x.ci_path ? `<p style="margin:10px 0 0"><button class="btn sm sec" onclick="actVezi('${esc(x.ci_path)}')">🪪 Vezi copia CI</button></p>` : ""}
+    <div class="row" style="margin-top:14px;justify-content:flex-end"><div style="flex:1"></div>
+      <div style="flex:0"><button class="btn sec" onclick="this.closest('.modal').remove()">Închide</button></div>
+      <div style="flex:0"><button class="btn sec" onclick="cdRedeschide(${x.id})" title="Clientul poate corecta din același link">Redeschide linkul</button></div>
+      <div style="flex:0"><button class="btn" onclick="cdCreeazaClient(${x.id})">Creează client</button></div></div></div>`;
+  document.body.appendChild(w);
+}
+async function cdRedeschide(id){
+  const { error } = await db.from("cereri_date").update({ stare: "trimisa", expira_la: new Date(Date.now() + 14 * 864e5).toISOString(), updated_at: new Date().toISOString() }).eq("id", id);
+  if(error){ toast(error.message, true); return; } document.getElementById("mod-cd")?.remove(); cdLoad(); cdCopiaza(id);
+}
+function cdCreeazaClient(id){
+  const x = CD.find(y => y.id === id); if(!x) return; const R = x.raspuns || {}, k = x.categorie, pf = k === "PF";
+  document.getElementById("mod-cd")?.remove();
+  openClient();
+  const cui = String(R.cui || "").toUpperCase().replace(/\s+/g, " ").trim(), ro = /^RO\s?/.test(cui);
+  const obs = [R.email_efactura && "E-mail facturi: " + R.email_efactura, (R.notif_adresa || R.notif_atentie) && "Notificări: " + [R.notif_adresa, R.notif_atentie && "în atenția " + R.notif_atentie].filter(Boolean).join(", "),
+    R.livrare_adresa && "Livrare: " + R.livrare_adresa + (R.livrare_gps ? " (GPS " + R.livrare_gps + ")" : ""), (R.contact_nume || R.contact_tel) && "Contact locație: " + [R.contact_nume, R.contact_tel].filter(Boolean).join(" "),
+    R.produse && "Produse: " + R.produse, R.eveniment && "Eveniment: " + R.eveniment, (R.perioada_de || R.perioada_pana || R.perioada_text) && "Perioada: " + [R.perioada_de && fmtD(R.perioada_de), R.perioada_pana && fmtD(R.perioada_pana), R.perioada_text].filter(Boolean).join(" – "),
+    R.observatii && "Observații client: " + R.observatii].filter(Boolean);
+  $("mc-nume").value = (pf ? R.nume : R.denumire) || "";
+  $("mc-cat").value = k; $("mc-idtip").value = pf ? "CNP" : ["INSTITUTIE","ONG"].includes(k) ? "CIF" : "CUI";
+  $("mc-atr").value = pf ? "" : ro ? "RO" : ""; $("mc-cui").value = pf ? (R.cnp || "") : cui.replace(/^RO\s?/, "");
+  $("mc-pers").value = pf ? (R.nume || "") : (R.reprezentant || ""); $("mc-func").value = pf ? "Beneficiar" : (R.functie || "");
+  $("mc-tel").value = R.telefon || ""; $("mc-email").value = R.email || "";
+  $("mc-sediu").value = (pf ? R.domiciliu : R.sediu) || ""; $("mc-j").value = R.nr_reg || ""; $("mc-iban").value = String(R.iban || "").replace(/\s+/g, "").toUpperCase(); $("mc-banca").value = R.banca || "";
+  if(pf){ $("mc-ci-serie").value = R.ci_serie || ""; $("mc-ci-nr").value = R.ci_numar || ""; $("mc-ci-elib").value = R.ci_emis_de || ""; $("mc-ci-exp").value = R.ci_expira || ""; }
+  $("mc-inreg").value = R.inregistrare || ""; $("mc-semn").innerHTML = ""; (Array.isArray(R.semnatari) ? R.semnatari : []).forEach(s => mcSemnAd(s.nume, s.functie));
+  $("mc-obs").value = obs.join("\n");
+  MC_CI_PATH = x.ci_path || null; MC_CERERE = x.id; MC_CAT_MANA = true; mcCiCopieArata(); mcCatSchimbat(false); mcCuiVerif();
+  toast("Fișa clientului e completată din „Date contract” — verifică și Salvează");
+}
+// PDF de completat (rezervă, pentru cine nu vrea online): pagina se tipărește / salvează ca PDF
+function cdPdf(id){
+  const x = CD.find(y => y.id === id); if(!x) return; const P = x.precompletat || {};
+  const L = cdCampuri(x.categorie, x.felul).filter(([k]) => k !== "livrare_gps");
+  const w = window.open("", "_blank"); if(!w){ toast("Permite ferestrele noi (pop-up) pentru aplicație", true); return; }
+  w.document.write(`<!DOCTYPE html><html lang="ro"><head><meta charset="utf-8"><title>Date pentru contract - ${esc(cdNume(x))}</title><style>
+    body{font-family:Arial,sans-serif;font-size:12pt;margin:18mm 16mm;color:#141A2E}h1{font-size:16pt;color:#17275A;margin:0 0 2mm}p{margin:0 0 4mm;color:#5E6A82;font-size:10pt}
+    table{width:100%;border-collapse:collapse}td{border:1px solid #9AA6BF;padding:2.6mm 3mm;vertical-align:top}td:first-child{width:38%;background:#EEF2FA;font-weight:bold;font-size:10.5pt}
+    .jos{margin-top:6mm;font-size:9pt;color:#5E6A82}@page{size:A4;margin:0}</style></head><body>
+    <h1>Informații / date client pentru redactare contract</h1><p>${esc(CAT_ET[x.categorie] || "")}${x.felul === "eveniment" ? " · eveniment" : ""} · SC EURO-ECOLOGIC SRL · J2007000205190 · RO 21311085 · hunedoara@eurowc.ro · 0735 214 751</p>
+    <table>${L.map(([k, l]) => `<tr><td>${esc(l)}</td><td style="height:${/adresa|sediu|domiciliu|produse|eveniment|observatii|semnatari|inregistrare/.test(k) ? "16mm" : "8mm"}">${esc(cdVal(k, P[k]))}</td></tr>`).join("")}</table>
+    ${x.categorie === "PF" ? "<p style='margin-top:4mm;color:#B4232A'><b>Vă rugăm atașați o copie a actului de identitate</b> (se anexează la contract — Anexa CI).</p>" : ""}
+    <div class="jos">Datele sunt folosite doar pentru redactarea contractului, conform Regulamentului UE 679/2016 (GDPR). Mai simplu: completați online la ${esc(cdLink(x))}</div>
+    <script>setTimeout(()=>print(),300)<\/script></body></html>`);
+  w.document.close();
+}
+
 function openClient(id){
   const c=id?CLI.find(x=>x.id===id):null; $("mc-title").textContent=c?"Editare client":"Client nou"; $("mc-id").value=c?c.id:"";
   $("mc-nume").value=c?c.nume:""; $("mc-idtip").value=c?(c.id_tip||"CUI"):"CUI"; $("mc-atr").value=c?(c.atr||""):"RO"; $("mc-cui").value=c?(c.cui||""):"";
@@ -5353,6 +5541,10 @@ function openClient(id){
   $("mc-sediu").value=c?(c.sediu||""):""; $("mc-j").value=c?(c.nr_reg_com||""):""; $("mc-iban").value=c?(c.iban||""):""; $("mc-banca").value=c?(c.banca||""):"";   // v8.05
   $("mc-func").value=c?(c.reprezentant_functie||""):"";
   $("mc-ci-serie").value=c?(c.ci_serie||""):""; $("mc-ci-nr").value=c?(c.ci_numar||""):""; $("mc-ci-elib").value=c?(c.ci_eliberat_de||""):""; $("mc-ci-exp").value=c?(c.ci_expira||""):"";
+  // v8.12: categorie, contract emis de client, înregistrare, semnatari, copia CI
+  $("mc-cat").value=c?(c.categorie||catDinClient(c)):"SOCIETATE"; $("mc-emite").checked=!!(c&&c.emite_contract); $("mc-inreg").value=c?(c.inregistrare||""):"";
+  $("mc-semn").innerHTML=""; ((c&&Array.isArray(c.semnatari))?c.semnatari:[]).forEach(x=>mcSemnAd(x.nume,x.functie));
+  MC_CI_PATH=c?(c.ci_path||null):null; MC_CERERE=null; mcCiCopieArata(); mcCatSchimbat(false);
   MC_CIORNA = null; $("mc-conf").classList.remove("on"); $("mc-ciorne").innerHTML = "";
   $("mc-anaf").innerHTML = ""; mcCuiVerif();
   $("mod-c").classList.add("on");
@@ -5486,7 +5678,8 @@ function mcAnafAplica(){
 let MC_CIORNA = null, MC_CIORNE = [];
 const MC_CAMPURI = [["mc-nume","nume","Client / societate / beneficiar"],["mc-idtip","id_tip","Tip ID"],["mc-atr","atr","Atribut fiscal"],["mc-cui","cui","Număr"],
   ["mc-ci-serie","ci_serie","C.I. seria"],["mc-ci-nr","ci_numar","C.I. număr"],["mc-ci-elib","ci_eliberat_de","C.I. eliberat de"],["mc-ci-exp","ci_expira","C.I. expiră"],
-  ["mc-pers","pers_resp","Reprezentant legal"],["mc-func","reprezentant_functie","Funcția"],["mc-tel","telefon","Telefon"],["mc-email","email","E-mail"],["mc-obs","observatii","Observații"]];
+  ["mc-pers","pers_resp","Reprezentant legal"],["mc-func","reprezentant_functie","Funcția"],["mc-tel","telefon","Telefon"],["mc-email","email","E-mail"],["mc-obs","observatii","Observații"],
+  ["mc-cat","categorie","Categorie"],["mc-inreg","inregistrare","Înregistrare"]];   // v8.12
 const MC_CI = ["ci_serie","ci_numar","ci_eliberat_de","ci_expira"];
 const mcDate = () => Object.fromEntries(MC_CAMPURI.map(([el, c]) => [c, ($(el).value || "").trim()]));
 const mcGol = d => !["nume","cui","pers_resp","reprezentant_functie","telefon","email","observatii"].concat(MC_CI).some(c => d[c]);
@@ -5549,7 +5742,8 @@ function confSubBara(id){ const cf = $(id), cap = cf.parentElement.querySelector
   cf.parentElement.scrollTop = 0; cf.style.top = (cap ? cap.offsetHeight : 0) + "px"; }
 async function saveClient(dupa){
   const rec={nume:$("mc-nume").value.trim().toUpperCase(),id_tip:$("mc-idtip").value,atr:$("mc-atr").value||null,cui:$("mc-cui").value||null,pers_resp:$("mc-pers").value||null,telefon:$("mc-tel").value||null,email:$("mc-email").value||null,observatii:$("mc-obs").value||null,reprezentant_functie:$("mc-func").value.trim()||null,
-    sediu:$("mc-sediu").value.trim()||null,nr_reg_com:$("mc-j").value.trim()||null,iban:$("mc-iban").value.replace(/\s+/g,"").toUpperCase()||null,banca:$("mc-banca").value.trim()||null};   // v8.05
+    sediu:$("mc-sediu").value.trim()||null,nr_reg_com:$("mc-j").value.trim()||null,iban:$("mc-iban").value.replace(/\s+/g,"").toUpperCase()||null,banca:$("mc-banca").value.trim()||null,   // v8.05
+    categorie:$("mc-cat").value||"SOCIETATE",emite_contract:$("mc-emite").checked,inregistrare:$("mc-inreg").value.trim()||null,semnatari:mcSemnLista(),ci_path:MC_CI_PATH||null};   // v8.12
   { const pf = rec.id_tip === "CNP";   // v6.57: cartea de identitate doar la persoane fizice; Atribut fiscal doar la firme
     if(pf){ rec.atr = null; if(rec.cui) rec.cui = rec.cui.replace(/\s/g, ""); }
     rec.ci_serie = pf ? ($("mc-ci-serie").value.trim().toUpperCase() || null) : null; rec.ci_numar = pf ? ($("mc-ci-nr").value.trim() || null) : null;
@@ -5560,6 +5754,7 @@ async function saveClient(dupa){
   if(id){ const {error}=await db.from("clienti").update(rec).eq("id",id); if(error){toast(error.message,true);return;} }
   else { const {data,error}=await db.from("clienti").insert(rec).select("id").single(); if(error){toast(error.message,true);return;} noulId=data.id; }
   if(!id && MC_CIORNA){ await db.from("ciorne").delete().eq("id", MC_CIORNA); MC_CIORNA = null; }   // ciorna folosită nu mai rămâne în ciorne
+  if(MC_CERERE && noulId){ await db.from("cereri_date").update({ stare: "folosita", client_id: noulId, updated_at: new Date().toISOString() }).eq("id", MC_CERERE); MC_CERERE = null; cdLoad(); }   // v8.12
   closeModal("mod-c"); toast("Client salvat"); await reloadClienti();
   if(dupa==="contract" && noulId) openContract(null, noulId);   // lanțul client → contract → anexe
   // lanțul pornit din comandă: după client urmează contractul, apoi anexa — comanda le primește pe toate
@@ -5630,7 +5825,7 @@ async function stergeClient(){
   alert("„" + nume.toUpperCase() + "” a fost șters.\n" + Object.keys(d).filter(k => +d[k]).map(k => k + ": " + d[k]).join(", "));
   location.reload();
 }
-async function reloadClienti(){ const [c,k,a,sr]=await Promise.all([db.from("clienti").select("*").order("nume"),db.from("contracte").select("*").order("nr_ctr"),db.from("anexe").select("*").order("id"),db.from("serii").select("*").order("id")]); CLI=c.data||[];CTR=k.data||[];ANX=a.data||[];SER=sr.data||[]; $("dl-clienti").innerHTML=CLI.map(x=>`<option value="${esc(x.nume)}">`).join(""); renderClienti(); }
+async function reloadClienti(){ const [c,k,a,sr]=await Promise.all([db.from("clienti").select("*").order("nume"),db.from("contracte").select("*").order("nr_ctr"),db.from("anexe").select("*").order("id"),db.from("serii").select("*").order("id")]); CLI=c.data||[];CTR=k.data||[];ANX=a.data||[];SER=sr.data||[]; $("dl-clienti").innerHTML=CLI.map(x=>`<option value="${esc(x.nume)}">`).join(""); renderClienti(); cdLoad(); }
 function openContract(id,clientId){
   const k=id?CTR.find(x=>x.id===id):null; $("mk-title").textContent=k?"Editare contract":"Contract nou"; $("mk-id").value=k?k.id:""; $("mk-client").value=k?k.client_id:clientId;
   $("mk-nr").value=k?k.nr_ctr:""; $("mk-de").value=k?(k.data_emitere||""):today(); $("mk-dx").value=k?(k.data_expirare||""):""; $("mk-xt").value=k?(k.expirare_text||""):""; $("mk-stare").value=k?k.stare:"ACTIV";
