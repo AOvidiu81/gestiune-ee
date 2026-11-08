@@ -325,7 +325,8 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   .g-full{grid-template-columns:1fr}
   .g-loc{grid-template-columns:58px 1fr 1.3fr}
   .g-resp{grid-template-columns:2fr 1fr}
-  .g-lreper{grid-template-columns:1fr} .g-lreper input{text-transform:uppercase}   /* v8.01 */
+  .g-lreper{grid-template-columns:1fr}
+  .pr-val{width:72px;padding:2px 4px;font-size:12px;text-align:right;margin-left:auto;margin-right:4px}   /* v8.07 */ .g-lreper input{text-transform:uppercase}   /* v8.01 */
   .mm-resp-x{display:none} .mm-resp-x.on{display:grid}
   .mm-resp-add{background:none;border:0;color:var(--accent,#2563eb);cursor:pointer;font-size:12px;padding:2px 0}
   #mm-buc,#mm-jud{text-align:center;padding-left:4px;padding-right:4px}
@@ -1017,7 +1018,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
   <span id="rz-w"><button id="rz-reset" class="pictograma" title="Lățimi implicite — pune coloanele din tabelele acestei file înapoi cum erau">↺ Reset layout</button><i class="rz-sep">|</i></span>
   <span id="tz-w" title="Mărimea tabelului (doar tabelul, restul rămâne la fel), din 5 în 5%. Merge și cu Ctrl + rotița mausului, Ctrl + / Ctrl − / Ctrl 0. Dublu clic pe procent = scrii tu valoarea."><button class="pictograma" onclick="tzPas(-1)" aria-label="Micșorează tabelul">−</button><b id="tz-v" ondblclick="tzScrie()" title="Dublu clic = scrii mărimea (ex. 87), Enter">100%</b><input id="tz-in" type="number" min="30" max="300" step="5" style="display:none"><button class="pictograma" onclick="tzPas(1)" aria-label="Mărește tabelul">+</button></span>
-  <span class="ver">v8.06</span>
+  <span class="ver">v8.07</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -3425,8 +3426,8 @@ const actFrecv = f => String(f || "").replace(/\s*\/\s*Sap\b\.?/i, " / Saptamana
 // v8.06 (cerut de Ovidiu, 08.11): actul după TIPUL comenzii — amplasare / suplimentare / eveniment vs ridicare / reducere / ridicare finală:
 // tabelul anexei și condițiile se aleg pe tip (buclă {#randuri} / {#conditii} în model), PV cu un singur tip, „Livrat DIN” / „Retur ÎN” depozit,
 // plus contravaloarea în caz de daună / furt (Tabel nr. 1 din contract).
-const ACT_VAL_DAUNA = { "TOALETA": "1500.00 Euro + TVA / bucata" };   // din contractul-model; restul produselor: de completat (îmi spune Ovidiu)
-const actValDauna = p => ACT_VAL_DAUNA[String(p || "").trim().toUpperCase()] || "";
+// v8.07: valoarea vine din catalog (Administrare → Produse), vezi valDaunaBuc
+const actValDauna = r => { const v = valDaunaBuc(r.produs, r.model, r.model_fizic, r.accesorii); return v == null ? "" : v.toFixed(2) + " Euro + TVA / bucata"; };
 const ACT_COND_LIVRARE = ["*Asigurare acces auto obligatoriu pentru auto de 3.5 T in perimetru santier/locatie ;", "*Igienizare Toalete Ecologice: golire, spalare, odorizare, hartie igienica;",
   "*Distanta Maxima pentru serviciul de Igenizare Toalete: 5m fara obstacole ;", "*Beneficiarul are obligatia sa asigure paza si integritatea produselor pina la predarea lor catre Sc Euro-Ecologic Srl.",
   "*La pretul produselor se adauga TVA potrivit legislatiei aplicabile in materie."];
@@ -3450,7 +3451,8 @@ async function actGenereazaAnexaPV(){
   const amplasament = [a.sat, a.loc].filter(Boolean).join(", ") + (a.jud ? " / " + a.jud : "");
   const pers = $("mm-pers").value || a.pers_contact || "", tel = $("mm-tel").value || a.telefon || "";
   const cant = multi ? rows.map(r => actPad(n(r)) + " " + (r.um || "BUC")).join(" / ") : actPad(n(a)) + " " + (a.um || "BUC");
-  const vd = rows.map(r => actValDauna(r.produs) ? (multi ? (r.produs || "") + ": " : "") + actValDauna(r.produs) : "").filter(Boolean).join(" / ");
+  const vd = rows.map(r => { const rr = r.id === a.id && !r.accesorii && accCitite("mm-acc") ? Object.assign({}, r, { accesorii: accCitite("mm-acc") }) : r;
+    return actValDauna(rr) ? (multi ? (r.produs || "") + ": " : "") + actValDauna(rr) : ""; }).filter(Boolean).join(" / ");
   // seriile liniei (la ridicare: cele de la client sau ridicate cu această comandă)
   const idsL = [...new Set(rows.flatMap(r => anexeLinie(r.id).map(x => x.id)))], mid = +$("mm-id").value || 0;
   const serR = r => (SER || []).filter(x => anexeLinie(r.id).some(y => y.id === x.anexa_id) && (x.stare === "LA CLIENT" || (mid && x.miscare_ridicare_id === mid)) && (!x.produs || x.produs === r.produs));
@@ -6247,6 +6249,23 @@ async function reloadNom(){ const n=await db.from("nomenclatoare").select("*").e
 let PR_P=null, PR_M=null;
 function alegeP(id){ PR_P=id; PR_M=null; renderProduse(); }
 function alegeM(id){ PR_M=id; renderProduse(); }
+// v8.07 (cerut de Ovidiu, 08.11): valoarea în caz de daună / furt (Euro + TVA / buc) pe categorie, tip, model și accesoriu —
+// la acte: baza = modelul, altfel tipul, altfel categoria; + accesoriile bifate pe anexă / comandă.
+const prValInp = x => `<input class="pr-val" type="number" min="0" step="1" value="${x.valoare_dauna ?? ""}" placeholder="€" title="Valoare daună / furt — Euro + TVA / bucată${x.tip === "accesoriu" ? " (se adaugă la valoarea produsului)" : ""}. Gol = nu se ia în calcul." onclick="event.stopPropagation()" onchange="setValDauna(${x.id},this.value)">`;
+async function setValDauna(id, v){
+  const n = String(v).trim() === "" ? null : Math.round((+String(v).replace(",", ".") || 0) * 100) / 100;
+  const { error } = await db.from("nomenclatoare").update({ valoare_dauna: n }).eq("id", id);
+  if(error){ toast(error.message, true); return; }
+  Object.values(NOM).forEach(L => (L || []).forEach(r => { if(r.id === id) r.valoare_dauna = n; }));
+  toast(n == null ? "Valoarea daună/furt ștearsă" : "Valoare daună/furt: " + n.toFixed(2) + " € + TVA / buc");
+}
+function valDaunaBuc(prod, tip, mf, acc){
+  const P = String(prod || "").trim(), g = (t, f) => (NOM[t] || []).find(f), num = r => r && r.valoare_dauna != null && r.valoare_dauna !== "" ? +r.valoare_dauna : null;
+  const b = num(g("model_fizic", r => r.valoare === mf && r.parinte === P)) ?? num(g("model", r => r.valoare === tip && r.parinte === P)) ?? num(g("model", r => r.valoare === tip && !r.parinte)) ?? num(g("produs", r => r.valoare === P));
+  if(b == null) return null;
+  const ac = String(acc || "").split(",").map(x => x.trim()).filter(Boolean);
+  return b + ac.reduce((t, a) => t + (num(g("accesoriu", r => r.valoare === a && r.parinte === P)) || 0), 0);
+}
 function renderProduse(){
   const g=$("pr-grid"); if(!g) return;
   const P=NOM.produs||[], M=NOM.model||[], A=NOM.accesoriu||[], numeP=P.map(p=>p.valoare), deps=DEP.map(d=>d.nume);
@@ -6257,7 +6276,7 @@ function renderProduse(){
   const stop="event.stopPropagation();";
   // card 1: categorii
   const c1=`<div class="card pr-c"><div class="pr-h"><h4>Categorii</h4></div>`
-    +(P.map((x,i)=>`<div class="pr-l${x.id===PR_P?" sel":""}" onclick="alegeP(${x.id})"><span class="nm">${esc(x.valoare)}</span><span class="nr">${M.filter(y=>y.parinte===x.valoare).length} tip.${x.are_serie?" · serie":""}</span>`
+    +(P.map((x,i)=>`<div class="pr-l${x.id===PR_P?" sel":""}" onclick="alegeP(${x.id})"><span class="nm">${esc(x.valoare)}</span>${prValInp(x)}<span class="nr">${M.filter(y=>y.parinte===x.valoare).length} tip.${x.are_serie?" · serie":""}</span>`
       +`<button class="btn sm sec" title="Mută sus" ${i===0?"disabled":""} onclick="${stop}mutaProdus(${x.id},-1)">↑</button>`
       +`<button class="btn sm sec" title="Mută jos" ${i===P.length-1?"disabled":""} onclick="${stop}mutaProdus(${x.id},1)">↓</button>`
       +`<button class="btn sm sec" title="Redenumește / unește" onclick="${stop}redenumeste(${x.id})">✎</button>`
@@ -6276,7 +6295,7 @@ function renderProduse(){
   const serieBox=p?`<div class="pr-dep" style="border-bottom:0;border-top:1px solid var(--bd);margin:12px 0 0;padding-top:10px"><b>${esc(p.valoare)} — serii</b><label><input type="checkbox" ${p.are_serie?"checked":""} onchange="setAreSerie(${p.id},this.checked)">Are serie (se trec serii pe bucată)</label></div>`:"";
   // card 2: tipuri (in baza: nomenclatoare.tip = "model"; pe anexe / comenzi coloana `model`)
   const c2=`<div class="card pr-c"><div class="pr-h"><h4>Tipuri${p?" — "+esc(p.valoare):""}</h4></div>`
-    +(!p?'<p class="muted">Alege o categorie.</p>':(ms.map(x=>`<div class="pr-l${x.id===PR_M?" sel":""}" onclick="alegeM(${x.id})"><span class="nm">${esc(x.valoare)}</span>`
+    +(!p?'<p class="muted">Alege o categorie.</p>':(ms.map(x=>`<div class="pr-l${x.id===PR_M?" sel":""}" onclick="alegeM(${x.id})"><span class="nm">${esc(x.valoare)}</span>${prValInp(x)}`
       +`<button class="btn sm sec" title="Redenumește / unește" onclick="${stop}redenumeste(${x.id})">✎</button>`
       +`<button class="btn sm danger" title="Scoate tipul" onclick="${stop}delNom(${x.id})">✕</button></div>`).join("")||'<p class="muted" style="margin:4px 0">Niciun tip.</p>')
       +`<div class="pr-add"><input id="pr-m-${p.id}" placeholder="tip nou" onkeydown="if(event.key==='Enter')adaugaModel(${p.id})"><button class="btn sm" onclick="adaugaModel(${p.id})">+ Tip</button></div>`)+`</div>`;
@@ -6286,7 +6305,7 @@ function renderProduse(){
   const cM=`<div class="card pr-c"><div class="pr-h"><h4>Modele${p?" — "+esc(p.valoare):""}</h4></div>`
     +(p?`<p class="muted" style="margin:0 0 6px">Modelul bucății (ex. ARMAL, MONDO)${ms.length>1?"; bifezi la ce tipuri se aplică — fără nicio bifă apare la toate":""}.</p>`:"")
     +(!p?'<p class="muted">Alege o categorie.</p>':(mf.map(x=>{ const al=(x.tipuri||[]).filter(t=>ms.some(m=>m.valoare===t));
-        return `<div class="pr-mod"><div class="pr-l" style="cursor:default;padding:2px 0"><span class="nm">${esc(x.valoare)}</span>`
+        return `<div class="pr-mod"><div class="pr-l" style="cursor:default;padding:2px 0"><span class="nm">${esc(x.valoare)}</span>${prValInp(x)}`
           +`<button class="btn sm sec" title="Redenumește" onclick="redenumesteMF(${x.id})">✎</button>`
           +`<button class="btn sm danger" title="Scoate modelul" onclick="stergeAcc(${x.id})">✕</button></div>`
           +(ms.length>1?`<div class="pr-dep" style="border:0;margin:0;padding:0 0 2px">${ms.map(m=>`<label><input type="checkbox" ${al.includes(m.valoare)?"checked":""} onchange="comutaTipModel(${x.id},${m.id},this.checked)">${esc(m.valoare)}</label>`).join("")}</div>`:"")+`</div>`; }).join("")||'<p class="muted" style="margin:4px 0">Niciun model.</p>')
@@ -6294,7 +6313,7 @@ function renderProduse(){
   // card 4: accesorii
   const c3=`<div class="card pr-c"><div class="pr-h"><h4>Accesorii${p?" — "+esc(p.valoare):""}</h4></div>`
     +(p?`<p class="muted" style="margin:0 0 6px">Comune tuturor tipurilor ${esc(p.valoare)}; pe comandă bifezi ce are bucata livrată.</p>`:"")
-    +(!p?'<p class="muted">Alege o categorie.</p>':(as.map(x=>`<div class="pr-l"><span class="nm">${esc(x.valoare)}</span>`
+    +(!p?'<p class="muted">Alege o categorie.</p>':(as.map(x=>`<div class="pr-l"><span class="nm">${esc(x.valoare)}</span>${prValInp(x)}`
       +`<button class="btn sm sec" title="Redenumește" onclick="redenumesteAcc(${x.id})">✎</button>`
       +`<button class="btn sm danger" title="Scoate accesoriul" onclick="stergeAcc(${x.id})">✕</button></div>`).join("")||'<p class="muted" style="margin:4px 0">Niciun accesoriu.</p>')
       +`<div class="pr-add"><input id="pr-a-${p.id}" placeholder="accesoriu nou" onkeydown="if(event.key==='Enter')adaugaAcc(${p.id})"><button class="btn sm" onclick="adaugaAcc(${p.id})">+ Accesoriu</button></div>`)+`</div>`;
