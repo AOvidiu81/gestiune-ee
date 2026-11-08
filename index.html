@@ -1018,7 +1018,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
   <span id="rz-w"><button id="rz-reset" class="pictograma" title="Lățimi implicite — pune coloanele din tabelele acestei file înapoi cum erau">↺ Reset layout</button><i class="rz-sep">|</i></span>
   <span id="tz-w" title="Mărimea tabelului (doar tabelul, restul rămâne la fel), din 5 în 5%. Merge și cu Ctrl + rotița mausului, Ctrl + / Ctrl − / Ctrl 0. Dublu clic pe procent = scrii tu valoarea."><button class="pictograma" onclick="tzPas(-1)" aria-label="Micșorează tabelul">−</button><b id="tz-v" ondblclick="tzScrie()" title="Dublu clic = scrii mărimea (ex. 87), Enter">100%</b><input id="tz-in" type="number" min="30" max="300" step="5" style="display:none"><button class="pictograma" onclick="tzPas(1)" aria-label="Mărește tabelul">+</button></span>
-  <span class="ver">v8.12</span>
+  <span class="ver">v8.13</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -5430,24 +5430,78 @@ function cdRender(){
         (x.stare === "completata" ? `<button class="btn sm" onclick="cdVezi(${x.id})">Vezi / creează client</button> ` : `<button class="btn sm sec" onclick="cdCopiaza(${x.id})">Copiază link</button> <button class="btn sm sec" onclick="cdPdf(${x.id})">PDF</button> ${exp ? `<button class="btn sm sec" onclick="cdPrelungeste(${x.id})">Prelungește</button> ` : ""}`) +
         `<button class="btn sm sec" onclick="cdAnuleaza(${x.id})" title="Anulează fișa (linkul nu mai merge)">✕</button></td></tr>`; }).join("") + "</table></div>";
 }
+// v8.13 (cerut de Ovidiu, 08.11): fereastră cu bife în loc de întrebări una după alta
+const CD_CAT = [["SOCIETATE","🏢","Societate","SRL, SA…"],["PFA","👤","PFA / II / IF","persoană fizică autorizată, întreprindere"],["INSTITUTIE","🏛️","Instituție publică","primărie, școală, spital"],
+  ["ONG","🤝","ONG","asociație, fundație, club"],["PF","🪪","Persoană fizică","cu copia buletinului"],["ALTELE","📄","Altele","cabinet, parohie, firmă străină"]];
 function cdNou(){
-  const k = prompt("Categoria clientului:\n\n1 = Societate (SRL, SA…)\n2 = PFA / Întreprindere individuală\n3 = Instituție publică / Primărie\n4 = ONG (asociație, fundație)\n5 = Persoană fizică\n6 = Altele\n\nScrie cifra:", "1");
-  if(k === null) return;
-  const cat = ["SOCIETATE","PFA","INSTITUTIE","ONG","PF","ALTELE"][(+k || 1) - 1] || "SOCIETATE";
-  const ev = confirm("Este un EVENIMENT (câteva zile, cu program)?\n\nOK = eveniment · Anulează = închiriere pe perioadă");
-  const nume = prompt(cat === "PF" ? "Numele clientului (opțional — îl completează el):" : "Denumirea clientului (opțional — o completează el; la CUI se ia din ANAF):", "");
-  if(nume === null) return;
-  cdCreeaza(cat, ev ? "eveniment" : "perioada", nume.trim().toUpperCase());
+  document.getElementById("mod-cdn")?.remove();
+  const w = document.createElement("div"); w.className = "modal on"; w.id = "mod-cdn";
+  w.innerHTML = `<div class="box" style="max-width:720px"><h3 class="lux-cap cap-mut">📋 Fișă „Date contract” pentru client</h3>
+    <style>#mod-cdn .cdg{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:6px 0 14px}@media(max-width:620px){#mod-cdn .cdg{grid-template-columns:1fr 1fr}}
+      #mod-cdn .cdo{border:2px solid var(--bd);border-radius:10px;padding:10px;cursor:pointer;display:block;margin:0}#mod-cdn .cdo:has(input:checked){border-color:var(--g2,#2e7d4f);background:var(--gl,#e6f3ea)}
+      #mod-cdn .cdo input{display:none}#mod-cdn .cdo b{display:block;font-size:14px}#mod-cdn .cdo small{color:var(--mut,#6b7a72);font-size:12px}
+      #mod-cdn .cdf{display:flex;gap:8px;margin:6px 0 14px}#mod-cdn .cdf .cdo{flex:1}#mod-cdn h4{margin:0;font-size:13px;text-transform:uppercase;letter-spacing:.04em;color:var(--mut,#6b7a72)}
+      #mod-cdn .cdr{display:grid;grid-template-columns:1fr 1fr;gap:8px 10px;margin:6px 0 4px}#mod-cdn .cdr .tot{grid-column:1/-1}</style>
+    <h4>1. Cine e clientul?</h4>
+    <div class="cdg">${CD_CAT.map(([k, ic, t, d], i) => `<label class="cdo"><input type="radio" name="cdn-cat" value="${k}" ${i ? "" : "checked"} onchange="cdnCat()"><b>${ic} ${t}</b><small>${d}</small></label>`).join("")}</div>
+    <h4>2. Ce fel de contract?</h4>
+    <div class="cdf"><label class="cdo"><input type="radio" name="cdn-fel" value="perioada" checked><b>📅 Închiriere pe perioadă</b><small>șantier, lucrare, lunar</small></label>
+      <label class="cdo"><input type="radio" name="cdn-fel" value="eveniment"><b>🎪 Eveniment</b><small>câteva zile, cu program</small></label></div>
+    <h4>3. Ce știi deja <span style="text-transform:none;font-weight:400">(opțional — restul completează clientul)</span></h4>
+    <div class="cdr">
+      <div id="cdn-cui-w"><label>CUI / CIF</label><div style="display:flex;gap:6px"><input id="cdn-cui" inputmode="numeric" style="flex:1;min-width:0"><button type="button" class="btn sm sec" onclick="cdnAnaf()">ANAF</button></div></div>
+      <div><label id="cdn-nume-l">Denumire</label><input id="cdn-nume"></div>
+      <div><label>Telefon</label><input id="cdn-tel"></div><div><label>E-mail</label><input id="cdn-email"></div>
+      <div class="tot"><label>Produse / bucăți</label><input id="cdn-prod" placeholder="ex. 2 toalete + 1 lavoar"></div>
+    </div>
+    <div class="row" style="margin-top:16px;justify-content:flex-end"><div style="flex:1"></div>
+      <div style="flex:0"><button class="btn sec" onclick="this.closest('.modal').remove()">Renunță</button></div>
+      <div style="flex:0"><button class="btn sec" onclick="cdnGata('pdf')" title="Foaie de completat de mână — se tipărește sau se salvează ca PDF">📄 Creează PDF</button></div>
+      <div style="flex:0"><button class="btn" onclick="cdnGata('link')">🔗 Creează link</button></div></div>
+    <div id="cdn-rez"></div></div>`;
+  document.body.appendChild(w); cdnCat();
 }
-async function cdCreeaza(cat, felul, nume){
-  const pre = {}; if(nume){ if(cat === "PF") pre.nume = nume; else pre.denumire = nume; }
-  const rec = { cod: cdCod(), categorie: cat, felul, precompletat: pre };
-  const { data, error } = await db.from("cereri_date").insert(rec).select("*").single();
+function cdnCat(){
+  const k = (document.querySelector('input[name="cdn-cat"]:checked') || {}).value;
+  $("cdn-cui-w").style.display = k === "PF" ? "none" : "";
+  $("cdn-nume-l").textContent = k === "PF" ? "Nume și prenume" : "Denumire";
+}
+async function cdnAnaf(){
+  const c = cuiCurat($("cdn-cui").value); if(!c){ $("cdn-cui").focus(); return; }
+  let r; try { r = await db.functions.invoke("anaf", { body: { cui: c } }); } catch(e){ r = { error: e }; }
+  const d = r && r.data;
+  if(!d || r.error || d.eroare){ toast("ANAF nu răspunde acum — scrie de mână", true); return; }
+  if(!d.gasit){ toast("CUI-ul nu e la ANAF", true); return; }
+  $("cdn-nume").value = d.denumire || ""; if(d.telefon && !$("cdn-tel").value) $("cdn-tel").value = d.telefon;
+  toast("Găsit la ANAF: " + (d.denumire || ""));
+}
+async function cdnGata(cum){
+  const cat = document.querySelector('input[name="cdn-cat"]:checked').value, fel = document.querySelector('input[name="cdn-fel"]:checked').value;
+  const nume = $("cdn-nume").value.trim().toUpperCase(), pre = {};
+  if(nume){ if(cat === "PF") pre.nume = nume; else pre.denumire = nume; }
+  if(cat !== "PF" && $("cdn-cui").value.trim()) pre.cui = $("cdn-cui").value.trim().toUpperCase();
+  if($("cdn-tel").value.trim()) pre.telefon = $("cdn-tel").value.trim();
+  if($("cdn-email").value.trim()) pre.email = $("cdn-email").value.trim();
+  if($("cdn-prod").value.trim()) pre.produse = $("cdn-prod").value.trim();
+  const { data, error } = await db.from("cereri_date").insert({ cod: cdCod(), categorie: cat, felul: fel, precompletat: pre }).select("*").single();
   if(error){ toast(error.message, true); return; }
   CD.unshift(data); cdRender();
-  const link = cdLink(data);
+  if(cum === "pdf"){ document.getElementById("mod-cdn")?.remove(); cdPdf(data.id); return; }
+  const link = cdLink(data), txt = "Bună ziua! Pentru redactarea contractului cu Euro Ecologic, vă rugăm completați datele aici: " + link;
   try{ await navigator.clipboard.writeText(link); }catch(_){}
-  prompt("Linkul a fost copiat. Trimite-l clientului (e-mail / WhatsApp). Expiră în 14 zile.\n\nDacă clientul nu vrea online: butonul „PDF” din listă.", link);
+  $("cdn-rez").innerHTML = `<div style="margin-top:14px;padding:12px;border-radius:10px;background:var(--gl,#e6f3ea)"><b>✓ Linkul e gata și copiat.</b> Expiră în 14 zile; se închide după ce clientul trimite.
+    <input readonly value="${esc(link)}" style="width:100%;margin:8px 0" onclick="this.select()">
+    <div style="display:flex;gap:6px;flex-wrap:wrap"><button class="btn sm sec" onclick="navigator.clipboard.writeText('${esc(link)}');toast('Link copiat')">📋 Copiază</button>
+      <a class="btn sm sec" target="_blank" href="https://wa.me/${esc(String(pre.telefon || "").replace(/\D/g, "").replace(/^0/, "40"))}?text=${encodeURIComponent(txt)}">💬 WhatsApp</a>
+      <a class="btn sm sec" href="mailto:${esc(pre.email || "")}?subject=${encodeURIComponent("Date pentru contract - Euro Ecologic")}&body=${encodeURIComponent(txt)}">✉ E-mail</a>
+      <button class="btn sm sec" onclick="cdPdf(${data.id})">📄 PDF (de rezervă)</button>
+      <button class="btn sm" onclick="this.closest('.modal').remove()">Gata</button></div></div>`;
+  w_scroll: { const b = document.querySelector("#mod-cdn .box"); if(b) b.scrollTop = b.scrollHeight; }
+}
+async function cdCreeaza(cat, felul, nume){   // păstrată pentru apeluri vechi
+  const pre = {}; if(nume){ if(cat === "PF") pre.nume = nume; else pre.denumire = nume; }
+  const { data, error } = await db.from("cereri_date").insert({ cod: cdCod(), categorie: cat, felul, precompletat: pre }).select("*").single();
+  if(error){ toast(error.message, true); return; } CD.unshift(data); cdRender();
 }
 async function cdCopiaza(id){ const x = CD.find(y => y.id === id); if(!x) return; const l = cdLink(x); try{ await navigator.clipboard.writeText(l); toast("Link copiat"); }catch(_){ prompt("Copiază linkul:", l); } }
 async function cdPrelungeste(id){
