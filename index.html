@@ -1018,7 +1018,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
   <span id="rz-w"><button id="rz-reset" class="pictograma" title="Lățimi implicite — pune coloanele din tabelele acestei file înapoi cum erau">↺ Reset layout</button><i class="rz-sep">|</i></span>
   <span id="tz-w" title="Mărimea tabelului (doar tabelul, restul rămâne la fel), din 5 în 5%. Merge și cu Ctrl + rotița mausului, Ctrl + / Ctrl − / Ctrl 0. Dublu clic pe procent = scrii tu valoarea."><button class="pictograma" onclick="tzPas(-1)" aria-label="Micșorează tabelul">−</button><b id="tz-v" ondblclick="tzScrie()" title="Dublu clic = scrii mărimea (ex. 87), Enter">100%</b><input id="tz-in" type="number" min="30" max="300" step="5" style="display:none"><button class="pictograma" onclick="tzPas(1)" aria-label="Mărește tabelul">+</button></span>
-  <span class="ver">v8.15</span>
+  <span class="ver">v8.16</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -5431,7 +5431,7 @@ function cdRender(){
     CD.map(x => { const exp = x.stare === "trimisa" && x.expira_la < azi;
       const st = x.stare === "completata" ? `<b style="color:var(--t-ok,#15803d)">✔ completată ${fmtD((x.completat_la || "").slice(0, 10))}</b>` : exp ? `<span style="color:var(--red)">expirată</span>` : `<span class="muted">așteaptă clientul (până la ${fmtD(x.expira_la.slice(0, 10))})</span>`;
       return `<tr><td>${fmtD(x.created_at.slice(0, 10))}</td><td><b>${esc(cdNume(x))}</b></td><td>${esc(CAT_ET[x.categorie] || x.categorie)}${x.felul === "eveniment" ? " · eveniment" : ""}</td><td>${st}</td><td style="white-space:nowrap">` +
-        (x.stare === "completata" ? `<button class="btn sm" onclick="cdVezi(${x.id})">Vezi / creează client</button> ` : `<button class="btn sm sec" onclick="cdCopiaza(${x.id})">Copiază link</button> <button class="btn sm sec" onclick="cdPdf(${x.id})">PDF</button> ${exp ? `<button class="btn sm sec" onclick="cdPrelungeste(${x.id})">Prelungește</button> ` : ""}`) +
+        (x.stare === "completata" ? `<button class="btn sm" onclick="cdVezi(${x.id})">Vezi / creează client</button> ` : `<button class="btn sm sec" onclick="cdTrimiteFer(${x.id})">📤 Trimite</button> ${exp ? `<button class="btn sm sec" onclick="cdPrelungeste(${x.id})">Prelungește</button> ` : ""}`) +
         `<button class="btn sm sec" onclick="cdAnuleaza(${x.id})" title="Anulează fișa (linkul nu mai merge)">✕</button></td></tr>`; }).join("") + "</table></div>";
 }
 // v8.13 (cerut de Ovidiu, 08.11): fereastră cu bife în loc de întrebări una după alta
@@ -5491,15 +5491,11 @@ async function cdnGata(cum){
   if(error){ toast(error.message, true); return; }
   CD.unshift(data); cdRender();
   if(cum === "pdf"){ document.getElementById("mod-cdn")?.remove(); cdPdf(data.id); return; }
-  const link = cdLink(data), txt = "Bună ziua! Pentru redactarea contractului cu Euro Ecologic, vă rugăm completați datele aici: " + link;
+  const link = cdLink(data);
   try{ await navigator.clipboard.writeText(link); }catch(_){}
   $("cdn-rez").innerHTML = `<div style="margin-top:14px;padding:12px;border-radius:10px;background:var(--gl,#e6f3ea)"><b>✓ Linkul e gata și copiat.</b> Expiră în 14 zile; se închide după ce clientul trimite.
-    <input readonly value="${esc(link)}" style="width:100%;margin:8px 0" onclick="this.select()">
-    <div style="display:flex;gap:6px;flex-wrap:wrap"><button class="btn sm sec" onclick="navigator.clipboard.writeText('${esc(link)}');toast('Link copiat')">📋 Copiază</button>
-      <a class="btn sm sec" target="_blank" href="https://wa.me/${esc(String(pre.telefon || "").replace(/\D/g, "").replace(/^0/, "40"))}?text=${encodeURIComponent(txt)}">💬 WhatsApp</a>
-      <a class="btn sm sec" href="mailto:${esc(pre.email || "")}?subject=${encodeURIComponent("Date pentru contract - Euro Ecologic")}&body=${encodeURIComponent(txt)}">✉ E-mail</a>
-      <button class="btn sm sec" onclick="cdPdf(${data.id})">📄 PDF (de rezervă)</button>
-      <button class="btn sm" onclick="this.closest('.modal').remove()">Gata</button></div></div>`;
+    <input readonly value="${esc(link)}" style="width:100%;margin:8px 0" onclick="this.select()">${cdButoane(data)}
+    <div style="text-align:right;margin-top:10px"><button class="btn sm" onclick="this.closest('.modal').remove()">Gata</button></div></div>`;
   w_scroll: { const b = document.querySelector("#mod-cdn .box"); if(b) b.scrollTop = b.scrollHeight; }
 }
 async function cdCreeaza(cat, felul, nume){   // păstrată pentru apeluri vechi
@@ -5575,21 +5571,84 @@ function cdCreeazaClient(id){
   MC_CI_PATH = x.ci_path || null; MC_CERERE = x.id; MC_CAT_MANA = true; mcCiCopieArata(); mcCatSchimbat(false); mcCuiVerif();
   toast("Fișa clientului e completată din „Date contract” — verifică și Salvează");
 }
-// PDF de completat (rezervă, pentru cine nu vrea online): pagina se tipărește / salvează ca PDF
-function cdPdf(id){
-  const x = CD.find(y => y.id === id); if(!x) return; const P = x.precompletat || {};
-  const L = cdCampuri(x.categorie, x.felul).filter(([k]) => k !== "livrare_gps");
-  const w = window.open("", "_blank"); if(!w){ toast("Permite ferestrele noi (pop-up) pentru aplicație", true); return; }
-  w.document.write(`<!DOCTYPE html><html lang="ro"><head><meta charset="utf-8"><title>Date pentru contract - ${esc(cdNume(x))}</title><style>
-    body{font-family:Arial,sans-serif;font-size:12pt;margin:18mm 16mm;color:#141A2E}h1{font-size:16pt;color:#17275A;margin:0 0 2mm}p{margin:0 0 4mm;color:#5E6A82;font-size:10pt}
-    table{width:100%;border-collapse:collapse}td{border:1px solid #9AA6BF;padding:2.6mm 3mm;vertical-align:top}td:first-child{width:38%;background:#EEF2FA;font-weight:bold;font-size:10.5pt}
-    .jos{margin-top:6mm;font-size:9pt;color:#5E6A82}@page{size:A4;margin:0}</style></head><body>
-    <h1>Informații / date client pentru redactare contract</h1><p>${esc(CAT_ET[x.categorie] || "")}${x.felul === "eveniment" ? " · eveniment" : ""} · SC EURO-ECOLOGIC SRL · J2007000205190 · RO 21311085 · hunedoara@eurowc.ro · 0735 214 751</p>
-    <table>${L.map(([k, l]) => `<tr><td>${esc(l)}</td><td style="height:${/adresa|sediu|domiciliu|produse|eveniment|observatii|semnatari|inregistrare/.test(k) ? "16mm" : "8mm"}">${esc(cdVal(k, P[k]))}</td></tr>`).join("")}</table>
-    ${x.categorie === "PF" ? "<p style='margin-top:4mm;color:#B4232A'><b>Vă rugăm atașați o copie a actului de identitate</b> (se anexează la contract — Anexa CI).</p>" : ""}
-    <div class="jos">Datele sunt folosite doar pentru redactarea contractului, conform Regulamentului UE 679/2016 (GDPR). Mai simplu: completați online la ${esc(cdLink(x))}</div>
-    <script>setTimeout(()=>print(),300)<\/script></body></html>`);
-  w.document.close();
+// v8.16 (cerut de Ovidiu, 08.11): PDF-ul fișei e FIȘIER (A4, cu diacritice, cod QR spre formularul online) — se poate trimite
+// singur, sau împreună cu linkul („Link + PDF”: pe telefon dintr-o dată; pe PC se descarcă PDF-ul și se deschide e-mailul).
+async function cdLib(){
+  if(!window.jspdf) await fpScript("https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js");
+  if(!window.html2canvas) await fpScript("https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js");
+  if(!window.qrcode) await fpScript("https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js");
+}
+const cdFisNume = x => "Date contract - " + cdNume(x).replace(/[\\/:*?"<>|]+/g, " ").trim() + ".pdf";
+const cdText = x => "Bună ziua! Pentru redactarea contractului cu Euro Ecologic, vă rugăm completați datele aici: " + cdLink(x) +
+  "\n\nDacă preferați, puteți completa și fișa PDF atașată și ne-o trimiteți înapoi (e-mail / WhatsApp)." + (x.categorie === "PF" ? " Vă rugăm atașați și o copie a actului de identitate." : "");
+async function cdPdfBlob(x){
+  await cdLib();
+  const P = x.precompletat || {}, L = cdCampuri(x.categorie, x.felul).filter(([k]) => k !== "livrare_gps");
+  const qr = qrcode(0, "M"); qr.addData(cdLink(x)); qr.make();
+  const d = document.createElement("div");
+  d.style.cssText = "position:fixed;left:-10000px;top:0;width:794px;background:#fff;color:#141A2E;font-family:Arial,Helvetica,sans-serif;padding:34px 40px;box-sizing:border-box";
+  d.innerHTML = `<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:16px;border-bottom:3px solid #17275A;padding-bottom:10px;margin-bottom:12px">
+      <div><div style="font-size:21px;font-weight:700;color:#17275A">Informații / date client pentru redactare contract</div>
+        <div style="font-size:12px;color:#5E6A82;margin-top:4px">${esc(CAT_ET[x.categorie] || "")}${x.felul === "eveniment" ? " · eveniment" : ""} · SC EURO-ECOLOGIC SRL · J2007000205190 · RO 21311085<br>hunedoara@eurowc.ro · 0735 214 751 · www.eurowc.ro</div></div>
+      <div style="text-align:center;font-size:10px;color:#17275A;min-width:104px"><img src="${qr.createDataURL(3, 2)}" style="width:100px;height:100px;display:block;margin:0 auto 3px"><b>Completați online</b><br>scanați codul</div></div>
+    <table style="width:100%;border-collapse:collapse;font-size:13px;background:#fff;color:#141A2E">${L.map(([k, l]) => `<tr><td style="border:1px solid #9AA6BF;background:#EEF2FA;color:#141A2E;font-weight:700;width:36%;padding:6px 8px;vertical-align:top">${esc(l)}</td><td style="border:1px solid #9AA6BF;background:#fff;color:#141A2E;padding:6px 8px;height:${/adresa|sediu|domiciliu|produse|eveniment|observatii|semnatari|inregistrare/.test(k) ? 44 : 22}px">${esc(cdVal(k, P[k]))}</td></tr>`).join("")}</table>
+    ${x.categorie === "PF" ? `<div style="margin-top:10px;color:#B4232A;font-size:13px"><b>Vă rugăm atașați o copie a actului de identitate</b> (se anexează la contract — Anexa CI).</div>` : ""}
+    <div style="margin-top:12px;font-size:11px;color:#5E6A82">Mai simplu: completați online la <b style="color:#17275A">${esc(cdLink(x))}</b><br>Datele sunt folosite doar pentru redactarea contractului, conform Regulamentului UE 679/2016 (GDPR).</div>`;
+  document.body.appendChild(d);
+  try{
+    const cv = await html2canvas(d, { scale: 2, backgroundColor: "#ffffff" });
+    const pdf = new window.jspdf.jsPDF({ unit: "mm", format: "a4" }), W = 210, H = 297;
+    let w = W, h = cv.height * W / cv.width; if(h > H){ w = w * H / h; h = H; }
+    pdf.addImage(cv.toDataURL("image/jpeg", 0.92), "JPEG", (W - w) / 2, 0, w, h);
+    return pdf.output("blob");
+  } finally { d.remove(); }
+}
+async function cdPdf(id){   // PDF-ul singur → descărcat
+  const x = CD.find(y => y.id === id); if(!x) return;
+  toast("Pregătesc PDF-ul…");
+  try{ const b = await cdPdfBlob(x); const a = document.createElement("a"); a.href = URL.createObjectURL(b); a.download = cdFisNume(x); document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 2000); toast("PDF descărcat: " + cdFisNume(x)); }
+  catch(e){ toast("PDF-ul n-a mers: " + (e.message || e), true); }
+}
+async function cdTrimiteTot(id, canal){   // link + PDF împreună
+  const x = CD.find(y => y.id === id); if(!x) return;
+  toast("Pregătesc PDF-ul…");
+  let f; try{ f = new File([await cdPdfBlob(x)], cdFisNume(x), { type: "application/pdf" }); }catch(e){ toast("PDF-ul n-a mers: " + (e.message || e), true); return; }
+  const txt = cdText(x);
+  if(canal !== "mail" && navigator.canShare && navigator.canShare({ files: [f] })){
+    try{ await navigator.share({ title: "Date pentru contract - Euro Ecologic", text: txt, files: [f] }); return; }catch(e){ if(e && e.name === "AbortError") return; }
+  }
+  // PC: PDF-ul se descarcă, e-mailul se deschide cu textul + linkul; PDF-ul îl tragi în e-mail
+  const a = document.createElement("a"); a.href = URL.createObjectURL(f); a.download = f.name; document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 2000);
+  const tel = String((x.precompletat || {}).telefon || "").replace(/\D/g, "").replace(/^0/, "40");
+  if(canal === "wa") window.open("https://wa.me/" + tel + "?text=" + encodeURIComponent(txt), "_blank");
+  else location.href = "mailto:" + encodeURIComponent((x.precompletat || {}).email || "") + "?subject=" + encodeURIComponent("Date pentru contract - Euro Ecologic") + "&body=" + encodeURIComponent(txt);
+  toast("PDF descărcat („" + f.name + "”) — atașează-l în " + (canal === "wa" ? "WhatsApp" : "e-mail"), false);
+}
+// butoanele de trimis, aceleași peste tot (fereastra nouă, lista de pe PC, telefon)
+function cdButoane(x, cls){
+  const c = cls || "btn sm sec", tel = String((x.precompletat || {}).telefon || "").replace(/\D/g, "").replace(/^0/, "40"), t = cdText(x).split("\n\n")[0];
+  return `<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
+    <b style="font-size:12px;min-width:92px">Link + PDF:</b>
+    <button class="${c}" onclick="cdTrimiteTot(${x.id},'mail')">✉ E-mail</button>
+    <button class="${c}" onclick="cdTrimiteTot(${x.id},'wa')">💬 WhatsApp</button>
+    ${navigator.share ? `<button class="${c}" onclick="cdTrimiteTot(${x.id},'share')">📤 Trimite…</button>` : ""}</div>
+  <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-top:6px">
+    <b style="font-size:12px;min-width:92px">Doar linkul:</b>
+    <button class="${c}" onclick="cdCopiaza(${x.id})">📋 Copiază</button>
+    <button class="${c}" onclick="window.open('https://wa.me/${tel}?text=${encodeURIComponent(t)}','_blank')">💬 WhatsApp</button>
+    <button class="${c}" onclick="location.href='mailto:${esc(encodeURIComponent((x.precompletat || {}).email || ""))}?subject=${encodeURIComponent("Date pentru contract - Euro Ecologic")}&body=${encodeURIComponent(t)}'">✉ E-mail</button></div>
+  <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-top:6px">
+    <b style="font-size:12px;min-width:92px">Doar PDF-ul:</b>
+    <button class="${c}" onclick="cdPdf(${x.id})">📄 Descarcă PDF</button></div>`;
+}
+function cdTrimiteFer(id){   // din listă: fereastra cu toate opțiunile
+  const x = CD.find(y => y.id === id); if(!x) return;
+  document.getElementById("mod-cdt")?.remove();
+  const w = document.createElement("div"); w.className = "modal on"; w.id = "mod-cdt";
+  w.innerHTML = `<div class="box" style="max-width:560px"><h3 class="lux-cap cap-mut">Trimite fișa — ${esc(cdNume(x))}</h3>
+    <input readonly value="${esc(cdLink(x))}" style="width:100%;margin:0 0 10px" onclick="this.select()">${cdButoane(x)}
+    <div class="row" style="margin-top:14px;justify-content:flex-end"><div style="flex:0"><button class="btn" onclick="this.closest('.modal').remove()">Gata</button></div></div></div>`;
+  document.body.appendChild(w);
 }
 
 function openClient(id){
@@ -13635,12 +13694,7 @@ async function mobFisaCreeaza(){
   const { data, error } = await db.from("cereri_date").insert({ cod: cdCod(), categorie: MOB_CD.cat, felul: MOB_CD.fel, precompletat: pre }).select("*").single();
   if(error){ toast(error.message, true); return; }
   CD.unshift(data); mobFisaLista();
-  const link = cdLink(data), txt = "Bună ziua! Pentru redactarea contractului cu Euro Ecologic, vă rugăm completați datele aici: " + link;
-  $("mb-cd-rez").innerHTML = `<div style="margin-top:10px;padding:10px;border-radius:10px;background:var(--gl,#e6f3ea)"><b>✓ Linkul e gata</b> (expiră în 14 zile)
-    <div class="mb-chips" style="margin-top:8px">
-      ${navigator.share ? `<button onclick="navigator.share({title:'Date pentru contract',text:${esc(JSON.stringify(txt))}}).catch(()=>{})">📤 Trimite…</button>` : ""}
-      <button onclick="location.href='https://wa.me/${esc(tel.replace(/\D/g, "").replace(/^0/, "40"))}?text=${encodeURIComponent(txt)}'">💬 WhatsApp</button>
-      <button onclick="navigator.clipboard.writeText('${esc(link)}').then(()=>toast('Link copiat'))">📋 Copiază</button></div></div>`;
+  $("mb-cd-rez").innerHTML = `<div style="margin-top:10px;padding:10px;border-radius:10px;background:var(--gl,#e6f3ea)"><b>✓ Linkul e gata</b> (expiră în 14 zile)<div style="margin-top:8px">${cdButoane(data, "btn sm sec")}</div></div>`;
 }
 function mobFisaLista(){
   const e = $("mb-cd-lista"); if(!e) return;
@@ -13651,7 +13705,7 @@ function mobFisaLista(){
     return `<div class="mb-card"><div class="mb-r1"><span>${fmtD(x.created_at.slice(0, 10))} · ${esc(CAT_ET[x.categorie] || x.categorie)}${x.felul === "eveniment" ? " · eveniment" : ""}</span><span>${st}</span></div>
       <div class="mb-cl">${esc(cdNume(x))}</div>
       <div class="mb-chips" style="margin:6px 0 0">${x.stare === "completata" ? `<button onclick="mobFisaVezi(${x.id})">Vezi datele</button><span class="mb-m" style="align-self:center">clientul îl creezi de pe PC</span>`
-        : `<button onclick="cdCopiaza(${x.id})">📋 Copiază link</button>${exp ? `<button onclick="cdPrelungeste(${x.id}).then(mobFisaLista)">Prelungește</button>` : ""}`}</div></div>`; }).join("");
+        : `<button onclick="cdTrimiteFer(${x.id})">📤 Trimite</button>${exp ? `<button onclick="cdPrelungeste(${x.id}).then(mobFisaLista)">Prelungește</button>` : ""}`}</div></div>`; }).join("");
 }
 function mobFisaVezi(id){
   const x = CD.find(y => y.id === id); if(!x) return; const R = x.raspuns || {};
