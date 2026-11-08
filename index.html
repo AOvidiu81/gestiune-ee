@@ -1018,7 +1018,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
   <span id="rz-w"><button id="rz-reset" class="pictograma" title="Lățimi implicite — pune coloanele din tabelele acestei file înapoi cum erau">↺ Reset layout</button><i class="rz-sep">|</i></span>
   <span id="tz-w" title="Mărimea tabelului (doar tabelul, restul rămâne la fel), din 5 în 5%. Merge și cu Ctrl + rotița mausului, Ctrl + / Ctrl − / Ctrl 0. Dublu clic pe procent = scrii tu valoarea."><button class="pictograma" onclick="tzPas(-1)" aria-label="Micșorează tabelul">−</button><b id="tz-v" ondblclick="tzScrie()" title="Dublu clic = scrii mărimea (ex. 87), Enter">100%</b><input id="tz-in" type="number" min="30" max="300" step="5" style="display:none"><button class="pictograma" onclick="tzPas(1)" aria-label="Mărește tabelul">+</button></span>
-  <span class="ver">v8.21</span>
+  <span class="ver">v8.22</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -5440,7 +5440,8 @@ function feFereastra(m, inchide){
   const box = m.querySelector(".box"), cap = m.querySelector(".lux-cap"); if(!box || !cap) return;
   const SV = { min: '<svg viewBox="0 0 12 12"><path d="M1 6.5h10"/></svg>', max: '<svg viewBox="0 0 12 12"><rect x="1.5" y="1.5" width="9" height="9"/></svg>',
     rest: '<svg viewBox="0 0 12 12"><rect x="1.5" y="3.5" width="7" height="7"/><path d="M3.5 3.5V1.5h7v7h-2"/></svg>', x: '<svg viewBox="0 0 12 12"><path d="M1.5 1.5l9 9M10.5 1.5l-9 9"/></svg>' };
-  Object.assign(box.style, { resize: "both", overflow: "auto", maxHeight: "96vh", minWidth: "360px", minHeight: "200px", position: "relative" });
+  if(box.style.maxWidth && box.style.maxWidth !== "98vw"){ box.style.width = box.style.maxWidth; }   // v8.22: lățimea de pornire; se poate lărgi din colț
+  Object.assign(box.style, { resize: "both", overflow: "auto", maxHeight: "96vh", maxWidth: "98vw", minWidth: "360px", minHeight: "200px", position: "relative" });
   cap.style.cursor = "move"; cap.style.userSelect = "none"; cap.title = "Trage de aici ca să muți fereastra; dublu-clic = înapoi la loc";
   let chip = null, dx = 0, dy = 0, start = null;
   const scoateChip = () => { m.classList.remove("fe-min"); if(chip){ chip.remove(); chip = null; } };
@@ -5565,13 +5566,29 @@ function cdVezi(id){
   const w = document.createElement("div"); w.className = "modal on"; w.id = "mod-cd";
   w.innerHTML = `<div class="box" style="max-width:760px"><h3 class="lux-cap cap-mut">Fișa „Date contract” — ${esc(cdNume(x))}</h3>
     <p class="muted" style="margin:0 0 8px">${esc(CAT_ET[x.categorie] || x.categorie)}${x.felul === "eveniment" ? " · eveniment" : ""} · completată ${fmtD((x.completat_la || "").slice(0, 10))}. Verifică datele${x.ci_path ? " și copia CI" : ""}, apoi „Creează client” (se deschide fișa clientului completată — o mai poți corecta înainte de Salvează).</p>
-    <div class="tw"><table>${L.map(([k, l]) => `<tr><td style="width:38%">${esc(l)}</td><td><b>${esc(cdVal(k, R[k])) || '<span class="muted">—</span>'}</b></td></tr>`).join("")}</table></div>
+    <div id="cd-ed" style="display:grid;grid-template-columns:minmax(150px,34%) 1fr;gap:6px 10px;align-items:start">${L.map(([k, l]) => { const v = cdVal(k, R[k]), lung = v.length > 60 || /adresa|sediu|domiciliu|produse|eveniment|observatii|inregistrare/.test(k), fix = k === "semnatari" || k === "contacte_extra";
+      return `<label style="margin:6px 0 0;font-size:12.5px;white-space:normal">${esc(l)}</label>` + (fix ? `<div style="padding:7px 0;white-space:normal"><b>${esc(v) || '<span class="muted">—</span>'}</b>${v ? ' <span class="muted" style="font-size:11px">(se corectează în fișa clientului)</span>' : ""}</div>`
+        : lung ? `<textarea data-k="${k}" rows="${Math.min(5, Math.max(2, Math.ceil(v.length / 70)))}" style="width:100%;white-space:pre-wrap">${esc(/^(ci_expira|perioada_de|perioada_pana)$/.test(k) ? (R[k] || "") : v)}</textarea>`
+        : `<input data-k="${k}" ${/^(ci_expira|perioada_de|perioada_pana)$/.test(k) ? 'type="date"' : ""} value="${esc(/^(ci_expira|perioada_de|perioada_pana)$/.test(k) ? (R[k] || "") : v)}" style="width:100%">`); }).join("")}</div>
     ${x.ci_path ? `<p style="margin:10px 0 0"><button class="btn sm sec" onclick="actVezi('${esc(x.ci_path)}')">🪪 Vezi copia CI</button></p>` : ""}
     <div class="row" style="margin-top:14px;justify-content:flex-end"><div style="flex:1"></div>
       <div style="flex:0"><button class="btn sec" onclick="this.closest('.modal').remove()">Închide</button></div>
       <div style="flex:0"><button class="btn sec" onclick="cdRedeschide(${x.id})" title="Clientul poate corecta din același link">Redeschide linkul</button></div>
-      <div style="flex:0"><button class="btn" onclick="cdCreeazaClient(${x.id})">Creează client</button></div></div></div>`;
+      <div style="flex:0"><button class="btn sec" onclick="cdSalveazaCorecturi(${x.id})" title="Păstrează corecturile în fișă (fără să creezi clientul acum)">💾 Salvează corecturile</button></div>
+      <div style="flex:0"><button class="btn" onclick="cdSalveazaCorecturi(${x.id}, true)">Creează client</button></div></div></div>`;
   document.body.appendChild(w); feFereastra(w);
+}
+// v8.22 (cerut de Ovidiu, 08.11): datele fișei se corectează direct în fereastră; „Creează client” ia valorile corectate
+async function cdSalveazaCorecturi(id, creeaza){
+  const x = CD.find(y => y.id === id); if(!x) return;
+  const R = { ...(x.raspuns || {}) };
+  document.querySelectorAll("#cd-ed [data-k]").forEach(e => { const k = e.dataset.k, v = e.value.trim();
+    if(k === "produse" && v !== cdVal(k, R[k])) R.produse_lista = null;   // textul produselor rescris de mână
+    R[k] = v; });
+  const { error } = await db.from("cereri_date").update({ raspuns: R, updated_at: new Date().toISOString() }).eq("id", id);
+  if(error){ toast(error.message, true); return; }
+  x.raspuns = R;
+  if(creeaza) cdCreeazaClient(id); else toast("Corecturile au fost salvate în fișă");
 }
 async function cdRedeschide(id){
   const { error } = await db.from("cereri_date").update({ stare: "trimisa", expira_la: new Date(Date.now() + 14 * 864e5).toISOString(), updated_at: new Date().toISOString() }).eq("id", id);
