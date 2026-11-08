@@ -6740,7 +6740,7 @@ const simDe = (dep, prod) => SIM.filter(x => x.depozit === dep && x.produs === p
 function simCel(r){
   const l = simDe(r.depozit, r.produs); if(!l.length) return `<span class="muted">—</span>`;
   const t = l.reduce((a, x) => a + (+x.in_depozit || 0), 0), ok = t === (+r.in_depozit || 0);
-  return ok ? `<span style="color:#2E8B3C" title="${esc(l.map(x => x.model + " " + x.in_depozit).join(", "))}">${l.length} modele = ${t} ✓</span>`
+  return ok ? `<span style="color:#2E8B3C" title="${esc(l.map(x => x.model + " " + x.in_depozit).join(", "))}">${l.length} ${l.length === 1 ? "model" : "modele"} = ${t} ✓</span>`
     : `<span style="color:var(--t-err);font-weight:600" title="${esc(l.map(x => x.model + " " + x.in_depozit).join(", "))}">⚠ modele ${t} ≠ ${+r.in_depozit || 0}</span>`;
 }
 function renderStocInitial(){
