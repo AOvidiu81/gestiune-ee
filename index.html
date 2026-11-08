@@ -1018,7 +1018,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
   <span id="rz-w"><button id="rz-reset" class="pictograma" title="Lățimi implicite — pune coloanele din tabelele acestei file înapoi cum erau">↺ Reset layout</button><i class="rz-sep">|</i></span>
   <span id="tz-w" title="Mărimea tabelului (doar tabelul, restul rămâne la fel), din 5 în 5%. Merge și cu Ctrl + rotița mausului, Ctrl + / Ctrl − / Ctrl 0. Dublu clic pe procent = scrii tu valoarea."><button class="pictograma" onclick="tzPas(-1)" aria-label="Micșorează tabelul">−</button><b id="tz-v" ondblclick="tzScrie()" title="Dublu clic = scrii mărimea (ex. 87), Enter">100%</b><input id="tz-in" type="number" min="30" max="300" step="5" style="display:none"><button class="pictograma" onclick="tzPas(1)" aria-label="Mărește tabelul">+</button></span>
-  <span class="ver">v8.26</span>
+  <span class="ver">v8.27</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -1044,7 +1044,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <button data-p="verificare">Verificare <span id="v-badge" class="badge" style="display:none">0</span></button>
   <button data-p="pv" data-v="pv">Procese verbale</button>
   <button data-p="pv" data-v="cereri" data-h="cereri">Cereri / documente angajați</button>
-  <button data-p="clienti" data-v="fisa" data-h="fisa-date">Fișă date contract</button><!-- v8.14 (cerut de Ovidiu, 08.11): acces rapid la fișa „Date contract” -->
+  <button data-p="fise" data-h="fisa-date">Fișă date contract</button><!-- v8.14 (cerut de Ovidiu, 08.11): acces rapid la fișa „Date contract” -->
   <div id="nav-jos" style="display:none">
     <div class="ini" id="nav-ini">—</div>
     <div class="cine-blk"><div id="cine"></div><div id="cine-rol"></div></div>
@@ -1169,9 +1169,21 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
     </div>
   </div>
   <!-- v8.12 (cerut de Ovidiu, 08.11): fișele „Date contract” trimise clienților (link online / PDF) -->
-  <div class="card noprint" id="cd-card" style="display:none"></div>
+  <div class="card noprint" id="cd-aviz" style="display:none"></div><!-- v8.27: avizul fișelor completate; lista e în pagina „Fișă date contract” -->
   <div class="card noprint ver-banda" id="c-ver" style="display:none"></div>
   <div id="c-list"></div>
+</section>
+
+<!-- ================= v8.27 (cerut de Ovidiu, 08.11): FIȘE „DATE CONTRACT” — pagină separată ================= -->
+<section class="page" id="p-fise">
+  <div class="card noprint">
+    <div class="row" style="align-items:center">
+      <div style="flex:0"><button class="btn" onclick="cdNou()">📋 Fișă nouă</button></div>
+      <div style="flex:0"><button class="btn sec" onclick="cdLoad()">↻ Reîncarcă</button></div>
+      <div><p class="muted" style="margin:0">Trimiți clientului un link; el își completează datele (și copia CI la persoane fizice). Când apare „✔ completată”: <b>Vezi / creează client</b> → verifici, corectezi, salvezi PDF-ul în folderul clientului și creezi clientul.</p></div>
+    </div>
+  </div>
+  <div class="card" id="cd-card"></div>
 </section>
 
 <!-- ================= NOMENCLATOARE ================= -->
@@ -2584,7 +2596,7 @@ document.querySelectorAll("nav button").forEach(b=>b.onclick=(ev)=>{
   if(b.dataset.p==="rute") deschideRute();
   if(b.dataset.p==="admin"){ if(b.dataset.a) $("a-tabel").value = b.dataset.a; else if($("a-tabel").value === "clients") $("a-tabel").value = "soferi"; adminSchimba(); }   // v5.35: Puncte de rută doar în fila lor
   if(b.dataset.p==="verificare") loadVerif();
-  if(b.dataset.p==="clienti" && b.dataset.v==="fisa"){ cdLoad(); if(ev && ev.isTrusted) setTimeout(cdNou, 50); }   // v8.14: lista fișelor + fereastra nouă (doar la clic, nu la reîncărcare)
+  if(b.dataset.p==="fise") cdLoad();   // v8.27: pagina proprie a fișelor
   if(b.dataset.p==="pv"){ pvMod(b.dataset.v || "pv"); loadPV(); }
   if(b.dataset.p==="raportrute"){ if(!RR_CERUT) RR_SID = null; loadRR(true); }   // v6.34: din meniu = toate rutele   // v5.18: la fiecare deschidere, datele proaspete din bază
   if(b.dataset.p==="inceput") loadIZ();
@@ -3018,7 +3030,7 @@ function potrivesteTema(){
     "verificare": p("M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z") + p("m9 12 2 2 4-4"),
     "pv-pv": p("M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z") + p("M14 2v6h6") + p("m9 15 2 2 4-4"),
     "pv-cereri": p("M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2") + c(9, 7, 4) + p("M22 21v-2a4 4 0 0 0-3-3.87") + p("M16 3.13a4 4 0 0 1 0 7.75"),
-    "clienti-fisa": '<rect x="5" y="3" width="14" height="18" rx="2"/>' + p("M9 3v2h6V3") + p("M9 10h6") + p("M9 14h6") + p("M9 18h3") + p("M15.5 17.5l1.5 1.5 3-3")   // v8.14
+    "fise": '<rect x="5" y="3" width="14" height="18" rx="2"/>' + p("M9 3v2h6V3") + p("M9 10h6") + p("M9 14h6") + p("M9 18h3") + p("M15.5 17.5l1.5 1.5 3-3")   // v8.14
   };
   const SCURT = { "Contracte și anexe clienți": "Contracte și anexe", "Verificare rute șoferi": "Verificare rute", "Cereri / documente angajați": "Cereri angajați", "Fișă date contract": "Fișă date contract" };
   document.querySelectorAll("nav > button[data-p]").forEach(b => {
@@ -5427,11 +5439,14 @@ const cdCod = () => { const a = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwx
 const cdNume = x => ((x.raspuns || {}).denumire || (x.raspuns || {}).nume || (x.precompletat || {}).denumire || (x.precompletat || {}).nume || "(fără nume)");
 async function cdLoad(){
   const { data, error } = await db.from("cereri_date").select("*").in("stare", ["trimisa", "completata"]).order("created_at", { ascending: false }).limit(100);
-  if(error){ $("cd-card").style.display = "none"; return; }
+  if(error){ const e = $("cd-card"); if(e) e.innerHTML = '<p class="muted" style="margin:0">Fișele nu s-au putut încărca: ' + esc(error.message || "") + '</p>'; return; }
   CD = data || []; cdRender();
 }
 function cdRender(){
-  const e = $("cd-card"); if(!CD.length){ e.style.display = "none"; return; }
+  const av = $("cd-aviz"), gata = CD.filter(x => x.stare === "completata").length;   // v8.27: aviz în Contracte și anexe
+  if(av){ av.style.display = gata ? "" : "none"; av.innerHTML = gata ? `<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap"><b>📋 ${gata === 1 ? "O fișă „Date contract” completată" : gata + " fișe „Date contract” completate"} de clienți — de verificat.</b><button class="btn sm" onclick="deschideSectiune('fisa-date')">Deschide fișele</button></div>` : ""; }
+  const e = $("cd-card"); if(!e) return;
+  if(!CD.length){ e.innerHTML = '<p class="muted" style="margin:0">Nicio fișă în lucru. Apasă „📋 Fișă nouă” ca să trimiți un link unui client.</p>'; return; }
   const azi = new Date().toISOString();
   e.style.display = "";
   e.innerHTML = `<h3 style="margin:0 0 8px;color:var(--g)">📋 Fișe „Date contract” (${CD.length})</h3><div class="tw"><table><tr><th>Trimisă</th><th>Client</th><th>Categorie</th><th>Stare</th><th></th></tr>` +
