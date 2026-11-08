@@ -1018,7 +1018,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
   <span id="rz-w"><button id="rz-reset" class="pictograma" title="Lățimi implicite — pune coloanele din tabelele acestei file înapoi cum erau">↺ Reset layout</button><i class="rz-sep">|</i></span>
   <span id="tz-w" title="Mărimea tabelului (doar tabelul, restul rămâne la fel), din 5 în 5%. Merge și cu Ctrl + rotița mausului, Ctrl + / Ctrl − / Ctrl 0. Dublu clic pe procent = scrii tu valoarea."><button class="pictograma" onclick="tzPas(-1)" aria-label="Micșorează tabelul">−</button><b id="tz-v" ondblclick="tzScrie()" title="Dublu clic = scrii mărimea (ex. 87), Enter">100%</b><input id="tz-in" type="number" min="30" max="300" step="5" style="display:none"><button class="pictograma" onclick="tzPas(1)" aria-label="Mărește tabelul">+</button></span>
-  <span class="ver">v8.13</span>
+  <span class="ver">v8.14</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -1044,6 +1044,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <button data-p="verificare">Verificare <span id="v-badge" class="badge" style="display:none">0</span></button>
   <button data-p="pv" data-v="pv">Procese verbale</button>
   <button data-p="pv" data-v="cereri" data-h="cereri">Cereri / documente angajați</button>
+  <button data-p="clienti" data-v="fisa" data-h="fisa-date">Fișă date contract</button><!-- v8.14 (cerut de Ovidiu, 08.11): acces rapid la fișa „Date contract” -->
   <div id="nav-jos" style="display:none">
     <div class="ini" id="nav-ini">—</div>
     <div class="cine-blk"><div id="cine"></div><div id="cine-rol"></div></div>
@@ -2563,7 +2564,7 @@ let DEP_PRESELECTAT = false;
 function pune(sel,val){ const s=$(sel); if(!s||!val) return; if([...s.options].some(o=>o.value===val)) s.value=val; }
 
 // ================= NAV =================
-document.querySelectorAll("nav button").forEach(b=>b.onclick=()=>{
+document.querySelectorAll("nav button").forEach(b=>b.onclick=(ev)=>{
   document.querySelectorAll("nav button").forEach(x=>x.classList.remove("on")); b.classList.add("on");
   document.querySelectorAll(".page").forEach(p=>p.classList.remove("on")); $("p-"+b.dataset.p).classList.add("on");
   if(PB_ON){ PB_ON=false; PB_SEL.clear(); const pb=$("pb-btn"); if(pb){ pb.classList.add("sec"); pb.textContent="☑ Schimbă la cele bifate"; } pbBara(); }   // v5.86: bifarea se oprește la schimbarea filei
@@ -2578,6 +2579,7 @@ document.querySelectorAll("nav button").forEach(b=>b.onclick=()=>{
   if(b.dataset.p==="rute") deschideRute();
   if(b.dataset.p==="admin"){ if(b.dataset.a) $("a-tabel").value = b.dataset.a; else if($("a-tabel").value === "clients") $("a-tabel").value = "soferi"; adminSchimba(); }   // v5.35: Puncte de rută doar în fila lor
   if(b.dataset.p==="verificare") loadVerif();
+  if(b.dataset.p==="clienti" && b.dataset.v==="fisa"){ cdLoad(); if(ev && ev.isTrusted) setTimeout(cdNou, 50); }   // v8.14: lista fișelor + fereastra nouă (doar la clic, nu la reîncărcare)
   if(b.dataset.p==="pv"){ pvMod(b.dataset.v || "pv"); loadPV(); }
   if(b.dataset.p==="raportrute"){ if(!RR_CERUT) RR_SID = null; loadRR(true); }   // v6.34: din meniu = toate rutele   // v5.18: la fiecare deschidere, datele proaspete din bază
   if(b.dataset.p==="inceput") loadIZ();
@@ -3010,9 +3012,10 @@ function potrivesteTema(){
     "admin": p("M4 21v-7") + p("M4 10V3") + p("M12 21v-9") + p("M12 8V3") + p("M20 21v-5") + p("M20 12V3") + p("M1 14h6") + p("M9 8h6") + p("M17 16h6"),
     "verificare": p("M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z") + p("m9 12 2 2 4-4"),
     "pv-pv": p("M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z") + p("M14 2v6h6") + p("m9 15 2 2 4-4"),
-    "pv-cereri": p("M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2") + c(9, 7, 4) + p("M22 21v-2a4 4 0 0 0-3-3.87") + p("M16 3.13a4 4 0 0 1 0 7.75")
+    "pv-cereri": p("M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2") + c(9, 7, 4) + p("M22 21v-2a4 4 0 0 0-3-3.87") + p("M16 3.13a4 4 0 0 1 0 7.75"),
+    "clienti-fisa": '<rect x="5" y="3" width="14" height="18" rx="2"/>' + p("M9 3v2h6V3") + p("M9 10h6") + p("M9 14h6") + p("M9 18h3") + p("M15.5 17.5l1.5 1.5 3-3")   // v8.14
   };
-  const SCURT = { "Contracte și anexe clienți": "Contracte și anexe", "Verificare rute șoferi": "Verificare rute", "Cereri / documente angajați": "Cereri angajați" };
+  const SCURT = { "Contracte și anexe clienți": "Contracte și anexe", "Verificare rute șoferi": "Verificare rute", "Cereri / documente angajați": "Cereri angajați", "Fișă date contract": "Fișă date contract" };
   document.querySelectorAll("nav > button[data-p]").forEach(b => {
     const d = b.dataset, k = d.p + (d.r ? "-" + d.r : d.v ? "-" + d.v : d.a ? "-" + d.a : "");
     const tn = [...b.childNodes].find(n => n.nodeType === 3 && n.textContent.trim()); if(!tn) return;
