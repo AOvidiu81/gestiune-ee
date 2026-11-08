@@ -1018,7 +1018,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
   <span id="rz-w"><button id="rz-reset" class="pictograma" title="Lățimi implicite — pune coloanele din tabelele acestei file înapoi cum erau">↺ Reset layout</button><i class="rz-sep">|</i></span>
   <span id="tz-w" title="Mărimea tabelului (doar tabelul, restul rămâne la fel), din 5 în 5%. Merge și cu Ctrl + rotița mausului, Ctrl + / Ctrl − / Ctrl 0. Dublu clic pe procent = scrii tu valoarea."><button class="pictograma" onclick="tzPas(-1)" aria-label="Micșorează tabelul">−</button><b id="tz-v" ondblclick="tzScrie()" title="Dublu clic = scrii mărimea (ex. 87), Enter">100%</b><input id="tz-in" type="number" min="30" max="300" step="5" style="display:none"><button class="pictograma" onclick="tzPas(1)" aria-label="Mărește tabelul">+</button></span>
-  <span class="ver">v8.22</span>
+  <span class="ver">v8.23</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -5575,6 +5575,7 @@ function cdVezi(id){
       <div style="flex:0"><button class="btn sec" onclick="this.closest('.modal').remove()">Închide</button></div>
       <div style="flex:0"><button class="btn sec" onclick="cdRedeschide(${x.id})" title="Clientul poate corecta din același link">Redeschide linkul</button></div>
       <div style="flex:0"><button class="btn sec" onclick="cdSalveazaCorecturi(${x.id})" title="Păstrează corecturile în fișă (fără să creezi clientul acum)">💾 Salvează corecturile</button></div>
+      <div style="flex:0"><button class="btn sec" onclick="cdPdfDate(${x.id})" title="Salvează corecturile și face PDF-ul cu datele clientului (cu copia CI la PF) — îl salvezi în folderul clientului">📄 PDF date client</button></div>
       <div style="flex:0"><button class="btn" onclick="cdSalveazaCorecturi(${x.id}, true)">Creează client</button></div></div></div>`;
   document.body.appendChild(w); feFereastra(w);
 }
@@ -5589,6 +5590,48 @@ async function cdSalveazaCorecturi(id, creeaza){
   if(error){ toast(error.message, true); return; }
   x.raspuns = R;
   if(creeaza) cdCreeazaClient(id); else toast("Corecturile au fost salvate în fișă");
+}
+// v8.23 (cerut de Ovidiu, 08.11): PDF cu datele verificate ale clientului („Date pt Contract_ NUME.pdf”), cu copia CI la PF,
+// salvat unde alege el (folderul clientului) — Chrome deschide „Salvare ca”; dacă nu se poate, se descarcă.
+async function cdPdfDate(id){
+  await cdSalveazaCorecturi(id); const x = CD.find(y => y.id === id); if(!x) return;
+  toast("Pregătesc PDF-ul…");
+  let blob; try{ blob = await cdPdfCompletat(x); }catch(e){ toast("PDF-ul n-a mers: " + (e.message || e), true); return; }
+  const nume = "Date pt Contract_ " + cdNume(x).replace(/[\\/:*?"<>|]+/g, " ").trim() + ".pdf";
+  if(window.showSaveFilePicker){
+    try{ const h = await showSaveFilePicker({ suggestedName: nume, id: "ee-date-contract", startIn: "documents", types: [{ description: "PDF", accept: { "application/pdf": [".pdf"] } }] });
+      const w = await h.createWritable(); await w.write(blob); await w.close(); toast("PDF salvat: " + h.name); return;
+    }catch(e){ if(e && e.name === "AbortError") return; }
+  }
+  const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = nume; document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 2000);
+  toast("PDF descărcat: " + nume);
+}
+async function cdPdfCompletat(x){
+  await cdLib();
+  const R = x.raspuns || {}, L = cdCampuri(x.categorie, x.felul);
+  const d = document.createElement("div");
+  d.style.cssText = "position:fixed;left:-10000px;top:0;width:794px;background:#fff;color:#141A2E;font-family:Arial,Helvetica,sans-serif;padding:34px 40px;box-sizing:border-box";
+  d.innerHTML = `<div style="border-bottom:3px solid #17275A;padding-bottom:10px;margin-bottom:12px"><div style="font-size:21px;font-weight:700;color:#17275A">Informații / date client pentru redactare contract</div>
+      <div style="font-size:12px;color:#5E6A82;margin-top:4px">${esc(CAT_ET[x.categorie] || "")}${x.felul === "eveniment" ? " · eveniment" : ""} · completată online de client la ${fmtD((x.completat_la || "").slice(0, 10))} · verificată ${fmtD(today())}<br>SC EURO-ECOLOGIC SRL · J2007000205190 · RO 21311085 · hunedoara@eurowc.ro</div></div>
+    <table style="width:100%;border-collapse:collapse;font-size:12.5px;background:#fff;color:#141A2E">${L.map(([k, l]) => `<tr><td style="border:1px solid #9AA6BF;background:#EEF2FA;color:#141A2E;font-weight:700;width:34%;padding:5px 8px;vertical-align:top">${esc(l)}</td><td style="border:1px solid #9AA6BF;background:#fff;color:#141A2E;padding:5px 8px;white-space:pre-wrap">${esc(cdVal(k, R[k]))}</td></tr>`).join("")}</table>`;
+  document.body.appendChild(d);
+  try{
+    const pdf = new window.jspdf.jsPDF({ unit: "mm", format: "a4" }), W = 210, H = 297;
+    const cv = await html2canvas(d, { scale: 2, backgroundColor: "#ffffff" });
+    let w = W, h = cv.height * W / cv.width; if(h > H){ w = w * H / h; h = H; }
+    pdf.addImage(cv.toDataURL("image/jpeg", 0.92), "JPEG", (W - w) / 2, 0, w, h);
+    if(x.ci_path && !/\.pdf$/i.test(x.ci_path)){   // copia CI pe pagina a doua (Anexa CI)
+      const { data } = await db.storage.from("acte").createSignedUrl(x.ci_path, 120);
+      if(data && data.signedUrl){
+        const img = await new Promise((ok, nu) => { const i = new Image(); i.crossOrigin = "anonymous"; i.onload = () => ok(i); i.onerror = nu; i.src = data.signedUrl; });
+        const c2 = document.createElement("canvas"); c2.width = img.width; c2.height = img.height; c2.getContext("2d").drawImage(img, 0, 0);
+        pdf.addPage(); pdf.setFontSize(14); pdf.text("Copia actului de identitate - " + cdNume(x).normalize("NFD").replace(/[\u0300-\u036f]/g, ""), 15, 18);
+        let iw = 180, ih = img.height * iw / img.width; if(ih > 250){ iw = iw * 250 / ih; ih = 250; }
+        pdf.addImage(c2.toDataURL("image/jpeg", 0.9), "JPEG", (W - iw) / 2, 26, iw, ih);
+      }
+    }
+    return pdf.output("blob");
+  } finally { d.remove(); }
 }
 async function cdRedeschide(id){
   const { error } = await db.from("cereri_date").update({ stare: "trimisa", expira_la: new Date(Date.now() + 14 * 864e5).toISOString(), updated_at: new Date().toISOString() }).eq("id", id);
