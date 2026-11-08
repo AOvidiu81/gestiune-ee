@@ -149,7 +149,9 @@ function adCont(n, t){
   d.innerHTML = `<input placeholder="Nume și prenume" value="${esc(n)}"><input type="tel" placeholder="Telefon" value="${esc(t)}"><button type="button" class="btn sec" title="Scoate">✕</button>`;
   d.querySelector("button").onclick = () => d.remove(); $("contacte").appendChild(d);
 }
-const CAT_P = () => (C.catalog && C.catalog.produse) || [], FRECV = () => (C.catalog && C.catalog.frecvente) || [];
+// v8.21 (cerut de Ovidiu, 08.11): clientul alege doar 1 / săpt., 2 / săpt., 2 / lună, 1 / lună, La cerere — în ordinea asta
+const FR_OK = ["1 / Sap", "2 / Sap", "2 / Luna", "1 / Luna", "La Cerere"];
+const CAT_P = () => (C.catalog && C.catalog.produse) || [], FRECV = () => { const l = (C.catalog && C.catalog.frecvente) || []; return FR_OK.filter(x => l.includes(x)); };
 const areFrecv = p => /TOALET/i.test(p || "");
 const frTxt = x => String(x).replace(/\s*\/\s*Sap$/i, " / săptămână").replace(/\s*\/\s*Luna$/i, " / lună").replace(/^La Cerere$/i, "La cerere");
 function adProd(o){
