@@ -1018,7 +1018,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
   <span id="rz-w"><button id="rz-reset" class="pictograma" title="Lățimi implicite — pune coloanele din tabelele acestei file înapoi cum erau">↺ Reset layout</button><i class="rz-sep">|</i></span>
   <span id="tz-w" title="Mărimea tabelului (doar tabelul, restul rămâne la fel), din 5 în 5%. Merge și cu Ctrl + rotița mausului, Ctrl + / Ctrl − / Ctrl 0. Dublu clic pe procent = scrii tu valoarea."><button class="pictograma" onclick="tzPas(-1)" aria-label="Micșorează tabelul">−</button><b id="tz-v" ondblclick="tzScrie()" title="Dublu clic = scrii mărimea (ex. 87), Enter">100%</b><input id="tz-in" type="number" min="30" max="300" step="5" style="display:none"><button class="pictograma" onclick="tzPas(1)" aria-label="Mărește tabelul">+</button></span>
-  <span class="ver">v8.24</span>
+  <span class="ver">v8.25</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -1768,6 +1768,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   #mc-conf.on{display:flex}
   #mc-conf table{width:100%;border-collapse:collapse;font-size:13px} #mc-conf td{padding:5px 8px;border-bottom:1px solid var(--bd);vertical-align:top}
   #mc-conf td:first-child{color:var(--mut);width:42%}
+  #mc-conf td{white-space:pre-wrap;word-break:break-word}   /* v8.25: observațiile pe mai multe rânduri */
   .anaf-box{margin:8px 0;padding:8px 10px;border:1px solid var(--bd);border-left:3px solid var(--g2);border-radius:6px;font-size:13px}
 </style>
 <div class="modal" id="mod-c">
@@ -5878,7 +5879,8 @@ let MC_CIORNA = null, MC_CIORNE = [];
 const MC_CAMPURI = [["mc-nume","nume","Client / societate / beneficiar"],["mc-idtip","id_tip","Tip ID"],["mc-atr","atr","Atribut fiscal"],["mc-cui","cui","Număr"],
   ["mc-ci-serie","ci_serie","C.I. seria"],["mc-ci-nr","ci_numar","C.I. număr"],["mc-ci-elib","ci_eliberat_de","C.I. eliberat de"],["mc-ci-exp","ci_expira","C.I. expiră"],
   ["mc-pers","pers_resp","Reprezentant legal"],["mc-func","reprezentant_functie","Funcția"],["mc-tel","telefon","Telefon"],["mc-email","email","E-mail"],["mc-obs","observatii","Observații"],
-  ["mc-cat","categorie","Categorie"],["mc-inreg","inregistrare","Înregistrare"]];   // v8.12
+  ["mc-cat","categorie","Categorie"],["mc-inreg","inregistrare","Înregistrare"],
+  ["mc-sediu","sediu","Sediu"],["mc-j","nr_reg_com","Nr. Reg. Com."],["mc-iban","iban","IBAN"],["mc-banca","banca","Banca"]];   // v8.12 / v8.25: și datele pentru acte în confirmare
 const MC_CI = ["ci_serie","ci_numar","ci_eliberat_de","ci_expira"];
 const mcDate = () => Object.fromEntries(MC_CAMPURI.map(([el, c]) => [c, ($(el).value || "").trim()]));
 const mcGol = d => !["nume","cui","pers_resp","reprezentant_functie","telefon","email","observatii"].concat(MC_CI).some(c => d[c]);
