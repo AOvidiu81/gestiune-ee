@@ -1081,7 +1081,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
   <span id="rz-w"><button id="rz-reset" class="pictograma" title="Lățimi implicite — pune coloanele din tabelele acestei file înapoi cum erau">↺ Reset layout</button><i class="rz-sep">|</i></span>
   <span id="tz-w" title="Mărimea tabelului (doar tabelul, restul rămâne la fel), din 5 în 5%. Merge și cu Ctrl + rotița mausului, Ctrl + / Ctrl − / Ctrl 0. Dublu clic pe procent = scrii tu valoarea."><button class="pictograma" onclick="tzPas(-1)" aria-label="Micșorează tabelul">−</button><b id="tz-v" ondblclick="tzScrie()" title="Dublu clic = scrii mărimea (ex. 87), Enter">100%</b><input id="tz-in" type="number" min="30" max="300" step="5" style="display:none"><button class="pictograma" onclick="tzPas(1)" aria-label="Mărește tabelul">+</button></span>
-  <span class="ver">v8.48</span>
+  <span class="ver">v8.49</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -4086,28 +4086,34 @@ async function arhSalveaza(blob, nume, k, tip){
   const w = await h.createWritable(); await w.write(blob); await w.close(); return true;
 }
 // 📎 Act semnat
-let ARH_K = null, ARH_F = null, ARH_DIR = null;
+let ARH_K = null, ARH_F = null, ARH_DIR = null, ARH_GATA = false;
 const arhCurat = s => String(s || "").replace(/[\\/:*?"<>|]+/g, " ").replace(/\s+/g, " ").trim();
 async function arhActDeschide(kid){
   const k = CTR.find(x => x.id === kid); if(!k) return; const c = CLI.find(x => x.id === k.client_id) || {};
   if(!window.showDirectoryPicker){ toast("Salvarea în arhivă merge doar în Chrome / Edge pe calculator", true); return; }
-  ARH_K = k; ARH_F = null; $("arh-fis").value = ""; $("arh-fis-n").textContent = "";
+  ARH_K = k; ARH_F = null; ARH_DIR = null; ARH_GATA = false; $("arh-fis").value = ""; $("arh-fis-n").textContent = "";   // v8.49: nimic rămas de la clientul dinainte
   const anx = ANX.filter(a => a.contract_id === k.id && !a.linie_id).sort((x, y) => (x.data_emitere || "").localeCompare(y.data_emitere || "") || x.id - y.id);
   const vaz = new Set(), L = anx.filter(a => { const kk = a.doc_id ? a.doc_id + "|" + String(a.anexa || "").trim() : "i" + a.id; if(vaz.has(kk)) return false; vaz.add(kk); return true; });
   $("arh-act").innerHTML = `<option value="ctr">Contractul ${esc(k.nr_ctr || "")}</option>` + L.map(a => `<option value="${a.id}">${esc(a.anexa || "Anexa")} · ${esc(fmtD(a.data_emitere))} · ${esc([a.loc, a.sat].filter(Boolean).join(", "))}</option>`).join("");
   $("arh-cap").innerHTML = `<b>${esc(c.nume || "")}</b> · CTR ${esc(k.nr_ctr || "")} · se caută folderul în arhivă…`;
   $("mod-arh").classList.add("on"); arhNume();
-  const { rad, dir } = await arhFolderClient(k, true); ARH_DIR = dir;
+  let rad = null, dir = null;
+  try{ ({ rad, dir } = await arhFolderClient(k, true)); }
+  catch(e){ $("arh-cap").innerHTML = `<b>${esc(c.nume || "")}</b> · CTR ${esc(k.nr_ctr || "")}<br><span style="color:var(--red)">Nu am acces la arhivă (${esc(e.message || e)}) — apasă „Folderul arhivei…” și dă „Permite”.</span>`; ARH_GATA = true; return; }
+  if(ARH_K !== k) return;   // între timp s-a deschis alt contract
+  ARH_DIR = dir; ARH_GATA = true; arhNume();
   $("arh-cap").innerHTML = `<b>${esc(c.nume || "")}</b> · CTR ${esc(k.nr_ctr || "")}<br>` + (dir ? `Se salvează în: <b>${esc(rad.name)} › … › ${esc(dir.name)}</b>`
     : rad ? `<span style="color:var(--red)">Folderul clientului nu e în arhivă (${esc(rad.name)}) — la salvare alegi tu unde (sau faci folderul).</span>` : `<span style="color:var(--red)">Arhiva nu e aleasă — apasă „Folderul arhivei…”.</span>`);
 }
 function arhNume(){
   const k = ARH_K; if(!k) return; const c = CLI.find(x => x.id === k.client_id) || {}, v = $("arh-act").value;
+  // v8.49: numele clientului ca în numele folderului din arhivă („962 HD_SANDOR LUKACS CONSTRUCT” → „SANDOR LUKACS CONSTRUCT”)
+  const numeCl = (ARH_DIR && ARH_DIR.name.replace(/^\s*\d+\s*[A-Z]{2}\s*[_-]?\s*/i, "").trim()) || c.nume || "";
   const ext = ARH_F && /\.(jpe?g|png)$/i.test(ARH_F.name) ? ARH_F.name.slice(ARH_F.name.lastIndexOf(".")).toLowerCase() : ".pdf";
   let n;
-  if(v === "ctr") n = (k.nr_ctr || "CTR") + "_ " + (c.nume || "");
+  if(v === "ctr") n = (k.nr_ctr || "CTR") + "_ " + numeCl;
   else { const a = ANX.find(x => x.id == v) || {}, nr = String(a.anexa || "").replace(/^\s*ANEXA\s*(NR\.?)?\s*/i, "");
-    n = "ANEXA NR. " + nr + " si PV din " + fmtD(a.data_livrarii || a.data_emitere).replace(/-/g, ".") + " _ " + [a.loc, a.sat].filter(Boolean).join(", ") + (a.jud ? " - " + a.jud : "") + " _ la CTR " + (k.nr_ctr || "") + " - " + (c.nume || ""); }
+    n = "ANEXA NR. " + nr + " si PV din " + fmtD(a.data_livrarii || a.data_emitere).replace(/-/g, ".") + " _ " + [a.loc, a.sat].filter(Boolean).join(", ") + (a.jud ? " - " + a.jud : "") + " _ la CTR " + (k.nr_ctr || "") + " - " + numeCl; }
   $("arh-nume").value = arhCurat(n) + "-semnat" + ext;
 }
 function arhFisier(f){ if(!f) return; ARH_F = f; $("arh-fis-n").textContent = "✓ " + f.name + " (" + Math.round(f.size / 1024) + " KB)"; arhNume(); }
@@ -4117,6 +4123,7 @@ document.addEventListener("DOMContentLoaded", () => { const d = $("arh-drop"); i
   d.addEventListener("drop", v => { const f = v.dataTransfer && v.dataTransfer.files && v.dataTransfer.files[0]; if(f) arhFisier(f); else toast("Nu s-a primit fișierul — salvează atașamentul din Outlook și trage-l din folder", true); });
 });
 async function arhActSalveaza(){
+  if(!ARH_GATA){ toast("Aștept să găsesc folderul clientului în arhivă — încearcă din nou într-o secundă", true); return; }
   if(!ARH_F){ toast("Trage întâi PDF-ul semnat în chenar (sau alege-l)", true); return; }
   const nume = arhCurat($("arh-nume").value); if(!nume){ toast("Scrie numele fișierului", true); return; }
   try{
@@ -4124,7 +4131,7 @@ async function arhActSalveaza(){
       let exista = false; try{ await ARH_DIR.getFileHandle(nume); exista = true; }catch(e){}
       if(exista && !confirm("În folderul clientului există deja:\n" + nume + "\n\nOK = îl înlocuiesc · Anulează = schimbi tu numele")) return;
       const h = await ARH_DIR.getFileHandle(nume, { create: true }), w = await h.createWritable(); await w.write(ARH_F); await w.close();
-      toast("Salvat în arhivă: " + ARH_DIR.name + " › " + nume);
+      toast("Salvat în arhivă: " + ARH_DIR.name + " › " + nume);   // folderul clientului, găsit după nr. contractului
     } else if(!(await arhSalveaza(ARH_F, nume, ARH_K, "pdf"))){ toast("Salvarea în arhivă merge doar în Chrome / Edge pe calculator", true); return; }
     else toast("Salvat: " + nume);
     closeModal("mod-arh");
