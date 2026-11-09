@@ -1018,7 +1018,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
   <span id="rz-w"><button id="rz-reset" class="pictograma" title="Lățimi implicite — pune coloanele din tabelele acestei file înapoi cum erau">↺ Reset layout</button><i class="rz-sep">|</i></span>
   <span id="tz-w" title="Mărimea tabelului (doar tabelul, restul rămâne la fel), din 5 în 5%. Merge și cu Ctrl + rotița mausului, Ctrl + / Ctrl − / Ctrl 0. Dublu clic pe procent = scrii tu valoarea."><button class="pictograma" onclick="tzPas(-1)" aria-label="Micșorează tabelul">−</button><b id="tz-v" ondblclick="tzScrie()" title="Dublu clic = scrii mărimea (ex. 87), Enter">100%</b><input id="tz-in" type="number" min="30" max="300" step="5" style="display:none"><button class="pictograma" onclick="tzPas(1)" aria-label="Mărește tabelul">+</button></span>
-  <span class="ver">v8.38</span>
+  <span class="ver">v8.40</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -3657,10 +3657,34 @@ const ACT_COND_RIDICARE = ["*Asigurare acces auto obligatoriu pentru auto de 3.5
   "*Eventualele deteriorari sau lipsuri constatate la ridicare se consemneaza in procesul verbal si se factureaza conform contractului (Tabel nr. 1) ;",
   "*Beneficiarul are obligatia sa asigure paza si integritatea produselor pina la predarea lor catre Sc Euro-Ecologic Srl. ;",
   "*Chiria se datoreaza pina in ziua ridicarii inclusiv (ziua in care produsele au fost preluate de reprezentantul Prestatorului)."];
-// v8.38 (cerut de Ovidiu, 09.11): condițiile de livrare după produsele anexei — igienizarea / distanța doar unde sunt toalete
+// v8.39 (cerut de Ovidiu, 09.11): condițiile de livrare pe fiecare produs al anexei — întâi accesul auto, apoi clauzele produselor
+// (în ordinea lor pe anexă, fără dubluri), la final paza și TVA-ul. Textele se pot corecta aici.
+const ACT_COND_PROD = [
+  [/TOALET/, ["*Igienizare Toalete Ecologice: golire, spalare, odorizare, hartie igienica ;",
+    "*Distanta Maxima pentru serviciul de Igienizare Toalete: 5m fara obstacole ;",
+    "*Toaleta se amplaseaza pe teren plan si stabil si nu se muta fara acordul Prestatorului ;",
+    "*In toaleta nu se arunca deseuri solide, chimicale sau materiale de constructii ; curatarea suplimentara se factureaza ;"]],
+  [/CONTAINER/, ["*Container: teren plan, nivelat si compactat, cu acces pentru auto cu macara si fara cabluri aeriene in zona de descarcare ;",
+    "*Racordarea containerului la curent, apa si canalizare se face de catre Beneficiar, prin personal autorizat ;",
+    "*Containerul nu se muta, nu se suprapune si nu se modifica fara acordul scris al Prestatorului ;",
+    "*La ridicare containerul se preda curat si golit de bunurile Beneficiarului ;"]],
+  [/CABINA/, ["*Cabina: teren plan si stabil ; racordarea la curent se face de catre Beneficiar, prin personal autorizat ;",
+    "*Cabina nu se muta si nu se modifica fara acordul scris al Prestatorului ;"]],
+  [/LAVOAR/, ["*Lavoarul se amplaseaza pe teren plan, cu acces pentru igienizare, si nu se muta fara acordul Prestatorului ;",
+    "*In lavoar se foloseste doar apa ; nu se arunca deseuri sau substante chimice ;"]],
+  [/GARD|CORDON|PANOU/, ["*Gardul se monteaza pe teren plan, pe talpi, cu cleme ; in zone expuse la vant Beneficiarul asigura ancorarea suplimentara ;",
+    "*Panourile, talpile si clemele se predau si se primesc numarate, pe baza de proces verbal ; lipsurile se factureaza conform Tabel nr. 1 ;"]],
+  [/FOSA/, ["*Fosa septica: teren plan si stabil, cu acces auto pentru vidanjare la maxim 5m fara obstacole ;",
+    "*Racordarea la fosa se face de catre Beneficiar ; in fosa nu se deverseaza uleiuri, chimicale sau deseuri solide ;"]],
+  [/\bIBC\b|\bCUB/, ["*Cubul IBC se amplaseaza pe teren plan si stabil si se foloseste doar pentru apa ;",
+    "*Cubul IBC se preda golit la ridicare ;"]] ];
+// v8.40 (cerut de Ovidiu, 09.11): containerele, cabinele și fosele vin cu autocamion de mare tonaj (macaraua se precizează separat); restul cu auto de 3.5 T
 function actCondLivrare(rows){
-  const toal = rows.some(r => /TOALET/i.test(faraDiac(r.produs || "")));
-  return ACT_COND_LIVRARE.filter(t => toal || !/Toalete/i.test(t));
+  const mare = rows.some(r => /CONTAINER|CABINA|FOSA/.test(faraDiac(r.produs || "").toUpperCase()));
+  const L = [mare ? "*Asigurare acces auto obligatoriu pentru autocamion de mare tonaj in perimetru santier/locatie ;" : ACT_COND_LIVRARE[0]];
+  rows.forEach(r => { const u = faraDiac(r.produs || "").toUpperCase();
+    ACT_COND_PROD.forEach(([re, T]) => { if(re.test(u)) T.forEach(t => { if(!L.includes(t)) L.push(t); }); }); });
+  return L.concat(ACT_COND_LIVRARE.filter(t => /paza|TVA/i.test(t)));
 }
 // v8.38 (cerut de Ovidiu, 09.11): datele în acte „Fiecare Cuvânt cu Majusculă” (ca în Word); siglele (SRL, TVA, BUC…) și județul după „/” rămân mari
 const ACT_SIGLE = new Set("SRL SA SC SNC SCS RA PFA II IF ONG UAT RO TVA BUC CUI CIF BCR BRD ING CEC OTP UE DN DJ DC CNP CI".split(" "));
