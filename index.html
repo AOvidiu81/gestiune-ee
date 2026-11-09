@@ -292,7 +292,15 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   .kal-sb .z{display:inline-block;min-width:122px;color:var(--mut)}
   .kal-sb .tr{opacity:.5}
   .kal-sb .urm{font-weight:700} .kal-sb .urm .z{color:var(--g)}
-  @media print{ #p-calendar .card{box-shadow:none;border:0} .kal-ani{grid-template-columns:repeat(3,1fr)} }
+  /* v8.44 (cerut de Ovidiu, 09.11): calendarul se printează color, pe O pagină A4 landscape (pagina „kal” doar pentru el),
+     exact cum arată pe ecran: se desenează la lățimea unui ecran mare (6 luni pe rând, legenda, sărbătorile) și se micșorează proporțional */
+  @page kal{size:A4 landscape;margin:7mm}
+  @media print{
+    #p-calendar{page:kal;width:1720px;zoom:.61}
+    #p-calendar,#p-calendar *{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+    #p-calendar .card{box-shadow:none;break-inside:avoid}
+    #p-calendar .kal-ani{grid-template-columns:repeat(6,minmax(0,1fr))!important}
+  }
   .cal-gol{text-align:center;padding:6px 0;color:#c9d2cd}
   .cal-d{text-align:center;padding:6px 0;border:0;background:none;border-radius:8px;cursor:pointer;
          font:inherit;color:var(--tx)}
@@ -1073,7 +1081,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
   <span id="rz-w"><button id="rz-reset" class="pictograma" title="Lățimi implicite — pune coloanele din tabelele acestei file înapoi cum erau">↺ Reset layout</button><i class="rz-sep">|</i></span>
   <span id="tz-w" title="Mărimea tabelului (doar tabelul, restul rămâne la fel), din 5 în 5%. Merge și cu Ctrl + rotița mausului, Ctrl + / Ctrl − / Ctrl 0. Dublu clic pe procent = scrii tu valoarea."><button class="pictograma" onclick="tzPas(-1)" aria-label="Micșorează tabelul">−</button><b id="tz-v" ondblclick="tzScrie()" title="Dublu clic = scrii mărimea (ex. 87), Enter">100%</b><input id="tz-in" type="number" min="30" max="300" step="5" style="display:none"><button class="pictograma" onclick="tzPas(1)" aria-label="Mărește tabelul">+</button></span>
-  <span class="ver">v8.43</span>
+  <span class="ver">v8.44</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
