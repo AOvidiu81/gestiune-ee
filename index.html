@@ -238,6 +238,38 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   .cal-nav:hover{background:var(--gl)}
   .cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:2px}
   .cal-zi{text-align:center;font-size:11px;color:var(--mut);padding:4px 0;font-weight:600}
+  /* v8.41: Calendar */
+  .kal-sw{display:inline-flex;border:1px solid var(--bd);border-radius:8px;overflow:hidden}
+  .kal-sw button{border:0;background:var(--card);color:var(--tx);padding:8px 14px;cursor:pointer;font-weight:600;font-size:13px}
+  .kal-sw button.on{background:var(--g);color:#fff}
+  .kal-ani{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:16px 22px}
+  .kal-t{width:100%;border-collapse:collapse;table-layout:fixed}
+  .kal-t caption{font-weight:700;color:var(--g);padding:2px 0 6px;cursor:pointer;text-transform:uppercase;letter-spacing:.05em;font-size:13px}
+  .kal-t caption:hover{text-decoration:underline}
+  .kal-t th{font-size:11px;color:var(--mut);font-weight:600;padding:3px 0;text-align:center;border-bottom:1px solid var(--bd);background:none;position:static}
+  .kal-t td{text-align:center;padding:3px 0;font-size:13px;border:0;color:var(--tx)}
+  .kal-t .kal-nr{color:var(--mut);font-size:11px;width:30px;border-right:1px solid var(--bd)}
+  .kal-t td.kal-wk{background:rgba(120,130,125,.12)}
+  .kal-t tr.kal-cur td{background:rgba(46,125,79,.16)}
+  .kal-t tr.kal-cur td.kal-wk{background:rgba(46,125,79,.24)}
+  .kal-t tr.kal-cur td.kal-nr{color:var(--g);font-weight:700}
+  .kal-t td.kal-sb{color:var(--red);font-weight:700;background:rgba(179,38,30,.12)}
+  .kal-t td.kal-alt{opacity:.35}
+  .kal-t td.kal-azi span{display:inline-block;min-width:24px;line-height:24px;border-radius:12px;background:var(--g);color:#fff;font-weight:700}
+  .kal-mare caption{font-size:16px;cursor:default}
+  .kal-mare caption:hover{text-decoration:none}
+  .kal-mare td{height:82px;vertical-align:top;text-align:left;padding:6px 8px;border:1px solid var(--bd);font-size:16px}
+  .kal-mare td small{display:block;font-size:11px;font-weight:600;margin-top:4px;line-height:1.25}
+  .kal-mare .kal-nr{text-align:center;vertical-align:middle;font-size:12px}
+  .kal-leg{display:flex;flex-wrap:wrap;gap:6px 18px;margin-top:14px;font-size:12px;align-items:center}
+  .kal-leg i{display:inline-block;width:14px;height:14px;border-radius:3px;margin-right:6px;vertical-align:-2px}
+  .kal-leg .l-cur{background:rgba(46,125,79,.3)} .kal-leg .l-azi{background:var(--g);border-radius:7px} .kal-leg .l-sb{background:rgba(179,38,30,.3)} .kal-leg .l-wk{background:rgba(120,130,125,.25)}
+  .kal-sb{columns:3 250px;column-gap:28px;font-size:13px}
+  .kal-sb div{padding:3px 0;break-inside:avoid}
+  .kal-sb .z{display:inline-block;min-width:122px;color:var(--mut)}
+  .kal-sb .tr{opacity:.5}
+  .kal-sb .urm{font-weight:700} .kal-sb .urm .z{color:var(--g)}
+  @media print{ #p-calendar .card{box-shadow:none;border:0} .kal-ani{grid-template-columns:repeat(3,1fr)} }
   .cal-gol{text-align:center;padding:6px 0;color:#c9d2cd}
   .cal-d{text-align:center;padding:6px 0;border:0;background:none;border-radius:8px;cursor:pointer;
          font:inherit;color:var(--tx)}
@@ -1018,7 +1050,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
   <span id="rz-w"><button id="rz-reset" class="pictograma" title="Lățimi implicite — pune coloanele din tabelele acestei file înapoi cum erau">↺ Reset layout</button><i class="rz-sep">|</i></span>
   <span id="tz-w" title="Mărimea tabelului (doar tabelul, restul rămâne la fel), din 5 în 5%. Merge și cu Ctrl + rotița mausului, Ctrl + / Ctrl − / Ctrl 0. Dublu clic pe procent = scrii tu valoarea."><button class="pictograma" onclick="tzPas(-1)" aria-label="Micșorează tabelul">−</button><b id="tz-v" ondblclick="tzScrie()" title="Dublu clic = scrii mărimea (ex. 87), Enter">100%</b><input id="tz-in" type="number" min="30" max="300" step="5" style="display:none"><button class="pictograma" onclick="tzPas(1)" aria-label="Mărește tabelul">+</button></span>
-  <span class="ver">v8.40</span>
+  <span class="ver">v8.41</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -1045,6 +1077,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <button data-p="pv" data-v="pv">Procese verbale</button>
   <button data-p="pv" data-v="cereri" data-h="cereri">Cereri / documente angajați</button>
   <button data-p="fise" data-h="fisa-date">Fișă date contract</button><!-- v8.14 (cerut de Ovidiu, 08.11): acces rapid la fișa „Date contract” -->
+  <button data-p="calendar" data-h="calendar">Calendar</button><!-- v8.41 (cerut de Ovidiu, 09.11): calendar lună / an cu săptămânile și sărbătorile legale -->
   <div id="nav-jos" style="display:none">
     <div class="ini" id="nav-ini">—</div>
     <div class="cine-blk"><div id="cine"></div><div id="cine-rol"></div></div>
@@ -1183,6 +1216,25 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
     </div>
   </div>
   <div class="card" id="cd-card"></div>
+</section>
+
+<!-- ================= CALENDAR (v8.41) ================= -->
+<section class="page" id="p-calendar">
+  <div class="card noprint">
+    <div class="row" style="align-items:flex-end">
+      <div style="flex:0"><label>Afișare</label><div class="kal-sw"><button id="kal-m-luna" onclick="kalMod('luna')">Lună</button><button id="kal-m-an" onclick="kalMod('an')">An</button></div></div>
+      <div style="flex:0"><label>An</label><select id="kal-an" onchange="KAL.an=+this.value;kalArata()"></select></div>
+      <div style="flex:0" id="kal-luna-w"><label>Luna</label><select id="kal-luna" onchange="KAL.luna=+this.value;kalArata()"></select></div>
+      <div style="flex:0;white-space:nowrap"><label>&nbsp;</label><button class="btn sec" onclick="kalPas(-1)" title="Înapoi">‹</button> <button class="btn sec" onclick="kalAzi()">Azi</button> <button class="btn sec" onclick="kalPas(1)" title="Înainte">›</button></div>
+      <div style="flex:0"><label>&nbsp;</label><button class="btn sec" onclick="window.print()">Printează</button></div>
+    </div>
+    <div class="muted" id="kal-info" style="margin-top:10px;font-size:13px"></div>
+  </div>
+  <div class="card"><div id="kal-corp"></div>
+    <div class="kal-leg"><span><i class="l-cur"></i>săptămâna curentă</span><span><i class="l-azi"></i>azi</span><span><i class="l-sb"></i>sărbătoare legală</span><span><i class="l-wk"></i>weekend</span><span class="muted">Nr. = săptămâna din an (ISO). Clic pe numele lunii = luna mare.</span></div>
+  </div>
+  <div class="card"><h3 style="margin:0 0 10px;color:var(--g)">Sărbători legale <span id="kal-sb-an"></span></h3><div id="kal-sb" class="kal-sb"></div>
+    <p class="muted" style="margin:10px 0 0">Zilele libere legale din Codul muncii (art. 139), calculate pentru anul ales (Paștele și Rusaliile ortodoxe). Concediile șoferilor vor apărea colorate în calendar când facem modulul de pontaj.</p></div>
 </section>
 
 <!-- ================= NOMENCLATOARE ================= -->
@@ -2342,7 +2394,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
     <div style="flex:0"><button class="btn sm sec" onclick="fperRapid('an')">Până la 31.12</button></div>
   </div>
   <div class="row" style="margin-top:8px">
-    <div><label>Document</label><select id="fper-doc"><option>FACTURA AVANS</option><option>FACTURA PROFORMA</option><option value="">factură obișnuită</option></select></div>
+    <div><label>Document</label><select id="fper-doc"><option>FACTURA AVANS</option><option>FACTURA PROFORMA</option><option value="">factură obișnuită</option><option value="NU FACTURAM">nu se facturează (ex. ziua amplasării)</option></select></div>
     <div><label>Valoarea apare în Facturare pe luna</label><input type="month" id="fper-luna"></div>
   </div>
   <div style="margin-top:8px"><label>Observații</label><input id="fper-obs" placeholder="ex. nr. factură, ce s-a discutat cu clientul"></div>
@@ -2596,6 +2648,7 @@ document.querySelectorAll("nav button").forEach(b=>b.onclick=(ev)=>{
   if(b.dataset.p==="admin"){ if(b.dataset.a) $("a-tabel").value = b.dataset.a; else if($("a-tabel").value === "clients") $("a-tabel").value = "soferi"; adminSchimba(); }   // v5.35: Puncte de rută doar în fila lor
   if(b.dataset.p==="verificare") loadVerif();
   if(b.dataset.p==="fise") cdLoad();   // v8.27: pagina proprie a fișelor
+  if(b.dataset.p==="calendar") kalArata();   // v8.41
   if(b.dataset.p==="pv"){ pvMod(b.dataset.v || "pv"); loadPV(); }
   if(b.dataset.p==="raportrute"){ if(!RR_CERUT) RR_SID = null; loadRR(true); }   // v6.34: din meniu = toate rutele   // v5.18: la fiecare deschidere, datele proaspete din bază
   if(b.dataset.p==="inceput") loadIZ();
@@ -3009,6 +3062,78 @@ function potrivesteTema(){
   // v5.50 (cerut de Ovidiu, 12.10): bara de titlu a ferestrei rămâne bleumarin, la fel ca bara de sus, pe orice temă
   if(m) m.setAttribute("content", "#1a3769");
 }
+// ── v8.41 (cerut de Ovidiu, 09.11): CALENDAR — pe lună sau pe an (anul curent, următorul, oricare), numărul săptămânii (ISO),
+// săptămâna curentă și ziua de azi marcate, weekendul, sărbătorile legale (Codul muncii art. 139; Paștele / Rusaliile ortodoxe calculate).
+// Concediile șoferilor vin mai târziu, cu modulul de pontaj.
+const KAL = { an: new Date().getFullYear(), luna: new Date().getMonth(), mod: "an" };
+const KAL_LUNI = ["Ianuarie","Februarie","Martie","Aprilie","Mai","Iunie","Iulie","August","Septembrie","Octombrie","Noiembrie","Decembrie"];
+const KAL_ZS = ["Lu","Ma","Mi","Jo","Vi","Sâ","Du"], KAL_ZL = ["duminică","luni","marți","miercuri","joi","vineri","sâmbătă"];
+const kalK = d => d.getFullYear() * 10000 + (d.getMonth() + 1) * 100 + d.getDate();
+const kalD = d => zi2(d.getDate()) + "." + zi2(d.getMonth() + 1) + "." + d.getFullYear();
+const kalLuni = d => new Date(d.getFullYear(), d.getMonth(), d.getDate() - (d.getDay() + 6) % 7);
+function kalPasti(y){   // Paștele ortodox: calculul iulian + 13 zile (valabil 1900–2099)
+  const a = y % 4, b = y % 7, c = y % 19, d = (19 * c + 15) % 30, e = (2 * a + 4 * b - d + 34) % 7, x = d + e + 114;
+  return new Date(y, Math.floor(x / 31) - 1, x % 31 + 1 + 13);
+}
+function kalSapt(d){   // săptămâna ISO (luni–duminică; săptămâna 1 = cea cu prima joi din an)
+  const t = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate())), z = t.getUTCDay() || 7;
+  t.setUTCDate(t.getUTCDate() + 4 - z);
+  return Math.ceil(((t - Date.UTC(t.getUTCFullYear(), 0, 1)) / 864e5 + 1) / 7);
+}
+function kalSarbatori(y){
+  const P = kalPasti(y), z = k => new Date(P.getFullYear(), P.getMonth(), P.getDate() + k), f = (l, d) => new Date(y, l, d), M = new Map();
+  [[f(0, 1), "Anul Nou"], [f(0, 2), "Anul Nou"], [f(0, 6), "Boboteaza"], [f(0, 7), "Sf. Ioan Botezătorul"], [f(0, 24), "Ziua Unirii Principatelor Române"],
+   [z(-2), "Vinerea Mare"], [z(0), "Paștele"], [z(1), "A doua zi de Paște"], [f(4, 1), "Ziua Muncii"], [f(5, 1), "Ziua Copilului"],
+   [z(49), "Rusaliile"], [z(50), "A doua zi de Rusalii"], [f(7, 15), "Adormirea Maicii Domnului"], [f(10, 30), "Sf. Andrei"],
+   [f(11, 1), "Ziua Națională a României"], [f(11, 25), "Crăciunul"], [f(11, 26), "A doua zi de Crăciun"]]
+    .forEach(([d, n]) => { const k = kalK(d), v = M.get(k); M.set(k, v ? { d, n: v.n + " / " + n } : { d, n }); });
+  return [...M.values()].sort((a, b) => a.d - b.d);
+}
+function kalLunaHtml(an, l, SB, mare){
+  const azi = new Date(), kAzi = kalK(azi), lAzi = kalK(kalLuni(azi)), p1 = new Date(an, l, 1), st = kalLuni(p1);
+  let h = `<table class="kal-t${mare ? " kal-mare" : ""}"><caption${mare ? "" : ` onclick="KAL.luna=${l};kalMod('luna')" title="Deschide luna mare"`}>${KAL_LUNI[l]}${mare ? " " + an : ""}</caption>`
+        + `<tr><th class="kal-nr">Nr.</th>${KAL_ZS.map(z => `<th>${z}</th>`).join("")}</tr>`;
+  for(let r = 0; r < 6; r++){
+    const lu = new Date(st.getFullYear(), st.getMonth(), st.getDate() + r * 7);
+    h += `<tr${kalK(lu) === lAzi ? ' class="kal-cur"' : ""}><td class="kal-nr">${kalSapt(lu)}</td>`;
+    for(let c = 0; c < 7; c++){
+      const d = new Date(lu.getFullYear(), lu.getMonth(), lu.getDate() + c), k = kalK(d), sb = SB.get(k), alt = d.getMonth() !== l;
+      const cls = [alt && "kal-alt", c > 4 && "kal-wk", sb && !alt && "kal-sb", k === kAzi && "kal-azi"].filter(Boolean).join(" ");
+      const tit = KAL_ZL[d.getDay()] + " " + kalD(d) + " · săptămâna " + kalSapt(d) + (sb ? " · " + sb.n : "");
+      h += `<td${cls ? ` class="${cls}"` : ""} title="${esc(tit)}"><span>${d.getDate()}</span>${mare && sb && !alt ? `<small>${esc(sb.n)}</small>` : ""}</td>`;
+    }
+    h += "</tr>";
+  }
+  return h + "</table>";
+}
+function kalArata(){
+  const az = new Date().getFullYear(), sel = $("kal-an"), ani = [];
+  for(let y = Math.min(az - 1, KAL.an); y <= Math.max(az + 2, KAL.an); y++) ani.push(y);
+  sel.innerHTML = ani.map(y => `<option value="${y}"${y === KAL.an ? " selected" : ""}>${y}</option>`).join("");
+  $("kal-luna").innerHTML = KAL_LUNI.map((n, i) => `<option value="${i}"${i === KAL.luna ? " selected" : ""}>${n}</option>`).join("");
+  $("kal-luna-w").style.display = KAL.mod === "luna" ? "" : "none";
+  $("kal-m-luna").classList.toggle("on", KAL.mod === "luna"); $("kal-m-an").classList.toggle("on", KAL.mod === "an");
+  const L = kalSarbatori(KAL.an), SB = new Map(L.map(x => [kalK(x.d), x]));
+  $("kal-corp").innerHTML = KAL.mod === "an"
+    ? `<h2 style="margin:0 0 12px;color:var(--g)">${KAL.an}</h2><div class="kal-ani">${KAL_LUNI.map((_, l) => kalLunaHtml(KAL.an, l, SB, false)).join("")}</div>`
+    : kalLunaHtml(KAL.an, KAL.luna, SB, true);
+  // sărbătorile anului: trecute estompate, următoarea îngroșată
+  const azi = new Date(), kAzi = kalK(azi), urm = L.find(x => kalK(x.d) >= kAzi);
+  $("kal-sb-an").textContent = KAL.an;
+  $("kal-sb").innerHTML = L.map(x => `<div class="${x === urm ? "urm" : kalK(x.d) < kAzi ? "tr" : ""}"><span class="z">${KAL_ZL[x.d.getDay()].slice(0, 3)}. ${kalD(x.d)}</span>${esc(x.n)}</div>`).join("");
+  // rândul de sus: azi, săptămâna, următoarea sărbătoare (și din anul următor, dacă anul s-a terminat)
+  const U = urm && KAL.an === azi.getFullYear() ? urm : kalSarbatori(azi.getFullYear()).concat(kalSarbatori(azi.getFullYear() + 1)).find(x => kalK(x.d) >= kAzi);
+  const zile = U ? Math.round((new Date(U.d.getFullYear(), U.d.getMonth(), U.d.getDate()) - new Date(azi.getFullYear(), azi.getMonth(), azi.getDate())) / 864e5) : 0;
+  $("kal-info").innerHTML = `Azi: <b>${KAL_ZL[azi.getDay()]} ${kalD(azi)}</b> · săptămâna <b>${kalSapt(azi)}</b>` +
+    (U ? ` · următoarea sărbătoare legală: <b>${esc(U.n)}</b>, ${KAL_ZL[U.d.getDay()]} ${kalD(U.d)} (${zile === 0 ? "azi" : zile === 1 ? "mâine" : "peste " + zile + " zile"})` : "");
+}
+function kalMod(m){ KAL.mod = m; kalArata(); }
+function kalPas(k){
+  if(KAL.mod === "an") KAL.an += k;
+  else { KAL.luna += k; if(KAL.luna < 0){ KAL.luna = 11; KAL.an--; } if(KAL.luna > 11){ KAL.luna = 0; KAL.an++; } }
+  kalArata();
+}
+function kalAzi(){ const d = new Date(); KAL.an = d.getFullYear(); KAL.luna = d.getMonth(); kalArata(); }
 // v5.56 (cerut de Ovidiu, 13.10): iconițe în meniu, nume scurte (cel întreg la trecerea cu mausul), meniu strâns / întreg
 (function(){
   const c = (x, y, r) => `<circle cx="${x}" cy="${y}" r="${r}"/>`, p = d => `<path d="${d}"/>`;
@@ -3029,7 +3154,8 @@ function potrivesteTema(){
     "verificare": p("M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z") + p("m9 12 2 2 4-4"),
     "pv-pv": p("M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z") + p("M14 2v6h6") + p("m9 15 2 2 4-4"),
     "pv-cereri": p("M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2") + c(9, 7, 4) + p("M22 21v-2a4 4 0 0 0-3-3.87") + p("M16 3.13a4 4 0 0 1 0 7.75"),
-    "fise": '<rect x="5" y="3" width="14" height="18" rx="2"/>' + p("M9 3v2h6V3") + p("M9 10h6") + p("M9 14h6") + p("M9 18h3") + p("M15.5 17.5l1.5 1.5 3-3")   // v8.14
+    "fise": '<rect x="5" y="3" width="14" height="18" rx="2"/>' + p("M9 3v2h6V3") + p("M9 10h6") + p("M9 14h6") + p("M9 18h3") + p("M15.5 17.5l1.5 1.5 3-3"),   // v8.14
+    "calendar": '<rect x="3" y="4" width="18" height="18" rx="2"/>' + p("M16 2v4") + p("M8 2v4") + p("M3 10h18") + p("M7 14h4") + p("M7 18h2")   // v8.41
   };
   const SCURT = { "Contracte și anexe clienți": "Contracte și anexe", "Verificare rute șoferi": "Verificare rute", "Cereri / documente angajați": "Cereri angajați", "Fișă date contract": "Fișă date contract" };
   document.querySelectorAll("nav > button[data-p]").forEach(b => {
