@@ -1,5 +1,6 @@
 # v8.34 — model CONTRACT PJ (contract + Anexa + PV) din „2. 00 HD_ NUME CLIENT.docx”, locuri {…} pentru docxtemplater.
 # Partea de contract = paragrafele 0–190; de la 191 urmează exact modelul „Anexa + PV” (aceleași locuri ca modele/anexa_pv.docx).
+# v8.37: Anexa e în bucla {#anexe} (câte o secțiune pe fiecare anexă), PV-ul e unul singur la final.
 # Folosire: python3 tools/sablon_contract_pj.py "modele-originale/2. 00 HD_ NUME CLIENT.docx" modele/contract_pj.docx
 #          apoi: python3 tools/fara_diacritice.py modele/contract_pj.docx   (v8.36: modelele sunt fără diacritice)
 import re,sys,zipfile
@@ -111,7 +112,17 @@ rows=list(re.finditer(r'<w:tr[ >].*?</w:tr>',tb,re.S)); assert len(rows)==13, le
 tb2=tb[:rows[1].start()]+tb[rows[11].end():]
 x2=x2[:t.start()]+tb2+x2[t.end():]
 x2=re.sub(r'<w:dataBinding[^>]*/>','',x2)
-for k in ['{contract_nr}','{#benef}','{declaratie}','{durata}','{garantie_a}','{#daune}','{notif_adresa}','{anexe_text}','{#semnatari}','{#randuri}','{pv_tip}','{#produse}','{obiect}']:
+# v8.37 (cerut de Ovidiu, 09.11): contractul cu TOATE anexele de la crearea lui — secțiunea Anexei se repetă ({#anexe}…{/anexe}),
+# de la a 2-a anexă pe pagină nouă ({#pag}); PV-ul de la final rămâne unul singur, cu produsele tuturor anexelor
+PP=list(re.finditer(r'<w:p[ >].*?</w:p>',x2,re.S))
+pa=next(m for m in PP if '{anexa_nr}' in m.group(0))
+pv=next(i for i,m in enumerate(PP) if '{pv_tip}' in m.group(0))
+pb=PP[pv-1] if 'w:type="page"' in PP[pv-1].group(0) else PP[pv]
+GOL=lambda t:'<w:p><w:r><w:t xml:space="preserve">'+t+'</w:t></w:r></w:p>'
+BR='<w:r><w:t xml:space="preserve">{#pag}</w:t></w:r><w:r><w:br w:type="page"/></w:r><w:r><w:t xml:space="preserve">{/pag}</w:t></w:r>'
+p0=pa.group(0); p1=p0.replace('</w:pPr>','</w:pPr>'+BR,1) if '</w:pPr>' in p0 else re.sub(r'^(<w:p[^>]*>)',lambda m:m.group(1)+BR,p0)
+x2=x2[:pa.start()]+GOL('{#anexe}')+p1+x2[pa.end():pb.start()]+GOL('{/anexe}')+x2[pb.start():]
+for k in ['{contract_nr}','{#benef}','{declaratie}','{durata}','{garantie_a}','{#daune}','{notif_adresa}','{anexe_text}','{#semnatari}','{#randuri}','{pv_tip}','{#produse}','{obiect}','{#anexe}','{/anexe}','{#pag}']:
     assert k in x2, k
 CURAT={'docProps/app.xml':['Manager','Company'],'docProps/core.xml':['cp:keywords','cp:category','cp:contentStatus','dc:title','dc:subject'],
  'customXml/item1.xml':['PublishDate','Abstract','CompanyAddress','CompanyPhone','CompanyEmail','CompanyFax']}
