@@ -1018,7 +1018,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
   <span id="rz-w"><button id="rz-reset" class="pictograma" title="Lățimi implicite — pune coloanele din tabelele acestei file înapoi cum erau">↺ Reset layout</button><i class="rz-sep">|</i></span>
   <span id="tz-w" title="Mărimea tabelului (doar tabelul, restul rămâne la fel), din 5 în 5%. Merge și cu Ctrl + rotița mausului, Ctrl + / Ctrl − / Ctrl 0. Dublu clic pe procent = scrii tu valoarea."><button class="pictograma" onclick="tzPas(-1)" aria-label="Micșorează tabelul">−</button><b id="tz-v" ondblclick="tzScrie()" title="Dublu clic = scrii mărimea (ex. 87), Enter">100%</b><input id="tz-in" type="number" min="30" max="300" step="5" style="display:none"><button class="pictograma" onclick="tzPas(1)" aria-label="Mărește tabelul">+</button></span>
-  <span class="ver">v8.29</span>
+  <span class="ver">v8.30</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -3744,6 +3744,7 @@ function anexaEditDinMiscare(){
 function anexaNouaDinMiscare(){
   const k = +$("mm-ctr").value;
   if(!k){ toast("Alege întâi contractul pe care vine anexa", true); return; }
+  { const F = fisaActiva(); if(F && $("mm-tip").value === "AMPLASARE" && F.prod.length > 1 && !F.coada){ fisaImparte(k); return; } }   // v8.30
   const tip = $("mm-tip").value === "EVENIMENT-R" ? "RIDICARE" : TIP_PIERD.test($("mm-tip").value) ? "REDUCERE" : $("mm-tip").value;   // v6.33: la DAUNA / FURT „+” face anexa -R   // v5.93: ridicarea de la eveniment = ridicare finală
   if(tip === "SUPLIMENTARE" || tip === "REDUCERE" || tip === "RIDICARE"){   // v5.08: și anexa de ridicare finală
     const b = ANX.find(x => x.id == $("mm-anexa").value);
@@ -3763,19 +3764,16 @@ function anexaNouaDinMiscare(){
     MM_INTOARCERE = "anexa"; openAnexaScurta(b, tip); return;
   }
   MM_INTOARCERE = "anexa"; openAnexa(null, k);
-  // v4.57: ce e deja scris în comandă se duce în anexa nouă (el verifică și salvează)
+  mmCopiazaInAnexa();
+  // v8.29 / v8.30: comanda pornită din fișa „Date contract” — anexa primește produsele fișei (toate, sau grupul ales pentru ea)
+  const F = fisaActiva(); if(F && tip === "AMPLASARE" && F.prod.length) fisaPuneRanduri(F);
+}
+// v4.57: ce e deja scris în comandă se duce în anexa nouă (el verifică și salvează)
+function mmCopiazaInAnexa(){
   const d = $("mm-data").value; if(d){ $("ma-de").value = d; $("ma-dliv").value = d; }
   if($("mm-prod").value){ $("ma-prod").value = $("mm-prod").value; umpleModele("ma-prod", "ma-model", $("mm-model").value || "", accCitite("mm-acc") || ""); umpleMF("ma-prod", "ma-model", $("mm-mf").value || ""); }
   const buc = Math.abs(+$("mm-buc").value || 0); if(buc) $("ma-cant").value = buc;
   [["mm-jud","ma-jud"],["mm-loc","ma-loc"],["mm-sat","ma-sat"],["mm-pers","ma-pers"],["mm-tel","ma-tel"],["mm-dep","ma-dep"],["mm-contract","ma-ctrdep"],["mm-frecv","ma-frecv"]].forEach(p => { const v = $(p[0]).value; if(v) $(p[1]).value = v; });
-  // v8.29: comanda pornită din fișa „Date contract” — anexa primește toate produsele fișei (câte un rând), cu igienizarea și perioada
-  const F = fisaActiva();
-  if(F && tip === "AMPLASARE" && F.prod.length){
-    if(F.pana) $("ma-dx").value = F.pana; if(F.R.perioada_text) $("ma-xt").value = F.R.perioada_text;
-    maRandPastreaza(); const b = { ...MA_RAND[0] };
-    MA_RAND = F.prod.map(p => ({ ...b, id: undefined, produs: p.produs, model: p.tip || "", model_fizic: "", accesorii: "", cant: p.buc || 1, frecv_servisare: p.frecventa || "" }));
-    maRandArata(0); toast("Anexa are produsele din fișă (" + F.prod.length + ") — completează prețul la fiecare și Salvează");
-  }
 }
 // ── Numărul anexei: locație.produs[-S/R nr] (ex. „ANEXA NR 2.0-S1”). Textul din față se păstrează. ──
 // v4.94 (hotărât de Ovidiu, 08.10): numele anexei e al lui; legătura cu anexa inițială stă în coloane
@@ -5727,6 +5725,7 @@ async function comandaDinFisa(id){
   if(!x){ const { data, error } = await db.from("cereri_date").select("*").eq("id", id).single(); if(error){ toast(error.message, true); return; } x = data; }
   const R = x.raspuns || {}, c = CLI.find(k => k.id === x.client_id);
   if(!c){ toast("Clientul fișei nu mai există — creează-l întâi din fișă", true); return; }
+  { const L = await fisaAnexeFaraComanda(c); if(L.length) return comandaPeAnexa(R, c, L[0], L.length); }   // v8.30
   openMiscare();
   const prod = fisaProduse(R), a = fisaAdresa(R.livrare_adresa), p0 = prod[0];
   $("mm-tip").value = "AMPLASARE"; $("mm-tip").dispatchEvent(new Event("change"));
@@ -5745,6 +5744,83 @@ async function comandaDinFisa(id){
   MM_FISA = { id: x.id, R, client: c.nume, prod, pana };
   mmLsArata(); mmSchimbat();
   toast("Comanda e completată din fișă — apasă + la Contract, apoi + la Anexă (primesc perioada și produsele)");
+}
+// ── v8.30 (cerut de Ovidiu, 09.11): fișa cu mai multe produse → la „+” Anexă alegi ce produse merg pe fiecare anexă
+// (numărul anexei îl scrii tu), până se termină produsele; apoi anexele se deschid pe rând, completate, și le salvezi.
+// Comanda de acum se leagă de prima anexă; pentru celelalte: „🧾 Comandă nouă” la fișă deschide comanda pe următoarea anexă fără comandă.
+let MA_FISA = false;
+const fisaProdTxt = p => p.buc + " " + p.produs + (p.tip ? " " + p.tip : "") + (p.frecventa ? " (igienizare " + p.frecventa + ")" : "");
+function fisaImparte(k){
+  const F = MM_FISA; let G = [{ nr: "ANEXA NR ", sel: new Set() }];
+  const w = document.createElement("div"); w.className = "modal on"; w.id = "mod-fi";
+  w.innerHTML = `<div class="box" style="max-width:640px"><h3 class="lux-cap cap-mut">Produsele din fișă pe anexe</h3>
+    <p class="muted" style="margin:0 0 10px">Pentru fiecare anexă scrie numărul și bifează produsele ei. Când s-au terminat produsele, apasă „Continuă” — anexele se deschid pe rând, completate.</p>
+    <div id="fi-g"></div>
+    <div class="row" style="margin-top:14px;justify-content:flex-end"><div style="flex:1"></div>
+      <div style="flex:0"><button class="btn sec" id="fi-x">Renunță</button></div>
+      <div style="flex:0"><button class="btn sec" id="fi-una" title="Toate produsele pe un singur act">Toate pe o anexă</button></div>
+      <div style="flex:0"><button class="btn" id="fi-ok">Continuă</button></div></div></div>`;
+  document.body.appendChild(w); feFereastra(w);
+  const citeste = () => w.querySelectorAll(".fi-nr").forEach((e, i) => { if(G[i]) G[i].nr = e.value; });
+  const libere = () => F.prod.map((p, i) => i).filter(i => !G.some(g => g.sel.has(i)));
+  const deseneaza = () => {
+    const box = w.querySelector("#fi-g"), rest = libere();
+    box.innerHTML = G.map((g, gi) => { const vede = F.prod.map((p, i) => i).filter(i => g.sel.has(i) || rest.includes(i));
+      return `<div style="border:1px solid var(--bd);border-radius:10px;padding:10px 12px;margin-bottom:10px"><div style="display:flex;gap:10px;align-items:center;margin-bottom:6px"><b style="white-space:nowrap">Anexa ${gi + 1}:</b><input class="fi-nr" value="${esc(g.nr)}" placeholder="ANEXA NR …" style="max-width:220px">${gi && !g.sel.size ? `<button type="button" class="btn sm sec fi-sc" data-g="${gi}" title="Scoate anexa">✕</button>` : ""}</div>` +
+        vede.map(i => `<label style="display:flex;gap:8px;align-items:center;margin:4px 0;cursor:pointer;text-transform:none;letter-spacing:0;font-size:13.5px"><input type="checkbox" class="fi-p" data-g="${gi}" data-i="${i}" style="width:auto" ${g.sel.has(i) ? "checked" : ""}> ${esc(fisaProdTxt(F.prod[i]))}</label>`).join("") +
+        (vede.length ? "" : `<div class="muted">Toate produsele sunt deja pe anexele de mai sus.</div>`) + `</div>`; }).join("") +
+      (rest.length ? `<div class="muted" style="margin:2px 0 8px">Rămase fără anexă: <b>${esc(rest.map(i => fisaProdTxt(F.prod[i])).join("; "))}</b></div>` +
+        (G[G.length - 1].sel.size ? `<button type="button" class="btn sm sec" id="fi-ad">+ Anexa următoare</button>` : "") : `<div style="color:var(--t-ok,#15803d);font-weight:600">✔ Toate produsele sunt pe anexe.</div>`);
+    box.querySelectorAll(".fi-p").forEach(c => c.onchange = () => { citeste(); const g = G[+c.dataset.g]; c.checked ? g.sel.add(+c.dataset.i) : g.sel.delete(+c.dataset.i); deseneaza(); });
+    box.querySelectorAll(".fi-sc").forEach(b => b.onclick = () => { citeste(); G.splice(+b.dataset.g, 1); deseneaza(); });
+    const ad = box.querySelector("#fi-ad"); if(ad) ad.onclick = () => { citeste(); G.push({ nr: "ANEXA NR ", sel: new Set() }); deseneaza(); const n = w.querySelectorAll(".fi-nr"); n[n.length - 1].focus(); };
+  };
+  const porneste = coada => { w.remove(); F.coada = coada; F.total = coada.length; anexaNouaDinMiscare(); };
+  w.querySelector("#fi-x").onclick = () => w.remove();
+  w.querySelector("#fi-una").onclick = () => { citeste(); porneste([{ nr: G[0].nr.trim(), prod: F.prod.slice() }]); };
+  w.querySelector("#fi-ok").onclick = () => { citeste();
+    if(libere().length){ toast("Mai sunt produse fără anexă — bifează-le pe o anexă (sau „+ Anexa următoare”)", true); return; }
+    const gol = G.filter(g => g.sel.size);
+    porneste(gol.map(g => ({ nr: g.nr.trim(), prod: [...g.sel].sort((a, b) => a - b).map(i => F.prod[i]) })));
+  };
+  deseneaza();
+}
+function fisaPuneRanduri(F){
+  const g = F.coada && F.coada.length ? F.coada[0] : { nr: "", prod: F.prod };
+  if(F.pana) $("ma-dx").value = F.pana; if(F.R.perioada_text) $("ma-xt").value = F.R.perioada_text;
+  if(g.nr && g.nr.replace(/ANEXA\s*NR\.?/i, "").trim()) $("ma-an").value = g.nr;
+  maRandPastreaza(); const b = { ...MA_RAND[0] };
+  MA_RAND = g.prod.map(p => ({ ...b, id: undefined, produs: p.produs, model: p.tip || "", model_fizic: "", accesorii: "", cant: p.buc || 1, frecv_servisare: p.frecventa || "" }));
+  maRandArata(0); MA_FISA = true;
+  const nr = F.total > 1 ? " — anexa " + (F.total - F.coada.length + 1) + " din " + F.total : "";
+  toast("Anexa are produsele din fișă (" + g.prod.length + ")" + nr + " — completează prețul la fiecare și Salvează");
+}
+function fisaAnexaSalvata(noulId){
+  if(!MA_FISA) return; MA_FISA = false;
+  const F = fisaActiva(); if(!F || !F.coada || !F.coada.length) return;
+  F.coada.shift(); if(!F.coada.length){ if(F.total > 1) toast("Gata, toate cele " + F.total + " anexe sunt salvate. Comanda de acum e pe prima. Pentru celelalte: după ce salvezi comanda, „Fișă date contract” → 🧾 Comandă nouă (se deschide pe următoarea anexă fără comandă)."); return; }
+  const a = ANX.find(x => x.id === noulId), k = a ? a.contract_id : +$("mm-ctr").value; if(!k) return;
+  MM_INTOARCERE = null; openAnexa(null, k); mmCopiazaInAnexa(); fisaPuneRanduri(F);   // comanda rămâne pe prima anexă
+}
+// „🧾 Comandă nouă” la fișă, când clientul are deja anexe fără comandă → comanda pe următoarea dintre ele
+async function fisaAnexeFaraComanda(c){
+  const kids = CTR.filter(k => k.client_id === c.id).map(k => k.id);
+  const ax = ANX.filter(a => kids.includes(a.contract_id) && !a.tip_anexa && !a.linie_id); if(!ax.length) return [];
+  const { data, error } = await db.from("miscari").select("anexa_id").eq("client_id", c.id).not("anexa_id", "is", null); if(error) return [];
+  const cu = new Set((data || []).map(m => m.anexa_id)), gr = new Map();
+  ax.forEach(a => { const g = a.doc_id || a.id; if(!gr.has(g)) gr.set(g, []); gr.get(g).push(a); });
+  return [...gr.values()].filter(L => !L.some(a => cu.has(a.id))).map(L => L.sort((x, y) => x.id - y.id)[0]).sort((x, y) => x.id - y.id);
+}
+function comandaPeAnexa(R, c, a, cate){
+  openMiscare();
+  $("mm-tip").value = "AMPLASARE"; $("mm-tip").dispatchEvent(new Event("change"));
+  $("mm-client").value = c.nume; fillAnexeForClient(); mmModClient();
+  $("mm-ctr").value = String(a.contract_id); cautaSincronizeaza("mm-ctr"); fillAnexeForContract();
+  mmAnexaAlege(a.id); $("mm-anexa").onchange();
+  if(a.frecv_servisare) $("mm-frecv").value = a.frecv_servisare;
+  $("mm-obs").value = ["Din fișa „Date contract”:", R.livrare_gps && "GPS livrare: " + R.livrare_gps].filter(Boolean).join("\n");
+  mmLsArata(); mmSchimbat();
+  toast("Comanda e pe " + (a.anexa || "anexa") + (cate > 1 ? " — mai rămân " + (cate - 1) + " anexe fără comandă" : "") + ". Bifează ziua, traseul și Salvează.");
 }
 // v8.16 (cerut de Ovidiu, 08.11): PDF-ul fișei e FIȘIER (A4, cu diacritice, cod QR spre formularul online) — se poate trimite
 // singur, sau împreună cu linkul („Link + PDF”: pe telefon dintr-o dată; pe PC se descarcă PDF-ul și se deschide e-mailul).
@@ -6301,6 +6377,7 @@ function anexaUrmNr(contractId){
   return (ale.length ? ale[0].prefix : "ANEXA NR ") + (mx + 1) + ".0";
 }
 function openAnexa(id,contractId){
+  MA_FISA = false;   // v8.30
   const a=id?ANX.find(x=>x.id===id):null; $("ma-title").textContent=a?"Editare anexă":"Anexă nouă"; $("ma-contract").value=a?a.contract_id:contractId;
   $("ma-an").value=a?(a.anexa||""):"ANEXA NR ";   /* v4.80: numărul îl scrie Ovidiu, în stilul lui */ $("ma-de").value=a?(a.data_emitere||""):today();
   // v5.11 (hotărât de Ovidiu, 09.10): o anexă poate avea mai multe produse / locații = rânduri cu același doc_id
@@ -6597,6 +6674,7 @@ async function saveAnexa_(dupa){
   if(dupa==="inca"){ anexaUrmatoare(); await reloadClienti(); return; }
   closeModal("mod-a"); await reloadClienti();
   intoarceInMiscare("anexa", noulId);
+  if(!id) fisaAnexaSalvata(noulId);   // v8.30
 }
 // v5.11: anexa cu mai multe produse — fiecare produs e un rând în `anexe`, toate cu același doc_id (= id-ul primului rând).
 // Antetul (numele anexei, data emiterii, contractul) e comun; restul (locație, produs, preț, servisare) e pe rând.
