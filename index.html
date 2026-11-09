@@ -1081,7 +1081,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
   <span id="rz-w"><button id="rz-reset" class="pictograma" title="Lățimi implicite — pune coloanele din tabelele acestei file înapoi cum erau">↺ Reset layout</button><i class="rz-sep">|</i></span>
   <span id="tz-w" title="Mărimea tabelului (doar tabelul, restul rămâne la fel), din 5 în 5%. Merge și cu Ctrl + rotița mausului, Ctrl + / Ctrl − / Ctrl 0. Dublu clic pe procent = scrii tu valoarea."><button class="pictograma" onclick="tzPas(-1)" aria-label="Micșorează tabelul">−</button><b id="tz-v" ondblclick="tzScrie()" title="Dublu clic = scrii mărimea (ex. 87), Enter">100%</b><input id="tz-in" type="number" min="30" max="300" step="5" style="display:none"><button class="pictograma" onclick="tzPas(1)" aria-label="Mărește tabelul">+</button></span>
-  <span class="ver">v8.50</span>
+  <span class="ver">v8.52</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -3952,6 +3952,7 @@ function actMajCuv(s){
     const lit = w.replace(/[^\p{L}]/gu, "").toUpperCase();
     let j = i - 1; while(j >= 0 && !T[j].trim()) j--;
     if(ACT_SIGLE.has(lit) || (ACT_JUD.has(lit) && T[j] === "/")) return w.toUpperCase();
+    if(j >= 0 && /^(DE|DIN|LA|PE|SI|ȘI|CU|SUB)$/.test(lit) && /^[\p{L}]+$/u.test(w)) return w.toLowerCase();   // v8.51: „Baia de Fier”
     return w.toLowerCase().replace(/(^|[^\p{L}])(\p{L})/gu, (m, x, y) => x + y.toUpperCase());
   }).join("");
 }
@@ -4044,7 +4045,13 @@ async function actGenereazaAnexaPV(){
     Object.keys(date).forEach(x => { if(date[x] === "" && !["info", "client_email", "client_tel", "client_iban", "client_banca"].includes(x)) date[x] = "______"; });
     doc.render(actFaraDiac(date));   // v8.35: fără diacritice
     const blob = doc.getZip().generate({ type: "blob", mimeType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document" });
-    const nume = [String(a.anexa || "ANEXA").trim(), rid ? "PV RIDICARE" : "PV", c.nume || "", k.nr_ctr || "", fmtD(dOp)].filter(Boolean).join(" - ").replace(/[\\/:*?"<>|]+/g, " ") + ".docx";
+    // v8.51 / v8.52 (cerut de Ovidiu, 09.11): numele ca la el — „ANEXA NR 13-S1 - PV _ 11.11.2026 - Com Baia de Fier, Sat Cernadia - GJ - Florero Group - CTR_ 1281 HD”
+    const nume = (() => {
+      const loc = actMajCuv([a.loc, String(a.sat || "").split(",")[0]].map(x => String(x || "").trim()).filter(Boolean).join(", "));
+      const cl = actMajCuv(String(c.nume || "").replace(/[\s,.-]+(S\.?\s*R\.?\s*L\.?|S\.?\s*A\.?|P\.?F\.?A\.?|I\.?I\.?)\s*$/i, "").trim());
+      return [String(a.anexa || "ANEXA").trim() + " - " + (rid ? "PV RIDICARE" : "PV") + " _ " + actD(a.data_livrarii || a.data_emitere || dOp), loc, a.jud || "", cl, "CTR_ " + (k.nr_ctr || "")]   // v8.52 (cerut de Ovidiu): fără data de la final — e deja după „PV _”
+        .filter(x => String(x).trim()).join(" - ").replace(/[\\/:*?"<>|]+/g, " ").replace(/\s+/g, " ").trim() + ".docx";
+    })();
     // v8.50 (cerut de Ovidiu, 09.11): fără salvare în arhivă — actul se descarcă / se deschide, îl verifici și îl salvezi tu unde trebuie
     const salvat = false;
     { const u = URL.createObjectURL(blob), l = document.createElement("a"); l.href = u; l.download = nume; document.body.appendChild(l); l.click(); l.remove(); setTimeout(() => URL.revokeObjectURL(u), 5000); }
