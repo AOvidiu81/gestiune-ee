@@ -1081,7 +1081,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
   <span id="rz-w"><button id="rz-reset" class="pictograma" title="Lățimi implicite — pune coloanele din tabelele acestei file înapoi cum erau">↺ Reset layout</button><i class="rz-sep">|</i></span>
   <span id="tz-w" title="Mărimea tabelului (doar tabelul, restul rămâne la fel), din 5 în 5%. Merge și cu Ctrl + rotița mausului, Ctrl + / Ctrl − / Ctrl 0. Dublu clic pe procent = scrii tu valoarea."><button class="pictograma" onclick="tzPas(-1)" aria-label="Micșorează tabelul">−</button><b id="tz-v" ondblclick="tzScrie()" title="Dublu clic = scrii mărimea (ex. 87), Enter">100%</b><input id="tz-in" type="number" min="30" max="300" step="5" style="display:none"><button class="pictograma" onclick="tzPas(1)" aria-label="Mărește tabelul">+</button></span>
-  <span class="ver">v8.52</span>
+  <span class="ver">v8.53</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -3974,7 +3974,9 @@ function actDateAnexa(a, o){
     return actValDauna(rr) ? (multi ? (r.produs || "") + ": " : "") + actValDauna(rr) : ""; }).filter(Boolean).join(" / ");
   // seriile liniei (la ridicare: cele de la client sau ridicate cu această comandă)
   const idsL = [...new Set(rows.flatMap(r => anexeLinie(r.id).map(x => x.id)))], mid = +o.mid || 0;
-  const serR = r => (SER || []).filter(x => anexeLinie(r.id).some(y => y.id === x.anexa_id) && (x.stare === "LA CLIENT" || (mid && x.miscare_ridicare_id === mid)) && (!x.produs || x.produs === r.produs));
+  const serR = r => (SER || []).filter(x => (!x.produs || x.produs === r.produs) && (rid
+    ? anexeLinie(r.id).some(y => y.id === x.anexa_id) && (x.stare === "LA CLIENT" || (mid && x.miscare_ridicare_id === mid))
+    : (mid && x.miscare_amplasare_id === mid) || (x.anexa_id === r.id && x.stare === "LA CLIENT")));   // v8.53: la suplimentare doar seria care se amplasează
   const randuri = rid ? [
     { et: totN > 1 ? "Produse ridicate" : "Produs ridicat", val: rows.map(den).join(" / ") },
     { et: "Cantitate ridicata", val: cant },
@@ -5047,6 +5049,7 @@ function mmSeriiText(){
   const l=mmSeriiLista(); if(!l) return null;
   const b=l.filter(x=>MM_SER.has(x.id));
   if(!b.length && $("mm-tip").value==="REDUCERE" && l.length) return serAlege(Math.abs(+$("mm-buc").value||0), l.filter(x=>x.stare==="LA CLIENT"));
+  if(!b.length && !SER_RID.test($("mm-tip").value||"") && +$("mm-id").value){ const p=(SER||[]).filter(x=>x.miscare_amplasare_id===+$("mm-id").value); if(p.length) return { lista: p, alege: 0 }; }   // v8.53
   return b.length ? { lista: b, alege: 0 } : null;
 }
 // v5.00 (hotărât de Ovidiu, 08.10): la REDUCERE seria o alege șoferul pe teren, în PV; tu confirmi după PV
@@ -13390,7 +13393,11 @@ function serAlegeSalvata(m){
   return serAlege(Math.abs(+m.buc||0), (SER||[]).filter(x=>ids.includes(x.anexa_id) && x.stare==="LA CLIENT"));
 }
 function textComandaSalvata(m, copii){   // v7.95: copii = produsele grupului, când nu sunt încă în MISC
-  const ser = (SER || []).filter(x => x.miscare_ridicare_id === m.id);
+  let ser = (SER || []).filter(x => x.miscare_ridicare_id === m.id);
+  // v8.53 (cerut de Ovidiu, 09.11): la amplasare / suplimentare — seriile deja legate de comandă (sau de produsele grupului) apar pe comandă
+  if(!ser.length && !SER_RID.test(m.tip_miscare || "")){ const g = m.grup_id || m.id;
+    const ids = new Set([m.id, ...(MISC || []).filter(x => (x.grup_id || x.id) === g).map(x => x.id), ...((copii || []).map(x => x.id).filter(Boolean))]);
+    ser = (SER || []).filter(x => x.miscare_amplasare_id && ids.has(x.miscare_amplasare_id)); }
   return textComandaDin({ tip: m.tip_miscare, data: m.data, client: m.client, anexa_id: m.anexa_id, contract_id: m.contract_id,
     buc: m.buc, produs: m.produs, model: [m.model, m.model_fizic].filter(Boolean).join(" "), acc: m.accesorii, ser: ser.length ? { lista: ser, alege: 0 } : serAlegeSalvata(m),
     jud: m.jud, loc: m.loc, sat: m.sat, dep: m.depozit, cdep: m.contract, pers: m.pers_resp, tel: m.telefon, frecv: m.frecv_serv, zile: m.zi_serv, traseu: m.traseu, obs: m.observatii,
