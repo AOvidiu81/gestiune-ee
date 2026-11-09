@@ -1073,7 +1073,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
   <span id="rz-w"><button id="rz-reset" class="pictograma" title="Lățimi implicite — pune coloanele din tabelele acestei file înapoi cum erau">↺ Reset layout</button><i class="rz-sep">|</i></span>
   <span id="tz-w" title="Mărimea tabelului (doar tabelul, restul rămâne la fel), din 5 în 5%. Merge și cu Ctrl + rotița mausului, Ctrl + / Ctrl − / Ctrl 0. Dublu clic pe procent = scrii tu valoarea."><button class="pictograma" onclick="tzPas(-1)" aria-label="Micșorează tabelul">−</button><b id="tz-v" ondblclick="tzScrie()" title="Dublu clic = scrii mărimea (ex. 87), Enter">100%</b><input id="tz-in" type="number" min="30" max="300" step="5" style="display:none"><button class="pictograma" onclick="tzPas(1)" aria-label="Mărește tabelul">+</button></span>
-  <span class="ver">v8.42</span>
+  <span class="ver">v8.43</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -4058,14 +4058,13 @@ function ctrBenef(c){
   if(c.email){ n(" , E-mail: "); b(c.email); }
   if(c.telefon){ n(" , Tel: "); b(c.telefon); }
   if(iban){ n(cat === "INSTITUTIE" ? " , cont " : " , cont bancar IBAN "); b(iban); if(c.banca){ n(cat === "INSTITUTIE" ? " deschis la " : " deschis la Banca "); b(actMajCuv(c.banca)); } }
-  n(" , reprezentata prin "); b(actMajCuv(c.pers_resp)); n(" , in calitate de " + func + " , denumita aici si mai jos \""); b("BENEFICIAR"); n("\" .");
+  n(" , reprezentata prin "); b(actMajCuv(c.pers_resp)); n(", in calitate de " + func + ", denumita in continuare \""); b("BENEFICIAR"); n("\",");   // v8.43: ca la Prestator
   const [cine, stare] = CTR_DECL[cat];
   return { benef: S,
-    declaratie: "Beneficiarul declara, prin reprezentant legal, sub sanctiunea legii penale privind falsul, ca persoana are capacitatea si dreptul de a semna astfel de contracte si de a angaja din punct de vedere juridic " + cine +
-      " si mai declara, sub aceasi sanctiune, ca la data trimiterii comenzii si semnarii prezentului contract, " + stare + ". " +
-      (cat === "INSTITUTIE" ? "" : "Beneficiarul are obligatia de a aduce la cunostinta Prestatorului orice modificari intervenite ce privesc starea de solvabilitate a acestuia (deschiderea procedurii de insolventa, s.a.). ") +
-      "Numite in continuare in mod individual „Partea” si in mod colectiv „Partile”",
-    garantie_a: "a)" + CTR_GAR_A[cat] + ", exista in mod valabil conform legilor mentionate mai sus si este autorizata in mod legal, avand dreptul de a-si desfasura activitatea asa cum se desfasoara in prezent si are capacitatea si autoritatea necesara de a-si asuma si de a indeplini obligatiile cuprinse in prezentul Contract, iar semnatarul prezentului Contract are puteri depline pentru a angaja Beneficiarul in prezentul Contract;" };
+    // v8.43 (contractul PJ nou, art. 1.3 și 11.2): formulările scurte din varianta aprobată de Ovidiu
+    declaratie: "Beneficiarul declara, prin reprezentantul legal, ca semnatarul are dreptul sa angajeze juridic " + cine + " si ca " + stare +
+      ". Beneficiarul anunta in scris Prestatorul, in 5 zile, orice schimbare a acestei situatii.",
+    garantie_a: "Beneficiarul declara ca " + CTR_GAR_A[cat] + " si ca are capacitatea de a-si asuma obligatiile din contract." };
 }
 function ctrDurata(k, a){   // „07 Luni” — din textul perioadei, altfel din emitere → expirare; fără expirare = nedeterminată
   const t = String(k.expirare_text || (a && a.expirare_text) || ""), m = /(\d+)\s*(lun|zi|s[aă]pt|an)/i.exec(t);
