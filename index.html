@@ -1018,7 +1018,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
   <span id="rz-w"><button id="rz-reset" class="pictograma" title="Lățimi implicite — pune coloanele din tabelele acestei file înapoi cum erau">↺ Reset layout</button><i class="rz-sep">|</i></span>
   <span id="tz-w" title="Mărimea tabelului (doar tabelul, restul rămâne la fel), din 5 în 5%. Merge și cu Ctrl + rotița mausului, Ctrl + / Ctrl − / Ctrl 0. Dublu clic pe procent = scrii tu valoarea."><button class="pictograma" onclick="tzPas(-1)" aria-label="Micșorează tabelul">−</button><b id="tz-v" ondblclick="tzScrie()" title="Dublu clic = scrii mărimea (ex. 87), Enter">100%</b><input id="tz-in" type="number" min="30" max="300" step="5" style="display:none"><button class="pictograma" onclick="tzPas(1)" aria-label="Mărește tabelul">+</button></span>
-  <span class="ver">v8.32</span>
+  <span class="ver">v8.33</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -5735,6 +5735,13 @@ function fisaPana(R){   // perioada: data „până la”, sau „7 luni” / �
   if(u.startsWith("lun")) d.setMonth(d.getMonth() + n); else d.setDate(d.getDate() + n * (u.startsWith("zi") ? 1 : 7));
   d.setDate(d.getDate() - 1); return d.toISOString().slice(0, 10);
 }
+// v8.33 (cerut de Ovidiu, 09.11): GPS-ul din fișă → link de navigare în Observații (apare în textul pentru șoferi);
+// doar dacă sunt coordonate corecte din România — altfel rămâne textul clientului, de verificat.
+function fisaGpsObs(g){
+  if(!g) return "";
+  const m = /(-?\d{1,2}[.,]\d+)\s*[,;\s]\s*(-?\d{1,2}[.,]\d+)/.exec(String(g)), la = m && +m[1].replace(",", "."), lo = m && +m[2].replace(",", ".");
+  return m && la > 43.5 && la < 48.4 && lo > 20.2 && lo < 29.8 ? "Locația GPS: https://maps.google.com/?q=" + la.toFixed(6) + "," + lo.toFixed(6) : "GPS de la client (de verificat): " + g;
+}
 function fisaActiva(){ return MM_FISA && $("mod-m").classList.contains("on") && $("mm-client").value.trim().toLowerCase() === MM_FISA.client.toLowerCase() ? MM_FISA : null; }
 async function comandaDinFisa(id){
   let x = CD.find(y => y.id === id);
@@ -5753,10 +5760,7 @@ async function comandaDinFisa(id){
   if(p0){ $("mm-buc").value = p0.buc || 1; semnBuc(); if(nomv("produs").includes(p0.produs)) $("mm-prod").value = p0.produs; umpleModele("mm-prod", "mm-model", p0.tip || "", ""); umpleMF("mm-prod", "mm-model", ""); }
   const fr = (prod.find(k => k.frecventa) || {}).frecventa; if(fr) $("mm-frecv").value = fr;
   const pana = fisaPana(R);
-  $("mm-obs").value = ["Din fișa „Date contract”:", R.livrare_gps && "GPS livrare: " + R.livrare_gps, !a.jud && R.livrare_adresa && "Adresa scrisă de client: " + R.livrare_adresa,
-    prod.length && "Produse: " + prod.map(k => k.buc + " " + k.produs + (k.tip ? " " + k.tip : "") + (k.frecventa ? " (igienizare " + k.frecventa + ")" : "")).join("; "),
-    (R.perioada_de || pana || R.perioada_text) && "Perioada: " + [R.perioada_de && fmtD(R.perioada_de), pana && fmtD(pana)].filter(Boolean).join(" – ") + (R.perioada_text ? " (" + R.perioada_text + ")" : ""),
-    R.eveniment && "Eveniment: " + R.eveniment].filter(Boolean).join("\n");
+  $("mm-obs").value = [fisaGpsObs(R.livrare_gps), !a.jud && R.livrare_adresa && "Adresa scrisă de client: " + R.livrare_adresa, R.eveniment && "Eveniment: " + R.eveniment].filter(Boolean).join("\n");   // v8.33: doar ce-i folosește șoferului
   MM_FISA = { id: x.id, R, client: c.nume, prod, pana };
   mmLsArata(); mmSchimbat();
   toast("Comanda e completată din fișă — apasă + la Contract, apoi + la Anexă (primesc perioada și produsele)");
@@ -5836,7 +5840,7 @@ function comandaPeAnexa(R, c, a, cate){
   $("mm-ctr").value = String(a.contract_id); cautaSincronizeaza("mm-ctr"); fillAnexeForContract();
   mmAnexaAlege(a.id); $("mm-anexa").onchange();
   if(a.frecv_servisare) $("mm-frecv").value = a.frecv_servisare;
-  $("mm-obs").value = ["Din fișa „Date contract”:", R.livrare_gps && "GPS livrare: " + R.livrare_gps].filter(Boolean).join("\n");
+  $("mm-obs").value = fisaGpsObs(R.livrare_gps);   // v8.33
   mmLsArata(); mmSchimbat();
   toast("Comanda e pe " + (a.anexa || "anexa") + (cate > 1 ? " — mai rămân " + (cate - 1) + " anexe fără comandă" : "") + ". Bifează ziua, traseul și Salvează.");
 }
