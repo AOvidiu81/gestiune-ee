@@ -1018,7 +1018,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
   <span id="rz-w"><button id="rz-reset" class="pictograma" title="Lățimi implicite — pune coloanele din tabelele acestei file înapoi cum erau">↺ Reset layout</button><i class="rz-sep">|</i></span>
   <span id="tz-w" title="Mărimea tabelului (doar tabelul, restul rămâne la fel), din 5 în 5%. Merge și cu Ctrl + rotița mausului, Ctrl + / Ctrl − / Ctrl 0. Dublu clic pe procent = scrii tu valoarea."><button class="pictograma" onclick="tzPas(-1)" aria-label="Micșorează tabelul">−</button><b id="tz-v" ondblclick="tzScrie()" title="Dublu clic = scrii mărimea (ex. 87), Enter">100%</b><input id="tz-in" type="number" min="30" max="300" step="5" style="display:none"><button class="pictograma" onclick="tzPas(1)" aria-label="Mărește tabelul">+</button></span>
-  <span class="ver">v8.28</span>
+  <span class="ver">v8.29</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -3633,6 +3633,7 @@ function contractNouDinMiscare(){
   const c = clientulDinMiscare();
   if(!c){ toast("Alege întâi clientul, sau creează-l cu butonul de lângă", true); return; }
   MM_INTOARCERE = "contract"; openContract(null, c.id);
+  const F = fisaActiva(); if(F){ if(F.pana) $("mk-dx").value = F.pana; if(F.R.perioada_text) $("mk-xt").value = F.R.perioada_text; }   // v8.29: perioada din fișă
 }
 // ✎ lângă Anexă, în comandă: deschide anexa aleasă cu tot formularul; după Salvează comanda se recompletează din ea.
 // ── v8.05 (cerut de Ovidiu, 07–08.11): GENERAREA ACTELOR din aplicație — Anexa + PV din modelul lui (modele/anexa_pv.docx, locuri {…}).
@@ -3767,6 +3768,14 @@ function anexaNouaDinMiscare(){
   if($("mm-prod").value){ $("ma-prod").value = $("mm-prod").value; umpleModele("ma-prod", "ma-model", $("mm-model").value || "", accCitite("mm-acc") || ""); umpleMF("ma-prod", "ma-model", $("mm-mf").value || ""); }
   const buc = Math.abs(+$("mm-buc").value || 0); if(buc) $("ma-cant").value = buc;
   [["mm-jud","ma-jud"],["mm-loc","ma-loc"],["mm-sat","ma-sat"],["mm-pers","ma-pers"],["mm-tel","ma-tel"],["mm-dep","ma-dep"],["mm-contract","ma-ctrdep"],["mm-frecv","ma-frecv"]].forEach(p => { const v = $(p[0]).value; if(v) $(p[1]).value = v; });
+  // v8.29: comanda pornită din fișa „Date contract” — anexa primește toate produsele fișei (câte un rând), cu igienizarea și perioada
+  const F = fisaActiva();
+  if(F && tip === "AMPLASARE" && F.prod.length){
+    if(F.pana) $("ma-dx").value = F.pana; if(F.R.perioada_text) $("ma-xt").value = F.R.perioada_text;
+    maRandPastreaza(); const b = { ...MA_RAND[0] };
+    MA_RAND = F.prod.map(p => ({ ...b, id: undefined, produs: p.produs, model: p.tip || "", model_fizic: "", accesorii: "", cant: p.buc || 1, frecv_servisare: p.frecventa || "" }));
+    maRandArata(0); toast("Anexa are produsele din fișă (" + F.prod.length + ") — completează prețul la fiecare și Salvează");
+  }
 }
 // ── Numărul anexei: locație.produs[-S/R nr] (ex. „ANEXA NR 2.0-S1”). Textul din față se păstrează. ──
 // v4.94 (hotărât de Ovidiu, 08.10): numele anexei e al lui; legătura cu anexa inițială stă în coloane
@@ -3864,6 +3873,7 @@ function intoarceInMiscare(ce, id){
   return true;
 }
 function openMiscare(id){
+  MM_FISA = null;   // v8.29: se pune din nou doar de comandaDinFisa
   ["mm-aa-nr","mm-aa-data","mm-aa-pret","mm-aa-obs"].forEach(x => { const e = $(x); if(e) e.value = ""; }); MM_AA_K = ""; MM_AA_VECHI = null;   // v7.99
   ["mm-contract","mm-dep"].forEach(x => { const e = $(x); if(e) delete e.dataset.manual; }); { const h = $("mm-gest-hint"); if(h) h.textContent = ""; }   // v7.98
   { const vf = $("mm-verif"); if(vf) vf.classList.remove("on"); }   // v7.97
@@ -5437,9 +5447,10 @@ const cdLink = x => cdBaza() + "date-contract.html?c=" + x.cod;
 const cdCod = () => { const a = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789", v = crypto.getRandomValues(new Uint32Array(32)); return [...v].map(n => a[n % a.length]).join(""); };
 const cdNume = x => ((x.raspuns || {}).denumire || (x.raspuns || {}).nume || (x.precompletat || {}).denumire || (x.precompletat || {}).nume || "(fără nume)");
 async function cdLoad(){
-  const { data, error } = await db.from("cereri_date").select("*").in("stare", ["trimisa", "completata"]).order("created_at", { ascending: false }).limit(100);
+  const { data, error } = await db.from("cereri_date").select("*").in("stare", ["trimisa", "completata", "folosita"]).order("created_at", { ascending: false }).limit(100);
   if(error){ const e = $("cd-card"); if(e) e.innerHTML = '<p class="muted" style="margin:0">Fișele nu s-au putut încărca: ' + esc(error.message || "") + '</p>'; return; }
-  CD = data || []; cdRender();
+  const lim = new Date(Date.now() - 30 * 864e5).toISOString();   // v8.29: fișele folosite rămân 30 de zile (pentru „🧾 Comandă nouă”)
+  CD = (data || []).filter(x => x.stare !== "folosita" || (x.updated_at || x.created_at) >= lim); cdRender();
 }
 function cdRender(){
   const av = $("cd-aviz"), gata = CD.filter(x => x.stare === "completata").length;   // v8.27: aviz în Contracte și anexe
@@ -5450,10 +5461,11 @@ function cdRender(){
   e.style.display = "";
   e.innerHTML = `<h3 style="margin:0 0 8px;color:var(--g)">📋 Fișe „Date contract” (${CD.length})</h3><div class="tw"><table><tr><th>Trimisă</th><th>Client</th><th>Categorie</th><th>Stare</th><th></th></tr>` +
     CD.map(x => { const exp = x.stare === "trimisa" && x.expira_la < azi;
-      const st = x.stare === "completata" ? `<b style="color:var(--t-ok,#15803d)">✔ completată ${fmtD((x.completat_la || "").slice(0, 10))}</b>` : exp ? `<span style="color:var(--red)">expirată</span>` : `<span class="muted">așteaptă clientul (până la ${fmtD(x.expira_la.slice(0, 10))})</span>`;
+      const cl = x.stare === "folosita" ? CLI.find(c => c.id === x.client_id) : null;
+      const st = x.stare === "folosita" ? `<span class="muted">client creat${cl ? ": <b>" + esc(cl.nume) + "</b>" : ""}</span>` : x.stare === "completata" ? `<b style="color:var(--t-ok,#15803d)">✔ completată ${fmtD((x.completat_la || "").slice(0, 10))}</b>` : exp ? `<span style="color:var(--red)">expirată</span>` : `<span class="muted">așteaptă clientul (până la ${fmtD(x.expira_la.slice(0, 10))})</span>`;
       return `<tr><td>${fmtD(x.created_at.slice(0, 10))}</td><td><b>${esc(cdNume(x))}</b></td><td>${esc(CAT_ET[x.categorie] || x.categorie)}${x.felul === "eveniment" ? " · eveniment" : ""}</td><td>${st}</td><td style="white-space:nowrap">` +
-        (x.stare === "completata" ? `<button class="btn sm" onclick="cdVezi(${x.id})">Vezi / creează client</button> ` : `<button class="btn sm sec" onclick="cdTrimiteFer(${x.id})">📤 Trimite</button> ${exp ? `<button class="btn sm sec" onclick="cdPrelungeste(${x.id})">Prelungește</button> ` : ""}`) +
-        `<button class="btn sm sec" onclick="cdAnuleaza(${x.id})" title="Anulează fișa (linkul nu mai merge)">✕</button></td></tr>`; }).join("") + "</table></div>";
+        (x.stare === "folosita" ? `<button class="btn sm" onclick="comandaDinFisa(${x.id})" title="Comandă nouă AMPLASARE completată cu livrarea, contactele, produsele, igienizarea și perioada din fișă">🧾 Comandă nouă</button> ` : x.stare === "completata" ? `<button class="btn sm" onclick="cdVezi(${x.id})">Vezi / creează client</button> ` : `<button class="btn sm sec" onclick="cdTrimiteFer(${x.id})">📤 Trimite</button> ${exp ? `<button class="btn sm sec" onclick="cdPrelungeste(${x.id})">Prelungește</button> ` : ""}`) +
+        (x.stare === "folosita" ? "" : `<button class="btn sm sec" onclick="cdAnuleaza(${x.id})" title="Anulează fișa (linkul nu mai merge)">✕</button>`) + `</td></tr>`; }).join("") + "</table></div>";
 }
 // v8.17 (cerut de Ovidiu, 08.11): ferestrele făcute din cod au și ele ‒ minimizează · ☐ mărește · ✕ închide, se mută de bara
 // albastră (dublu-clic = înapoi la loc și mărime) și se redimensionează din colțul dreapta-jos — ca toate celelalte.
@@ -5664,9 +5676,7 @@ function cdCreeazaClient(id){
   openClient();
   const cui = String(R.cui || "").toUpperCase().replace(/\s+/g, " ").trim(), ro = /^RO\s?/.test(cui);
   const obs = [R.email_efactura && "E-mail facturi: " + R.email_efactura, (R.notif_adresa || R.notif_atentie) && "Notificări: " + [R.notif_adresa, R.notif_atentie && "în atenția " + R.notif_atentie].filter(Boolean).join(", "),
-    R.livrare_adresa && "Livrare: " + R.livrare_adresa + (R.livrare_gps ? " (GPS " + R.livrare_gps + ")" : ""), (R.contact_nume || R.contact_tel) && "Contact locație: " + [R.contact_nume, R.contact_tel].filter(Boolean).join(" "),
-    Array.isArray(R.contacte_extra) && R.contacte_extra.length && "Alte contacte locație: " + R.contacte_extra.map(c => [c.nume, c.telefon].filter(Boolean).join(" ")).join("; "),
-    R.produse && "Produse: " + R.produse, R.eveniment && "Eveniment: " + R.eveniment, (R.perioada_de || R.perioada_pana || R.perioada_text) && "Perioada: " + [R.perioada_de && fmtD(R.perioada_de), R.perioada_pana && fmtD(R.perioada_pana), R.perioada_text].filter(Boolean).join(" – "),
+    /* v8.29: livrarea, contactele, produsele și perioada nu mai stau aici — merg în Comanda nouă din fișă */
     R.observatii && "Observații client: " + R.observatii].filter(Boolean);
   $("mc-nume").value = (pf ? R.nume : R.denumire) || "";
   $("mc-cat").value = k; $("mc-idtip").value = pf ? "CNP" : ["INSTITUTIE","ONG"].includes(k) ? "CIF" : "CUI";
@@ -5679,6 +5689,62 @@ function cdCreeazaClient(id){
   $("mc-obs").value = obs.join("\n");
   MC_CI_PATH = x.ci_path || null; MC_CERERE = x.id; MC_CAT_MANA = true; mcCiCopieArata(); mcCatSchimbat(false); mcCuiVerif();
   toast("Fișa clientului e completată din „Date contract” — verifică și Salvează");
+}
+// ── v8.29 (cerut de Ovidiu, 08–09.11): COMANDĂ NOUĂ DIN FIȘĂ — după „Creează client” (sau „🧾 Comandă nouă” la fișa folosită)
+// se deschide Comanda nouă AMPLASARE cu livrarea (adresa + GPS), contactele, produsele, igienizarea și perioada din fișă.
+// Contractul (+) primește perioada; Anexa (+) primește toate produsele fișei, câte un rând. Nimic nu se salvează singur.
+let MM_FISA = null;
+const fisaFaraDiac = v => String(v || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase().replace(/\s+/g, " ").trim();
+function fisaAdresa(t){   // „Jud. Hunedoara, Hunedoara, Strada Privighetorilor, Nr 6” → HD / HUNEDOARA / STR PRIVIGHETORILOR NR 6
+  const P = String(t || "").split(",").map(x => x.trim()).filter(Boolean), cod = {};
+  Object.entries(JUD_NUME).forEach(([k, v]) => { cod[v] = k; cod[v.replace(/-/g, " ")] = k; });
+  let jud = "", i = P.findIndex(x => /^jud(\.|e[tț]ul)?\s/i.test(x)); if(i < 0 && P.length > 2) i = P.findIndex(x => cod[fisaFaraDiac(x)]);
+  if(i >= 0){ const n = fisaFaraDiac(P[i]).replace(/^JUD(\.|ETUL)?\s*/, ""); jud = cod[n] || (n === "BUCURESTI" || /^MUN(\.|ICIPIUL)? BUCURESTI$/.test(n) ? "B" : ""); if(jud) P.splice(i, 1); }
+  const strada = x => fisaFaraDiac(x).replace(/^STR(ADA)?\b\.?/, "STR").replace(/\bNR\.?\s*/g, "NR ").replace(/\bBLOC\b/g, "BL").replace(/\s+/g, " ").trim();
+  const loc = P.length > 1 ? fisaFaraDiac(P.shift()) : "";
+  return { jud, loc, sat: P.map(strada).join(" ") };
+}
+function fisaProduse(R){
+  if(Array.isArray(R.produse_lista) && R.produse_lista.length) return R.produse_lista.filter(x => x && x.produs);
+  // textul „1 TOALETA (igienizare 1 / Sap); 1 CONTAINER BIROU” (corectat de mână) → rânduri
+  const nume = nomv("produs").slice().sort((a, b) => b.length - a.length);
+  return String(R.produse || "").split(";").map(x => x.trim()).filter(Boolean).map(x => {
+    const m = /^(\d+)\s*(?:buc\.?\s*)?(.+?)\s*(?:\(\s*igienizare\s*([^)]*)\))?$/i.exec(x); if(!m) return null;
+    const rest = m[2].trim(), p = nume.find(n => fisaFaraDiac(rest) === fisaFaraDiac(n) || fisaFaraDiac(rest).startsWith(fisaFaraDiac(n) + " "));
+    return { buc: +m[1], produs: p || rest.toUpperCase(), tip: p ? rest.slice(p.length).trim().toUpperCase() : "", frecventa: (m[3] || "").trim() };
+  }).filter(Boolean);
+}
+function fisaPana(R){   // perioada: data „până la”, sau „7 luni” / „30 zile” / „2 săptămâni” de la data de început
+  if(R.perioada_pana) return R.perioada_pana;
+  const m = /(\d+)\s*(lun|zi|s[aă]pt)/i.exec(R.perioada_text || ""); if(!m || !R.perioada_de) return "";
+  const d = new Date(R.perioada_de + "T12:00:00"), n = +m[1], u = m[2].toLowerCase();
+  if(u.startsWith("lun")) d.setMonth(d.getMonth() + n); else d.setDate(d.getDate() + n * (u.startsWith("zi") ? 1 : 7));
+  d.setDate(d.getDate() - 1); return d.toISOString().slice(0, 10);
+}
+function fisaActiva(){ return MM_FISA && $("mod-m").classList.contains("on") && $("mm-client").value.trim().toLowerCase() === MM_FISA.client.toLowerCase() ? MM_FISA : null; }
+async function comandaDinFisa(id){
+  let x = CD.find(y => y.id === id);
+  if(!x){ const { data, error } = await db.from("cereri_date").select("*").eq("id", id).single(); if(error){ toast(error.message, true); return; } x = data; }
+  const R = x.raspuns || {}, c = CLI.find(k => k.id === x.client_id);
+  if(!c){ toast("Clientul fișei nu mai există — creează-l întâi din fișă", true); return; }
+  openMiscare();
+  const prod = fisaProduse(R), a = fisaAdresa(R.livrare_adresa), p0 = prod[0];
+  $("mm-tip").value = "AMPLASARE"; $("mm-tip").dispatchEvent(new Event("change"));
+  if(R.perioada_de) $("mm-data").value = R.perioada_de;
+  $("mm-client").value = c.nume; fillAnexeForClient(); mmModClient();
+  $("mm-jud").value = a.jud; $("mm-loc").value = a.loc; $("mm-sat").value = a.sat;
+  const pers = [[R.contact_nume, R.contact_tel]].concat(Array.isArray(R.contacte_extra) ? R.contacte_extra.map(k => [k.nume, k.telefon]) : []).filter(k => k[0] || k[1]).slice(0, 3);
+  $("mm-pers").value = pers.map(k => k[0] || "-").join("; "); $("mm-tel").value = pers.map(k => k[1] || "-").join("; ");
+  if(p0){ $("mm-buc").value = p0.buc || 1; semnBuc(); if(nomv("produs").includes(p0.produs)) $("mm-prod").value = p0.produs; umpleModele("mm-prod", "mm-model", p0.tip || "", ""); umpleMF("mm-prod", "mm-model", ""); }
+  const fr = (prod.find(k => k.frecventa) || {}).frecventa; if(fr) $("mm-frecv").value = fr;
+  const pana = fisaPana(R);
+  $("mm-obs").value = ["Din fișa „Date contract”:", R.livrare_gps && "GPS livrare: " + R.livrare_gps, !a.jud && R.livrare_adresa && "Adresa scrisă de client: " + R.livrare_adresa,
+    prod.length && "Produse: " + prod.map(k => k.buc + " " + k.produs + (k.tip ? " " + k.tip : "") + (k.frecventa ? " (igienizare " + k.frecventa + ")" : "")).join("; "),
+    (R.perioada_de || pana || R.perioada_text) && "Perioada: " + [R.perioada_de && fmtD(R.perioada_de), pana && fmtD(pana)].filter(Boolean).join(" – ") + (R.perioada_text ? " (" + R.perioada_text + ")" : ""),
+    R.eveniment && "Eveniment: " + R.eveniment].filter(Boolean).join("\n");
+  MM_FISA = { id: x.id, R, client: c.nume, prod, pana };
+  mmLsArata(); mmSchimbat();
+  toast("Comanda e completată din fișă — apasă + la Contract, apoi + la Anexă (primesc perioada și produsele)");
 }
 // v8.16 (cerut de Ovidiu, 08.11): PDF-ul fișei e FIȘIER (A4, cu diacritice, cod QR spre formularul online) — se poate trimite
 // singur, sau împreună cu linkul („Link + PDF”: pe telefon dintr-o dată; pe PC se descarcă PDF-ul și se deschide e-mailul).
@@ -5972,11 +6038,13 @@ async function saveClient(dupa){
   if(id){ const {error}=await db.from("clienti").update(rec).eq("id",id); if(error){toast(error.message,true);return;} }
   else { const {data,error}=await db.from("clienti").insert(rec).select("id").single(); if(error){toast(error.message,true);return;} noulId=data.id; }
   if(!id && MC_CIORNA){ await db.from("ciorne").delete().eq("id", MC_CIORNA); MC_CIORNA = null; }   // ciorna folosită nu mai rămâne în ciorne
+  const dinFisa = !id && MC_CERERE && noulId ? MC_CERERE : null;   // v8.29
   if(MC_CERERE && noulId){ await db.from("cereri_date").update({ stare: "folosita", client_id: noulId, updated_at: new Date().toISOString() }).eq("id", MC_CERERE); MC_CERERE = null; cdLoad(); }   // v8.12
   closeModal("mod-c"); toast("Client salvat"); await reloadClienti();
   if(dupa==="contract" && noulId) openContract(null, noulId);   // lanțul client → contract → anexe
   // lanțul pornit din comandă: după client urmează contractul, apoi anexa — comanda le primește pe toate
   if(intoarceInMiscare("client", noulId) && dupa==="contract" && noulId) MM_INTOARCERE = "contract";
+  else if(dinFisa && !$("mod-m").classList.contains("on") && confirm("Clientul a fost creat.\n\nDeschid Comanda nouă AMPLASARE completată din fișă (livrare, contacte, produse, igienizare, perioadă)?")) comandaDinFisa(dinFisa);   // v8.29
 }
 // Golirea datelor de probă (cerută de Ovidiu, 04.10): funcția din bază verifică singură că e administrator.
 // Toate fișierele dintr-un depozit, cu tot cu cele din dosare.
