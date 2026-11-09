@@ -1018,7 +1018,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
   <span id="rz-w"><button id="rz-reset" class="pictograma" title="Lățimi implicite — pune coloanele din tabelele acestei file înapoi cum erau">↺ Reset layout</button><i class="rz-sep">|</i></span>
   <span id="tz-w" title="Mărimea tabelului (doar tabelul, restul rămâne la fel), din 5 în 5%. Merge și cu Ctrl + rotița mausului, Ctrl + / Ctrl − / Ctrl 0. Dublu clic pe procent = scrii tu valoarea."><button class="pictograma" onclick="tzPas(-1)" aria-label="Micșorează tabelul">−</button><b id="tz-v" ondblclick="tzScrie()" title="Dublu clic = scrii mărimea (ex. 87), Enter">100%</b><input id="tz-in" type="number" min="30" max="300" step="5" style="display:none"><button class="pictograma" onclick="tzPas(1)" aria-label="Mărește tabelul">+</button></span>
-  <span class="ver">v8.31</span>
+  <span class="ver">v8.32</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -3872,6 +3872,7 @@ function intoarceInMiscare(ce, id){
 }
 function openMiscare(id){
   MM_FISA = null;   // v8.29: se pune din nou doar de comandaDinFisa
+  MM_SV_MEM = {}; MM_SV_ANX = null;   // v8.32
   ["mm-aa-nr","mm-aa-data","mm-aa-pret","mm-aa-obs"].forEach(x => { const e = $(x); if(e) e.value = ""; }); MM_AA_K = ""; MM_AA_VECHI = null;   // v7.99
   ["mm-contract","mm-dep"].forEach(x => { const e = $(x); if(e) delete e.dataset.manual; }); { const h = $("mm-gest-hint"); if(h) h.textContent = ""; }   // v7.98
   { const vf = $("mm-verif"); if(vf) vf.classList.remove("on"); }   // v7.97
@@ -3905,6 +3906,7 @@ function openMiscare(id){
   mmModClient(); mmExtIncarca(); mmEvpArata(); mmSpArata(); mmRiArata(); MM_LS = null; $("mm-sat").placeholder = ""; mmLsArata();   // v6.79 / v7.20 / v7.22 / v7.24
   MM_CIORNA = null; $("mm-ciorne").innerHTML = ""; if(!r) mmCiorne();
   MM_SVL = r && svLoc(r) ? r.locatii.filter(l => l && l.sv).map(l => ({ ...l })) : []; mmSvlArata();   // v7.34
+  MM_SV_ANX = +$("mm-anexa").value || null;   // v8.32
 }
 // v4.80 (cerut de Ovidiu, 08.10): ciornele comenzilor noi nesalvate (tabel `ciorne`, tip 'comanda').
 let MM_CIORNA = null, MM_CIORNE = [];
@@ -5005,6 +5007,20 @@ function mmLsNou(){
 $("mm-tip").addEventListener("change", () => mmLsArata());
 $("mm-contract").addEventListener("change", () => mmLsArata());
 { const v = $("mm-anexa").onchange; $("mm-anexa").onchange = function(){ if(v) v.apply(this, arguments); MM_LS = null; mmLsArata(); }; }   // v7.24
+// v8.32 (cerut de Ovidiu, 09.11): la comanda NOUĂ, frecvența / zilele / traseul țin de anexa aleasă — fiecare anexă cu ale ei.
+// Ce ai scris pentru o anexă se păstrează cât e deschis formularul (alegi anexa 2, apoi iar anexa 1 → revine ce scriseseși la 1);
+// la prima alegere a unei anexe se iau frecvența și zilele de pe ea (containerul fără servisare → gol). Anexele din bază nu se schimbă.
+let MM_SV_MEM = {}, MM_SV_ANX = null;
+{ const v = $("mm-anexa").onchange; $("mm-anexa").onchange = function(){
+  const nou = +$("mm-anexa").value || null, vechi = MM_SV_ANX, edit = !!$("mm-id").value;
+  if(vechi && !edit) MM_SV_MEM[vechi] = { f: $("mm-frecv").value, z: $("mm-zi").value, t: $("mm-traseu").value };
+  if(v) v.apply(this, arguments);
+  MM_SV_ANX = nou;
+  if(!nou || edit || nou === vechi) return;
+  const m = MM_SV_MEM[nou], a = ANX.find(x => x.id === nou);
+  if(m){ $("mm-frecv").value = m.f; $("mm-zi").value = m.z; $("mm-traseu").value = m.t; }
+  else { $("mm-frecv").value = (a && a.frecv_servisare) || ""; $("mm-zi").value = (a && a.zi_servisare) || ""; }
+  mmZile(); }; }
 // v7.21 (cerut de Ovidiu, 28.10): ce mai e de făcut la o ridicare DUPĂ PV → Edit pe galben în Comenzi, cu lista la mouse.
 // Înainte de PV nu se aprinde (nu ai ce face încă). Exteriorul (seriile pe comandă, punct C…) nu intră.
 function riDeFacut(r){
