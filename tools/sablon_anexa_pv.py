@@ -77,6 +77,8 @@ rows=list(re.finditer(r'<w:tr[ >].*?</w:tr>',tb,re.S)); assert len(rows)==13
 tb2=tb[:rows[1].start()]+tb[rows[11].end():]
 x2=x2[:t.start()]+tb2+x2[t.end():]
 x2=re.sub(r'<w:dataBinding[^>]*/>','',x2)
+# v8.39 (cerut de Ovidiu, 09.11): „Nume:” / „Functie:” la semnături, ca în contract
+x2=re.sub(r'(<w:t(?: [^>]*)?>)([^<]*)(</w:t>)',lambda m:m.group(1)+m.group(2).replace('NUME:','Nume:').replace('FUNCTIA:','Functie:')+m.group(3),x2)
 CURAT={'docProps/app.xml':['Manager','Company'],'docProps/core.xml':['cp:keywords','cp:category','cp:contentStatus','dc:title','dc:subject'],
  'customXml/item1.xml':['PublishDate','Abstract','CompanyAddress','CompanyPhone','CompanyEmail','CompanyFax']}
 def curata(n,txt):

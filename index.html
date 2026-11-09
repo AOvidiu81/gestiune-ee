@@ -1018,7 +1018,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
   <span id="rz-w"><button id="rz-reset" class="pictograma" title="Lățimi implicite — pune coloanele din tabelele acestei file înapoi cum erau">↺ Reset layout</button><i class="rz-sep">|</i></span>
   <span id="tz-w" title="Mărimea tabelului (doar tabelul, restul rămâne la fel), din 5 în 5%. Merge și cu Ctrl + rotița mausului, Ctrl + / Ctrl − / Ctrl 0. Dublu clic pe procent = scrii tu valoarea."><button class="pictograma" onclick="tzPas(-1)" aria-label="Micșorează tabelul">−</button><b id="tz-v" ondblclick="tzScrie()" title="Dublu clic = scrii mărimea (ex. 87), Enter">100%</b><input id="tz-in" type="number" min="30" max="300" step="5" style="display:none"><button class="pictograma" onclick="tzPas(1)" aria-label="Mărește tabelul">+</button></span>
-  <span class="ver">v8.37</span>
+  <span class="ver">v8.38</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -3657,6 +3657,24 @@ const ACT_COND_RIDICARE = ["*Asigurare acces auto obligatoriu pentru auto de 3.5
   "*Eventualele deteriorari sau lipsuri constatate la ridicare se consemneaza in procesul verbal si se factureaza conform contractului (Tabel nr. 1) ;",
   "*Beneficiarul are obligatia sa asigure paza si integritatea produselor pina la predarea lor catre Sc Euro-Ecologic Srl. ;",
   "*Chiria se datoreaza pina in ziua ridicarii inclusiv (ziua in care produsele au fost preluate de reprezentantul Prestatorului)."];
+// v8.38 (cerut de Ovidiu, 09.11): condițiile de livrare după produsele anexei — igienizarea / distanța doar unde sunt toalete
+function actCondLivrare(rows){
+  const toal = rows.some(r => /TOALET/i.test(faraDiac(r.produs || "")));
+  return ACT_COND_LIVRARE.filter(t => toal || !/Toalete/i.test(t));
+}
+// v8.38 (cerut de Ovidiu, 09.11): datele în acte „Fiecare Cuvânt cu Majusculă” (ca în Word); siglele (SRL, TVA, BUC…) și județul după „/” rămân mari
+const ACT_SIGLE = new Set("SRL SA SC SNC SCS RA PFA II IF ONG UAT RO TVA BUC CUI CIF BCR BRD ING CEC OTP UE DN DJ DC CNP CI".split(" "));
+const ACT_JUD = new Set("AB AR AG BC BH BN BT BV BR B BZ CS CL CJ CT CV DB DJ GL GR GJ HR HD IL IS IF MM MH MS NT OT PH SM SJ SB SV TR TM TL VS VL VN".split(" "));
+function actMajCuv(s){
+  const T = String(s || "").split(/(\s+|\/)/);
+  return T.map((w, i) => {
+    if(!w.trim() || w === "/") return w;
+    const lit = w.replace(/[^\p{L}]/gu, "").toUpperCase();
+    let j = i - 1; while(j >= 0 && !T[j].trim()) j--;
+    if(ACT_SIGLE.has(lit) || (ACT_JUD.has(lit) && T[j] === "/")) return w.toUpperCase();
+    return w.toLowerCase().replace(/(^|[^\p{L}])(\p{L})/gu, (m, x, y) => x + y.toUpperCase());
+  }).join("");
+}
 // v8.34: datele Anexei + PV (aceleași în actul de anexă și în contract); `o` = valorile din comandă, dacă e deschisă
 function actDateAnexa(a, o){
   const tip = o.tip || "AMPLASARE";
@@ -3664,12 +3682,12 @@ function actDateAnexa(a, o){
   const k = CTR.find(x => x.id === a.contract_id) || {}, c = CLI.find(x => x.id === k.client_id) || {};
   const rows = (a.doc_id ? ANX.filter(x => x.doc_id === a.doc_id && String(x.anexa || "").trim() === String(a.anexa || "").trim()) : [a]).sort((x, y) => x.id - y.id);
   const n = r => Math.abs(+r.cant || 0) || Math.abs(+o.buc || 0) || 1;
-  const den = r => [prodN(r.produs || "", n(r)), r.model, r.model_fizic].filter(Boolean).join(" ");
+  const den = r => actMajCuv([prodN(r.produs || "", n(r)), r.model, r.model_fizic].filter(Boolean).join(" "));
   const multi = rows.length > 1, totN = rows.reduce((t, r) => t + n(r), 0), sv = (typeof anxServ === "function" && anxServ(a.id)) || {};
   const zile = String(sv.zile || o.zi || "").split(",").map(z => faraDiac(z).trim().toUpperCase()).filter(z => ZI_RUTE[z]).map(z => ZI_RUTE[z]);
   const dLiv = a.data_livrarii || a.data_emitere, dOp = o.data || dLiv;
-  const amplasament = [a.sat, a.loc].filter(Boolean).join(", ") + (a.jud ? " / " + a.jud : "");
-  const pers = o.pers || a.pers_contact || "", tel = o.tel || a.telefon || "";
+  const amplasament = actMajCuv([a.sat, a.loc].filter(Boolean).join(", ") + (a.jud ? " / " + a.jud : ""));
+  const pers = actMajCuv(o.pers || a.pers_contact || ""), tel = o.tel || a.telefon || "";
   const cant = multi ? rows.map(r => actPad(n(r)) + " " + (r.um || "BUC")).join(" / ") : actPad(n(a)) + " " + (a.um || "BUC");
   const vd = rows.map(r => { const rr = r.id === a.id && !r.accesorii && o.acc ? Object.assign({}, r, { accesorii: o.acc }) : r;
     return actValDauna(rr) ? (multi ? (r.produs || "") + ": " : "") + actValDauna(rr) : ""; }).filter(Boolean).join(" / ");
@@ -3705,19 +3723,19 @@ function actDateAnexa(a, o){
     info: rid ? (fin ? "Finalizare proiect - ridicare la cererea beneficiarului, conform notificarii transmise" : "Reducere cantitate - ridicare partiala la cererea beneficiarului, conform notificarii transmise")
       : tip === "SUPLIMENTARE" ? "Suplimentare produse la locatia existenta" : "",
     titlu_tabel: rid ? "REFERITOR LA PRODUSELE RIDICATE" : "REFERITOR LA CANTITATEA SI COSTUL PRODUSELOR",
-    randuri, titlu_cond: rid ? "*Conditii pentru ridicare :" : "*Conditii minime de acceptare pentru livrare :", conditii: rid ? ACT_COND_RIDICARE : ACT_COND_LIVRARE,
-    client: c.nume || "", client_sediu: c.sediu || "", client_id_et: c.id_tip === "CNP" ? "CNP" : "CUI", client_cui: c.cui ? ((c.atr || "") + " " + c.cui).trim() : "",
-    client_j: c.nr_reg_com || "", reprezentant: c.pers_resp || "", reprezentant_functie: c.reprezentant_functie || "",
+    randuri, titlu_cond: rid ? "*Conditii pentru ridicare :" : "*Conditii minime de acceptare pentru livrare :", conditii: rid ? ACT_COND_RIDICARE : actCondLivrare(rows),
+    client: c.nume || "", client_sediu: actMajCuv(c.sediu), client_id_et: c.id_tip === "CNP" ? "CNP" : "CUI", client_cui: c.cui ? ((c.atr || "") + " " + c.cui).trim() : "",
+    client_j: c.nr_reg_com || "", reprezentant: actMajCuv(c.pers_resp), reprezentant_functie: actMajCuv(c.reprezentant_functie),
     // v8.09 (cerut de Ovidiu, 08.11): părțile contractante în formatul nou (ca în contractul PJ 2026) — prestatorul cu datele actuale, beneficiarul complet
     reprezentant_functie_mic: String(c.reprezentant_functie || "administrator").toLowerCase(),
-    client_email: c.email || "", client_tel: c.telefon || "", client_banca: c.banca || "",
+    client_email: c.email || "", client_tel: c.telefon || "", client_banca: actMajCuv(c.banca),
     client_iban: String(c.iban || "").replace(/\s+/g, "").toUpperCase().replace(/(.{4})(?=.)/g, "$1 "),
     persoana_contact: pers, telefon: tel, amplasament,
     pv_tip: PV_TIP[tip] || tip, pv_verb: rid ? "RIDICA" : tip === "SERVISARE" ? "SERVISEAZA" : "AMPLASEAZA", data_op: actD(dOp),
     pv_dep_a: rid ? "Retur" : "Livrat", pv_dep_b: rid ? "IN" : "DIN", pv_loc_b: rid ? "RIDICARE" : "AMPLASARE",   // v8.08: IN / DIN și RIDICARE / AMPLASARE îngroșate
     depozit: a.depozit || o.dep || "HUNEDOARA",
-    produse: rows.map(r => { const s = serR(r); return { den: prodN(r.produs || "", n(r)), bucati: actPad(n(r)),
-      model: [...new Set(s.map(x => x.model).filter(Boolean))].join(", ") || [r.model, r.model_fizic].filter(Boolean).join(" "),
+    produse: rows.map(r => { const s = serR(r); return { den: actMajCuv(prodN(r.produs || "", n(r))), bucati: actPad(n(r)),
+      model: actMajCuv([...new Set(s.map(x => x.model).filter(Boolean))].join(", ") || [r.model, r.model_fizic].filter(Boolean).join(" ")),
       serie: s.map(x => x.serie).filter(Boolean).join(", ") || "E-" }; })
   };
   return { date, rid, dOp, vd, c, k };
@@ -3775,17 +3793,17 @@ function ctrBenef(c){
   const cui = c.cui ? ((c.atr || "") + " " + c.cui).trim() : "", iban = String(c.iban || "").replace(/\s+/g, "").toUpperCase().replace(/(.{4})(?=.)/g, "$1 ");
   const func = String(c.reprezentant_functie || (cat === "PFA" ? "titular" : cat === "ONG" ? "presedinte" : "administrator")).toLowerCase();
   b(c.nume);
-  if(cat === "ONG"){ n(", organizatie neguvernamentala inscrisa in "); b(c.inregistrare); n(", avand Codul de Inregistrare Fiscala "); b(cui); n(", cu sediul in "); b(c.sediu); }
+  if(cat === "ONG"){ n(", organizatie neguvernamentala inscrisa in "); b(c.inregistrare); n(", avand Codul de Inregistrare Fiscala "); b(cui); n(", cu sediul in "); b(actMajCuv(c.sediu)); }
   else {
-    n(cat === "PFA" ? ", cu sediul profesional in " : ", cu sediul in "); b(c.sediu);
+    n(cat === "PFA" ? ", cu sediul profesional in " : ", cu sediul in "); b(actMajCuv(c.sediu));
     if(cat === "SOCIETATE" || cat === "PFA"){ n(", inregistrata la Registrul Comertului sub "); b(c.nr_reg_com); n(" , CUI "); b(cui); }
     else if(cat === "INSTITUTIE"){ n(" , CIF "); b(cui); }
     else { if(c.inregistrare){ n(", inregistrata la / in baza "); b(c.inregistrare); } n(" , cod fiscal "); b(cui); }
   }
   if(c.email){ n(" , E-mail: "); b(c.email); }
   if(c.telefon){ n(" , Tel: "); b(c.telefon); }
-  if(iban){ n(cat === "INSTITUTIE" ? " , cont " : " , cont bancar IBAN "); b(iban); if(c.banca){ n(cat === "INSTITUTIE" ? " deschis la " : " deschis la Banca "); b(c.banca); } }
-  n(" , reprezentata prin "); b(c.pers_resp); n(" , in calitate de " + func + " , denumita aici si mai jos \""); b("BENEFICIAR"); n("\" .");
+  if(iban){ n(cat === "INSTITUTIE" ? " , cont " : " , cont bancar IBAN "); b(iban); if(c.banca){ n(cat === "INSTITUTIE" ? " deschis la " : " deschis la Banca "); b(actMajCuv(c.banca)); } }
+  n(" , reprezentata prin "); b(actMajCuv(c.pers_resp)); n(" , in calitate de " + func + " , denumita aici si mai jos \""); b("BENEFICIAR"); n("\" .");
   const [cine, stare] = CTR_DECL[cat];
   return { benef: S,
     declaratie: "Beneficiarul declara, prin reprezentant legal, sub sanctiunea legii penale privind falsul, ca persoana are capacitatea si dreptul de a semna astfel de contracte si de a angaja din punct de vedere juridic " + cine +
@@ -3836,7 +3854,7 @@ async function ctrGenereaza(kid){
     .filter(x => (x.data_emitere || "") === (a.data_emitere || ""));
   const tarzii = vaz.size - lista.length;
   const D = lista.map(x => actDateAnexa(x, { tip: "AMPLASARE", pers: x.pers_contact, tel: x.telefon, data: x.data_livrarii || x.data_emitere, frecv: x.frecv_servisare, dep: x.depozit, zi: x.zi_servisare || "" }).date);
-  const date = D[0], unic = v => [...new Set(v.filter(Boolean))], nrA = d => String(/^\d+$/.test(d.anexa_nr) ? +d.anexa_nr : d.anexa_nr || "______");
+  const date = Object.assign({}, D[0]), unic = v => [...new Set(v.filter(Boolean))], nrA = d => String(/^\d+$/.test(d.anexa_nr) ? +d.anexa_nr : d.anexa_nr || "______");
   date.anexe = D.map((d, i) => ({ pag: i > 0, anexa_nr: d.anexa_nr, anexa_data: d.anexa_data, info: d.info, titlu_tabel: d.titlu_tabel, randuri: d.randuri, titlu_cond: d.titlu_cond, conditii: d.conditii }));
   if(D.length > 1){   // PV-ul comun: „Anexa Nr: 01, 02”, toate produsele
     Object.assign(date, { anexa_nr: D.map(d => d.anexa_nr).join(", "), anexa_data: unic(D.map(d => d.anexa_data)).join(", "), produse: D.flatMap(d => d.produse),
@@ -3850,11 +3868,12 @@ async function ctrGenereaza(kid){
     contract_nr: k.nr_ctr || "______", contract_data: actD(k.data_emitere) || "______",
     durata: ctrDurata(k, a), data_start: actD(a.data_livrarii || k.data_emitere) || "______",
     daune: daune.length ? daune : [{ den: "______", val: "______" }],
-    notif_adresa: nAdr, notif_tel: c.telefon || "", notif_email: nEm, notif_atentie: nAt,
-    anexe_text: D.length < 2 ? (anr ? anr.replace(/^ANEXA\s*NR\.?\s*/i, "Anexa ") : "Anexa 1") + " face parte din contract ."
-      : "Anexele " + D.slice(0, -1).map(nrA).join(", ") + " si " + nrA(D[D.length - 1]) + " fac parte din contract:" + D.map((d, i) => "\n- Anexa " + nrA(d) + ": "
-        + d.produse.map(p => (+p.bucati || p.bucati) + " " + p.den).join(", ") + (d.amplasament ? ", locatia " + d.amplasament : "") + ", de la data " + (actD(lista[i].data_livrarii || lista[i].data_emitere) || "______") + ";").join(""),
-    semnatari: Array.isArray(c.semnatari) ? c.semnatari.filter(x => x && (x.nume || x.functie)).map(x => ({ nume: x.nume || "______", functie: x.functie || "______" })) : [] });
+    notif_adresa: actMajCuv(nAdr), notif_tel: c.telefon || "", notif_email: nEm, notif_atentie: actMajCuv(nAt),
+    // v8.38 (cerut de Ovidiu, 09.11): „Anexa Nr. 1 si Anexa Nr. 2 fac parte integranta din prezentul contract:” + câte un rând pe anexă, Fiecare Cuvânt cu Majusculă
+    anexe_text: (D.length < 2 ? "Anexa Nr. " + nrA(D[0]) + " face" : D.slice(0, -1).map(d => "Anexa Nr. " + nrA(d)).join(", ") + " si Anexa Nr. " + nrA(D[D.length - 1]) + " fac")
+      + " parte integranta din prezentul contract:" + D.map((d, i) => "\n" + actMajCuv("- Anexa Nr. " + nrA(d) + ": " + d.produse.map(p => (+p.bucati || p.bucati) + " " + p.den).join(", ")
+        + (d.amplasament ? "; Amplasament: " + d.amplasament : "") + "; Data Livrarii: " + (actD(lista[i].data_livrarii || lista[i].data_emitere) || "______")) + ";").join(""),
+    semnatari: Array.isArray(c.semnatari) ? c.semnatari.filter(x => x && (x.nume || x.functie)).map(x => ({ nume: actMajCuv(x.nume) || "______", functie: actMajCuv(x.functie) || "______" })) : [] });
   try{
     toast("Se pregătește contractul…");
     await actScript("lib/pizzip.min.js"); await actScript("lib/docxtemplater.min.js");

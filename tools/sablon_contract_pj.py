@@ -122,6 +122,10 @@ GOL=lambda t:'<w:p><w:r><w:t xml:space="preserve">'+t+'</w:t></w:r></w:p>'
 BR='<w:r><w:t xml:space="preserve">{#pag}</w:t></w:r><w:r><w:br w:type="page"/></w:r><w:r><w:t xml:space="preserve">{/pag}</w:t></w:r>'
 p0=pa.group(0); p1=p0.replace('</w:pPr>','</w:pPr>'+BR,1) if '</w:pPr>' in p0 else re.sub(r'^(<w:p[^>]*>)',lambda m:m.group(1)+BR,p0)
 x2=x2[:pa.start()]+GOL('{#anexe}')+p1+x2[pa.end():pb.start()]+GOL('{/anexe}')+x2[pb.start():]
+# v8.38 (cerut de Ovidiu, 09.11): litera 9 pt peste tot în partea de contract (doar titlul rămâne 12 pt); „Nume:” / „Functie:” la semnături
+ia=x2.rfind('<w:p>',0,x2.index('{#anexe}'))
+x2=re.sub(r'<w:sz(Cs)? w:val="(20|14|12)"/>',lambda m:'<w:sz'+(m.group(1) or '')+' w:val="18"/>',x2[:ia])+x2[ia:]
+x2=re.sub(r'(<w:t(?: [^>]*)?>)([^<]*)(</w:t>)',lambda m:m.group(1)+m.group(2).replace('NUME:','Nume:').replace('FUNCTIA:','Functie:')+m.group(3),x2)
 for k in ['{contract_nr}','{#benef}','{declaratie}','{durata}','{garantie_a}','{#daune}','{notif_adresa}','{anexe_text}','{#semnatari}','{#randuri}','{pv_tip}','{#produse}','{obiect}','{#anexe}','{/anexe}','{#pag}']:
     assert k in x2, k
 CURAT={'docProps/app.xml':['Manager','Company'],'docProps/core.xml':['cp:keywords','cp:category','cp:contentStatus','dc:title','dc:subject'],
