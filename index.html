@@ -1081,7 +1081,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
   <span id="rz-w"><button id="rz-reset" class="pictograma" title="Lățimi implicite — pune coloanele din tabelele acestei file înapoi cum erau">↺ Reset layout</button><i class="rz-sep">|</i></span>
   <span id="tz-w" title="Mărimea tabelului (doar tabelul, restul rămâne la fel), din 5 în 5%. Merge și cu Ctrl + rotița mausului, Ctrl + / Ctrl − / Ctrl 0. Dublu clic pe procent = scrii tu valoarea."><button class="pictograma" onclick="tzPas(-1)" aria-label="Micșorează tabelul">−</button><b id="tz-v" ondblclick="tzScrie()" title="Dublu clic = scrii mărimea (ex. 87), Enter">100%</b><input id="tz-in" type="number" min="30" max="300" step="5" style="display:none"><button class="pictograma" onclick="tzPas(1)" aria-label="Mărește tabelul">+</button></span>
-  <span class="ver">v8.49</span>
+  <span class="ver">v8.50</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -3996,6 +3996,15 @@ function actDateAnexa(a, o){
     { et: "Persoana contact", val: pers }, { et: "Nr Telefon", val: tel },
     { et: "Valoare dauna / furt", val: vd } ];
   randuri.forEach(r => { if(!String(r.val || "").trim()) r.val = "______"; });
+  // v8.50 (cerut de Ovidiu, 09.11): la SUPLIMENTARE / REDUCERE — rândul explicativ din tabelul anexei:
+  // „Incepind cu data de 11.11.2026, in locatia " … " vor fi: 2 Produse [ Toaleta Clasic ]” (linia: inițiala + suplimentările − reducerile până la data actului)
+  let tot = null;
+  if(/^(SUPLIMENTARE|REDUCERE)$/.test(tip) && !fin){
+    const dA = dLiv || "", lin = anexeLinie(a.id), baza = lin.find(x => !(anexaNr(x) || {}).tip) || a;
+    const nT = lin.filter(x => (x.data_livrarii || x.data_emitere || "") <= dA).reduce((t, x) => { const q = anexaNr(x), c = Math.abs(+x.cant || 0); return t + (q && q.tip === "R" ? -c : c); }, 0);
+    tot = { tot: true, tot_data: actD(dLiv), tot_loc: amplasament,
+      tot_prod: nT + (nT === 1 ? " Produs" : " Produse") + " [ " + actMajCuv([baza.produs, baza.model].filter(Boolean).join(" ")) + " ]" };
+  }
   const PV_TIP = { AMPLASARE: "AMPLASARE", SUPLIMENTARE: "AMPLASARE (SUPLIMENTARE)", "EVENIMENT-A": "AMPLASARE EVENIMENT", RIDICARE: "RIDICARE", "EVENIMENT-R": "RIDICARE EVENIMENT", REDUCERE: fin ? "RIDICARE" : "RIDICARE (REDUCERE)", SERVISARE: "SERVISARE" };
   const date = {
     anexa_nr: String(a.anexa || "").replace(/^\s*ANEXA\s*(NR\.?)?\s*/i, "").replace(/^(\d)(?!\d)/, "0$1"),
@@ -4016,7 +4025,8 @@ function actDateAnexa(a, o){
     depozit: a.depozit || o.dep || "HUNEDOARA",
     produse: rows.map(r => { const s = serR(r); return { den: actMajCuv(prodN(r.produs || "", n(r))), bucati: actPad(n(r)),
       model: actMajCuv([...new Set(s.map(x => x.model).filter(Boolean))].join(", ") || [r.model, r.model_fizic].filter(Boolean).join(" ")),
-      serie: s.map(x => x.serie).filter(Boolean).join(", ") || "E-" }; })
+      serie: s.map(x => x.serie).filter(Boolean).join(", ") || "E-" }; }),
+    ...(tot || { tot: false })
   };
   return { date, rid, dOp, vd, c, k };
 }
@@ -4035,9 +4045,9 @@ async function actGenereazaAnexaPV(){
     doc.render(actFaraDiac(date));   // v8.35: fără diacritice
     const blob = doc.getZip().generate({ type: "blob", mimeType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document" });
     const nume = [String(a.anexa || "ANEXA").trim(), rid ? "PV RIDICARE" : "PV", c.nume || "", k.nr_ctr || "", fmtD(dOp)].filter(Boolean).join(" - ").replace(/[\\/:*?"<>|]+/g, " ") + ".docx";
-    let salvat = false;   // v8.47: întâi „Salvare ca” direct în folderul clientului din arhivă (00. CONTRACTE CLIENTI EE)
-    try{ salvat = await arhSalveaza(blob, nume, k, "docx"); }catch(e){ if(e && e.name === "AbortError") return; }
-    if(!salvat){ const u = URL.createObjectURL(blob), l = document.createElement("a"); l.href = u; l.download = nume; document.body.appendChild(l); l.click(); l.remove(); setTimeout(() => URL.revokeObjectURL(u), 5000); }
+    // v8.50 (cerut de Ovidiu, 09.11): fără salvare în arhivă — actul se descarcă / se deschide, îl verifici și îl salvezi tu unde trebuie
+    const salvat = false;
+    { const u = URL.createObjectURL(blob), l = document.createElement("a"); l.href = u; l.download = nume; document.body.appendChild(l); l.click(); l.remove(); setTimeout(() => URL.revokeObjectURL(u), 5000); }
     const lips = [!c.sediu && "sediul", !c.nr_reg_com && c.id_tip !== "CNP" && "nr. Reg. Com.", !c.pers_resp && "reprezentantul", !vd && "contravaloarea la daună/furt"].filter(Boolean);
     toast((salvat ? "Actul s-a salvat: " : "Actul s-a descărcat: ") + nume + (lips.length ? " — lipsesc: " + lips.join(", ") + " (rămân „______” în Word)" : ""), !!lips.length);
   }catch(e){ toast("Actul nu s-a putut genera: " + (e.message || e), true); }
@@ -4259,8 +4269,7 @@ async function ctrGenereaza(kid){
     doc.render(actFaraDiac(date));   // v8.35: fără diacritice
     const blob = doc.getZip().generate({ type: "blob", mimeType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document" });
     const nume = ((k.nr_ctr || "CTR") + "_ " + (c.nume || "")).replace(/[\\/:*?"<>|]+/g, " ").replace(/\s+/g, " ").trim() + ".docx";   // ca la el: „1557 HD_ VIO LOGISTIC SOLUTIONS SRL.docx”
-    try{ if(await arhSalveaza(blob, nume, k, "docx")){ ctrLipsuri(c, daune, nume, true, tarzii); return; } }   // v8.47: direct în folderul clientului
-    catch(e){ if(e && e.name === "AbortError") return; }
+    // v8.50 (cerut de Ovidiu, 09.11): fără „Salvare ca” / arhivă — contractul se descarcă și se deschide, îl verifici și îl salvezi tu
     const u = URL.createObjectURL(blob), l = document.createElement("a"); l.href = u; l.download = nume; document.body.appendChild(l); l.click(); l.remove(); setTimeout(() => URL.revokeObjectURL(u), 5000);
     ctrLipsuri(c, daune, nume, false, tarzii);
   }catch(e){ toast("Contractul nu s-a putut genera: " + (e.message || e), true); }
