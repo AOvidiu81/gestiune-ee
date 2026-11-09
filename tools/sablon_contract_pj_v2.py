@@ -29,10 +29,11 @@ def TC(cont,w,shade=False,bold=False,jc='left'):
     ps=cont if isinstance(cont,list) else [cont]
     body=''.join(P(c,jc=jc,after=20,b=bold) if not c.startswith('<w:p>') else c for c in ps)
     return f'<w:tc><w:tcPr><w:tcW w:w="{w}" w:type="dxa"/>{sh}<w:vAlign w:val="center"/></w:tcPr>{body}</w:tc>'
-def TBL(rows,widths):
+def TBL(rows,widths,jos=False):   # jos=True: tabel plutitor, lipit de marginea de jos a paginii (deasupra subsolului)
     b='<w:tblBorders>'+''.join(f'<w:{s} w:val="single" w:sz="4" w:space="0" w:color="000000"/>' for s in ['top','left','bottom','right','insideH','insideV'])+'</w:tblBorders>'
     g='<w:tblGrid>'+''.join(f'<w:gridCol w:w="{w}"/>' for w in widths)+'</w:tblGrid>'
-    return (f'<w:tbl><w:tblPr><w:tblW w:w="{sum(widths)}" w:type="dxa"/><w:jc w:val="center"/>{b}<w:tblLayout w:type="fixed"/>'
+    fl='<w:tblpPr w:leftFromText="0" w:rightFromText="0" w:topFromText="120" w:bottomFromText="0" w:vertAnchor="margin" w:horzAnchor="margin" w:tblpXSpec="center" w:tblpYSpec="bottom"/><w:tblOverlap w:val="never"/>' if jos else ''
+    return (f'<w:tbl><w:tblPr>{fl}<w:tblW w:w="{sum(widths)}" w:type="dxa"/><w:jc w:val="center"/>{b}<w:tblLayout w:type="fixed"/>'
             '<w:tblCellMar><w:top w:w="30" w:type="dxa"/><w:left w:w="80" w:type="dxa"/><w:bottom w:w="30" w:type="dxa"/><w:right w:w="80" w:type="dxa"/></w:tblCellMar></w:tblPr>'
             +g+''.join('<w:tr><w:trPr><w:cantSplit/></w:trPr>'+''.join(r)+'</w:tr>' for r in rows)+'</w:tbl>')
 X=[]
@@ -120,7 +121,7 @@ X.append(P('15.1. Informațiile primite în legătură cu contractul sunt confid
 X.append(P('15.2. Datele personale ale reprezentanților și persoanelor de contact se prelucrează numai pentru executarea contractului, facturare, evidența contabilă și recuperarea creanțelor, conform Regulamentului (UE) 2016/679. Ele se păstrează pe durata contractului și apoi cât cere legea pentru documentele contabile.'))
 X.append(H('Art. 16. Notificările'))
 X.append(P('16.1. Notificările se fac în scris, prin e-mail, scrisoare recomandată cu confirmare de primire, curier sau predare sub semnătură, la adresele de mai jos. Facturile se transmit prin RO e-Factura.',keep=True))
-W3=[1900,3800,3900]
+W3=[1300,2550,6350]   # v8.45 (cerut de Ovidiu): coloana Beneficiar lată, adresa pe un rând
 X.append(TBL([[TC('',W3[0],True),TC('PRESTATOR',W3[1],True,True,'center'),TC('BENEFICIAR',W3[2],True,True,'center')],
               [TC('Adresa',W3[0],bold=True),TC('Hunedoara, Peștișu Mare, Nr. 1',W3[1]),TC('{notif_adresa}',W3[2])],
               [TC('Telefon',W3[0],bold=True),TC('0735 214 751',W3[1]),TC('{notif_tel}',W3[2])],
@@ -138,13 +139,13 @@ X.append(P('18.4. Dacă o clauză este nulă, celelalte rămân valabile, iar P�
 X.append(P('18.5. Drepturile și obligațiile din contract trec asupra succesorilor Părților.'))
 X.append(P('18.6. Contractul s-a încheiat la data de **{contract_data}**, în 2 exemplare originale, câte unul pentru fiecare Parte.'))
 X.append(P('18.7. {anexe_text}',jc='left',keep=True))
-W2=[4800,4800]
+W2=[5100,5100]
 X.append(P('',after=60))
 X.append(TBL([[TC('PRESTATOR',W2[0],True,True,'center'),TC('BENEFICIAR',W2[1],True,True,'center')],
               [TC('SC EURO ECOLOGIC SRL',W2[0],bold=True),TC('{client}',W2[1],bold=True)],
               [TC(['Nume: Irina Gyorgy','Funcție: Administrator'],W2[0]),
                TC(['Nume: {reprezentant}','Funcție: {reprezentant_functie}','{#semnatari}','Nume: {nume}','Funcție: {functie}','{/semnatari}'],W2[1])],
-              [TC(['Semnătura:','',''],W2[0]),TC(['Semnătura:','',''],W2[1])]],W2))
+              [TC(['Semnătura:','',''],W2[0]),TC(['Semnătura:','',''],W2[1])]],W2,jos=True))   # v8.45: mereu jos pe pagină, lângă linia roșie
 X.append('<w:p><w:r><w:br w:type="page"/></w:r></w:p>')
 b=x.index('<w:body>')+len('<w:body>'); a=x.index('<w:p><w:r><w:t xml:space="preserve">{#anexe}')
 x2=x[:b]+''.join(X)+x[a:]
