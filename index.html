@@ -1018,7 +1018,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
   <span id="rz-w"><button id="rz-reset" class="pictograma" title="Lățimi implicite — pune coloanele din tabelele acestei file înapoi cum erau">↺ Reset layout</button><i class="rz-sep">|</i></span>
   <span id="tz-w" title="Mărimea tabelului (doar tabelul, restul rămâne la fel), din 5 în 5%. Merge și cu Ctrl + rotița mausului, Ctrl + / Ctrl − / Ctrl 0. Dublu clic pe procent = scrii tu valoarea."><button class="pictograma" onclick="tzPas(-1)" aria-label="Micșorează tabelul">−</button><b id="tz-v" ondblclick="tzScrie()" title="Dublu clic = scrii mărimea (ex. 87), Enter">100%</b><input id="tz-in" type="number" min="30" max="300" step="5" style="display:none"><button class="pictograma" onclick="tzPas(1)" aria-label="Mărește tabelul">+</button></span>
-  <span class="ver">v8.30</span>
+  <span class="ver">v8.31</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -5775,7 +5775,9 @@ function fisaImparte(k){
     box.querySelectorAll(".fi-sc").forEach(b => b.onclick = () => { citeste(); G.splice(+b.dataset.g, 1); deseneaza(); });
     const ad = box.querySelector("#fi-ad"); if(ad) ad.onclick = () => { citeste(); G.push({ nr: "ANEXA NR ", sel: new Set() }); deseneaza(); const n = w.querySelectorAll(".fi-nr"); n[n.length - 1].focus(); };
   };
-  const porneste = coada => { w.remove(); F.coada = coada; F.total = coada.length; anexaNouaDinMiscare(); };
+  const porneste = coada => { w.remove(); F.coada = coada; F.total = coada.length;
+    if(coada.length > 1) $("mm-obs").value = $("mm-obs").value.replace(/^Produse: .*$/m, "Produse (" + (coada[0].nr || "prima anexă") + "): " + coada[0].prod.map(fisaProdTxt).join("; "));   // v8.31: comanda e doar pe prima anexă
+    anexaNouaDinMiscare(); };
   w.querySelector("#fi-x").onclick = () => w.remove();
   w.querySelector("#fi-una").onclick = () => { citeste(); porneste([{ nr: G[0].nr.trim(), prod: F.prod.slice() }]); };
   w.querySelector("#fi-ok").onclick = () => { citeste();
