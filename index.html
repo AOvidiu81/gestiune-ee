@@ -1081,7 +1081,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
   <span id="rz-w"><button id="rz-reset" class="pictograma" title="Lățimi implicite — pune coloanele din tabelele acestei file înapoi cum erau">↺ Reset layout</button><i class="rz-sep">|</i></span>
   <span id="tz-w" title="Mărimea tabelului (doar tabelul, restul rămâne la fel), din 5 în 5%. Merge și cu Ctrl + rotița mausului, Ctrl + / Ctrl − / Ctrl 0. Dublu clic pe procent = scrii tu valoarea."><button class="pictograma" onclick="tzPas(-1)" aria-label="Micșorează tabelul">−</button><b id="tz-v" ondblclick="tzScrie()" title="Dublu clic = scrii mărimea (ex. 87), Enter">100%</b><input id="tz-in" type="number" min="30" max="300" step="5" style="display:none"><button class="pictograma" onclick="tzPas(1)" aria-label="Mărește tabelul">+</button></span>
-  <span class="ver">v8.46</span>
+  <span class="ver">v8.47</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -2409,6 +2409,23 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
     <div style="flex:0"><button class="btn sec" onclick="closeModal('mod-rcv')">Închide</button></div>
     <div style="flex:0"><button class="btn sec" onclick="rcvExcel()">Export Excel</button></div>
     <div style="flex:0"><button class="btn" onclick="rcvTipar()">Deschide raportul (PDF)</button></div>
+  </div>
+</div></div>
+<!-- v8.47 (cerut de Ovidiu, 09.11): actul semnat (din atașamentul e-mailului) salvat în folderul clientului din arhivă -->
+<div class="modal" id="mod-arh"><div class="box" style="max-width:640px">
+  <h3 class="lux-cap cap-mut">📎 Act semnat → arhiva clientului</h3>
+  <div id="arh-cap" class="muted" style="margin-bottom:10px;line-height:1.5"></div>
+  <div><label>Actul</label><select id="arh-act" onchange="arhNume()"></select></div>
+  <div id="arh-drop" style="margin-top:10px;border:2px dashed var(--bd);border-radius:10px;padding:18px;text-align:center;cursor:pointer" onclick="$('arh-fis').click()">
+    <b>Trage aici PDF-ul semnat</b> (din Outlook sau din folder)<br><span class="muted">sau fă clic să-l alegi</span>
+    <div id="arh-fis-n" style="margin-top:8px;font-weight:600;color:var(--g)"></div>
+  </div>
+  <input type="file" id="arh-fis" accept=".pdf,.jpg,.jpeg,.png" style="display:none" onchange="arhFisier(this.files[0])">
+  <div style="margin-top:10px"><label>Numele fișierului</label><input id="arh-nume"></div>
+  <div class="row" style="justify-content:flex-end;margin-top:12px">
+    <div style="flex:0"><button class="btn sec" onclick="arhSchimbaRad()" title="Alege din nou folderul 00. CONTRACTE CLIENTI EE">Folderul arhivei…</button></div>
+    <div style="flex:0"><button class="btn sec" onclick="closeModal('mod-arh')">Renunță</button></div>
+    <div style="flex:0"><button class="btn" onclick="arhActSalveaza()">Salvează în arhivă</button></div>
   </div>
 </div></div>
 <div class="modal" id="mod-fper"><div class="box" style="max-width:620px">
@@ -4018,10 +4035,100 @@ async function actGenereazaAnexaPV(){
     doc.render(actFaraDiac(date));   // v8.35: fără diacritice
     const blob = doc.getZip().generate({ type: "blob", mimeType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document" });
     const nume = [String(a.anexa || "ANEXA").trim(), rid ? "PV RIDICARE" : "PV", c.nume || "", k.nr_ctr || "", fmtD(dOp)].filter(Boolean).join(" - ").replace(/[\\/:*?"<>|]+/g, " ") + ".docx";
-    const u = URL.createObjectURL(blob), l = document.createElement("a"); l.href = u; l.download = nume; document.body.appendChild(l); l.click(); l.remove(); setTimeout(() => URL.revokeObjectURL(u), 5000);
+    let salvat = false;   // v8.47: întâi „Salvare ca” direct în folderul clientului din arhivă (00. CONTRACTE CLIENTI EE)
+    try{ salvat = await arhSalveaza(blob, nume, k, "docx"); }catch(e){ if(e && e.name === "AbortError") return; }
+    if(!salvat){ const u = URL.createObjectURL(blob), l = document.createElement("a"); l.href = u; l.download = nume; document.body.appendChild(l); l.click(); l.remove(); setTimeout(() => URL.revokeObjectURL(u), 5000); }
     const lips = [!c.sediu && "sediul", !c.nr_reg_com && c.id_tip !== "CNP" && "nr. Reg. Com.", !c.pers_resp && "reprezentantul", !vd && "contravaloarea la daună/furt"].filter(Boolean);
-    toast("Actul s-a descărcat: " + nume + (lips.length ? " — lipsesc: " + lips.join(", ") + " (rămân „______” în Word)" : ""), !!lips.length);
+    toast((salvat ? "Actul s-a salvat: " : "Actul s-a descărcat: ") + nume + (lips.length ? " — lipsesc: " + lips.join(", ") + " (rămân „______” în Word)" : ""), !!lips.length);
   }catch(e){ toast("Actul nu s-a putut genera: " + (e.message || e), true); }
+}
+// ── v8.47 (cerut de Ovidiu, 09.11): ARHIVA pe PC — folderul „00. CONTRACTE CLIENTI EE” (sincronizat cu Google Drive), ales O DATĂ;
+// aplicația găsește folderul clientului după numărul contractului (CTR <an> _ <interval>\<nr> HD_ NUME) și salvează acolo:
+// actele generate (📄 Contract, 📄 Anexă + PV) și actele semnate (📎 Act semnat). Doar Chrome / Edge pe PC (File System Access).
+const ARH_DB = () => new Promise((ok, nu) => { const r = indexedDB.open("ee-arhiva", 1); r.onupgradeneeded = () => r.result.createObjectStore("h"); r.onsuccess = () => ok(r.result); r.onerror = () => nu(r.error); });
+async function arhGet(){ try{ const d = await ARH_DB(); return await new Promise(ok => { const q = d.transaction("h").objectStore("h").get("rad"); q.onsuccess = () => ok(q.result || null); q.onerror = () => ok(null); }); }catch(e){ return null; } }
+async function arhSet(h){ const d = await ARH_DB(); await new Promise(ok => { const t = d.transaction("h", "readwrite"); t.objectStore("h").put(h, "rad"); t.oncomplete = ok; t.onerror = ok; }); }
+let ARH_CACHE = null, ARH_REFUZ = false;   // nr contract → folderul clientului; ARH_REFUZ = a renunțat la alegere în sesiunea asta
+async function arhRadacina(alege){
+  if(!window.showDirectoryPicker) return null;
+  let h = await arhGet();
+  if(h){ let p = await h.queryPermission({ mode: "readwrite" }); if(p !== "granted" && alege) p = await h.requestPermission({ mode: "readwrite" }); if(p === "granted") return h; }
+  if(!alege || h || ARH_REFUZ) return null;
+  if(!confirm("Alege O SINGURĂ DATĂ folderul arhivei:\n\n00. CONTRACTE CLIENTI EE\n(D:\\00000 EURO-ECOLOGIC\\0 EUROECOLOGIC\\00. CONTRACTE)\n\nDupă asta, aplicația deschide direct folderul clientului.")){ ARH_REFUZ = true; return null; }
+  return arhSchimbaRad();
+}
+async function arhSchimbaRad(){
+  let h; try{ h = await showDirectoryPicker({ id: "ee-arhiva", mode: "readwrite" }); }catch(e){ return null; }
+  if(!/CONTRACTE\s*CLIENTI/i.test(h.name) && !confirm("Folderul ales se numește „" + h.name + "”, nu „00. CONTRACTE CLIENTI EE”. Îl folosesc oricum?")) return null;
+  await arhSet(h); ARH_CACHE = null; toast("Folderul arhivei: " + h.name);
+  if($("mod-arh").classList.contains("on") && ARH_K) arhActDeschide(ARH_K.id);
+  return h;
+}
+const arhNr = s => { const m = /^\s*(\d+)\s*([A-Z]{2})(?![A-Z])/i.exec(String(s || "")); return m ? m[1] + m[2].toUpperCase() : ""; };   // „1281 HD_ X” → „1281HD”
+async function arhFolderClient(k, alege){
+  const rad = await arhRadacina(alege); if(!rad) return { rad: null, dir: null };
+  if(!ARH_CACHE){ ARH_CACHE = new Map();
+    const pune = (n, h) => { const c = arhNr(n); if(c && !ARH_CACHE.has(c)) ARH_CACHE.set(c, h); };
+    for await (const [n1, h1] of rad.entries()){ if(h1.kind !== "directory") continue;
+      if(/^CTR\b/i.test(n1)){ for await (const [n2, h2] of h1.entries()) if(h2.kind === "directory") pune(n2, h2); }
+      else pune(n1, h1); } }
+  return { rad, dir: ARH_CACHE.get(arhNr(k.nr_ctr)) || null };
+}
+// „Salvare ca” direct în folderul clientului (sau în arhivă, dacă folderul lui nu există încă); false = fără arhivă → apelantul descarcă
+async function arhSalveaza(blob, nume, k, tip){
+  if(!window.showSaveFilePicker) return false;
+  const { rad, dir } = await arhFolderClient(k, true);
+  const o = { suggestedName: nume, types: tip === "pdf" ? [{ description: "PDF", accept: { "application/pdf": [".pdf"] } }]
+    : [{ description: "Word", accept: { "application/vnd.openxmlformats-officedocument.wordprocessingml.document": [".docx"] } }] };
+  if(dir || rad) o.startIn = dir || rad; else { o.id = "ee-contract"; o.startIn = "documents"; }
+  if(rad && !dir) toast("Folderul contractului " + (k.nr_ctr || "") + " nu există încă în arhivă — fă-l tu („New folder”) în CTR-ul potrivit", true);
+  const h = await showSaveFilePicker(o);
+  const w = await h.createWritable(); await w.write(blob); await w.close(); return true;
+}
+// 📎 Act semnat
+let ARH_K = null, ARH_F = null, ARH_DIR = null;
+const arhCurat = s => String(s || "").replace(/[\\/:*?"<>|]+/g, " ").replace(/\s+/g, " ").trim();
+async function arhActDeschide(kid){
+  const k = CTR.find(x => x.id === kid); if(!k) return; const c = CLI.find(x => x.id === k.client_id) || {};
+  if(!window.showDirectoryPicker){ toast("Salvarea în arhivă merge doar în Chrome / Edge pe calculator", true); return; }
+  ARH_K = k; ARH_F = null; $("arh-fis").value = ""; $("arh-fis-n").textContent = "";
+  const anx = ANX.filter(a => a.contract_id === k.id && !a.linie_id).sort((x, y) => (x.data_emitere || "").localeCompare(y.data_emitere || "") || x.id - y.id);
+  const vaz = new Set(), L = anx.filter(a => { const kk = a.doc_id ? a.doc_id + "|" + String(a.anexa || "").trim() : "i" + a.id; if(vaz.has(kk)) return false; vaz.add(kk); return true; });
+  $("arh-act").innerHTML = `<option value="ctr">Contractul ${esc(k.nr_ctr || "")}</option>` + L.map(a => `<option value="${a.id}">${esc(a.anexa || "Anexa")} · ${esc(fmtD(a.data_emitere))} · ${esc([a.loc, a.sat].filter(Boolean).join(", "))}</option>`).join("");
+  $("arh-cap").innerHTML = `<b>${esc(c.nume || "")}</b> · CTR ${esc(k.nr_ctr || "")} · se caută folderul în arhivă…`;
+  $("mod-arh").classList.add("on"); arhNume();
+  const { rad, dir } = await arhFolderClient(k, true); ARH_DIR = dir;
+  $("arh-cap").innerHTML = `<b>${esc(c.nume || "")}</b> · CTR ${esc(k.nr_ctr || "")}<br>` + (dir ? `Se salvează în: <b>${esc(rad.name)} › … › ${esc(dir.name)}</b>`
+    : rad ? `<span style="color:var(--red)">Folderul clientului nu e în arhivă (${esc(rad.name)}) — la salvare alegi tu unde (sau faci folderul).</span>` : `<span style="color:var(--red)">Arhiva nu e aleasă — apasă „Folderul arhivei…”.</span>`);
+}
+function arhNume(){
+  const k = ARH_K; if(!k) return; const c = CLI.find(x => x.id === k.client_id) || {}, v = $("arh-act").value;
+  const ext = ARH_F && /\.(jpe?g|png)$/i.test(ARH_F.name) ? ARH_F.name.slice(ARH_F.name.lastIndexOf(".")).toLowerCase() : ".pdf";
+  let n;
+  if(v === "ctr") n = (k.nr_ctr || "CTR") + "_ " + (c.nume || "");
+  else { const a = ANX.find(x => x.id == v) || {}, nr = String(a.anexa || "").replace(/^\s*ANEXA\s*(NR\.?)?\s*/i, "");
+    n = "ANEXA NR. " + nr + " si PV din " + fmtD(a.data_livrarii || a.data_emitere).replace(/-/g, ".") + " _ " + [a.loc, a.sat].filter(Boolean).join(", ") + (a.jud ? " - " + a.jud : "") + " _ la CTR " + (k.nr_ctr || "") + " - " + (c.nume || ""); }
+  $("arh-nume").value = arhCurat(n) + "-semnat" + ext;
+}
+function arhFisier(f){ if(!f) return; ARH_F = f; $("arh-fis-n").textContent = "✓ " + f.name + " (" + Math.round(f.size / 1024) + " KB)"; arhNume(); }
+document.addEventListener("DOMContentLoaded", () => { const d = $("arh-drop"); if(!d) return;
+  ["dragenter", "dragover"].forEach(e => d.addEventListener(e, v => { v.preventDefault(); d.style.borderColor = "var(--g)"; }));
+  ["dragleave", "drop"].forEach(e => d.addEventListener(e, v => { v.preventDefault(); d.style.borderColor = ""; }));
+  d.addEventListener("drop", v => { const f = v.dataTransfer && v.dataTransfer.files && v.dataTransfer.files[0]; if(f) arhFisier(f); else toast("Nu s-a primit fișierul — salvează atașamentul din Outlook și trage-l din folder", true); });
+});
+async function arhActSalveaza(){
+  if(!ARH_F){ toast("Trage întâi PDF-ul semnat în chenar (sau alege-l)", true); return; }
+  const nume = arhCurat($("arh-nume").value); if(!nume){ toast("Scrie numele fișierului", true); return; }
+  try{
+    if(ARH_DIR){
+      let exista = false; try{ await ARH_DIR.getFileHandle(nume); exista = true; }catch(e){}
+      if(exista && !confirm("În folderul clientului există deja:\n" + nume + "\n\nOK = îl înlocuiesc · Anulează = schimbi tu numele")) return;
+      const h = await ARH_DIR.getFileHandle(nume, { create: true }), w = await h.createWritable(); await w.write(ARH_F); await w.close();
+      toast("Salvat în arhivă: " + ARH_DIR.name + " › " + nume);
+    } else if(!(await arhSalveaza(ARH_F, nume, ARH_K, "pdf"))){ toast("Salvarea în arhivă merge doar în Chrome / Edge pe calculator", true); return; }
+    else toast("Salvat: " + nume);
+    closeModal("mod-arh");
+  }catch(e){ if(e && e.name === "AbortError") return; toast("Nu s-a putut salva: " + (e.message || e), true); }
 }
 // ── v8.34 (cerut de Ovidiu, 09.11): CONTRACTUL în Word din modelul lui (modele/contract_pj.docx, făcut cu tools/sablon_contract_pj.py):
 // numărul și data, beneficiarul după CATEGORIE (societate / PFA / instituție / ONG / altele — formulările din claude/contract-pj-categorii.md),
@@ -4145,11 +4252,8 @@ async function ctrGenereaza(kid){
     doc.render(actFaraDiac(date));   // v8.35: fără diacritice
     const blob = doc.getZip().generate({ type: "blob", mimeType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document" });
     const nume = ((k.nr_ctr || "CTR") + "_ " + (c.nume || "")).replace(/[\\/:*?"<>|]+/g, " ").replace(/\s+/g, " ").trim() + ".docx";   // ca la el: „1557 HD_ VIO LOGISTIC SOLUTIONS SRL.docx”
-    if(window.showSaveFilePicker){
-      try{ const h = await showSaveFilePicker({ suggestedName: nume, id: "ee-contract", startIn: "documents", types: [{ description: "Word", accept: { "application/vnd.openxmlformats-officedocument.wordprocessingml.document": [".docx"] } }] });
-        const w = await h.createWritable(); await w.write(blob); await w.close(); ctrLipsuri(c, daune, nume, true, tarzii); return;
-      }catch(e){ if(e && e.name === "AbortError") return; }
-    }
+    try{ if(await arhSalveaza(blob, nume, k, "docx")){ ctrLipsuri(c, daune, nume, true, tarzii); return; } }   // v8.47: direct în folderul clientului
+    catch(e){ if(e && e.name === "AbortError") return; }
     const u = URL.createObjectURL(blob), l = document.createElement("a"); l.href = u; l.download = nume; document.body.appendChild(l); l.click(); l.remove(); setTimeout(() => URL.revokeObjectURL(u), 5000);
     ctrLipsuri(c, daune, nume, false, tarzii);
   }catch(e){ toast("Contractul nu s-a putut genera: " + (e.message || e), true); }
@@ -5830,7 +5934,7 @@ function renderClienti(){
     const ks=ctrPt(c);
     return `<div class="card"><details ${q?"open":""}><summary><span class="c-nr" title="Numărul contractului">${ks.length?ks.map(k=>"CTR "+esc(k.nr_ctr||"?")).join(", "):"—"}</span>${esc(c.nume)} <span class="muted">${esc(c.id_tip||"")} ${esc(c.atr||"")} ${esc(c.cui||"")}</span>${c.activ===false?` <span class="badge" title="Închis la ultima ridicare">INACTIV</span> <button class="btn sm sec noprint" onclick="event.preventDefault();clientReactiveaza(${c.id})">Reactivează</button>`:""} <button class="btn sm sec noprint" onclick="event.preventDefault();openClient(${c.id})">Edit</button></summary>`+
       ks.map(k=>{ const an=ANX.filter(a=>a.contract_id===k.id);
-        return `<div style="margin:8px 0 4px;padding-left:8px;border-left:3px solid var(--gl)"><b>CTR ${esc(k.nr_ctr)}</b>${k.intern ? '<span class="tag-int" title="Fără contract semnat — doar comenzi">INTERN</span>' : ""} <span class="muted">${fmtD(k.data_emitere)} → ${esc(ctrExpText(k))}${k.prelungire_tacita && k.prelungire_tacita_din ? " (tacit din " + fmtD(k.prelungire_tacita_din) + ")" : ""} · ${esc(k.stare)}</span> <button class="btn sm sec noprint" onclick="openContract(${k.id})">Edit</button> <button class="btn sm noprint" onclick="openAnexa(null,${k.id})">+ Anexă</button>${k.intern ? "" : ` <button class="btn sm sec noprint" onclick="ctrGenereaza(${k.id})" title="Contractul în Word (modelul tău), completat cu clientul, perioada, Tabel nr. 1 și Anexa 1 + PV — îl salvezi în folderul clientului">📄 Contract</button>`}
+        return `<div style="margin:8px 0 4px;padding-left:8px;border-left:3px solid var(--gl)"><b>CTR ${esc(k.nr_ctr)}</b>${k.intern ? '<span class="tag-int" title="Fără contract semnat — doar comenzi">INTERN</span>' : ""} <span class="muted">${fmtD(k.data_emitere)} → ${esc(ctrExpText(k))}${k.prelungire_tacita && k.prelungire_tacita_din ? " (tacit din " + fmtD(k.prelungire_tacita_din) + ")" : ""} · ${esc(k.stare)}</span> <button class="btn sm sec noprint" onclick="openContract(${k.id})">Edit</button> <button class="btn sm noprint" onclick="openAnexa(null,${k.id})">+ Anexă</button>${k.intern ? "" : ` <button class="btn sm sec noprint" onclick="ctrGenereaza(${k.id})" title="Contractul în Word (modelul tău), completat cu clientul, perioada, Tabel nr. 1 și Anexa 1 + PV — îl salvezi în folderul clientului">📄 Contract</button> <button class="btn sm sec noprint" onclick="arhActDeschide(${k.id})" title="Salvează actul semnat (PDF din e-mail) în folderul clientului din arhivă, cu numele după regulă și „-semnat” la final">📎 Act semnat</button>`}
         <div class="tw" style="max-height:none;margin-top:4px"><table><tr><th>Anexa</th><th>Emitere</th><th>Expirare</th><th>Jud</th><th>Loc.</th><th>Locație</th><th>Forma</th><th>Produs</th><th>Tip</th><th>Cant</th><th>Preț</th><th>Status</th><th>Depozit</th><th class="noprint" title="ACT pe comenzile acestei anexe">ACT</th><th class="noprint"></th></tr>`+
         an.map(a=>`<tr${VER&&VER.f==="act"&&VER.m.anexa_id===a.id?' class="r-ver"':''}><td>${esc(a.anexa)}</td><td>${fmtD(a.data_emitere)}</td><td>${a.data_expirare?fmtD(a.data_expirare):esc(a.expirare_text)}</td><td>${esc(a.jud)}</td><td>${esc(a.loc)}</td><td>${esc(a.sat)}</td><td>${esc(a.forma)}</td><td>${esc(prodN(a.produs, a.cant))}</td><td>${esc([a.model, a.model_fizic].filter(Boolean).join(" "))}</td><td>${a.cant}</td><td>${fmtPret(a.pret)} ${esc(a.moneda)}${a.serv_cerere ? `<div class="muted" style="font-size:11px;white-space:nowrap" title="Servisare la cerere: preț pe servisare / produs (rând separat în Facturare)">+ serv. la cerere ${esc(fmtPret(a.serv_pret))} ${esc(a.serv_moneda || a.moneda || "")}</div>` : ""}${actLista(a).map(u => `<div class="muted" style="font-size:11px;white-space:nowrap">→ ${u.pret != null ? esc(fmtPret(u.pret) + " " + (a.moneda || "")) : ""}${u.model ? " " + esc(u.model) : ""} din ${esc(fmtD(u.de_la))}${u.act_nr ? " (AA " + esc(u.act_nr) + ")" : ""}</div>`).join("")}</td><td>${esc(a.status)}</td><td>${esc(a.depozit)}</td><td class="noprint">${flaguriAnexa(a.id,"act")}</td><td class="noprint"><button class="btn sm sec" onclick="openAnexa(${a.id})">Edit</button> ${butonSerii(a)} ${a.tip_anexa === "R" ? "" : `<button class="btn sm sec" title="Act adițional: preț / tip nou de la o dată (facturarea desparte luna)" onclick="openAct(${a.id})">Actualizare${actLista(a).length ? " (" + actLista(a).length + ")" : ""}</button>`}</td></tr>`).join("")+`</table></div></div>`; }).join("")+`</details></div>`;
   }).join("")||'<p class="muted">Niciun client.</p>';
