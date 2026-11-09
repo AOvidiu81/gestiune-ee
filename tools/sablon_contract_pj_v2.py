@@ -19,15 +19,15 @@ def runs(t,sz=18,b0=False):   # **gros** în text
         if part: out.append(R(part,b,sz))
         b=not b
     return ''.join(out)
-def P(t,jc='both',after=50,before=0,ind=0,keep=False,sz=18,b=False,raw=None):
-    ppr=f'<w:pPr><w:spacing w:before="{before}" w:after="{after}" w:line="240" w:lineRule="auto"/>'+(f'<w:ind w:left="{ind}"/>' if ind else '')+('<w:keepNext/>' if keep else '')+f'<w:jc w:val="{jc}"/></w:pPr>'
+def P(t,jc='both',after=0,before=0,ind=0,keep=False,sz=18,b=False,raw=None):   # v8.46 (cerut de Ovidiu): fără spațiere, Times New Roman
+    ppr=f'<w:pPr><w:pStyle w:val="Frspaiere"/><w:spacing w:before="{before}" w:after="{after}" w:line="240" w:lineRule="auto"/>'+(f'<w:ind w:left="{ind}"/>' if ind else '')+('<w:keepNext/>' if keep else '')+f'<w:jc w:val="{jc}"/></w:pPr>'
     return '<w:p>'+ppr+(raw if raw is not None else runs(t,sz,b))+'</w:p>'
-H=lambda t: P(t,jc='left',before=110,after=40,keep=True,b=True)
+H=lambda t: P(t,jc='left',keep=True,b=True)
 L=lambda t: P(t,ind=284)
 def TC(cont,w,shade=False,bold=False,jc='left'):
     sh='<w:shd w:val="clear" w:color="auto" w:fill="E7EEE9"/>' if shade else ''
     ps=cont if isinstance(cont,list) else [cont]
-    body=''.join(P(c,jc=jc,after=20,b=bold) if not c.startswith('<w:p>') else c for c in ps)
+    body=''.join(P(c,jc=jc,b=bold) if not c.startswith('<w:p>') else c for c in ps)
     return f'<w:tc><w:tcPr><w:tcW w:w="{w}" w:type="dxa"/>{sh}<w:vAlign w:val="center"/></w:tcPr>{body}</w:tc>'
 def TBL(rows,widths,jos=False):   # jos=True: tabel plutitor, lipit de marginea de jos a paginii (deasupra subsolului)
     b='<w:tblBorders>'+''.join(f'<w:{s} w:val="single" w:sz="4" w:space="0" w:color="000000"/>' for s in ['top','left','bottom','right','insideH','insideV'])+'</w:tblBorders>'
@@ -88,7 +88,7 @@ X.append(H('Art. 8. Răspunderea pentru produse și daunele'))
 X.append(P('8.1. De la livrare până la returnare, Beneficiarul răspunde pentru orice pierdere, furt sau deteriorare a produselor, cu excepția uzurii normale, inclusiv cele produse de terți, de fenomene naturale sau de animale.'))
 X.append(P('8.2. Deteriorările se repară de Prestator, pe cheltuiala Beneficiarului, pe baza procesului-verbal sau a notei de constatare.'))
 X.append(P('8.3. În caz de daună totală sau furt, Beneficiarul plătește valoarea din Tabelul nr. 1, plus chiria până la data anunțării scrise a daunei sau a furtului.',keep=True))
-X.append(P('**Tabel nr. 1** — Valoarea estimată a produselor în caz de daună totală sau furt',jc='center',before=60,after=40,keep=True))
+X.append(P('**Tabel nr. 1** — Valoarea estimată a produselor în caz de daună totală sau furt',jc='center',keep=True))
 X.append(TBL([[TC('DENUMIRE PRODUS',5400,True,True,'center'),TC('VALOARE ESTIMATĂ',4200,True,True,'center')],
               [TC('{#daune}{den}',5400),TC('{val}{/daune}',4200)]],[5400,4200]))
 X.append(H('Art. 9. Returnarea și recuperarea produselor'))
@@ -127,10 +127,9 @@ X.append(TBL([[TC('',W3[0],True),TC('PRESTATOR',W3[1],True,True,'center'),TC('BE
               [TC('Telefon',W3[0],bold=True),TC('0735 214 751',W3[1]),TC('{notif_tel}',W3[2])],
               [TC('E-mail',W3[0],bold=True),TC('hunedoara@eurowc.ro',W3[1]),TC('{notif_email}',W3[2])],
               [TC('În atenția',W3[0],bold=True),TC('Anitoiu Ovidiu',W3[1],bold=True),TC('{notif_atentie}',W3[2],bold=True)]],W3))
-X.append(P('16.2. Partea care își schimbă adresa anunță cealaltă Parte în scris. Până atunci, notificarea trimisă la vechea adresă este valabilă.',before=60))
+X.append(P('16.2. Partea care își schimbă adresa anunță cealaltă Parte în scris. Până atunci, notificarea trimisă la vechea adresă este valabilă.'))
 X.append(H('Art. 17. Clauze acceptate expres'))
-X.append(P('Beneficiarul declară că a citit și acceptă în mod expres, în sensul art. 1203 Cod civil, următoarele clauze: art. 3.3 (prelungirea tacită), art. 4.4 și 4.5 (refuzul operațiunilor nesigure și facturarea lor), art. 4.6 (procesul-verbal întocmit doar de Prestator), art. 5.3 (acceptarea facturii necontestate), art. 5.4 (penalitățile), art. 5.5 (suspendarea serviciilor), art. 8.1 (răspunderea Beneficiarului, inclusiv pentru caz fortuit), art. 9.3 (accesul pentru ridicare), art. 10.2 (cesiunea de către Prestator), art. 12.3 și 12.4 (rezilierea fără instanță), art. 14 (impreviziunea) și art. 18.1 (instanța competentă).',keep=True))
-X.append(P('Beneficiar: **{reprezentant}**   —   semnătura: ______________________',before=80,after=80))
+X.append(P('Beneficiarul declară că a citit și acceptă în mod expres, în sensul art. 1203 Cod civil, următoarele clauze: art. 3.3 (prelungirea tacită), art. 4.4 și 4.5 (refuzul operațiunilor nesigure și facturarea lor), art. 4.6 (procesul-verbal întocmit doar de Prestator), art. 5.3 (acceptarea facturii necontestate), art. 5.4 (penalitățile), art. 5.5 (suspendarea serviciilor), art. 8.1 (răspunderea Beneficiarului, inclusiv pentru caz fortuit), art. 9.3 (accesul pentru ridicare), art. 10.2 (cesiunea de către Prestator), art. 12.3 și 12.4 (rezilierea fără instanță), art. 14 (impreviziunea) și art. 18.1 (instanța competentă). Acceptarea expresă a acestor clauze se face prin semnătura și ștampila Beneficiarului din chenarul de semnături de la finalul contractului.'))
 X.append(H('Art. 18. Litigii și dispoziții finale'))
 X.append(P('18.1. Neînțelegerile se rezolvă mai întâi pe cale amiabilă. Dacă nu se rezolvă în 30 de zile, sunt de competența instanțelor de la sediul Prestatorului (județul Harghita). Se aplică legea română.'))
 X.append(P('18.2. Costurile recuperării creanțelor și produselor (taxe, onorarii, executare) sunt suportate de Beneficiar, în limitele legii.'))
@@ -139,13 +138,12 @@ X.append(P('18.4. Dacă o clauză este nulă, celelalte rămân valabile, iar P�
 X.append(P('18.5. Drepturile și obligațiile din contract trec asupra succesorilor Părților.'))
 X.append(P('18.6. Contractul s-a încheiat la data de **{contract_data}**, în 2 exemplare originale, câte unul pentru fiecare Parte.'))
 X.append(P('18.7. {anexe_text}',jc='left',keep=True))
-W2=[5100,5100]
-X.append(P('',after=60))
-X.append(TBL([[TC('PRESTATOR',W2[0],True,True,'center'),TC('BENEFICIAR',W2[1],True,True,'center')],
-              [TC('SC EURO ECOLOGIC SRL',W2[0],bold=True),TC('{client}',W2[1],bold=True)],
-              [TC(['Nume: Irina Gyorgy','Funcție: Administrator'],W2[0]),
-               TC(['Nume: {reprezentant}','Funcție: {reprezentant_functie}','{#semnatari}','Nume: {nume}','Funcție: {functie}','{/semnatari}'],W2[1])],
-              [TC(['Semnătura:','',''],W2[0]),TC(['Semnătura:','',''],W2[1])]],W2,jos=True))   # v8.45: mereu jos pe pagină, lângă linia roșie
+# v8.46 (cerut de Ovidiu, 09.11): chenarul de semnături = tabelul ORIGINAL din contractul lui (același format ca la anexă, neschimbat),
+# doar ancorat de marginea de jos a paginii (deasupra liniei roșii) în loc de poziția fixă
+i=x.index('{#semnatari}'); ca=x.rfind('<w:tbl>',0,i); cb=x.index('</w:tbl>',i)+len('</w:tbl>')
+CHENAR=re.sub(r'<w:tblpPr [^>]*/>','<w:tblpPr w:leftFromText="180" w:rightFromText="180" w:topFromText="120" w:vertAnchor="margin" w:horzAnchor="margin" w:tblpXSpec="center" w:tblpYSpec="bottom"/>',x[ca:cb],count=1)
+assert 'tblpYSpec="bottom"' in CHENAR
+X.append(CHENAR)
 X.append('<w:p><w:r><w:br w:type="page"/></w:r></w:p>')
 b=x.index('<w:body>')+len('<w:body>'); a=x.index('<w:p><w:r><w:t xml:space="preserve">{#anexe}')
 x2=x[:b]+''.join(X)+x[a:]
