@@ -1,6 +1,7 @@
 # v8.34 — model CONTRACT PJ (contract + Anexa + PV) din „2. 00 HD_ NUME CLIENT.docx”, locuri {…} pentru docxtemplater.
 # Partea de contract = paragrafele 0–190; de la 191 urmează exact modelul „Anexa + PV” (aceleași locuri ca modele/anexa_pv.docx).
 # Folosire: python3 tools/sablon_contract_pj.py "modele-originale/2. 00 HD_ NUME CLIENT.docx" modele/contract_pj.docx
+#          apoi: python3 tools/fara_diacritice.py modele/contract_pj.docx   (v8.36: modelele sunt fără diacritice)
 import re,sys,zipfile
 src,dst=sys.argv[1],sys.argv[2]
 z=zipfile.ZipFile(src); x=z.read('word/document.xml').decode('utf-8')
