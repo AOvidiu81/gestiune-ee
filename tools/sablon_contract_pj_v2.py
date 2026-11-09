@@ -3,7 +3,7 @@
 # transport 3,5 t / mare tonaj, acces max 5 m + SSM, notificări cu „E-mail”, art. 17 clauze acceptate expres).
 # Partea de contract se scrie de aici; Anexa (bucla {#anexe}) + PV-ul vin neschimbate din tools/sablon_contract_pj.py (același original).
 # Folosire: python3 tools/sablon_contract_pj_v2.py "modele-originale/2. 00 HD_ NUME CLIENT.docx" modele/contract_pj.docx
-#           apoi: python3 tools/fara_diacritice.py modele/contract_pj.docx
+#           apoi: python3 tools/fara_diacritice.py modele/contract_pj.docx && python3 tools/chenar_jos.py modele/contract_pj.docx
 import os,re,sys,subprocess,tempfile,zipfile
 src,dst=sys.argv[1],sys.argv[2]
 tmp=os.path.join(tempfile.mkdtemp(),'baza.docx')
@@ -141,8 +141,9 @@ X.append(P('18.7. {anexe_text}',jc='left',keep=True))
 # v8.46 (cerut de Ovidiu, 09.11): chenarul de semnături = tabelul ORIGINAL din contractul lui (același format ca la anexă, neschimbat),
 # doar ancorat de marginea de jos a paginii (deasupra liniei roșii) în loc de poziția fixă
 i=x.index('{#semnatari}'); ca=x.rfind('<w:tbl>',0,i); cb=x.index('</w:tbl>',i)+len('</w:tbl>')
-CHENAR=re.sub(r'<w:tblpPr [^>]*/>','<w:tblpPr w:leftFromText="180" w:rightFromText="180" w:topFromText="120" w:vertAnchor="margin" w:horzAnchor="margin" w:tblpXSpec="center" w:tblpYSpec="bottom"/>',x[ca:cb],count=1)
-assert 'tblpYSpec="bottom"' in CHENAR
+# v8.48: poziția FIXĂ jos pe pagină, la fel ca la anexă / PV (tblpY 14032 de la marginea de sus a foii) — ancorarea „bottom” se rupea în Word
+CHENAR=re.sub(r'<w:tblpPr [^>]*/>','<w:tblpPr w:leftFromText="180" w:rightFromText="180" w:vertAnchor="page" w:horzAnchor="margin" w:tblpXSpec="center" w:tblpY="14032"/>',x[ca:cb],count=1)
+assert 'w:tblpY="14032"' in CHENAR
 X.append(CHENAR)
 X.append('<w:p><w:r><w:br w:type="page"/></w:r></w:p>')
 b=x.index('<w:body>')+len('<w:body>'); a=x.index('<w:p><w:r><w:t xml:space="preserve">{#anexe}')
