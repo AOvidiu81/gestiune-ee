@@ -1018,7 +1018,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
   <span id="rz-w"><button id="rz-reset" class="pictograma" title="Lățimi implicite — pune coloanele din tabelele acestei file înapoi cum erau">↺ Reset layout</button><i class="rz-sep">|</i></span>
   <span id="tz-w" title="Mărimea tabelului (doar tabelul, restul rămâne la fel), din 5 în 5%. Merge și cu Ctrl + rotița mausului, Ctrl + / Ctrl − / Ctrl 0. Dublu clic pe procent = scrii tu valoarea."><button class="pictograma" onclick="tzPas(-1)" aria-label="Micșorează tabelul">−</button><b id="tz-v" ondblclick="tzScrie()" title="Dublu clic = scrii mărimea (ex. 87), Enter">100%</b><input id="tz-in" type="number" min="30" max="300" step="5" style="display:none"><button class="pictograma" onclick="tzPas(1)" aria-label="Mărește tabelul">+</button></span>
-  <span class="ver">v8.34</span>
+  <span class="ver">v8.35</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -3734,7 +3734,7 @@ async function actGenereazaAnexaPV(){
     const zip = new PizZip(await rsp.arrayBuffer());
     const doc = new window.docxtemplater(zip, { paragraphLoop: true, linebreaks: true, nullGetter: () => "______" });
     Object.keys(date).forEach(x => { if(date[x] === "" && !["info", "client_email", "client_tel", "client_iban", "client_banca"].includes(x)) date[x] = "______"; });
-    doc.render(date);
+    doc.render(actFaraDiac(date));   // v8.35: fără diacritice
     const blob = doc.getZip().generate({ type: "blob", mimeType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document" });
     const nume = [String(a.anexa || "ANEXA").trim(), rid ? "PV RIDICARE" : "PV", c.nume || "", k.nr_ctr || "", fmtD(dOp)].filter(Boolean).join(" - ").replace(/[\\/:*?"<>|]+/g, " ") + ".docx";
     const u = URL.createObjectURL(blob), l = document.createElement("a"); l.href = u; l.download = nume; document.body.appendChild(l); l.click(); l.remove(); setTimeout(() => URL.revokeObjectURL(u), 5000);
@@ -3758,6 +3758,18 @@ const CTR_GAR_A = {
   INSTITUTIE: "este unitate administrativ-teritoriala / institutie publica, infiintata si functionand conform legilor romane",
   ONG: "este asociatie / fundatie infiintata conform O.G. nr. 26/2000",
   ALTELE: "este o entitate infiintata si functionand in mod legal conform legilor aplicabile" };
+// v8.35 (cerut de Ovidiu, 09.11): în actele generate datele intră FĂRĂ diacritice (ă→a, ș→s, ț→t…), ca să nu încurce
+const actFaraDiac = v => typeof v === "string" ? faraDiac(v).replace(/[ȘŞ]/g, "S").replace(/[șş]/g, "s").replace(/[ȚŢ]/g, "T").replace(/[țţ]/g, "t")
+  : Array.isArray(v) ? v.map(actFaraDiac) : v && typeof v === "object" ? Object.fromEntries(Object.entries(v).map(([k, x]) => [k, actFaraDiac(x)])) : v;
+// v8.35: obiectul contractului = felurile de produse de pe anexe („toalete ecologice mobile si containere”)
+function ctrObiect(rows){
+  const L = [];
+  rows.forEach(r => { const u = faraDiac(r.produs || "").toUpperCase().trim(); if(!u) return;
+    const w = /TOALET/.test(u) ? "toalete ecologice mobile" : /CONTAINER/.test(u) ? "containere" : /GARD/.test(u) ? "garduri mobile" : /CABIN/.test(u) ? "cabine" : /LAVOAR/.test(u) ? "lavoare"
+      : u.split(/\s+/).map(x => PL_CUV[x] || x).join(" ").toLowerCase();
+    if(!L.includes(w)) L.push(w); });
+  return L.length ? (L.length > 1 ? L.slice(0, -1).join(", ") + " si " + L[L.length - 1] : L[0]) : "toalete ecologice mobile";
+}
 function ctrBenef(c){
   const cat = CTR_DECL[c.categorie] ? c.categorie : "SOCIETATE", S = [], n = t => S.push({ t, b: false }), b = t => S.push({ t: t || "______", b: true });
   const cui = c.cui ? ((c.atr || "") + " " + c.cui).trim() : "", iban = String(c.iban || "").replace(/\s+/g, "").toUpperCase().replace(/(.{4})(?=.)/g, "$1 ");
@@ -3766,14 +3778,14 @@ function ctrBenef(c){
   if(cat === "ONG"){ n(", organizatie neguvernamentala inscrisa in "); b(c.inregistrare); n(", avand Codul de Inregistrare Fiscala "); b(cui); n(", cu sediul in "); b(c.sediu); }
   else {
     n(cat === "PFA" ? ", cu sediul profesional in " : ", cu sediul in "); b(c.sediu);
-    if(cat === "SOCIETATE" || cat === "PFA"){ n(", înregistrata la Registrul Comerţului sub "); b(c.nr_reg_com); n(" , CUI "); b(cui); }
+    if(cat === "SOCIETATE" || cat === "PFA"){ n(", inregistrata la Registrul Comertului sub "); b(c.nr_reg_com); n(" , CUI "); b(cui); }
     else if(cat === "INSTITUTIE"){ n(" , CIF "); b(cui); }
-    else { if(c.inregistrare){ n(", înregistrata la / in baza "); b(c.inregistrare); } n(" , cod fiscal "); b(cui); }
+    else { if(c.inregistrare){ n(", inregistrata la / in baza "); b(c.inregistrare); } n(" , cod fiscal "); b(cui); }
   }
   if(c.email){ n(" , E-mail: "); b(c.email); }
   if(c.telefon){ n(" , Tel: "); b(c.telefon); }
   if(iban){ n(cat === "INSTITUTIE" ? " , cont " : " , cont bancar IBAN "); b(iban); if(c.banca){ n(cat === "INSTITUTIE" ? " deschis la " : " deschis la Banca "); b(c.banca); } }
-  n(" , reprezentată prin "); b(c.pers_resp); n(" , in calitate de " + func + " , denumită aici şi mai jos \""); b("BENEFICIAR"); n("\" .");
+  n(" , reprezentata prin "); b(c.pers_resp); n(" , in calitate de " + func + " , denumita aici si mai jos \""); b("BENEFICIAR"); n("\" .");
   const [cine, stare] = CTR_DECL[cat];
   return { benef: S,
     declaratie: "Beneficiarul declara, prin reprezentant legal, sub sanctiunea legii penale privind falsul, ca persoana are capacitatea si dreptul de a semna astfel de contracte si de a angaja din punct de vedere juridic " + cine +
@@ -3800,6 +3812,19 @@ async function ctrGenereaza(kid){
   const baze = ANX.filter(a => a.contract_id === k.id && !a.tip_anexa && !a.linie_id).sort((x, y) => (x.data_emitere || "").localeCompare(y.data_emitere || "") || x.id - y.id);
   if(!baze.length){ toast("Contractul nu are încă anexă — fă întâi Anexa 1 (din comandă sau „+ Anexă”)", true); return; }
   const a = baze[0], anr = String(a.anexa || "").trim();
+  // v8.35 (cerut de Ovidiu, 09.11): Nr. Reg. Com. = ultima variantă înregistrată la ANAF (ex. J2007000205190 în loc de J19/205/2007)
+  if(c.cui && c.id_tip !== "CNP"){
+    try{ toast("Verific datele la ANAF…"); const { data: d } = await db.functions.invoke("anaf", { body: { cui: c.cui } });
+      const jA = d && d.gasit && String(d.nr_reg_com || "").trim();
+      if(jA && jA.replace(/\s+/g, "") !== String(c.nr_reg_com || "").replace(/\s+/g, "")){
+        const vechi = c.nr_reg_com || "(gol)";
+        if(confirm("La ANAF, Nr. Reg. Com. este " + jA + " (pe fișa clientului: " + vechi + ").\n\nOK = îl pun în contract și îl actualizez și pe fișa clientului\nAnulează = rămâne " + vechi)){
+          const { error } = await db.from("clienti").update({ nr_reg_com: jA }).eq("id", c.id);
+          if(error) toast("Fișa clientului nu s-a putut actualiza: " + error.message, true); else c.nr_reg_com = jA;
+        }
+      }
+    }catch(e){ toast("ANAF nu răspunde acum — rămâne Nr. Reg. Com. de pe fișă", true); }
+  }
   // notificările: din fișa „Date contract” a clientului (dacă există), altfel din Observații / fișa clientului
   let R = {}; try{ const { data } = await db.from("cereri_date").select("raspuns").eq("client_id", c.id).order("id", { ascending: false }).limit(1); R = (data && data[0] && data[0].raspuns) || {}; }catch(e){}
   const obs = String(c.observatii || ""), din = re => ((re.exec(obs) || [])[1] || "").trim();
@@ -3810,7 +3835,7 @@ async function ctrGenereaza(kid){
   const vazut = new Set(), daune = [];
   ANX.filter(x => x.contract_id === k.id && !x.linie_id).forEach(r => { const den = [prodN(r.produs || "", 1), r.model, r.model_fizic].filter(Boolean).join(" ");
     if(!den || vazut.has(den)) return; vazut.add(den); daune.push({ den, val: actValDauna(r) || "______" }); });
-  Object.assign(date, ctrBenef(c), {
+  Object.assign(date, ctrBenef(c), { obiect: ctrObiect(ANX.filter(x => x.contract_id === k.id && !x.linie_id)),
     contract_nr: k.nr_ctr || "______", contract_data: actD(k.data_emitere) || "______",
     durata: ctrDurata(k, a), data_start: actD(a.data_livrarii || k.data_emitere) || "______",
     daune: daune.length ? daune : [{ den: "______", val: "______" }],
@@ -3823,7 +3848,7 @@ async function ctrGenereaza(kid){
     const rsp = await fetch("modele/contract_pj.docx", { cache: "no-cache" }); if(!rsp.ok) throw new Error("modelul nu s-a găsit (modele/contract_pj.docx)");
     const doc = new window.docxtemplater(new PizZip(await rsp.arrayBuffer()), { paragraphLoop: true, linebreaks: true, nullGetter: () => "______" });
     Object.keys(date).forEach(x => { if(date[x] === "" && !["info", "client_email", "client_tel", "client_iban", "client_banca"].includes(x)) date[x] = "______"; });
-    doc.render(date);
+    doc.render(actFaraDiac(date));   // v8.35: fără diacritice
     const blob = doc.getZip().generate({ type: "blob", mimeType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document" });
     const nume = ((k.nr_ctr || "CTR") + "_ " + (c.nume || "")).replace(/[\\/:*?"<>|]+/g, " ").replace(/\s+/g, " ").trim() + ".docx";   // ca la el: „1557 HD_ VIO LOGISTIC SOLUTIONS SRL.docx”
     if(window.showSaveFilePicker){

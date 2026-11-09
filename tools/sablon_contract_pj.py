@@ -40,13 +40,20 @@ def first(p,t):
 def dupa(p,texte):   # paragraful + copii ale lui cu alte texte (pentru bucla semnatarilor)
     return p+''.join(first(p,t) for t in texte)
 SEMN=lambda p: dupa(first(p,"FUNCTIA: {reprezentant_functie}"),["{#semnatari}","NUME: {nume}","FUNCTIA: {functie}","{/semnatari}"])
+# v8.35: aceeași mărime de literă ca la 1.1 Prestator (9 pt) — rPr luat din paragraful 4
+R9N='<w:rPr><w:rFonts w:ascii="Times New Roman" w:hAnsi="Times New Roman"/><w:color w:val="000000"/><w:sz w:val="18"/><w:szCs w:val="18"/><w:lang w:val="ro-RO"/></w:rPr>'
+R9B='<w:rPr><w:rFonts w:ascii="Times New Roman" w:hAnsi="Times New Roman"/><w:b/><w:bCs/><w:color w:val="000000"/><w:sz w:val="18"/><w:szCs w:val="18"/><w:lang w:val="ro-RO"/></w:rPr>'
+def segs9(p, S):
+    head=re.match(r'(<w:p[ >].*?</w:pPr>)',p,re.S).group(1)
+    return head+''.join('<w:r>'+(R9B if b else R9N)+'<w:t xml:space="preserve">'+esc(t)+'</w:t></w:r>' for t,b in S)+'</w:p>'
 # beneficiarul = segmente {t, b} calculate în aplicație pe categoria clientului (îngroșat unde b)
 BENEF=[("{#benef}{#b}",0),("{t}",1),("{/b}{^b}{t}{/b}{/benef}",0)]
 C={
 1:lambda p:first(p,"Nr. {contract_nr} din {contract_data}"),
-6:lambda p:segs(p,0,BENEF),
+6:lambda p:segs9(p,BENEF),
+11:lambda p:one(p,1,"{obiect}"),
 8:lambda p:first(p,"{declaratie}"),
-14:lambda p:first(p,"Contractul se incheie pe o perioada de {durata} (incepand cu data de {data_start} )."),
+14:lambda p:segs9(p,[("Contractul se incheie pe o perioada de ",0),("{durata}",1),(" (incepand cu data de ",0),("{data_start}",1),(" ).",0)]),
 35:lambda p:first(p,"{garantie_a}"),
 54:lambda p:first(p,"{#daune}{den}"),55:lambda p:first(p,"{val}{/daune}"),
 91:lambda p:first(p,"{notif_adresa}"),94:lambda p:first(p,"{notif_tel}"),97:lambda p:first(p,"{notif_email}"),100:lambda p:first(p,"{notif_atentie}"),
@@ -103,7 +110,7 @@ rows=list(re.finditer(r'<w:tr[ >].*?</w:tr>',tb,re.S)); assert len(rows)==13, le
 tb2=tb[:rows[1].start()]+tb[rows[11].end():]
 x2=x2[:t.start()]+tb2+x2[t.end():]
 x2=re.sub(r'<w:dataBinding[^>]*/>','',x2)
-for k in ['{contract_nr}','{#benef}','{declaratie}','{durata}','{garantie_a}','{#daune}','{notif_adresa}','{anexe_text}','{#semnatari}','{#randuri}','{pv_tip}','{#produse}']:
+for k in ['{contract_nr}','{#benef}','{declaratie}','{durata}','{garantie_a}','{#daune}','{notif_adresa}','{anexe_text}','{#semnatari}','{#randuri}','{pv_tip}','{#produse}','{obiect}']:
     assert k in x2, k
 CURAT={'docProps/app.xml':['Manager','Company'],'docProps/core.xml':['cp:keywords','cp:category','cp:contentStatus','dc:title','dc:subject'],
  'customXml/item1.xml':['PublishDate','Abstract','CompanyAddress','CompanyPhone','CompanyEmail','CompanyFax']}
