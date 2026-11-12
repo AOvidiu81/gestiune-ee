@@ -1105,7 +1105,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
   <span id="rz-w"><button id="rz-reset" class="pictograma" title="Lățimi implicite — pune coloanele din tabelele acestei file înapoi cum erau">↺ Reset layout</button><i class="rz-sep">|</i></span>
   <span id="tz-w" title="Mărimea tabelului (doar tabelul, restul rămâne la fel), din 5 în 5%. Merge și cu Ctrl + rotița mausului, Ctrl + / Ctrl − / Ctrl 0. Dublu clic pe procent = scrii tu valoarea."><button class="pictograma" onclick="tzPas(-1)" aria-label="Micșorează tabelul">−</button><b id="tz-v" ondblclick="tzScrie()" title="Dublu clic = scrii mărimea (ex. 87), Enter">100%</b><input id="tz-in" type="number" min="30" max="300" step="5" style="display:none"><button class="pictograma" onclick="tzPas(1)" aria-label="Mărește tabelul">+</button></span>
-  <span class="ver">v8.55</span>
+  <span class="ver">v8.56</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -13849,9 +13849,12 @@ function deschideSectiune(nume){
 var INIT_GATA = false;
 
 // ================= GHID „HOW TO” (v8.55, cerut de Ovidiu 08.11 / 12.11) =================
+// v8.56 (12.11): toate cele 20 de fișe din lista acceptată de Ovidiu; Facturarea lunii mutată lângă celelalte rapoarte (nr. 9).
 // Fișe cu pași, căutare fără diacritice, „Du-mă acolo” (deschide pagina și face să clipească butonul). Totul în aplicație → merge offline.
 // Fiecare fișă: id, cat (grupa), t (titlu), k (cuvinte de căutare), cand (când o folosești), anexa (ce se întâmplă cu anexa),
 // pasi [{ t: text, ar: { s: secțiunea din meniu, fn: ce se deschide, el: ce clipește } }], du: la fel ca ar (butonul mare).
+// v8.56: Administrare (nu „Puncte de rută”, care are același data-p) pe secțiunea cerută
+const HOW_ADMIN = sect => () => { const b = document.querySelector('nav button[data-p="admin"]:not([data-a])'); if(b) b.click(); $("a-tabel").value = sect; adminSchimba(); };
 const HOW_NOUA = { s: "miscari", fn: () => { if(!$("mod-m").classList.contains("on")) openMiscare(); } };   // comanda deja deschisă nu se golește
 const HOW = [
   { id: "client-nou", cat: "Comenzi și acte", t: "Client nou — prima amplasare",
@@ -13901,6 +13904,85 @@ const HOW = [
       { t: "În <b>Facturare</b>, pe luna ridicării, rândul are clientul cu <b>roșu</b> și ziua ridicării ca sfârșit de perioadă." } ],
     du: { s: "miscari", el: '#p-miscari button[onclick="openMiscare()"]' } },
 
+  { id: "servisare-cerere", cat: "Comenzi și acte", t: "Servisare la cerere",
+    k: "servisare la cerere vidanjare golire curatare in plus toaleta proprie fara anexa comanda clientului pret servisare text facturare gls",
+    cand: "Clientul cere o servisare în plus față de cele din contract, sau servisarea unei toalete proprii (fără închiriere).",
+    anexa: "<b>Nu se creează și nu se schimbă nicio anexă</b>; stocul nu se mișcă. Dacă anexa clientului are bifa „Servisare la cerere” (preț pe servisare / produs), ea rămâne la fel — zilele servisărilor se trec separat, în Facturare (🧽 Zile).",
+    pasi: [
+      { t: "<b>Comenzi</b> → <b>+ Comandă nouă</b>, <b>Tip comandă = SERVISARE</b>, data = ziua servisării.", ar: Object.assign({ el: "#mm-tip" }, HOW_NOUA) },
+      { t: "Alegi <b>clientul</b> și <b>contractul</b>. Client cu toalete închiriate: alegi și <b>anexa</b> locației. Client fără anexă (toalete proprii, contract doar de servisare): lași Anexă <b>nealeasă</b>.", ar: Object.assign({ el: "#mm-anexa" }, HOW_NOUA) },
+      { t: "Fără anexă: la secțiunea 6 pui <b>Frecvență = La Cerere</b> → apare <b>tabelul locațiilor</b>: județ, localitate, adresă, responsabil, telefon, bucăți, data servisării (una sau mai multe locații).", ar: Object.assign({ el: "#mm-frecv" }, HOW_NOUA) },
+      { t: "<b>Comanda clientului</b> (apare la SERVISARE): nr. (dacă există), <b>Din data</b> (a comenzii, nu a servisării) și <b>Primită pe</b> (WhatsApp / Email / PDF / Telefon). La servisare, asta e <b>ACT</b>-ul." },
+      { t: "Fără anexă: <b>Se facturează</b> pornit + <b>Preț / servisare</b> (fără TVA), moneda, scadent. Servisarea fără anexă <b>nu apare în raportul de Facturare</b> — o urmărești în Comenzi, la <b>FAC</b>." },
+      { t: "<b>Salvează și generează</b> → trimiți textul pe WhatsApp.", ar: Object.assign({ el: "#mm-gen" }, HOW_NOUA) },
+      { t: "<b>→ Rute</b> pe rândul comenzii: punctul (cod C…) apare pe rută <b>doar în ziua servisării</b>, apoi trece singur pe INACTIV. La prima cerere pui GPS-ul; la următoarele, punctul se refolosește." },
+      { t: "După servisare: <b>Edit</b> pe comandă → la fiecare locație <b>Stare</b> = Efectuată (cu data) sau Nu s-a efectuat → <b>📋 Text facturare</b> (doar locațiile efectuate) → îl trimiți la sediu. <b>FAC</b>: X = de facturat → V galben = cerută → V verde = factura e la client." },
+      { t: "Client cu „Servisare la cerere” pe anexă: <b>Facturare</b> → luna → pe rândul „SERVISARE LA CERERE” apeși <b>🧽 Zile</b> → treci data și câte produse s-au servisat. Fără zile, rândul e 0.", ar: { s: "facturare", el: "#r-luna" } } ],
+    du: { s: "miscari", el: '#p-miscari button[onclick="openMiscare()"]' } },
+
+  { id: "eveniment", cat: "Comenzi și acte", t: "Eveniment — amplasare, cu ridicarea făcută automat",
+    k: "eveniment festival concert targ nunta cateva zile EVENIMENT-A EVENIMENT-R ridicare programata traseu-ev contract intern comanda clientului",
+    cand: "Toalete / garduri pentru câteva zile (festival, târg, nuntă), cu ridicarea știută de la început.",
+    anexa: "Anexa evenimentului are <b>Forma = EVENIMENT</b>, preț pe zi și <b>Eveniment de la / până la</b> — se facturează <b>doar aceste zile</b>. La „Salvează și generează” se creează singură anexa internă <b>-R FINAL</b> (nu se trimite clientului). Anexa evenimentului nu se schimbă.",
+    pasi: [
+      { t: "<b>Comenzi</b> → <b>+ Comandă nouă</b> → clientul și contractul. Client fără contract semnat (doar comenzi): faci o singură dată un contract cu bifa <b>„Contract intern”</b>.", ar: Object.assign({ el: "#mm-ctr" }, HOW_NOUA) },
+      { t: "La <b>Anexă</b> apasă <b>+</b>: <b>Forma = EVENIMENT</b>, prețul pe zi, <b>Eveniment de la / până la</b>, produsele, locația → Creează anexa. Fără anexă, evenimentul <b>nu apare în Facturare</b>.", ar: Object.assign({ el: "#mm-anexa" }, HOW_NOUA) },
+      { t: "<b>Tip comandă = EVENIMENT-A</b>; Data = ziua amplasării; Ora = când trebuie să ajungă șoferul.", ar: Object.assign({ el: "#mm-tip" }, HOW_NOUA) },
+      { t: "Secțiunea 6: <b>Fără servisare</b> sau <b>Cu servisare, în zilele</b> — alegi data și <b>+ Zi</b> (sau „Toate zilele evenimentului”). Traseul se pune singur pe <b>Traseu-EV</b>." },
+      { t: "<b>Program eveniment</b>: <b>Ridicare programată</b> (data) și ora ridicării. Fără ea, comanda de ridicare nu se creează singură." },
+      { t: "<b>Comanda clientului</b> (contract-cadru sau doar comenzi): „Din data” + „Primită pe” → ACT = V. La contract + anexă trimise la semnat, ACT merge prin Registru." },
+      { t: "<b>Salvează și generează</b> → se creează singure anexa <b>-R FINAL</b> și comanda <b>EVENIMENT-R</b> pe data ridicării. Primești textul amplasării și pe cel al ridicării (Copiază ridicarea).", ar: Object.assign({ el: "#mm-gen" }, HOW_NOUA) },
+      { t: "După PV-ul de amplasare: <b>→ Rute</b> = câte un punct pe locație, ACTIV până la ridicare, pe rută doar în zilele de servisare." },
+      { t: "După PV-ul de ridicare: <b>Edit</b> pe comanda EVENIMENT-R → <b>✓ Închide ridicarea</b>. Servisările sunt incluse în preț — nu au rânduri în Facturare." } ],
+    du: { s: "miscari", el: '#p-miscari button[onclick="openMiscare()"]' } },
+
+  { id: "acte-word", cat: "Comenzi și acte", t: "📄 Contract și 📄 Anexă + PV în Word",
+    k: "contract word anexa pv proces verbal generez act model docx semnat trimit la semnat descarca anaf reg com",
+    cand: "Trebuie să trimiți clientului contractul sau anexa cu PV-ul, la semnat.",
+    anexa: "Anexa <b>nu se schimbă</b> — actul doar se completează din ea (produse, preț, locație, servisare, contact). La SUPLIMENTARE / REDUCERE, în Word apare și rândul „Începând cu data de …, în locație vor fi: N produse”.",
+    pasi: [
+      { t: "<b>Anexă + PV:</b> deschizi comanda (nouă sau cu <b>Edit</b>), cu anexa aleasă → <b>📄</b> lângă Anexă.", ar: Object.assign({ el: '#mod-m button[onclick="actGenereazaAnexaPV()"]' }, HOW_NOUA) },
+      { t: "Word-ul se descarcă cu numele gata făcut (ex. „ANEXA NR 13-S1 - PV _ 11.11.2026 - Com …, Sat … - GJ - Client - CTR_ 1281 HD”). La ridicare scrie „PV RIDICARE”." },
+      { t: "<b>Contractul:</b> <b>Contracte și anexe</b> → deschizi clientul → pe rândul contractului <b>📄 Contract</b>.", ar: { s: "clienti", el: "#c-q" } },
+      { t: "Aplicația verifică la <b>ANAF</b> Nr. Reg. Com.; dacă diferă, întreabă: OK = îl pune în contract și pe fișa clientului." },
+      { t: "Contractul cuprinde: beneficiarul după categorie (societate, PFA, instituție, ONG), durata, Tabel nr. 1 (valoarea la daună / furt), semnăturile și <b>Anexa 1 + PV</b>. Are nevoie de Anexa 1 făcută." },
+      { t: "Ce lipsește (sediu, Reg. Com., reprezentant, valoarea la daună / furt) rămâne <b>„______”</b> în Word și e scris în mesajul de jos → completezi fișa clientului (Edit) și generezi din nou." },
+      { t: "Deschizi Word-ul, îl verifici, îl salvezi ca PDF în folderul clientului și îl trimiți la semnat. Actele sunt <b>fără diacritice</b>, intenționat." },
+      { t: "Nu se generează contract: la persoane fizice (modelul PF urmează), la clientul care își emite el contractul (faci doar Anexa + PV) și la contractul INTERN." },
+      { t: "După ce l-ai trimis: în <b>Comenzi</b> apeși pătratul <b>ACT</b> → „✓ E corect” → se deschide Registru documente completat (TRIMIS azi) → Salvează." } ],
+    du: { s: "clienti", el: "#c-q" } },
+
+  { id: "act-semnat", cat: "Comenzi și acte", t: "📎 Act semnat — PDF-ul semnat în arhiva clientului",
+    k: "act semnat pdf semnat stampilat arhiva folder client contracte clienti salvez atasament outlook email -semnat",
+    cand: "Clientul a trimis înapoi contractul sau anexa semnate (PDF pe e-mail).",
+    anexa: "Anexa <b>nu se schimbă</b>. Se salvează doar fișierul, în folderul clientului din arhiva de pe PC („00. CONTRACTE CLIENTI EE”).",
+    pasi: [
+      { t: "<b>Contracte și anexe</b> → deschizi clientul → pe rândul contractului <b>📎 Act semnat</b>.", ar: { s: "clienti", el: "#c-q" } },
+      { t: "Prima dată: alegi <b>o singură dată</b> folderul arhivei „00. CONTRACTE CLIENTI EE” și dai „Permite”. Merge doar în <b>Chrome / Edge</b>, pe calculator." },
+      { t: "La <b>Actul</b> alegi ce e semnat: Contractul sau una dintre anexe." },
+      { t: "<b>Tragi PDF-ul</b> în chenar (direct din Outlook sau din folder), sau clic și îl alegi. Merge PDF, JPG, PNG." },
+      { t: "<b>Numele fișierului</b> se face singur, după regula ta, cu <b>„-semnat”</b> la final; îl poți corecta." },
+      { t: "<b>Salvează în arhivă</b> → fișierul ajunge în folderul clientului, găsit după numărul contractului. Dacă există deja unul cu același nume, întreabă dacă îl înlocuiește." },
+      { t: "Dacă folderul clientului nu există încă în arhivă: la salvare alegi tu locul (faci folderul cu „New folder”, în CTR-ul potrivit)." },
+      { t: "Apoi în <b>Registru documente</b>: <b>Primit azi</b> pe rândul actului.", ar: { s: "documente", el: "#g-prim" } } ],
+    du: { s: "clienti", el: "#c-q" } },
+
+  { id: "serii", cat: "Comenzi și acte", t: "Seriile (🔢) — model și serie pe fiecare bucată",
+    k: "serii serie model bucata EE- placuta la client ridicata dauna furt ce toalete sunt la client",
+    cand: "Vrei să știi exact ce bucăți (model, serie) sunt la o locație, sau să corectezi ce a trecut șoferul.",
+    anexa: "Seriile stau pe <b>locație</b>, nu pe fiecare anexă: anexa de bază, -S1 și -R1 văd aceeași listă. Anexa <b>nu se schimbă</b> când treci serii.",
+    pasi: [
+      { t: "Fereastra se deschide din 3 locuri: <b>🔢</b> lângă Anexă, în comandă; <b>Serii n/N</b> pe rândul anexei, în Contracte și anexe; <b>🔢 n/N</b> pe punct, în Puncte de rută.", ar: Object.assign({ el: '#mod-m button[onclick="mmSeriiDeschide()"]' }, HOW_NOUA) },
+      { t: "Culoarea butonului: <b>verde</b> = seriile de la client coincid cu numărul de produse; <b>portocaliu</b> = nu coincid." },
+      { t: "<b>+ Bucată</b> → Produs, Tip, Model; la <b>Serie</b> scrii doar cifrele (12345 devine EE-12345). Bucata fără plăcuță: lași gol („fără serie”) și scrii motivul la Observații." },
+      { t: "<b>Stare</b>: LA CLIENT (verde), RIDICATA (roșu), DAUNA / FURT. Amplasat / Ridicat = datele bucății." },
+      { t: "La anexa cu mai multe locații de rută apare coloana <b>Locație</b> — pui fiecare bucată pe locația ei." },
+      { t: "<b>Salvează</b>. Seriile se văd și la șofer, pe toate zilele locației." },
+      { t: "Șoferul trece seriile în PV; le vezi în <b>Procese verbale</b>, sub tipul PV-ului (🔢)." },
+      { t: "La RIDICARE / REDUCERE, în comandă apare „Serii pe punct”: bifezi ce pleacă. <b>✓ Închide ridicarea</b> le trece pe RIDICATA." },
+      { t: "Bucata pusă pe DAUNA / FURT apare la <b>Stoc → Casate / pierdute</b>.", ar: { s: "stoc", fn: () => subStoc("casate"), el: "#cp-tbl" } } ],
+    du: { s: "clienti", el: "#c-q" } },
+
   { id: "facturare-luna", cat: "Facturare și rapoarte", t: "Facturarea lunii — de la „În lucru” la trimis la sediu",
     k: "facturare factura luna trimit sediu saga excel gata de trimis verificare facturat nu facturam in lucru export",
     cand: "La sfârșitul / începutul lunii, când pregătești lista pentru facturile emise de sediu în Saga.",
@@ -13914,7 +13996,175 @@ const HOW = [
       { t: "<b>Gata de trimis</b> → <b>Export Excel</b> → trimiți fișierul la sediu.", ar: { s: "facturare", fn: () => setModFact("gata"), el: "#r-mod-gata" } },
       { t: "Când vin facturile: <b>Verificare</b> → la fiecare rând scrii nr. facturii, observația și apeși pătratul: ✓ corect, ! greșită, ✗ neprimită.", ar: { s: "facturare", fn: () => setModFact("verif"), el: "#r-mod-verif" } },
       { t: "Ce e facturat trece pe <b>FACTURAT</b> și nu mai intră la „Gata de trimis”." } ],
-    du: { s: "facturare", el: "#r-mod-wrap" } }
+    du: { s: "facturare", el: "#r-mod-wrap" } },
+
+  { id: "raport-luna", cat: "Facturare și rapoarte", t: "Raport lună — bucățile pe zile, culori și export",
+    k: "raport luna pe zile cate bucati la client export excel word sumar miscari grafice completat pana la culori verde rosu",
+    cand: "Vrei să vezi, zi cu zi, câte bucăți au fost la fiecare client într-o lună, și să trimiți raportul la sediu.",
+    anexa: "Anexele <b>nu se schimbă</b>. Raportul se calculează din anexe și comenzi; servisările și sponsorizările nu intră în el.",
+    pasi: [
+      { t: "Meniul <b>Raport lună</b> → alegi <b>anul</b> și <b>luna</b>.", ar: { s: "raport-luna", el: "#r-luna" } },
+      { t: "Un rând pe locație și produs. Coloana <b>„0”</b> = ce era deja la client la începutul lunii; zilele 1–31 = câte bucăți sunt la client în fiecare zi." },
+      { t: "<b>Zilele colorate</b> = schimbări. Nr. contract + clientul: <b>verde</b> = în lună a venit ceva (amplasare / suplimentare); <b>roșu</b> = a plecat ceva (ridicare / reducere); dacă sunt amândouă → roșu." },
+      { t: "<b>Completat până la</b>: gol = zilele se completează până azi; cu o dată (ex. ultima zi a lunii) rămâne așa până o golești cu ✕.", ar: { s: "raport-luna", el: "#r-pana-w" } },
+      { t: "Filtre: <b>Client</b>, <b>Județ</b>, <b>Stare contract</b>." },
+      { t: "<b>Export Excel</b> = tabelul de pe ecran, cu culorile." },
+      { t: "<b>📊 Excel + Word</b> = două fișiere: Excel (foaia 1 raportul formatat, foaia 2 SUMAR cu mișcări, grafice și stocul la ultima zi din lună) + Word „MISCARI - RAPORT” cu comenzile lunii.", ar: { s: "raport-luna", el: "#r-exp-c" } },
+      { t: "Din <b>Comenzi</b>: clic pe pătratul <b>Rpt</b> al unei comenzi te aduce aici, pe rândul ei → „✓ E corect” pune Rpt = V." } ],
+    du: { s: "raport-luna", el: "#r-luna" } },
+
+  { id: "stoc", cat: "Facturare și rapoarte", t: "Stoc — acum, la o dată și stocul inițial pe modele",
+    k: "stoc depozit inchiriate cate toalete am raport stoc la data inventar stoc initial modele numaratoare data referinta casate",
+    cand: "Vrei să știi câte bucăți sunt închiriate și câte în depozit — acum sau la o anumită dată — ori aduci inventarul în aplicație.",
+    anexa: "Anexele <b>nu se schimbă</b>. Stocul se mișcă din <b>comenzi</b> (amplasare, suplimentare, reducere, ridicare), nu din anexe. Servisarea nu mișcă stocul.",
+    pasi: [
+      { t: "Meniul <b>Stoc</b>: pe fiecare depozit, rândurile <b>ÎNCHIRIATE / DEPOZIT / TOTAL</b>, pe produse.", ar: { s: "stoc", fn: () => subStoc("stoc"), el: "#stoc-grid" } },
+      { t: "Stocul pornește de la <b>Stoc inițial</b> și adună doar comenzile de la <b>data de referință</b> încoace. Comanda mai veche e deja în cifra de pornire (în Comenzi apare „sub referință”)." },
+      { t: "<b>Raport stoc la data</b>: alegi ziua → <b>Arată</b>. Intră comenzile până în ziua aleasă inclusiv; cele de după apar la <b>„Urmează”</b>. Are și Export Excel.", ar: { s: "stoc", fn: () => subStoc("stoc"), el: "#sr-zi" } },
+      { t: "Pe <b>modele</b>: pornesc de la numărătoare și se mișcă doar din seriile din PV-uri (amplasare −1, ridicare +1). Ce a ieșit / intrat fără serie confirmată stă pe rândul „fără model (așteaptă PV)”." },
+      { t: "<b>Stoc inițial</b>: Administrare → Secțiune = <b>Stoc inițial</b> → depozit, produs, Închiriate, În depozit, <b>Data referință</b> → Salvează.", ar: { fn: HOW_ADMIN("_stoc"), el: "#si-tbl" } },
+      { t: "<b>Modele</b> pe rând: scrii câte bucăți sunt din fiecare model (ARMAL, MONDO…) → <b>Salvează modelele</b>. Suma trebuie să dea „În depozit” (✓ verde); altfel apare ⚠ și cardul „Stoc pe modele — nu coincide” în De urmărit." },
+      { t: "Filele de sus: <b>Produse</b> (categorii, tipuri, modele, „Are serie”) și <b>Casate / pierdute</b> (daună, furt)." } ],
+    du: { s: "stoc", fn: () => subStoc("stoc"), el: "#stoc-grid" } },
+
+  { id: "puncte-ruta", cat: "Rute și șoferi", t: "Puncte de rută — coordonate, ⇄ Mută produse, INACTIV",
+    k: "puncte de ruta coordonate gps latitudine longitudine harta muta produse mutare relocare inactiv activ zi traseu masina schimba zilele cartela",
+    cand: "Vrei să vezi sau să corectezi unde merg șoferii: coordonate, zi, traseu, câte produse, activ / inactiv.",
+    anexa: "Punctul de rută <b>nu schimbă anexa</b>, stocul sau facturarea. Codul vine din anexă: <b>A173-LU</b> = anexa 173, Luni; <b>A181-02-MA</b> = anexa 181, locația 02, Marți. Punctele clienților cu anexă se fac din comandă, cu „→ Rute”.",
+    pasi: [
+      { t: "Meniul <b>Puncte de rută</b>. Filtre: Client, Județ, Localitate, Ziua, Mașina (traseu), Status, GPS, Cartelă.", ar: { s: "puncte", el: "#a-card-pf" } },
+      { t: "<b>✎</b> pe rând = editezi punctul: ziua, mașina (Traseu I / II / III / Traseu-EV), frecvența, produsele, telefonul, Status." },
+      { t: "<b>Coordonate</b>: în ✎ scrii <b>Latitudine</b> și <b>Longitudine</b> (ex. 46.000385 și 23.672056) → Salvează. Fără GPS șoferii nu pot naviga la punct. Filtrul GPS = „fără GPS” le arată pe cele lipsă.", ar: { s: "puncte", el: "#pf-gps" } },
+      { t: "<b>📍 Verificare GPS</b>: compară pinul cu locul real al vizitelor șoferilor → „Aplică coordonata nouă”, „Confirmă” sau „Marchează de verificat”. Schimbă doar punctele.", ar: { s: "puncte", el: 'button[onclick="gvDeschide()"]' } },
+      { t: "<b>⋯</b> pe rând: ⧉ Copiază punctul (locație nouă) · <b>⇄ Mută produse</b> · 📅 Schimbă zilele / frecvența · 📍 Deschide harta." },
+      { t: "<b>⇄ Mută produse</b>: muți bucăți pe altă locație a aceleiași anexe sau pe una nouă, de la o dată. Totalul rămâne același — anexa, stocul și facturarea nu se schimbă. Primești și textul pentru șoferi." },
+      { t: "<b>☑ Schimbă la cele bifate</b>: bifezi mai multe puncte și le schimbi ziua și / sau mașina dintr-o dată, de la o dată (dată viitoare = programat).", ar: { s: "puncte", el: "#pb-btn" } },
+      { t: "<b>INACTIV</b>: punctul iese de pe rută, dar rămâne în listă, cu GPS-ul lui. Se pune singur la „✓ Închide ridicarea”; de mână: ✎ → Status = INACTIV. Butoanele Active / Inactive / Toate aleg ce vezi.", ar: { s: "puncte", el: "#pf-st-INACTIV" } },
+      { t: "<b>+ Punct fără anexă</b> = punct făcut de mână (oprire internă, eveniment): nu se facturează, fără serii, fără RT." },
+      { t: "Semne pe rând: <b>🔢 n/N</b> = seriile locației · <b>📇</b> = clientul semnează cartela · <b>📍✓</b> coordonată confirmată · <b>📍?</b> de verificat · <b>🚚</b> punct mobil (remorcă), fără pin intenționat." } ],
+    du: { s: "puncte", el: "#a-card-pf" } },
+
+  { id: "verificare-rute", cat: "Rute și șoferi", t: "Verificare rute șoferi (vizite și GPS)",
+    k: "verificare rute soferi vizite gps pe locatie aproape departe nevizitat sosire plecare durata cod saptamana raport vizite client",
+    cand: "Vrei să verifici dacă șoferii au fost la clienți: când, cât au stat și dacă telefonul era la locație.",
+    anexa: "Anexele <b>nu se schimbă</b> — pagina doar arată vizitele.",
+    pasi: [
+      { t: "Meniul <b>Verificare rute șoferi</b> → <b>An</b>, <b>Săptămâna</b>; opțional Ziua, Traseu, Mașina, Șofer.", ar: { s: "raportrute", el: "#rr-sapt" } },
+      { t: "Fiecare punct de rută cu vizita din săptămâna aleasă: Data și COD; <b>nevizitat</b> apare cu roșu. La <b>Vizita</b> alegi doar vizitate / nevizitate." },
+      { t: "<b>Coloane = toate</b>: Sosire, Plecare, Durată, Obs. (Omis / Lipsă acces), Șofer, Mașina, <b>GPS telefon</b>.", ar: { s: "raportrute", el: "#rr-col" } },
+      { t: "<b>GPS telefon</b>: <b>pe locație</b> (verde, în raza punctului — 100 m dacă nu ai pus alta), <b>aproape</b> (portocaliu), <b>departe</b> (roșu), <b>neverificabil</b> (gri: vizita sau punctul n-are GPS). „hartă” deschide locul în Google Maps." },
+      { t: "<b>Ordine = ordinea sosirii</b>: vezi cum au mers șoferii, de la primul client la ultimul." },
+      { t: "Coloanele din dreapta = codurile ultimelor săptămâni (câte, alegi la „Săptămâni”). Codul săptămânii alese se poate corecta de mână (devine portocaliu)." },
+      { t: "Cu Ziua sau Traseul ales, sub sumar apar rutele șoferilor: șoferi | traseu | mașina | ziua | finalizată / în lucru." },
+      { t: "<b>📄 Raport vizite client</b>: locațiile, produsele, frecvența și vizitele (data, ora) pe lunile alese — PDF / Excel, de trimis clientului.", ar: { s: "raportrute", el: 'button[onclick="rcvDeschide()"]' } },
+      { t: "Dacă pinul e greșit (multe vizite „departe”): Puncte de rută → <b>📍 Verificare GPS</b>." } ],
+    du: { s: "raportrute", el: "#rr-sapt" } },
+
+  { id: "monitorizare-rute", cat: "Rute și șoferi", t: "Monitorizare rute — cine e pe teren acum",
+    k: "monitorizare rute cine e pe teren acum soferi masina vizite kilometri live dashboard vezi ruta",
+    cand: "În timpul zilei, vrei să vezi cine e pe teren și cât a făcut.",
+    anexa: "Anexele <b>nu se schimbă</b> — e doar o pagină de urmărit.",
+    pasi: [
+      { t: "Meniul <b>Monitorizare rute</b>.", ar: { s: "rute", el: "#rute-frame" } },
+      { t: "Vezi cine e pe teren acum, cu ce mașină, câte vizite a făcut și câți kilometri. Se reîmprospătează singură la 20 de secunde; <b>Reîmprospătează</b> = pe loc." },
+      { t: "<b>🔍 Vezi ruta</b> pe o rută → se deschide Verificare rute șoferi pe săptămâna, ziua și traseul ei, doar cu vizitele acelei rute." },
+      { t: "Acolo, <b>✕ Toate rutele</b> te întoarce la toate vizitele săptămânii." },
+      { t: "Foile de parcurs și kilometrii pe zile sunt în <b>Pontaj angajați</b>.", ar: { s: "foi-parcurs", el: "#fp-sub" } } ],
+    du: { s: "rute", el: "#rute-frame" } },
+
+  { id: "de-urmarit", cat: "Urmărire și documente", t: "De urmărit — ce expiră și ce lipsește",
+    k: "de urmarit expira contract anexa expirata alerta lipsa neprimit fara coordonate fara pret avans rezolvat amana nota",
+    cand: "În fiecare dimineață: ce expiră, ce lipsește și ce a rămas nerezolvat.",
+    anexa: "Pagina <b>nu schimbă nimic</b> — doar arată. Cardurile „Anexe care expiră în curând”, „Anexe expirate, încă pe teren” și „Anexe active fără preț” îți spun ce anexe trebuie prelungite (act adițional) sau completate.",
+    pasi: [
+      { t: "Meniul <b>De urmărit</b> (prima pagină). Numărul de lângă nume, în meniu = câte lucruri sunt de rezolvat.", ar: { s: "atentie", el: "#t-placi" } },
+      { t: "Sus alegi <b>Expirări în următoarele</b> (30 / 60 / 90 / 180 de zile) și <b>Documente neprimite de peste</b> (7 / 14 / 30 / 60 de zile).", ar: { s: "atentie", el: "#t-zile" } },
+      { t: "Clic pe un <b>card</b> → jos apare lista lui. Carduri: contracte expirate / care expiră / fără dată · anexe care expiră / expirate / fără preț · avansuri care se termină · sponsorizări · documente trimise și neprimite · puncte de rută fără coordonate / frecvență / mașină · stoc pe modele · ridicări fără anexă finală." },
+      { t: "Pe fiecare rând: <b>Rezolvat</b> (bifă) = dispare din listă · <b>Amână până la</b> = dispare până la data aleasă · <b>Notă</b> = ce ai vorbit cu clientul." },
+      { t: "<b>Deschide</b> pe rând (unde există) = deschide comanda." },
+      { t: "<b>arată și ce am rezolvat sau amânat</b> = le vezi din nou pe toate.", ar: { s: "atentie", el: "#t-tot" } },
+      { t: "<b>Export Excel</b> = lista cardului ales. <b>Reverifică</b> = recalculează tot." },
+      { t: "Jos, <b>Baza de date</b>: cât ocupă datele. PV-urile și cererile se descarcă pe PC și apoi se șterg din bază, ca să nu se umple." } ],
+    du: { s: "atentie", el: "#t-placi" } },
+
+  { id: "registru", cat: "Urmărire și documente", t: "Registru documente — trimis / primit",
+    k: "registru documente trimis primit neprimit retrimis contract anexa act aditional la semnat in asteptare ACT",
+    cand: "Ai trimis un contract sau o anexă la semnat și vrei să urmărești dacă s-a întors.",
+    anexa: "Anexa <b>nu se schimbă</b>. Registrul ține doar evidența: trimis → primit. E legat de pătratul <b>ACT</b> din Comenzi.",
+    pasi: [
+      { t: "De obicei rândul se face singur: în <b>Comenzi</b> apeși pătratul <b>ACT</b> → verifici în Contracte și anexe → „✓ E corect” → se deschide „Document” completat din anexă (TRIMIS azi, primire în așteptare) → alegi <b>Tip document</b> → Salvează." },
+      { t: "De mână: <b>Registru documente</b> → <b>+ Document</b>: data trimiterii, tipul, nr. contract, clientul.", ar: { s: "documente", el: '#p-documente button[onclick="docNou()"]' } },
+      { t: "Când actul se întoarce semnat: <b>Primit azi</b> pe rând." },
+      { t: "Dacă îl trimiți din nou: <b>Retrimis azi</b> (pe rând apare +1)." },
+      { t: "Filtre: <b>An</b>, <b>Primire</b>, <b>Caută</b>. Sus: câte documente, câte neprimite, câte cu retrimiteri.", ar: { s: "documente", el: "#g-prim" } },
+      { t: "Ce e neprimit de mult apare în <b>De urmărit</b> → „Documente trimise și neprimite”." },
+      { t: "Nu trec prin Registru: servisarea fără anexă și comenzile cu „Comanda clientului” (acolo ACT = comanda), contractele INTERNE." },
+      { t: "PDF-ul semnat îl salvezi cu <b>📎 Act semnat</b>, din Contracte și anexe." } ],
+    du: { s: "documente", el: '#p-documente button[onclick="docNou()"]' } },
+
+  { id: "fisa-date", cat: "Urmărire și documente", t: "Fișă date contract — linkul trimis clientului",
+    k: "fisa date contract link client completeaza datele firma cui anaf copie ci buletin persoana fizica creeaza client date pt contract",
+    cand: "Client nou: în loc să-i ceri datele la telefon, îi trimiți un link și le completează singur.",
+    anexa: "Fișa <b>nu creează anexă</b>. Din ea iese clientul; anexa o faci apoi din comandă: „🧾 Comandă nouă” deschide comanda AMPLASARE completată din fișă, iar anexa o creezi acolo, cu +.",
+    pasi: [
+      { t: "Meniul <b>Fișă date contract</b> → <b>📋 Fișă nouă</b>.", ar: { s: "fisa-date", el: '#p-fise button[onclick="cdNou()"]' } },
+      { t: "Alegi <b>cine e clientul</b> (Societate, PFA / II / IF, Instituție publică, ONG, Persoană fizică, Altele) și <b>ce fel de contract</b> (închiriere pe perioadă / eveniment)." },
+      { t: "Opțional, ce știi deja: CUI (butonul <b>ANAF</b> aduce denumirea), telefon, e-mail, produse." },
+      { t: "<b>🔗 Creează link</b> → linkul e copiat; îl trimiți cu <b>💬 WhatsApp</b> sau <b>✉ E-mail</b>. Merge 14 zile; dacă a expirat: <b>Prelungește</b>." },
+      { t: "Clientul completează (persoanele fizice încarcă și copia CI). În listă apare <b>✔ completată</b>.", ar: { s: "fisa-date", el: "#cd-card" } },
+      { t: "<b>Vezi / creează client</b>: verifici și corectezi datele direct în fereastră. „Redeschide linkul” = clientul mai poate corecta." },
+      { t: "<b>📄 PDF date client</b> → îl salvezi în folderul clientului („Date pt Contract_ NUME.pdf”)." },
+      { t: "<b>Creează client</b> → se deschide fișa clientului completată → mai corectezi ce e nevoie → Salvează." },
+      { t: "Pe rândul fișei apare <b>🧾 Comandă nouă</b>: comanda AMPLASARE completată cu livrarea, contactele, produsele și perioada din fișă." },
+      { t: "<b>✕</b> pe rând = anulezi fișa (linkul nu mai merge)." } ],
+    du: { s: "fisa-date", el: '#p-fise button[onclick="cdNou()"]' } },
+
+  { id: "pontaj-cereri", cat: "Angajați, PV-uri și calendar", t: "Pontaj angajați și Cereri / documente angajați",
+    k: "pontaj angajati foi de parcurs prezenta depozit ore kilometri km cerere concediu invoire demisie soferi raport zilnic pdf",
+    cand: "Vrei foile de parcurs, orele și prezența la depozit, sau cererile de concediu / învoire ale angajaților.",
+    anexa: "Fără legătură cu anexele — la clienți <b>nu se schimbă nimic</b>.",
+    pasi: [
+      { t: "Meniul <b>Pontaj angajați</b>, cu filele <b>Foi de parcurs</b> și <b>Prezență depozit</b>.", ar: { s: "foi-parcurs", el: "#fp-sub" } },
+      { t: "<b>Perioada</b>: Azi / Săptămâna asta / Luna asta / Anul ăsta, apoi ‹ › pentru alta. Filtre: Șofer, Mașina, Stare.", ar: { s: "foi-parcurs", el: "#fp-per" } },
+      { t: "<b>Foi de parcurs</b>: un rând pe fiecare rută — mașina, șoferii, km, orele, vizitele. Datele vin singure de pe telefon, la finalizarea rutei. Zilele lucrate fără rută apar ca rânduri separate.", ar: { s: "foi-parcurs", fn: () => fpSub("foi"), el: "#fp-tbl" } },
+      { t: "<b>👁 PDF</b> pe rând = raportul zilnic (întâi vizualizarea, apoi Descarcă PDF). Portocaliu = încă negenerat; verde ✓ = generat deja." },
+      { t: "<b>Prezență depozit</b>: sosirea și plecarea fiecărui om (din Șofer EE, „Azi la depozit”, cu GPS). Portocaliu = nu a închis ziua după 8 ore. ✎ = corectezi orele; <b>+ Prezență manuală</b> = pentru cine a uitat.", ar: { s: "foi-parcurs", fn: () => fpSub("depozit"), el: "#pd-tbl" } },
+      { t: "<b>Export Excel</b> = perioada și filtrele alese." },
+      { t: "<b>Cereri / documente angajați</b> (meniu separat): cererile de concediu, învoire, demisie făcute pe telefon. Filtre: Șofer, Tip, De la / Până la.", ar: { s: "cereri", el: "#pv-tip" } },
+      { t: "Pe cerere: <b>Deschide</b> = o vezi · <b>Descarcă</b> = o salvezi pe PC · <b>Șterge</b> apare abia după descărcare." },
+      { t: "Concediile nu apar încă în Calendar — vin odată cu modulul de pontaj." } ],
+    du: { s: "foi-parcurs", el: "#fp-sub" } },
+
+  { id: "procese-verbale", cat: "Angajați, PV-uri și calendar", t: "Procese verbale — PV-urile șoferilor",
+    k: "procese verbale pv pv-uri sofer telefon descarca sterge verificat amplasare ridicare servisare lipsa acces vanzare",
+    cand: "După fiecare livrare, ridicare sau servisare: PV-ul făcut de șofer pe telefon trebuie descărcat și verificat.",
+    anexa: "PV-ul <b>nu schimbă anexa</b>. El confirmă comanda: pătratul <b>PV = V</b> pune comanda pe verde și o scoate din lista șoferilor. La ridicare, după PV faci „✓ Închide ridicarea” — acolo se închide anexa.",
+    pasi: [
+      { t: "Meniul <b>Procese verbale</b>. Filtre: Șofer, Tip (Amplasare, Ridicare, Servisare, Lipsă acces, Vânzare), De la / Până la.", ar: { s: "pv", el: "#pv-tip" } },
+      { t: "Pe rând: Nr. PV, tipul, clientul, locația, șoferul, mașina. Sub tip apar seriile trecute de șofer (🔢)." },
+      { t: "<b>Deschide</b> = îl vezi. <b>Descarcă</b> = se salvează pe PC cu numele gata făcut (tip - client - locație - dată) → îl pui în folderul clientului." },
+      { t: "După descărcare apare pătratul <b>PV</b>: clic îl schimbă – → <b>V</b> (corect) → <b>L</b> (lipsă / neconfirmat) → <b>X</b>. Același pătrat se vede în Comenzi, la PV." },
+      { t: "Din <b>Comenzi</b>: clic pe pătratul PV al comenzii te aduce aici, pe PV-ul ei → „✓ E corect”." },
+      { t: "<b>Șterge</b> (doar după descărcare) sau <b>Șterge descărcatele</b> = eliberezi loc în bază. PDF-ul rămâne la tine, pe PC." },
+      { t: "PV de ridicare: apoi Comenzi → <b>Edit</b> pe comandă → <b>✓ Închide ridicarea</b>.", ar: { s: "miscari", el: "#m-tbl" } },
+      { t: "PV-ul în Word pentru semnat (Anexă + PV) se face din comandă, cu 📄 — vezi fișa „📄 Contract și 📄 Anexă + PV în Word”." } ],
+    du: { s: "pv", el: "#pv-tip" } },
+
+  { id: "calendar", cat: "Angajați, PV-uri și calendar", t: "Calendar — săptămâni, sărbători, comenzile pe zile",
+    k: "calendar saptamana luna an numarul saptamanii sarbatori legale zile libere comenzi pe zile printeaza concedii",
+    cand: "Vrei să vezi săptămâna sau luna: numărul săptămânii, sărbătorile legale și comenzile pe zile.",
+    anexa: "Calendarul <b>nu schimbă nimic</b> — arată comenzile după data lor.",
+    pasi: [
+      { t: "Meniul <b>Calendar</b> → <b>Afișare</b>: Săptămână / Lună / An.", ar: { s: "calendar", el: ".kal-sw" } },
+      { t: "<b>‹ ›</b> = înapoi / înainte; <b>Azi</b> = revii la ziua de azi." },
+      { t: "Punctele colorate din zile = comenzi: amplasare / suplimentare, ridicare / reducere, servisare. Legenda e sub calendar." },
+      { t: "<b>Nr.</b> din stânga = săptămâna din an. Clic pe o zi sau pe Nr. = săptămâna ei, cu comenzile pe larg; în An, clic pe numele lunii = luna mare." },
+      { t: "În <b>Săptămână</b>: fiecare comandă cu tipul, ora, clientul, produsele, locația, contractul, responsabilul și dacă are PV. <b>Clic pe comandă</b> = o deschide.", ar: { s: "calendar", fn: () => kalMod("sapt"), el: "#kal-corp" } },
+      { t: "<b>comenzile pe calendar</b> debifat = calendar curat, doar zilele și sărbătorile.", ar: { s: "calendar", el: "#kal-cmd" } },
+      { t: "Jos: <b>sărbătorile legale</b> ale anului (următoarea e îngroșată). Sus scrie câte zile mai sunt până la ea." },
+      { t: "<b>Printează</b> = calendarul pe hârtie." },
+      { t: "Concediile șoferilor vor apărea aici, colorate, când facem modulul de pontaj." } ],
+    du: { s: "calendar", el: ".kal-sw" } }
 ];
 const howN = t => faraDiac(String(t || "")).toLowerCase().replace(/<[^>]+>/g, " ");
 let HOW_SEL = null, HOW_VIZ = [];
