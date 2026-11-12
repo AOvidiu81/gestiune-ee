@@ -8525,15 +8525,17 @@ async function raportFacturare(){
       if(fc[23] === "down"){ const t = /REDUCERE/.test(st) || (/-R\d/i.test(anx) && !/FINAL/i.test(anx)) ? "REDUCERE" : /EVENIMENT/.test(st) ? "RIDICARE EVENIMENT" : "RIDICARE";
         nota.down = `${t} în data de ${pct(f[23])}\n${anx} · ${prod}\n${per} (ziua ${t === "REDUCERE" ? "reducerii" : "ridicării"} inclusă)`; }
       const c = factCtrDe(j);
-      return { f, ro: R_ROSU[j], nota, k1: idK(f[5]), k2: scK(f[27]), c, cl: String(f[4] || "").trim().toUpperCase() };
+      const ax = (R_FX[j] || {}).a, lin = ax ? String(ax.linie_id || ax.id) : "";   // v8.54: linia anexei (13 + 13-S1 + 13-R1…)
+      return { f, ro: R_ROSU[j], nota, k1: idK(f[5]), k2: scK(f[27]), c, cl: String(f[4] || "").trim().toUpperCase(), lin };
     });
     // v7.87 (cerut de Ovidiu, 05.11): rândurile unui client rămân lipite — clientul se așază după scadentul lui cel mai mare (FLORERO: 30)
     const clK = new Map(); sel.forEach(x => clK.set(x.cl, Math.min(clK.has(x.cl) ? clK.get(x.cl) : 9, x.k2)));
     sel.sort((a, b) => a.k1 - b.k1 || String(a.f[5] || "").localeCompare(String(b.f[5] || "")) || clK.get(a.cl) - clK.get(b.cl) || a.cl.localeCompare(b.cl) ||
-      ((a.c && a.c.id) || 0) - ((b.c && b.c.id) || 0));
+      ((a.c && a.c.id) || 0) - ((b.c && b.c.id) || 0) || (+a.lin || 0) - (+b.lin || 0));   // v8.54: rândurile aceleiași locații lipite
     // v7.87: contract cu „O singură factură” → rândurile lui (aceeași monedă și același document) = o factură cu mai multe poziții:
     // primul rând are în DOCUMENT „1 FACTURĂ · N POZIȚII”, următoarele sunt în continuare (↳, italic)
-    const gk = x => x.c && x.c.fact_o_factura ? x.c.id + "|" + (x.f[20] || "") + "|" + (/^FACTURA /.test(x.f[0]) ? x.f[0] : "") : null;
+    // v8.54 (cerut de Ovidiu, 12.11): și fără „1 factură” pe contract, rândurile aceleiași locații (anexa + -S / -R, ex. FLORERO 13 + 13-S1) = o factură cu mai multe poziții
+    const gk = x => !x.c || (!x.c.fact_o_factura && !x.lin) ? null : (x.c.fact_o_factura ? x.c.id : x.c.id + "|L" + x.lin) + "|" + (x.f[20] || "") + "|" + (/^FACTURA /.test(x.f[0]) ? x.f[0] : "");
     const gN = new Map(); sel.forEach(x => { const k = gk(x); if(k) gN.set(k, (gN.get(k) || 0) + 1); });
     const vazut = new Set(); sel.forEach(x => { const k = gk(x); x.g = k && gN.get(k) > 1 ? (vazut.has(k) ? "cont" : (vazut.add(k), "prim")) : ""; x.gn = k ? gN.get(k) : 0; });
     R_ROSU = sel.map(x => x.ro); R_FNOTE = sel.map(x => x.nota); R_FCOL = []; R_FCODB = sel.map(x => !!x.f._cod);   // v7.85: cod client → bold
