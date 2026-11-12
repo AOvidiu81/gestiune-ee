@@ -325,6 +325,30 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
                   max-height:calc(100vh - 40px);overflow:hidden;box-shadow:0 26px 64px rgba(0,0,0,.3)}
   .lux-cap{background:linear-gradient(135deg,var(--g) 0%,var(--g2) 100%);color:#fff;
            padding:15px 20px;display:flex;align-items:center;gap:12px;flex:0 0 auto}
+  /* v8.55 Ghid „How to” */
+  #how-q{width:100%;font-size:15px;padding:10px 12px}
+  .how-g{display:grid;grid-template-columns:290px minmax(0,1fr);gap:16px;margin-top:12px;min-height:420px}
+  @media (max-width:760px){ .how-g{grid-template-columns:1fr} }
+  .how-lista{border-right:1px solid var(--bd);padding-right:10px;overflow:auto;max-height:calc(100vh - 230px)}
+  .how-cat{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--g);font-weight:700;margin:10px 0 4px}
+  .how-it{display:block;width:100%;text-align:left;border:0;background:none;padding:7px 9px;border-radius:8px;cursor:pointer;font-size:13.5px;color:inherit}
+  .how-it:hover{background:var(--gl,#eef6f0)}
+  .how-it.on{background:var(--g);color:#fff}
+  .how-it .n{opacity:.6;font-size:12px;margin-right:6px}
+  .how-fisa{overflow:auto;max-height:calc(100vh - 230px);padding-right:4px}
+  .how-fisa h2{margin:2px 0 6px;font-size:19px;color:var(--g)}
+  .how-fisa .how-cand{color:var(--mut);margin:0 0 12px}
+  .how-fisa ol{margin:0 0 12px;padding-left:0;list-style:none;counter-reset:hp}
+  .how-fisa ol li{counter-increment:hp;position:relative;padding:8px 10px 8px 42px;border-bottom:1px solid var(--bd);line-height:1.5}
+  .how-fisa ol li:before{content:counter(hp);position:absolute;left:8px;top:8px;width:24px;height:24px;border-radius:50%;background:var(--g);color:#fff;font-weight:700;font-size:12.5px;display:flex;align-items:center;justify-content:center}
+  .how-fisa .how-ar{border:1px solid var(--bd);background:#fff;border-radius:6px;padding:1px 7px;font-size:11.5px;cursor:pointer;margin-left:6px;color:var(--g);white-space:nowrap}
+  .how-fisa .how-ar:hover{background:var(--gl,#eef6f0)}
+  .how-box{border-left:4px solid var(--g);background:var(--gl,#eef6f0);padding:9px 12px;border-radius:6px;margin:0 0 10px}
+  .how-box.anx{border-left-color:#c2570c;background:#fff4ea}
+  .how-box.atn{border-left-color:#b3261e;background:#fdeeee}
+  .how-gol{color:var(--mut);padding:20px 4px}
+  .how-flash{outline:3px solid #f59f00 !important;outline-offset:3px;border-radius:6px;animation:howPuls 1s ease-in-out 3}
+  @keyframes howPuls{0%,100%{box-shadow:0 0 0 0 rgba(245,159,0,.0)}50%{box-shadow:0 0 0 8px rgba(245,159,0,.35)}}
   /* v7.20 „✓ Închide ridicarea” */
   #mod-ri .ri-s{border-top:1px solid var(--line,#e5e7eb);padding:8px 0 4px}
   #mod-ri .ri-s h4{margin:0 0 6px;font-size:13px}
@@ -1081,7 +1105,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
   <span id="rz-w"><button id="rz-reset" class="pictograma" title="Lățimi implicite — pune coloanele din tabelele acestei file înapoi cum erau">↺ Reset layout</button><i class="rz-sep">|</i></span>
   <span id="tz-w" title="Mărimea tabelului (doar tabelul, restul rămâne la fel), din 5 în 5%. Merge și cu Ctrl + rotița mausului, Ctrl + / Ctrl − / Ctrl 0. Dublu clic pe procent = scrii tu valoarea."><button class="pictograma" onclick="tzPas(-1)" aria-label="Micșorează tabelul">−</button><b id="tz-v" ondblclick="tzScrie()" title="Dublu clic = scrii mărimea (ex. 87), Enter">100%</b><input id="tz-in" type="number" min="30" max="300" step="5" style="display:none"><button class="pictograma" onclick="tzPas(1)" aria-label="Mărește tabelul">+</button></span>
-  <span class="ver">v8.54</span>
+  <span class="ver">v8.55</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -1109,6 +1133,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <button data-p="pv" data-v="cereri" data-h="cereri">Cereri / documente angajați</button>
   <button data-p="fise" data-h="fisa-date">Fișă date contract</button><!-- v8.14 (cerut de Ovidiu, 08.11): acces rapid la fișa „Date contract” -->
   <button data-p="calendar" data-h="calendar">Calendar</button><!-- v8.41 (cerut de Ovidiu, 09.11): calendar lună / an cu săptămânile și sărbătorile legale -->
+  <button data-p="ghid" data-h="ghid" id="nav-how">Ghid „How to”</button><!-- v8.55 (cerut de Ovidiu, 08.11 / 12.11): fișe cu pași + „Du-mă acolo”, offline -->
   <div id="nav-jos" style="display:none">
     <div class="ini" id="nav-ini">—</div>
     <div class="cine-blk"><div id="cine"></div><div id="cine-rol"></div></div>
@@ -2037,6 +2062,25 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
     </div>
   </div>
 </div>
+<!-- v8.55: Ghid „How to” -->
+<div class="modal" id="mod-how" onclick="if(event.target===this)closeModal('mod-how')">
+  <div class="box lux" style="max-width:1000px">
+    <div class="lux-cap">
+      <div style="flex:1;min-width:0">
+        <h3>🔍 Ghid „How to” — cum fac…?</h3>
+        <div class="sub">Scrie ce vrei să faci (ex. „ridicare finala”, „suplimentare”, „factura”). Merge și fără internet.</div>
+      </div>
+      <button class="lux-x" onclick="closeModal('mod-how')" title="Închide">✕</button>
+    </div>
+    <div class="lux-corp" style="padding-top:14px">
+      <input id="how-q" placeholder="🔍 caută: ex. client nou, reducere, ridicare, factura…" oninput="howCauta()" onkeydown="howTaste(event)" autocomplete="off">
+      <div class="how-g">
+        <div id="how-lista" class="how-lista"></div>
+        <div id="how-fisa" class="how-fisa"></div>
+      </div>
+    </div>
+  </div>
+</div>
 <div class="modal" id="mod-ri">
   <div class="box" style="max-width:780px">
     <h3 id="ri-title" class="lux-cap cap-mut" title="Trage de aici ca să muți fereastra; dublu-clic = înapoi la loc">✓ Închide ridicarea</h3>
@@ -2682,6 +2726,7 @@ function pune(sel,val){ const s=$(sel); if(!s||!val) return; if([...s.options].s
 
 // ================= NAV =================
 document.querySelectorAll("nav button").forEach(b=>b.onclick=(ev)=>{
+  if(b.dataset.p==="ghid"){ howDeschide(); return; }   // v8.55: Ghid „How to” = fereastră, pagina rămâne aceeași
   document.querySelectorAll("nav button").forEach(x=>x.classList.remove("on")); b.classList.add("on");
   document.querySelectorAll(".page").forEach(p=>p.classList.remove("on")); $("p-"+b.dataset.p).classList.add("on");
   if(PB_ON){ PB_ON=false; PB_SEL.clear(); const pb=$("pb-btn"); if(pb){ pb.classList.add("sec"); pb.textContent="☑ Schimbă la cele bifate"; } pbBara(); }   // v5.86: bifarea se oprește la schimbarea filei
@@ -3285,7 +3330,8 @@ function kalAzi(){ const d = new Date(); KAL.an = d.getFullYear(); KAL.luna = d.
     "pv-pv": p("M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z") + p("M14 2v6h6") + p("m9 15 2 2 4-4"),
     "pv-cereri": p("M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2") + c(9, 7, 4) + p("M22 21v-2a4 4 0 0 0-3-3.87") + p("M16 3.13a4 4 0 0 1 0 7.75"),
     "fise": '<rect x="5" y="3" width="14" height="18" rx="2"/>' + p("M9 3v2h6V3") + p("M9 10h6") + p("M9 14h6") + p("M9 18h3") + p("M15.5 17.5l1.5 1.5 3-3"),   // v8.14
-    "calendar": '<rect x="3" y="4" width="18" height="18" rx="2"/>' + p("M16 2v4") + p("M8 2v4") + p("M3 10h18") + p("M7 14h4") + p("M7 18h2")   // v8.41
+    "calendar": '<rect x="3" y="4" width="18" height="18" rx="2"/>' + p("M16 2v4") + p("M8 2v4") + p("M3 10h18") + p("M7 14h4") + p("M7 18h2"),   // v8.41
+    "ghid": c(10.5, 10.5, 7) + p("m21 21-5.2-5.2") + p("M8.3 8.6a2.2 2.2 0 1 1 3.1 2c-.6.3-.9.7-.9 1.3") + p("M10.5 14.2h.01")   // v8.55: lupă cu „?”
   };
   const SCURT = { "Contracte și anexe clienți": "Contracte și anexe", "Verificare rute șoferi": "Verificare rute", "Cereri / documente angajați": "Cereri angajați", "Fișă date contract": "Fișă date contract" };
   document.querySelectorAll("nav > button[data-p]").forEach(b => {
@@ -13801,6 +13847,118 @@ function deschideSectiune(nume){
   if(b && !b.classList.contains("on")) b.click();
 }
 var INIT_GATA = false;
+
+// ================= GHID „HOW TO” (v8.55, cerut de Ovidiu 08.11 / 12.11) =================
+// Fișe cu pași, căutare fără diacritice, „Du-mă acolo” (deschide pagina și face să clipească butonul). Totul în aplicație → merge offline.
+// Fiecare fișă: id, cat (grupa), t (titlu), k (cuvinte de căutare), cand (când o folosești), anexa (ce se întâmplă cu anexa),
+// pasi [{ t: text, ar: { s: secțiunea din meniu, fn: ce se deschide, el: ce clipește } }], du: la fel ca ar (butonul mare).
+const HOW_NOUA = { s: "miscari", fn: () => { if(!$("mod-m").classList.contains("on")) openMiscare(); } };   // comanda deja deschisă nu se golește
+const HOW = [
+  { id: "client-nou", cat: "Comenzi și acte", t: "Client nou — prima amplasare",
+    k: "client nou firma noua contract nou anexa noua amplasare prima livrare comanda noua",
+    cand: "Un client care nu există în aplicație cere toalete / containere / gard pentru prima dată.",
+    anexa: "Se creează <b>o anexă nouă</b> (ex. ANEXA NR 1) pe contractul nou. Din <b>data amplasării</b> de pe anexă pornește facturarea și raportul lunii.",
+    pasi: [
+      { t: "Mergi la <b>Comenzi</b> și apasă <b>+ Comandă nouă</b>.", ar: { s: "miscari", el: '#p-miscari button[onclick="openMiscare()"]' } },
+      { t: "Sus: <b>Contract (gestiune)</b> = depozitul pe care stă contractul (HUNEDOARA); <b>Depozit</b> = de unde pleacă marfa." },
+      { t: "Alege <b>data</b> (este și data amplasării) și <b>Tip comandă = AMPLASARE</b>.", ar: Object.assign({ el: "#mm-tip" }, HOW_NOUA) },
+      { t: "La <b>Client</b> apasă <b>+</b>: completezi firma (CUI, adresă) și reprezentantul → Salvează. Revii singur în comandă, cu clientul ales.", ar: Object.assign({ el: "#mm-client" }, HOW_NOUA) },
+      { t: "La <b>Contract</b> apasă <b>+</b>: numărul îl scrii tu (ex. 1560 HD), perioada sau „nedeterminat” → Salvează.", ar: Object.assign({ el: "#mm-ctr" }, HOW_NOUA) },
+      { t: "La <b>Anexă</b> apasă <b>+</b>: numele ca pe hârtie (ANEXA NR 1), <b>data amplasării</b>, produsele, locația, prețul, <b>frecvența și ziua de servisare</b> (obligatorie) → Salvează → <b>Creează anexa</b>.", ar: Object.assign({ el: "#mm-anexa" }, HOW_NOUA) },
+      { t: "Dacă vrei actele: <b>📄</b> lângă Anexă = Anexa + PV în Word; contractul se generează din Contracte și anexe (📄 Contract)." },
+      { t: "Apasă <b>Salvează și generează</b> → se deschide textul comenzii → <b>Copiază</b> și îl trimiți pe WhatsApp. Butonul verde = textul e generat.", ar: Object.assign({ el: "#mm-gen" }, HOW_NOUA) },
+      { t: "În lista Comenzi, pe rândul comenzii: <b>→ Rute</b> face punctul de rută (verifică GPS-ul) → Salvează. Fără punct, șoferii nu văd clientul." },
+      { t: "După livrare: PV-ul șoferului ajunge în <b>Procese verbale</b>; coloanele <b>RT · PV · ACT</b> din Comenzi trebuie să ajungă pe <b>V</b> (verde)." } ],
+    du: { s: "miscari", el: '#p-miscari button[onclick="openMiscare()"]' } },
+
+  { id: "suplimentare", cat: "Comenzi și acte", t: "Suplimentare sau reducere pe o locație",
+    k: "suplimentare reducere adaug scad bucati inca o toaleta mai putine anexa S1 R1 modificare cantitate",
+    cand: "Clientul are deja produse la o locație și vrea mai multe (suplimentare) sau mai puține (reducere), dar nu ridică tot.",
+    anexa: "Se creează <b>o anexă scurtă</b> legată de anexa de bază: <b>-S1, -S2…</b> la suplimentare, <b>-R1, -R2…</b> la reducere (ex. ANEXA NR 13-S1). Anexa de bază <b>nu se schimbă</b>. La Facturare apar rânduri separate (13 și 13-S1), puse pe <b>aceeași factură</b> (1F-2R).",
+    pasi: [
+      { t: "<b>Comenzi</b> → <b>+ Comandă nouă</b>.", ar: { s: "miscari", el: '#p-miscari button[onclick="openMiscare()"]' } },
+      { t: "<b>Tip comandă</b> = <b>SUPLIMENTARE</b> sau <b>REDUCERE</b>; data = ziua livrării / ridicării bucăților.", ar: Object.assign({ el: "#mm-tip" }, HOW_NOUA) },
+      { t: "Alegi <b>clientul</b> și <b>contractul</b>, apoi la <b>Anexă</b> alegi <b>anexa de bază</b> a locației (cea pe care se adaugă / se scade).", ar: Object.assign({ el: "#mm-anexa" }, HOW_NOUA) },
+      { t: "Apasă <b>+</b> lângă Anexă: se deschide anexa scurtă. Scrii <b>câte bucăți</b> se adaugă / se scad, data și prețul pe bucată (de obicei ca pe anexa de bază). Numele propus (ex. ANEXA NR 13-S1) se poate schimba." },
+      { t: "<b>Creează anexa</b> → revii în comandă cu ea aleasă." },
+      { t: "La reducere: la <b>Serii</b> (🔢) alegi bucățile care pleacă, sau le alege șoferul în PV." },
+      { t: "<b>Salvează și generează</b> → copiezi textul pentru WhatsApp.", ar: Object.assign({ el: "#mm-gen" }, HOW_NOUA) },
+      { t: "<b>→ Rute</b> pe rândul comenzii → verifici câte produse are punctul → <b>Salvează</b>. Atenție: RT = V nu garantează că punctul s-a actualizat — uită-te la numărul de produse." } ],
+    du: { s: "miscari", el: '#p-miscari button[onclick="openMiscare()"]' } },
+
+  { id: "ridicare-finala", cat: "Comenzi și acte", t: "Ridicare finală (clientul nu mai vrea nimic la locație)",
+    k: "ridicare finala ridic tot inchidere locatie terminare contract R FINAL inchide ridicarea pleaca tot",
+    cand: "Se ridică tot ce e la o locație (sfârșit de șantier, client care renunță).",
+    anexa: "Se creează anexa de ridicare finală <b>-R FINAL</b> (ex. ANEXA NR 1-R FINAL), cu tot ce e la client. După „✓ Închide ridicarea”, locația <b>nu se mai facturează</b> din ziua de după ridicare (ziua ridicării se facturează).",
+    pasi: [
+      { t: "<b>Comenzi</b> → <b>+ Comandă nouă</b>, <b>Tip comandă = RIDICARE</b>, data = ziua ridicării.", ar: Object.assign({ el: "#mm-tip" }, HOW_NOUA) },
+      { t: "Alegi clientul, contractul și <b>anexa locației</b>.", ar: Object.assign({ el: "#mm-anexa" }, HOW_NOUA) },
+      { t: "Apasă <b>+</b> lângă Anexă → anexa <b>-R FINAL</b> ia singură tot ce e la client; verifici data → <b>Creează anexa</b>." },
+      { t: "La <b>Serii</b> sunt bifate toate bucățile locației." },
+      { t: "<b>Salvează și generează</b> → trimiți textul pe WhatsApp.", ar: Object.assign({ el: "#mm-gen" }, HOW_NOUA) },
+      { t: "După ce vine PV-ul de ridicare: deschizi comanda cu <b>Edit</b> → sus apare butonul verde <b>✓ Închide ridicarea</b>." },
+      { t: "În fereastra „✓ Închide ridicarea” verifici: punctul de rută trece <b>INACTIV</b> + RT, seriile trec <b>RIDICATĂ</b>, anexa se închide → apeși <b>✓ Închide ridicarea</b>." },
+      { t: "În <b>Facturare</b>, pe luna ridicării, rândul are clientul cu <b>roșu</b> și ziua ridicării ca sfârșit de perioadă." } ],
+    du: { s: "miscari", el: '#p-miscari button[onclick="openMiscare()"]' } },
+
+  { id: "facturare-luna", cat: "Facturare și rapoarte", t: "Facturarea lunii — de la „În lucru” la trimis la sediu",
+    k: "facturare factura luna trimit sediu saga excel gata de trimis verificare facturat nu facturam in lucru export",
+    cand: "La sfârșitul / începutul lunii, când pregătești lista pentru facturile emise de sediu în Saga.",
+    anexa: "Anexele <b>nu se schimbă</b>. Facturarea se calculează din anexe (data amplasării, ridicării, prețul). Ce alegi la STARE LUNA ține doar de luna respectivă.",
+    pasi: [
+      { t: "Meniul <b>Facturare</b> → alegi <b>anul</b> și <b>luna</b>.", ar: { s: "facturare", el: "#r-luna" } },
+      { t: "<b>În lucru</b> (tabelul întreg): verifici fiecare rând. Clientul cu <b>verde</b> = amplasare / suplimentare în lună, cu <b>roșu</b> = ridicare.", ar: { s: "facturare", fn: () => setModFact("lucru"), el: "#r-mod-lucru" } },
+      { t: "<b>STARE LUNA</b> pe rând: <b>ACTIV</b> = se facturează; <b>NU FACTURAM</b> = nu (ex. 2–4 zile în luna ridicării); <b>FACTURA AVANS / PROFORMA</b> = document special." },
+      { t: "<b>⚠ act adițional</b> pe rând = contractul sau anexa au expirat → trebuie prelungite." },
+      { t: "<b>☐ 1 factură</b> pe primul rând al unui contract = toate rândurile contractului pe o singură factură. Locația cu suplimentare / reducere (13 + 13-S1) merge singură pe o factură." },
+      { t: "<b>Gata de trimis</b> → <b>Export Excel</b> → trimiți fișierul la sediu.", ar: { s: "facturare", fn: () => setModFact("gata"), el: "#r-mod-gata" } },
+      { t: "Când vin facturile: <b>Verificare</b> → la fiecare rând scrii nr. facturii, observația și apeși pătratul: ✓ corect, ! greșită, ✗ neprimită.", ar: { s: "facturare", fn: () => setModFact("verif"), el: "#r-mod-verif" } },
+      { t: "Ce e facturat trece pe <b>FACTURAT</b> și nu mai intră la „Gata de trimis”." } ],
+    du: { s: "facturare", el: "#r-mod-wrap" } }
+];
+const howN = t => faraDiac(String(t || "")).toLowerCase().replace(/<[^>]+>/g, " ");
+let HOW_SEL = null, HOW_VIZ = [];
+function howDeschide(){ $("mod-how").classList.add("on"); const q = $("how-q"); q.value = ""; howCauta(); setTimeout(() => q.focus(), 50); }
+function howCauta(){
+  const cuv = howN($("how-q").value).split(/\s+/).filter(Boolean);
+  HOW_VIZ = HOW.filter(f => { const tot = howN([f.t, f.k, f.cand, f.anexa, ...f.pasi.map(p => p.t)].join(" ")); return cuv.every(c => tot.includes(c)); });
+  if(cuv.length) HOW_VIZ.sort((a, b) => cuv.filter(c => !howN(a.t + " " + a.k).includes(c)).length - cuv.filter(c => !howN(b.t + " " + b.k).includes(c)).length);
+  let html = "", cat = "";
+  HOW_VIZ.forEach((f, i) => { if(!cuv.length && f.cat !== cat){ cat = f.cat; html += `<div class="how-cat">${esc(cat)}</div>`; }
+    html += `<button class="how-it" data-id="${f.id}" onclick="howArata('${f.id}')"><span class="n">${HOW.indexOf(f) + 1}.</span>${esc(f.t)}</button>`; });
+  $("how-lista").innerHTML = html || '<div class="how-gol">Nu am găsit nicio fișă. Încearcă alt cuvânt (ex. „anexa”, „ridicare”, „factura”).</div>';
+  if(!HOW_VIZ.length){ $("how-fisa").innerHTML = ""; return; }
+  howArata((HOW_VIZ.find(f => f.id === HOW_SEL) && !cuv.length ? HOW_SEL : HOW_VIZ[0].id));
+}
+function howArata(id){
+  const f = HOW.find(x => x.id === id); if(!f) return; HOW_SEL = id;
+  document.querySelectorAll("#how-lista .how-it").forEach(b => b.classList.toggle("on", b.dataset.id === id));
+  $("how-fisa").innerHTML = `<h2>${esc(f.t)}</h2><p class="how-cand">${f.cand || ""}</p>` +
+    (f.anexa ? `<div class="how-box anx"><b>Anexa:</b> ${f.anexa}</div>` : "") +
+    `<ol>${f.pasi.map((p, i) => `<li>${p.t}${p.ar ? ` <button class="how-ar" onclick="howDu('${f.id}',${i})" title="Deschide locul și arată-l">👁 arată</button>` : ""}</li>`).join("")}</ol>` +
+    (f.du ? `<button class="btn" onclick="howDu('${f.id}',-1)">➜ Du-mă acolo</button>` : "");
+}
+function howTaste(e){
+  if(e.key === "Enter" && HOW_SEL){ e.preventDefault(); howDu(HOW_SEL, -1); }
+  if(e.key === "ArrowDown" || e.key === "ArrowUp"){ e.preventDefault(); const i = HOW_VIZ.findIndex(f => f.id === HOW_SEL);
+    const j = Math.max(0, Math.min(HOW_VIZ.length - 1, i + (e.key === "ArrowDown" ? 1 : -1))); if(HOW_VIZ[j]) howArata(HOW_VIZ[j].id); }
+}
+function howDu(id, i){
+  const f = HOW.find(x => x.id === id); if(!f) return;
+  const d = i < 0 ? f.du : (f.pasi[i] || {}).ar; if(!d) return;
+  closeModal("mod-how");
+  if(d.s) deschideSectiune(d.s);
+  if(d.fn){ try{ d.fn(); }catch(e){ console.warn("how", e); } }
+  if(d.el) setTimeout(() => howClipeste(d.el), 450);
+}
+function howClipeste(sel){
+  let el = document.querySelector(sel); if(!el){ toast("Nu găsesc locul pe ecran — poate se deschide doar dintr-o comandă anume.", true); return; }
+  while(el && el.offsetParent === null && el.parentElement) el = el.parentElement;   // câmpul ascuns (lista derulantă cu căutare) → clipește ce se vede
+  const c = el.closest(".cu-plus") || el;
+  c.scrollIntoView({ block: "center", behavior: "smooth" });
+  c.classList.remove("how-flash"); void c.offsetWidth; c.classList.add("how-flash");
+  setTimeout(() => c.classList.remove("how-flash"), 3300);
+}
 
 // ================= GHID PENTRU ÎNCEPĂTORI (v5.15, cerut de Ovidiu 09.10) =================
 // Bilețele cu pașii de urmat, în fereastra / pagina deschisă. Se arată primul pas nefăcut și necitit.
