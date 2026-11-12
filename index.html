@@ -496,6 +496,10 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   @media (max-width:700px){ .g-cmd{grid-template-columns:1fr 1fr 62px} .g-cc,.g-resp{grid-template-columns:1fr} .g-loc{grid-template-columns:58px 1fr} .g-loc>div:last-child{grid-column:1/-1} }
   .cu-plus>input,.cu-plus>select{flex:1;min-width:0}
   .cu-plus>.plus{flex:0 0 auto;padding:9px 12px}
+  /* v8.57 (cerut de Ovidiu, 12.11): butonul „Act” (Anexa + PV în Word) — vizibil, verde, cu iconiță de document */
+  .cu-plus>.plus.act-btn{display:inline-flex;align-items:center;gap:5px;padding:9px 11px;font-weight:700;color:#2E8B3C;border-color:#2E8B3C}
+  .cu-plus>.plus.act-btn svg{width:17px;height:17px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+  .cu-plus>.plus.act-btn:hover{background:#2E8B3C;color:#fff}
   .hint{font-weight:500;text-transform:none;letter-spacing:0;color:var(--mut);opacity:.85}
   .toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:#222;color:#fff;padding:10px 16px;border-radius:8px;font-size:13px;display:none;z-index:99}
   .toast.on{display:block}
@@ -1105,7 +1109,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
   <span id="rz-w"><button id="rz-reset" class="pictograma" title="Lățimi implicite — pune coloanele din tabelele acestei file înapoi cum erau">↺ Reset layout</button><i class="rz-sep">|</i></span>
   <span id="tz-w" title="Mărimea tabelului (doar tabelul, restul rămâne la fel), din 5 în 5%. Merge și cu Ctrl + rotița mausului, Ctrl + / Ctrl − / Ctrl 0. Dublu clic pe procent = scrii tu valoarea."><button class="pictograma" onclick="tzPas(-1)" aria-label="Micșorează tabelul">−</button><b id="tz-v" ondblclick="tzScrie()" title="Dublu clic = scrii mărimea (ex. 87), Enter">100%</b><input id="tz-in" type="number" min="30" max="300" step="5" style="display:none"><button class="pictograma" onclick="tzPas(1)" aria-label="Mărește tabelul">+</button></span>
-  <span class="ver">v8.56</span>
+  <span class="ver">v8.57</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -1695,7 +1699,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
           <div><label>Contract</label><div class="cu-plus"><select id="mm-ctr"><option value="">— toate —</option></select><button type="button" class="btn sec plus" title="Contract nou pentru acest client" onclick="contractNouDinMiscare()">+</button></div></div>
         </div>
         <div class="gf g-full">
-          <div><label>Anexă <span class="hint">locația contractată</span></label><div class="cu-plus"><select id="mm-anexa"><option value="">— alege din anexe —</option></select><button type="button" class="btn sec plus" title="Anexă nouă pe contractul ales" onclick="anexaNouaDinMiscare()">+</button><button type="button" class="btn sec plus" title="Editează anexa aleasă (zile de servisare, frecvență, preț…) și te întorci în comandă" onclick="anexaEditDinMiscare()">✎</button><button type="button" class="btn sec plus" title="Seriile locației (aceeași listă pentru amplasare, suplimentare, reducere, ridicare și pentru ruta șoferilor)" onclick="mmSeriiDeschide()">🔢</button><button type="button" class="btn sec plus" title="Generează actul în Word: Anexa + Proces verbal, completat din anexa aleasă, contract și client (modelul tău). Se descarcă — îl verifici, îl salvezi ca PDF în D: și îl trimiți la semnat." onclick="actGenereazaAnexaPV()">📄</button></div></div>
+          <div><label>Anexă <span class="hint">locația contractată</span></label><div class="cu-plus"><select id="mm-anexa"><option value="">— alege din anexe —</option></select><button type="button" class="btn sec plus" title="Anexă nouă pe contractul ales" onclick="anexaNouaDinMiscare()">+</button><button type="button" class="btn sec plus" title="Editează anexa aleasă (zile de servisare, frecvență, preț…) și te întorci în comandă" onclick="anexaEditDinMiscare()">✎</button><button type="button" class="btn sec plus" title="Seriile locației (aceeași listă pentru amplasare, suplimentare, reducere, ridicare și pentru ruta șoferilor)" onclick="mmSeriiDeschide()">🔢</button><button type="button" class="btn sec plus act-btn" title="Generează actul în Word: Anexa + Proces verbal, completat din anexa aleasă, contract și client (modelul tău). Se descarcă — îl verifici, îl salvezi ca PDF în D: și îl trimiți la semnat." onclick="actGenereazaAnexaPV()"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M8 13h8M8 17h5"/></svg>Act</button></div></div>
         </div>
         <div id="mm-carduri" class="mm-carduri"></div>
       </div>
@@ -13868,7 +13872,7 @@ const HOW = [
       { t: "La <b>Client</b> apasă <b>+</b>: completezi firma (CUI, adresă) și reprezentantul → Salvează. Revii singur în comandă, cu clientul ales.", ar: Object.assign({ el: "#mm-client" }, HOW_NOUA) },
       { t: "La <b>Contract</b> apasă <b>+</b>: numărul îl scrii tu (ex. 1560 HD), perioada sau „nedeterminat” → Salvează.", ar: Object.assign({ el: "#mm-ctr" }, HOW_NOUA) },
       { t: "La <b>Anexă</b> apasă <b>+</b>: numele ca pe hârtie (ANEXA NR 1), <b>data amplasării</b>, produsele, locația, prețul, <b>frecvența și ziua de servisare</b> (obligatorie) → Salvează → <b>Creează anexa</b>.", ar: Object.assign({ el: "#mm-anexa" }, HOW_NOUA) },
-      { t: "Dacă vrei actele: <b>📄</b> lângă Anexă = Anexa + PV în Word; contractul se generează din Contracte și anexe (📄 Contract)." },
+      { t: "Dacă vrei actele: <b>Act</b> (butonul verde) lângă Anexă = Anexa + PV în Word; contractul se generează din Contracte și anexe (📄 Contract)." },
       { t: "Apasă <b>Salvează și generează</b> → se deschide textul comenzii → <b>Copiază</b> și îl trimiți pe WhatsApp. Butonul verde = textul e generat.", ar: Object.assign({ el: "#mm-gen" }, HOW_NOUA) },
       { t: "În lista Comenzi, pe rândul comenzii: <b>→ Rute</b> face punctul de rută (verifică GPS-ul) → Salvează. Fără punct, șoferii nu văd clientul." },
       { t: "După livrare: PV-ul șoferului ajunge în <b>Procese verbale</b>; coloanele <b>RT · PV · ACT</b> din Comenzi trebuie să ajungă pe <b>V</b> (verde)." } ],
@@ -13941,7 +13945,7 @@ const HOW = [
     cand: "Trebuie să trimiți clientului contractul sau anexa cu PV-ul, la semnat.",
     anexa: "Anexa <b>nu se schimbă</b> — actul doar se completează din ea (produse, preț, locație, servisare, contact). La SUPLIMENTARE / REDUCERE, în Word apare și rândul „Începând cu data de …, în locație vor fi: N produse”.",
     pasi: [
-      { t: "<b>Anexă + PV:</b> deschizi comanda (nouă sau cu <b>Edit</b>), cu anexa aleasă → <b>📄</b> lângă Anexă.", ar: Object.assign({ el: '#mod-m button[onclick="actGenereazaAnexaPV()"]' }, HOW_NOUA) },
+      { t: "<b>Anexă + PV:</b> deschizi comanda (nouă sau cu <b>Edit</b>), cu anexa aleasă → butonul verde <b>Act</b> lângă Anexă.", ar: Object.assign({ el: '#mod-m button[onclick="actGenereazaAnexaPV()"]' }, HOW_NOUA) },
       { t: "Word-ul se descarcă cu numele gata făcut (ex. „ANEXA NR 13-S1 - PV _ 11.11.2026 - Com …, Sat … - GJ - Client - CTR_ 1281 HD”). La ridicare scrie „PV RIDICARE”." },
       { t: "<b>Contractul:</b> <b>Contracte și anexe</b> → deschizi clientul → pe rândul contractului <b>📄 Contract</b>.", ar: { s: "clienti", el: "#c-q" } },
       { t: "Aplicația verifică la <b>ANAF</b> Nr. Reg. Com.; dacă diferă, întreabă: OK = îl pune în contract și pe fișa clientului." },
