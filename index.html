@@ -9159,6 +9159,9 @@ async function raportLuna(){
   deseneazaRaport();
 }
 
+// v8.54 (cerut de Ovidiu, 12.11): Raport lună — nr. ctr + clientul cu roșu dacă în lună a plecat ceva (ridicare / reducere),
+// altfel cu verde dacă a venit ceva (amplasare / suplimentare); după zilele colorate din R_CEL
+const rlCul = j => { const v = Object.values(R_CEL[j] || {}); return v.includes("down") ? "R" : v.includes("up") ? "V" : ""; };
 let FCTR_PRIM = new Map();
 function deseneazaRaport(){
   const fl = R_NUME === "Facturare";   // v6.89: lățimi fixe + ACC. doar la Facturare „În lucru”
@@ -9241,6 +9244,7 @@ function deseneazaRaport(){
         const ta = fl && i === 16 && accLista(R_ACC[j] || "").length;   // v7.06
         if(ta) t = `<span class="tip-acc" title="Accesorii:&#10;${accLista(R_ACC[j]).map(x => "• " + esc(x)).join("&#10;")}">${t || "—"}</span>`;
         const rl = R_NUME === "Raport_luna" && R_CEL[j] ? R_CEL[j][i] : "";
+        if(R_NUME === "Raport_luna" && (i === 0 || i === 1) && rlCul(j)) t = `<span style="color:${rlCul(j) === "V" ? "#2E8B3C" : "var(--red)"};font-weight:700">${t}</span>`;   // v8.54
         const tl = !ta && lx && typeof v === "string" && v.length > 10 ? ` title="${esc(v)}"` : "";   // v6.89: textul întreg la mouse
         return `<td${rl ? ` class="rl-${rl}"` : ""}${tl}${R_NUM.has(i) ? ' style="text-align:right"' : ''}>${rl ? `<span class="rl-b">${t}</span>` : t}</td>` +
           (i === accI ? `<td class="acc-c">${accIcon(R_ACC[j] || "")}</td>` : "");
@@ -15385,6 +15389,7 @@ async function expExcel(D, an, luna, nz, lunaT, ultima, sufix){
       c.alignment = i >= o0 ? { horizontal: "center", vertical: "middle" } : { vertical: "middle", wrapText: false };
       const ci = i - (cuAcc && i > 6 ? 1 : 0), st = (R_CEL[j] || {})[ci];
       if(st){ c.fill = plin(st === "up" ? SUB : JOS); c.font = { size: T, bold: true, color: { argb: st === "up" ? "FF15803D" : "FFB3261E" } }; }
+      if((i === 0 || i === 1) && rlCul(j)) c.font = { size: T, bold: true, color: { argb: rlCul(j) === "V" ? "FF15803D" : "FFB3261E" } };   // v8.54: clientul verde / roșu
       else if(i > o0 && [0, 6].includes(new Date(an, luna - 1, i - o0).getDay())) c.fill = plin(GRI); });
   });
   const rT = 5 + R_RANDURI.length, rowT = ws.getRow(rT); rowT.height = 15;
