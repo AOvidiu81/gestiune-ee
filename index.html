@@ -1116,7 +1116,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
   <span id="rz-w"><button id="rz-reset" class="pictograma" title="Lățimi implicite — pune coloanele din tabelele acestei file înapoi cum erau">↺ Reset layout</button><i class="rz-sep">|</i></span>
   <span id="tz-w" title="Mărimea tabelului (doar tabelul, restul rămâne la fel), din 5 în 5%. Merge și cu Ctrl + rotița mausului, Ctrl + / Ctrl − / Ctrl 0. Dublu clic pe procent = scrii tu valoarea."><button class="pictograma" onclick="tzPas(-1)" aria-label="Micșorează tabelul">−</button><b id="tz-v" ondblclick="tzScrie()" title="Dublu clic = scrii mărimea (ex. 87), Enter">100%</b><input id="tz-in" type="number" min="30" max="300" step="5" style="display:none"><button class="pictograma" onclick="tzPas(1)" aria-label="Mărește tabelul">+</button></span>
-  <span class="ver">v8.63</span>
+  <span class="ver">v8.64</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -13924,13 +13924,13 @@ function angDash(){
       <div${exp ? ' class="kpi-amb"' : ""}>Medicina muncii expirată<b>${exp}</b></div><div${at ? ' class="kpi-amb"' : ""}>Expiră în 30 de zile<b>${at}</b></div></div></div>
     <div class="card"><div class="tw"><table><thead><tr><th>Angajat</th><th>Funcție</th><th>Nr. contract</th><th>Tip</th><th>Data angajării</th><th>Vechime</th><th>Medicina muncii</th>
       <th title="Zile de concediu de odihnă: alocate pe an / luate anul acesta (din pontaj) / rămase">CO alocat / luat / rămas</th><th title="Concediu medical anul acesta (din pontaj)">CM</th><th>Program</th>
-      ${adm ? "<th style='text-align:right'>Salariu bază</th><th style='text-align:right'>Mărire</th><th style='text-align:right'>Transport</th>" : ""}<th>La șoferi</th><th>Status</th></tr></thead><tbody>` +
+      ${adm ? "<th style='text-align:right'>Salariu bază</th><th style='text-align:right'>Mărire</th><th style='text-align:right'>Transport</th><th style='text-align:right' title='Nu intră în calculul salariului'>Alte diurne</th>" : ""}<th>La șoferi</th><th>Status</th></tr></thead><tbody>` +
     L.map(x => { const c = ANG.co[x.id] || { CO: 0, CM: 0 }, pv = ANG.priv[x.id] || {};
       return `<tr style="cursor:pointer${x.activ === false ? ";opacity:.5" : ""}" onclick="angTab('${x.id}')"><td><b>${esc(x.nume)}</b></td><td>${esc(x.functie || "")}</td><td>${esc(x.nr_contract || "")}</td><td>${esc(x.tip_contract || "")}</td>
         <td>${fmtD(x.data_angajare)}</td><td>${afVechime(x.data_angajare)}</td><td>${afSem(x.medicina_expira)}</td>
         <td>${x.zile_co_an == null ? '<span class="muted">—</span>' : x.zile_co_an + " / " + c.CO + " / <b>" + (x.zile_co_an - c.CO) + "</b>"}</td><td>${c.CM || ""}</td>
         <td>${x.program_start ? "birou " + afOra(x.program_start) + "–" + afOra(x.program_stop) : "din rute"}</td>
-        ${adm ? `<td style="text-align:right">${lei(pv.salariu_baza)}</td><td style="text-align:right">${lei(pv.marire)}</td><td style="text-align:right">${lei(pv.transport_luna)}</td>` : ""}
+        ${adm ? `<td style="text-align:right">${lei(pv.salariu_baza)}</td><td style="text-align:right">${lei(pv.marire)}</td><td style="text-align:right">${lei(pv.transport_luna)}</td><td style="text-align:right">${lei(pv.alte_diurne)}</td>` : ""}
         <td>${x.apare_la_soferi ? "da" : '<span class="muted">nu</span>'}</td><td>${x.activ === false ? "INACTIV" : "ACTIV"}</td></tr>`; }).join("") +
     `</tbody></table></div><p class="muted" style="margin:10px 0 0">Pontajul pe zile e în fișa fiecărui angajat (clic pe rând). Conturile de acces și PIN-urile rămân deocamdată în Administrare → Angajați.</p></div><div class="card" id="pnt-sumar"></div>`;
   pntSumar();   // v8.59
@@ -13958,7 +13958,7 @@ async function angFisa(x){
     <p class="muted" style="margin:6px 0 0">Program de birou completat = zilele lucrătoare se pontează singure cu aceste ore (ziua cu rută ia orele rutei). Gol = pontajul vine din rute.</p>
     ${ANG.admin ? `<h4 style="margin:16px 0 8px">🔒 Salarizare <span class="muted" style="font-weight:400;font-size:12px">— vizibil doar administratorului</span></h4>
     <div class="grid3">${afC("an-sal", "Salariu de bază (lei)", pv.salariu_baza, "number")}${afC("an-mar", "Mărire salariu (lei)", pv.marire, "number")}${afC("an-dmar", "Data măririi", pv.data_marire, "date")}${afC("an-tr", "Transport (lei / lună)", pv.transport_luna, "number")}</div>
-    <p class="muted" style="margin:6px 0 0">Alte diurne / bonus (după performanță) se pun lunar, în pontajul de mai jos, la „Calcul plată” — pornesc de la 0.</p>` : ""}
+    <div class="grid3" style="margin-top:10px">${afC("an-ad", "Alte diurne (lei)", pv.alte_diurne == null ? 0 : pv.alte_diurne, "number", 'title="După performanță — o completezi tu; nu intră în calculul salariului din pontaj"')}<div></div><div></div></div>` : ""}
     <div class="row" style="margin-top:16px;justify-content:flex-end"><div style="flex:1"></div><div style="flex:0"><button class="btn sec" onclick="angTab('dash')">Înapoi</button></div><div style="flex:0"><button class="btn" onclick="angSalveaza(${nou ? "null" : x.id})">Salvează</button></div></div></div></details></div>` +
     (nou || !ANG.admin ? "" : '<div id="pnt-card"></div>');
   calendarActiveaza($("ang-corp"));
@@ -13977,7 +13977,7 @@ async function angSalveaza(id){
   let sid = id;
   if(id){ const { error } = await db.from("soferi").update(rec).eq("id", id); if(error){ toast(error.message, true); return; } }
   else { rec.depozit_id = (ANG.L.find(x => x.depozit_id) || {}).depozit_id || null; const { data, error } = await db.from("soferi").insert(rec).select("id").single(); if(error){ toast(error.message, true); return; } sid = data.id; }
-  if(ANG.admin){ const { error } = await db.from("angajati_privat").upsert({ sofer_id: sid, salariu_baza: afNum(v("an-sal")), marire: afNum(v("an-mar")), data_marire: v("an-dmar") || null, transport_luna: afNum(v("an-tr")), updated_at: new Date().toISOString() });
+  if(ANG.admin){ const { error } = await db.from("angajati_privat").upsert({ sofer_id: sid, salariu_baza: afNum(v("an-sal")), marire: afNum(v("an-mar")), data_marire: v("an-dmar") || null, transport_luna: afNum(v("an-tr")), alte_diurne: afNum(v("an-ad")) || 0, updated_at: new Date().toISOString() });
     if(error){ toast("Angajatul s-a salvat, salarizarea nu: " + error.message, true); return; } }
   toast("Salvat: " + nume); PNT.murdar = false; ANG.tab = sid; angIncarca();
 }
@@ -14002,12 +14002,12 @@ async function angSetariSalveaza(){
 // route_sessions (pornire = created_at, sosire = updated_at la ruta finalizată, km = km_end − km_start), inceput_zi și prezenta_depozit, după nume +
 // „nume vechi”, și se salvează. Rotunjire (pontaj_setari): pornirea în JOS, sosirea în SUS. Zilele scrise de mână („manual”) și cele din Excel nu se ating.
 // Coduri ca în Excel: P prezent · D depozit · W weekend lucrat · S sărbătoare lucrată · L liber · CO · CM · N · I. Culorile rândurilor = cele din pontajul model.
-// Plata estimativă = bază + mărire + W × spor + S × spor + zile cu depășire × diurnă + transport (proporțional) + alte diurne (pontaj_luna.alte_diurne, puse de mână la final de lună).
+// Plata estimativă = bază + mărire + W × spor + S × spor + zile cu depășire × diurnă + transport (proporțional). v8.64: „Alte diurne” stă la Salarizare (angajati_privat), nu intră în calcul.
 const PNT_COD = ["", "P", "D", "L", "W", "S", "CO", "CM", "N", "I"];
 const PNT_ZI = ["DUMINICA", "LUNI", "MARTI", "MIERCURI", "JOI", "VINERI", "SAMBATA"];
 const PNT_FOND = { CO: "#FFF2CC", CM: "#FFF2CC", W: "#F8CBAD", S: "#E6B8B7", DEP: "#C6E0B4" };   // ca în pontajul model (formatare condiționată)
 const PNT_TXT = { W: "#C55A11", S: "#632423", CO: "#C55A11", CM: "#C55A11", N: "#CC0000", I: "#CC0000", DEP: "#006100" };
-let PNT = { sid: null, luna: "", rows: [], vir: null, alte: 0, murdar: false, surse: {} };
+let PNT = { sid: null, luna: "", rows: [], vir: null, murdar: false, surse: {} };
 const pntMin = t => t ? +String(t).slice(0, 2) * 60 + +String(t).slice(3, 5) : null;
 const pntHM = m => zi2(Math.floor(m / 60)) + ":" + zi2(m % 60);
 const pntOre = r => { const a = pntMin(r.ora_start), b = pntMin(r.ora_stop); return a != null && b != null && b > a ? b - a : 0; };
@@ -14021,7 +14021,7 @@ const pntOraLoc = iso => { if(!iso) return ""; const d = new Date(iso); return z
 const pntPrag = () => ((+(ANG.set || {}).ore_zi || 8) + (+(ANG.set || {}).prag_depasire || 0)) * 60;
 const pntDep = r => (r.cod === "P" || r.cod === "D") && pntOre(r) > pntPrag();
 const pntFond = r => PNT_FOND[r.cod] || (pntDep(r) ? PNT_FOND.DEP : "");
-function pntCalc(rows, luna, pv, set, alte){
+function pntCalc(rows, luna, pv, set){
   pv = pv || {}; const S = set || {}, zile = pntZile(luna), oz = +S.ore_zi || 8, prag = (oz + (+S.prag_depasire || 0)) * 60, dow = d => dtz(d).getDay(), lv = d => dow(d) >= 1 && dow(d) <= 5;
   const lucr = zile.filter(lv).length, n = c => rows.filter(r => r.cod === c).length, P = n("P"), D = n("D"), W = n("W"), Sb = n("S");
   const dep = rows.filter(r => (r.cod === "P" || r.cod === "D") && pntOre(r) > prag).length, sLucr = rows.filter(r => r.cod === "S" && lv(r.zi)).length;
@@ -14029,8 +14029,8 @@ function pntCalc(rows, luna, pv, set, alte){
   const azi = today(), cuCod = new Set(rows.filter(r => r.cod).map(r => r.zi)), lipsa = zile.filter(d => d <= azi && !cuCod.has(d)).length;
   const baza = +pv.salariu_baza || 0, marire = pv.marire && (!pv.data_marire || pv.data_marire <= zile[zile.length - 1]) ? +pv.marire : 0;
   const tr0 = +pv.transport_luna || 0, zt = P + D + sLucr, transport = !lucr ? 0 : zt >= lucr ? tr0 : Math.ceil(tr0 * zt / lucr);
-  const sW = W * (+S.spor_weekend || 0), sS = Sb * (+S.spor_sarbatoare || 0), sD = dep * (+S.diurna || 0), ad = +alte || 0, sporuri = marire + sW + sS + sD + transport + ad;
-  return { zile: zile.length, lucr, P, D, prez: P + D, L: n("L"), CO: n("CO"), CM: n("CM"), W, S: Sb, N: n("N"), I: n("I"), dep, oreMin, normMin: lucr * oz * 60, km, lipsa, baza, marire, sW, sS, sD, transport, alte: ad, sporuri, total: baza + sporuri };
+  const sW = W * (+S.spor_weekend || 0), sS = Sb * (+S.spor_sarbatoare || 0), sD = dep * (+S.diurna || 0), sporuri = marire + sW + sS + sD + transport;
+  return { zile: zile.length, lucr, P, D, prez: P + D, L: n("L"), CO: n("CO"), CM: n("CM"), W, S: Sb, N: n("N"), I: n("I"), dep, oreMin, normMin: lucr * oz * 60, km, lipsa, baza, marire, sW, sS, sD, transport, sporuri, total: baza + sporuri };
 }
 // sursele lunii (rute, început de zi, prezență depozit) — o singură citire pentru toți angajații
 async function pntSurse(luna, forta){
@@ -14080,7 +14080,7 @@ async function pntIncarca(sid, luna){
     ANG.mas ? Promise.resolve({ data: ANG.mas }) : db.from("masini").select("nr").order("nr")]);
   if(r.error){ toast(r.error.message, true); return; }
   if(PNT.sid !== sid || PNT.luna !== luna) return;
-  ANG.mas = m.data || []; PNT.vir = v.data ? v.data.virament : null; PNT.alte = v.data ? +v.data.alte_diurne || 0 : 0;
+  ANG.mas = m.data || []; PNT.vir = v.data ? v.data.virament : null;
   const by = new Map((r.data || []).map(q => [q.zi, q]));
   PNT.rows = z.map(d => by.has(d) ? pntDinBaza(by.get(d)) : pntGol(d));
   PNT.nAuto = 0;
@@ -14101,19 +14101,18 @@ async function pntAuto(){
 }
 const pntSemn = r => r.sursa === "auto" ? `<span class="muted" style="cursor:help" title="Completat automat${r.rsI ? " · ora reală: " + pntOraLoc(r.rsI) + (r.reI ? " – " + pntOraLoc(r.reI) : " (rută nefinalizată)") : ""}">⚙${r.rsI ? " " + pntOraLoc(r.rsI) + (r.reI ? "–" + pntOraLoc(r.reI) : "") : ""}</span>` : r.sursa === "excel" ? '<span class="muted" title="Adus din Excel">xls</span>' : r.sursa === "manual" && pntPlin(r) ? '<span class="muted" title="Scris / corectat de mână — nu se mai schimbă automat">✎</span>' : "";
 function pntStatHtml(){
-  const x = ANG.L.find(a => a.id === PNT.sid) || {}, c = pntCalc(PNT.rows, PNT.luna, ANG.priv[x.id], ANG.set, PNT.alte), dif = c.oreMin - c.normMin, vir = +PNT.vir || 0;
+  const x = ANG.L.find(a => a.id === PNT.sid) || {}, c = pntCalc(PNT.rows, PNT.luna, ANG.priv[x.id], ANG.set), dif = c.oreMin - c.normMin, vir = +PNT.vir || 0;
   const t = (L) => `<table style="width:100%">${L.map(([a, b, bold]) => `<tr${bold ? ' style="font-weight:700"' : ""}><td>${a}</td><td style="text-align:right;white-space:nowrap">${b}</td></tr>`).join("")}</table>`;
-  const inp = (k, v, tit) => `<input type="number" step="0.01" value="${v == null ? "" : v}" title="${tit}" onchange="PNT.${k}=afNum(this.value)${k === "alte" ? "||0" : ""};PNT.murdar=true;$('pnt-stat').innerHTML=pntStatHtml()" style="text-align:right">`;
+  const inp = (k, v, tit) => `<input type="number" step="0.01" value="${v == null ? "" : v}" title="${tit}" onchange="PNT.${k}=afNum(this.value);PNT.murdar=true;$('pnt-stat').innerHTML=pntStatHtml()" style="text-align:right">`;
   return `<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px;margin-top:12px">
     <div><h4 style="margin:0 0 6px">Statistica zilelor</h4>${t([["Zile în lună", c.zile], ["Zile lucrătoare (luni–vineri)", c.lucr], ["Zile prezente (P + D)", c.prez], ["Zile libere (L)", c.L], ["Concediu de odihnă (CO)", c.CO], ["Concediu medical (CM)", c.CM], ["Weekend lucrat (W)", c.W], ["Sărbătoare legală lucrată (S)", c.S], ["Zile cu depășire (diurne)", c.dep], ["Absent nemotivat (N)", c.N], ["Învoire (I)", c.I]])}
       <div style="margin-top:6px;font-weight:700;color:${c.lipsa ? "#C0392B" : "#2E8B3C"}">${c.lipsa ? "⚠ Lipsesc coduri pentru " + c.lipsa + (c.lipsa === 1 ? " zi" : " zile") + " (până azi)" : "✓ Toate zilele până azi au cod"}</div></div>
     <div><h4 style="margin:0 0 6px">Ore și km</h4>${t([["Ore normate (zile lucrătoare × ore / zi)", pntOreT(c.normMin) || "0"], ["Ore realizate (fără W)", pntOreT(c.oreMin) || "0"], ["Diferență", (dif < 0 ? "−" : "+") + (pntOreT(Math.abs(dif)) || "0")], ["% realizare", c.normMin ? Math.round(100 * c.oreMin / c.normMin) + "%" : "—"], ["Km parcurși (fără W)", c.km.toLocaleString("ro-RO")]])}</div>
     <div><h4 style="margin:0 0 6px">🔒 Calcul plată (estimativ)</h4>${t([["Salariu de bază", pntLei(c.baza)], ["Mărire salariu", pntLei(c.marire)], ["Spor weekend (" + c.W + " zile)", pntLei(c.sW)], ["Spor sărbătoare legală (" + c.S + " zile)", pntLei(c.sS)], ["Depășire program (" + c.dep + " zile)", pntLei(c.sD)], ["Transport", pntLei(c.transport)]])}
-      <div class="row" style="margin-top:4px;align-items:center;gap:8px;background:var(--gl);border-radius:8px;padding:4px 8px"><div style="flex:1"><b>Alte diurne / bonus</b> <span class="muted" style="font-size:12px">(după performanță, la final de lună)</span></div><div style="flex:0 0 120px">${inp("alte", PNT.alte, "Suma o pui tu la final de lună; intră în total")}</div></div>
       ${t([["Total sporuri", pntLei(c.sporuri)], ["Total de plată (estimativ)", pntLei(c.total), 1]])}
       <div class="row" style="margin-top:6px;align-items:center;gap:8px"><div style="flex:1">Virament bancar (lei)</div><div style="flex:0 0 120px">${inp("vir", PNT.vir, "Cât s-a dat prin bancă")}</div></div>
       <div style="display:flex;justify-content:space-between;font-weight:700;margin-top:6px"><span>Rest de plată numerar</span><span>${pntLei(c.total - vir)}</span></div>
-      <div class="muted" style="font-size:12px;margin-top:6px">Calcul pentru uz intern; nu include impozite, contribuții sau alte rețineri. Alte diurne și viramentul se păstrează la <b>Salvează pontajul</b>.${c.baza ? "" : " Salariul nu e completat în fișa angajatului."}</div></div></div>`;
+      <div class="muted" style="font-size:12px;margin-top:6px">Calcul pentru uz intern; nu include impozite, contribuții sau alte rețineri. Viramentul se păstrează la <b>Salvează pontajul</b>.${c.baza ? "" : " Salariul nu e completat în fișa angajatului."}</div></div></div>`;
 }
 function pntDeseneaza(){
   const el = $("pnt-card"), x = ANG.L.find(a => a.id === PNT.sid); if(!el || !x) return;
@@ -14155,7 +14154,7 @@ async function pntSalveaza(){
   const gol = PNT.rows.filter(r => !pntPlin(r) && r.salvat).map(r => r.zi);
   if(up.length){ const { error } = await db.from("pontaj_zile").upsert(up, { onConflict: "sofer_id,zi" }); if(error){ toast(error.message, true); return false; } }
   if(gol.length){ const { error } = await db.from("pontaj_zile").delete().eq("sofer_id", sid).in("zi", gol); if(error){ toast(error.message, true); return false; } }
-  { const { error } = await db.from("pontaj_luna").upsert({ sofer_id: sid, luna, virament: PNT.vir == null ? null : PNT.vir, alte_diurne: +PNT.alte || 0, updated_at: acum }); if(error){ toast(error.message, true); return false; } }
+  { const { error } = await db.from("pontaj_luna").upsert({ sofer_id: sid, luna, virament: PNT.vir == null ? null : PNT.vir, updated_at: acum }); if(error){ toast(error.message, true); return false; } }
   PNT.rows.forEach(r => r.salvat = pntPlin(r)); PNT.murdar = false; toast("Pontajul s-a salvat (" + up.length + " zile)");
   const an = new Date().getFullYear(), z = await db.from("pontaj_zile").select("sofer_id,cod").gte("zi", an + "-01-01").lte("zi", an + "-12-31").in("cod", ["CO", "CM"]);   // concediile de pe Dashboard
   if(!z.error){ ANG.co = {}; (z.data || []).forEach(q => { const o = ANG.co[q.sofer_id] || (ANG.co[q.sofer_id] = { CO: 0, CM: 0 }); o[q.cod]++; }); }
@@ -14173,21 +14172,21 @@ async function pntSumar(){
   try{ const S = await pntSurse(luna); for(const x of act){ const sch = pntPropune(x, luna, R[x.id], S); if(sch.length && await pntScrieAuto(x.id, sch)) nAuto += sch.length; } }
   catch(e){ toast("Nu am putut citi rutele: " + (e.message || e), true); }
   if(!$("pnt-sumar") || ANG.tab !== "dash" || PNT.luna !== luna) return;
-  const T = { prez: 0, ore: 0, km: 0, tot: 0, vir: 0, alte: 0 }, d = t => `<td style="text-align:right">${t}</td>`;
-  const rnd = act.map(x => { const rows = R[x.id].filter(pntPlin), l = (v.data || []).find(q => q.sofer_id === x.id) || {}, alte = +l.alte_diurne || 0, vir = +l.virament || 0;
-    const c = pntCalc(rows, luna, ANG.priv[x.id], ANG.set, alte);
-    T.prez += c.prez; T.ore += c.oreMin; T.km += c.km; T.tot += c.total; T.vir += vir; T.alte += alte;
-    return `<tr style="cursor:pointer" onclick="angTab('${x.id}')"><td><b>${esc(x.nume)}</b></td>${d(c.prez)}${d(pntOreT(c.oreMin))}${d(pntOreT(c.normMin))}${d(c.dep || "")}${d(c.W || "")}${d(c.S || "")}${d(c.CO || "")}${d(c.CM || "")}${d(c.km ? c.km.toLocaleString("ro-RO") : "")}${d(alte ? pntLei(alte) : "")}${d(pntLei(c.total))}${d(vir ? pntLei(vir) : "")}${d(pntLei(c.total - vir))}
+  const T = { prez: 0, ore: 0, km: 0, tot: 0, vir: 0 }, d = t => `<td style="text-align:right">${t}</td>`;
+  const rnd = act.map(x => { const rows = R[x.id].filter(pntPlin), l = (v.data || []).find(q => q.sofer_id === x.id) || {}, vir = +l.virament || 0;
+    const c = pntCalc(rows, luna, ANG.priv[x.id], ANG.set);
+    T.prez += c.prez; T.ore += c.oreMin; T.km += c.km; T.tot += c.total; T.vir += vir;
+    return `<tr style="cursor:pointer" onclick="angTab('${x.id}')"><td><b>${esc(x.nume)}</b></td>${d(c.prez)}${d(pntOreT(c.oreMin))}${d(pntOreT(c.normMin))}${d(c.dep || "")}${d(c.W || "")}${d(c.S || "")}${d(c.CO || "")}${d(c.CM || "")}${d(c.km ? c.km.toLocaleString("ro-RO") : "")}${d(pntLei(c.total))}${d(vir ? pntLei(vir) : "")}${d(pntLei(c.total - vir))}
       <td style="font-weight:600;color:${!rows.length ? "var(--mut)" : c.lipsa ? "#C0392B" : "#2E8B3C"}">${!rows.length ? "gol" : c.lipsa ? "lipsesc " + c.lipsa + " zile" : "OK"}</td></tr>`; }).join("");
   el.innerHTML = `<div class="row noprint" style="align-items:flex-end;margin-bottom:8px"><div style="flex:1"><h3 style="margin:0;color:var(--g)">Sumar pontaj și plată — toți angajații</h3></div><div style="flex:0;min-width:170px"><label>Luna</label><input type="month" value="${luna}" onchange="if(this.value){PNT.luna=this.value;pntSumar()}"></div></div>
-    <div class="tw"><table><thead><tr><th>Angajat</th><th style="text-align:right">Zile prezente</th><th style="text-align:right">Ore realizate</th><th style="text-align:right">Ore normate</th><th style="text-align:right">Depășiri</th><th style="text-align:right">W</th><th style="text-align:right">S</th><th style="text-align:right">CO</th><th style="text-align:right">CM</th><th style="text-align:right">Km</th><th style="text-align:right">Alte diurne</th><th style="text-align:right">Total de plată</th><th style="text-align:right">Virament</th><th style="text-align:right">Rest numerar</th><th>Pontaj</th></tr></thead><tbody>${rnd}
-      <tr style="font-weight:700"><td>TOTAL</td>${d(T.prez)}${d(pntOreT(T.ore))}<td colspan="6"></td>${d(T.km.toLocaleString("ro-RO"))}${d(T.alte ? pntLei(T.alte) : "")}${d(pntLei(T.tot))}${d(pntLei(T.vir))}${d(pntLei(T.tot - T.vir))}<td></td></tr></tbody></table></div>
-    <p class="muted" style="margin:8px 0 0">Pontajele se actualizează singure din rute la fiecare deschidere${nAuto ? ` (acum: ${nAuto} zile)` : ""}. Clic pe un angajat = pontajul lui pe zile, unde corectezi și pui alte diurne / virament.</p>`;
+    <div class="tw"><table><thead><tr><th>Angajat</th><th style="text-align:right">Zile prezente</th><th style="text-align:right">Ore realizate</th><th style="text-align:right">Ore normate</th><th style="text-align:right">Depășiri</th><th style="text-align:right">W</th><th style="text-align:right">S</th><th style="text-align:right">CO</th><th style="text-align:right">CM</th><th style="text-align:right">Km</th><th style="text-align:right">Total de plată</th><th style="text-align:right">Virament</th><th style="text-align:right">Rest numerar</th><th>Pontaj</th></tr></thead><tbody>${rnd}
+      <tr style="font-weight:700"><td>TOTAL</td>${d(T.prez)}${d(pntOreT(T.ore))}<td colspan="6"></td>${d(T.km.toLocaleString("ro-RO"))}${d(pntLei(T.tot))}${d(pntLei(T.vir))}${d(pntLei(T.tot - T.vir))}<td></td></tr></tbody></table></div>
+    <p class="muted" style="margin:8px 0 0">Pontajele se actualizează singure din rute la fiecare deschidere${nAuto ? ` (acum: ${nAuto} zile)` : ""}. Clic pe un angajat = pontajul lui pe zile, unde corectezi și pui viramentul.</p>`;
 }
 async function pntExcel(){
   const x = ANG.L.find(a => a.id === PNT.sid); if(!x) return; let ExcelJS; try{ ExcelJS = await expLib("exceljs"); }catch(e){ toast("Nu s-a putut încărca ExcelJS: " + e.message, true); return; }
   // v8.61: aranjamentul lui Ovidiu (PONTAJ - CATRINA … .xlsx, 13.11): coloana A îngustă, tabelul B–K, celule unite; Times New Roman 14; culorile din pontajul model
-  const c = pntCalc(PNT.rows, PNT.luna, ANG.priv[x.id], ANG.set, PNT.alte), wb = new ExcelJS.Workbook(), ws = wb.addWorksheet("PONTAJ"), vir = +PNT.vir || 0, sb = pntSarb(PNT.luna);
+  const c = pntCalc(PNT.rows, PNT.luna, ANG.priv[x.id], ANG.set), wb = new ExcelJS.Workbook(), ws = wb.addWorksheet("PONTAJ"), vir = +PNT.vir || 0, sb = pntSarb(PNT.luna);
   const luni = ["IANUARIE", "FEBRUARIE", "MARTIE", "APRILIE", "MAI", "IUNIE", "IULIE", "AUGUST", "SEPTEMBRIE", "OCTOMBRIE", "NOIEMBRIE", "DECEMBRIE"];
   const FN = "Times New Roman", F = (o) => Object.assign({ name: FN, size: 14 }, o || {}), B = { top: { style: "thin" }, left: { style: "thin" }, bottom: { style: "thin" }, right: { style: "thin" } };
   const fill = hex => ({ type: "pattern", pattern: "solid", fgColor: { argb: "FF" + hex.replace("#", "") } }), arg = hex => ({ argb: "FF" + hex.replace("#", "") });
@@ -14213,7 +14212,7 @@ async function pntExcel(){
   rr += 2;
   uneste("B" + rr + ":E" + rr, "STATISTICA ZILE", { font: { bold: true }, al: CE }); uneste("G" + rr + ":J" + rr, "CALCUL PLATA (ESTIMATIV)", { font: { bold: true }, al: CE }); rr++;
   const S1 = [["Zile in luna", c.zile], ["Zile lucratoare (Luni-Vineri)", c.lucr], ["Zile prezente (P+D)", c.prez], ["Zile libere (L)", c.L], ["Concediu odihna (CO)", c.CO], ["Concediu medical (CM)", c.CM], ["Zile weekend (W)", c.W], ["Zile cu depasire (diurne)", c.dep], ["Sarbatoare legala (S)", c.S], ["Absent nemotivat (N)", c.N], ["Absent motivat (I)", c.I], ["Ore normate", pntOreT(c.normMin)]];
-  const S2 = [["Salariu de baza", c.baza], ["Marire salariu", c.marire], ["Spor weekend", c.sW], ["Spor sarbatoare legala", c.sS], ["Depasire program", c.sD], ["Transport", c.transport], ["Alte diurne / bonus", c.alte], ["Total sporuri", c.sporuri], ["Total de plata (estimativ)", c.total, 1], ["Virament bancar", vir], ["Rest de plata numerar", c.total - vir, 1]];
+  const S2 = [["Salariu de baza", c.baza], ["Marire salariu", c.marire], ["Spor weekend", c.sW], ["Spor sarbatoare legala", c.sS], ["Depasire program", c.sD], ["Transport", c.transport], ["Total sporuri", c.sporuri], ["Total de plata (estimativ)", c.total, 1], ["Virament bancar", vir], ["Rest de plata numerar", c.total - vir, 1]];
   for(let i = 0; i < Math.max(S1.length, S2.length); i++){
     if(S1[i]){ uneste("B" + rr + ":D" + rr, S1[i][0], { al: DR }); pune("E" + rr, S1[i][1], { al: CE }); }
     if(S2[i]){ uneste("G" + rr + ":I" + rr, S2[i][0], { al: DR, font: S2[i][2] ? { bold: true } : {} }); const q = pune("J" + rr, S2[i][1], { al: ST, font: S2[i][2] ? { bold: true } : {} }); q.numFmt = "#,##0.00"; }
