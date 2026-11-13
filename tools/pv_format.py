@@ -35,14 +35,18 @@ for n in [k for k in fis if re.match(r"word/footer\d*\.xml$", k)]:
     f = inlocuieste_p(f, "Hunedoara", lambda p: popen(p) + ppr(p) + run("             ", True, 20).replace("<w:b/><w:bCs/>", "<w:b/><w:bCs/>") +
         run("P.L. Hunedoara", True, 20) + run(" | Sat Pestisul Mare, Nr 1, Jud. HD | hunedoara@eurowc.ro | ", False, 20) + run("0735 214 762", True, 20) + "</w:p>"
         if "eurowc.ro" in p and "Sediu" not in p else p)
+    # v8.63: primul rând al subsolului
+    f = f.replace(">Sediu Social, Str. M. Eminescu nr. 9, COD 535800 Vlahita, jud. <", "> Sediu: Loc. Vlahita, Str. M. Eminescu nr. 9, jud. HR | info@eurowc.ro<")
+    f = f.replace("> Sediu Social, Str. M. Eminescu nr. 9, COD 535800 Vlahita, jud. <", "> Sediu: Loc. Vlahita, Str. M. Eminescu nr. 9, jud. HR | info@eurowc.ro<")
+    f = f.replace(">Harghita.<", "><")
     rel = fis.get(n.replace("word/", "word/_rels/") + ".rels", b"").decode("utf8")
     for rid, tgt in re.findall(r'Id="(rId\d+)"[^>]*Target="(media/[^"]+)"', rel):
         if f"r:embed=\"{rid}\"" not in f: continue
-        png = open(LOGO, "rb").read(); w, h = struct.unpack(">II", png[16:24]); H = 500000; W = round(H * w / h)   # ~1,3 cm înălțime, cât cele 3 rânduri de text
+        png = open(LOGO, "rb").read(); w, h = struct.unpack(">II", png[16:24]); H = 380000; W = round(H * w / h)   # v8.63: cât cele 3 rânduri de text (de la primul la ultimul)
         fis["word/" + tgt] = png
         f = re.sub(r'(<wp:extent cx=")\d+(" cy=")\d+(")', rf"\g<1>{W}\g<2>{H}\g<3>", f, count=1)
         f = re.sub(r'(<a:ext cx=")\d+(" cy=")\d+(")', rf"\g<1>{W}\g<2>{H}\g<3>", f, count=1)
-        f = re.sub(r'(<wp:positionV relativeFrom="paragraph"><wp:posOffset>)-?\d+(</wp:posOffset>)', r"\g<1>90000\g<2>", f, count=1)
+        f = re.sub(r'(<wp:positionV relativeFrom="paragraph"><wp:posOffset>)-?\d+(</wp:posOffset>)', r"\g<1>204000\g<2>", f, count=1)   # v8.63: aliniat cu primul rând de text
         f = re.sub(r'(<wp:positionH relativeFrom="column"><wp:posOffset>)-?\d+(</wp:posOffset>)', r"\g<1>-260000\g<2>", f, count=1)
     fis[n] = f.encode("utf8")
 tmp = SRC + ".tmp"
