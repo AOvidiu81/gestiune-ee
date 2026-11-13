@@ -1113,7 +1113,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
   <span id="rz-w"><button id="rz-reset" class="pictograma" title="Lățimi implicite — pune coloanele din tabelele acestei file înapoi cum erau">↺ Reset layout</button><i class="rz-sep">|</i></span>
   <span id="tz-w" title="Mărimea tabelului (doar tabelul, restul rămâne la fel), din 5 în 5%. Merge și cu Ctrl + rotița mausului, Ctrl + / Ctrl − / Ctrl 0. Dublu clic pe procent = scrii tu valoarea."><button class="pictograma" onclick="tzPas(-1)" aria-label="Micșorează tabelul">−</button><b id="tz-v" ondblclick="tzScrie()" title="Dublu clic = scrii mărimea (ex. 87), Enter">100%</b><input id="tz-in" type="number" min="30" max="300" step="5" style="display:none"><button class="pictograma" onclick="tzPas(1)" aria-label="Mărește tabelul">+</button></span>
-  <span class="ver">v8.58</span>
+  <span class="ver">v8.59</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -13902,7 +13902,7 @@ async function angIncarca(){
   if(ANG.tab !== "dash" && ANG.tab !== "set" && ANG.tab !== "nou" && !ANG.L.some(x => String(x.id) === String(ANG.tab))) ANG.tab = "dash";
   angDeseneaza();
 }
-function angTab(k){ ANG.tab = k; angDeseneaza(); }
+function angTab(k){ if(PNT.murdar && !confirm("Pontajul are schimbări nesalvate. Le pierzi?")) return; PNT.murdar = false; ANG.tab = k; angDeseneaza(); }
 const angViz = () => ANG.L.filter(x => ANG.inactivi || x.activ !== false);
 function angDeseneaza(){
   afTabs("ang-tabs", [["dash", "Dashboard"], ...angViz().map(x => [x.id, x.nume]), ...(ANG.admin ? [["set", "Setări pontaj"]] : [])], ANG.tab, "angTab");
@@ -13929,13 +13929,11 @@ function angDash(){
         <td>${x.program_start ? "birou " + afOra(x.program_start) + "–" + afOra(x.program_stop) : "din rute"}</td>
         ${adm ? `<td style="text-align:right">${lei(pv.salariu_baza)}</td><td style="text-align:right">${lei(pv.marire)}</td><td style="text-align:right">${lei(pv.transport_luna)}</td>` : ""}
         <td>${x.apare_la_soferi ? "da" : '<span class="muted">nu</span>'}</td><td>${x.activ === false ? "INACTIV" : "ACTIV"}</td></tr>`; }).join("") +
-    `</tbody></table></div><p class="muted" style="margin:10px 0 0">Pontajul lunar pe zile (precompletat din rute și prezența la depozit, cu orele rotunjite) și calculul plății vin în etapa următoare. Conturile de acces și PIN-urile rămân deocamdată în Administrare → Angajați.</p></div>`;
+    `</tbody></table></div><p class="muted" style="margin:10px 0 0">Pontajul pe zile e în fișa fiecărui angajat (clic pe rând). Conturile de acces și PIN-urile rămân deocamdată în Administrare → Angajați.</p></div><div class="card" id="pnt-sumar"></div>`;
+  pntSumar();   // v8.59
 }
 async function angFisa(x){
   const nou = !x; x = x || { activ: true, apare_la_soferi: true }; const pv = ANG.priv[x.id] || {};
-  let pont = [];
-  if(!nou && ANG.admin){ const azi = today(), p1 = azi.slice(0, 8) + "01"; const r = await db.from("pontaj_zile").select("*").eq("sofer_id", x.id).gte("zi", p1).lte("zi", azi.slice(0, 8) + "31").order("zi"); pont = r.data || []; if(String(ANG.tab) !== String(x.id)) return; }
-  const ore = z => { if(!z.ora_start || !z.ora_stop) return ""; const [a, b] = [z.ora_start, z.ora_stop].map(t => +t.slice(0, 2) * 60 + +t.slice(3, 5)); const m = b - a; return m > 0 ? Math.floor(m / 60) + ":" + zi2(m % 60) : ""; };
   $("ang-corp").innerHTML = `<div class="card"><h3 style="margin:0 0 10px;color:var(--g)">${nou ? "Angajat nou" : esc(x.nume)} <span class="muted" style="font-size:13px;font-weight:400">${nou ? "" : esc([x.functie, x.nr_contract ? "contract " + x.nr_contract : "", afVechime(x.data_angajare)].filter(Boolean).join(" · "))}</span></h3>
     <div class="grid3">${afC("an-nume", "Nume și prenume (ca pe CI)", x.nume)}${afC("an-scurt", "Nume scurt", x.nume_scurt)}${afC("an-functie", "Funcție", x.functie)}
       ${afC("an-tel", "Telefon", x.telefon)}${afC("an-email", "E-mail", x.email)}${afC("an-nastere", "Data nașterii", x.data_nasterii, "date")}
@@ -13953,9 +13951,9 @@ async function angFisa(x){
     ${ANG.admin ? `<h4 style="margin:16px 0 8px">🔒 Salarizare <span class="muted" style="font-weight:400;font-size:12px">— vizibil doar administratorului</span></h4>
     <div class="grid3">${afC("an-sal", "Salariu de bază (lei)", pv.salariu_baza, "number")}${afC("an-mar", "Mărire salariu (lei)", pv.marire, "number")}${afC("an-dmar", "Data măririi", pv.data_marire, "date")}${afC("an-tr", "Transport (lei / lună)", pv.transport_luna, "number")}</div>` : ""}
     <div class="row" style="margin-top:16px;justify-content:flex-end"><div style="flex:1"></div><div style="flex:0"><button class="btn sec" onclick="angTab('dash')">Înapoi</button></div><div style="flex:0"><button class="btn" onclick="angSalveaza(${nou ? "null" : x.id})">Salvează</button></div></div></div>` +
-    (nou || !ANG.admin ? "" : `<div class="card"><h3 style="margin:0 0 8px;color:var(--g)">Pontaj — luna curentă <span class="muted" style="font-size:13px;font-weight:400">(deocamdată doar ce a venit din Excel; completarea automată vine în etapa următoare)</span></h3>
-      <div class="tw"><table><thead><tr><th>Data</th><th>Cod</th><th>Mașina</th><th>Pornire</th><th>Sosire</th><th>Ore</th><th>Km</th><th>Observații</th></tr></thead><tbody>${pont.map(z => `<tr><td>${fmtD(z.zi)}</td><td><b>${esc(z.cod || "")}</b></td><td>${esc(z.masina || "")}</td><td>${afOra(z.ora_start)}</td><td>${afOra(z.ora_stop)}</td><td>${ore(z)}</td><td>${z.km == null ? "" : z.km}</td><td>${esc(z.observatii || "")}</td></tr>`).join("") || '<tr><td colspan="8" class="muted">Nicio zi pontată luna aceasta.</td></tr>'}</tbody></table></div></div>`);
+    (nou || !ANG.admin ? "" : '<div id="pnt-card"></div>');
   calendarActiveaza($("ang-corp"));
+  if(!nou && ANG.admin) pntIncarca(x.id, PNT.luna || today().slice(0, 7));   // v8.59
 }
 async function angSalveaza(id){
   const v = i => $(i).value.trim(), vechi = id ? ANG.L.find(x => x.id === id) : null, nume = v("an-nume").toUpperCase();
@@ -13972,7 +13970,7 @@ async function angSalveaza(id){
   else { rec.depozit_id = (ANG.L.find(x => x.depozit_id) || {}).depozit_id || null; const { data, error } = await db.from("soferi").insert(rec).select("id").single(); if(error){ toast(error.message, true); return; } sid = data.id; }
   if(ANG.admin){ const { error } = await db.from("angajati_privat").upsert({ sofer_id: sid, salariu_baza: afNum(v("an-sal")), marire: afNum(v("an-mar")), data_marire: v("an-dmar") || null, transport_luna: afNum(v("an-tr")), updated_at: new Date().toISOString() });
     if(error){ toast("Angajatul s-a salvat, salarizarea nu: " + error.message, true); return; } }
-  toast("Salvat: " + nume); ANG.tab = sid; angIncarca();
+  toast("Salvat: " + nume); PNT.murdar = false; ANG.tab = sid; angIncarca();
 }
 function angSetari(){
   const s = ANG.set || {};
@@ -13988,6 +13986,168 @@ async function angSetariSalveaza(){
   const rec = { id: 1, ore_zi: n("ps-ore", 8), prag_depasire: n("ps-prag", 1.5), rotunjire_min: Math.max(1, Math.round(n("ps-rot", 15))), spor_weekend: n("ps-wk", 0), spor_sarbatoare: n("ps-sb", 0), diurna: n("ps-di", 0), updated_at: new Date().toISOString() };
   const { error } = await db.from("pontaj_setari").upsert(rec); if(error){ toast(error.message, true); return; }
   ANG.set = rec; toast("Setările de pontaj s-au salvat");
+}
+
+// ---------- PONTAJ LUNAR (v8.59, etapa 2 — cerut de Ovidiu, 13.11) ----------
+// O zi = un rând în pontaj_zile (sofer_id + zi). „⟳ Completează din rute” propune zilele din route_sessions (pornire = created_at, sosire =
+// updated_at la ruta finalizată, km = km_end − km_start), inceput_zi și prezenta_depozit, după nume + „nume vechi”. Rotunjire (pontaj_setari):
+// pornirea în JOS, sosirea în SUS (șoferii sunt la depozit înainte să pornească ruta și după ce parchează). Zilele scrise de mână („manual”)
+// și cele din Excel nu se suprascriu. Codurile ca în Excel: P prezent · D depozit · W weekend lucrat · S sărbătoare lucrată · L liber · CO · CM · N · I.
+// Plata estimativă = bază + mărire + W × spor + S × spor + zile cu depășire × diurnă + transport (proporțional cu zilele P + D + S lucrătoare).
+const PNT_COD = ["", "P", "D", "L", "W", "S", "CO", "CM", "N", "I"];
+const PNT_ZI = ["DUMINICA", "LUNI", "MARTI", "MIERCURI", "JOI", "VINERI", "SAMBATA"];
+let PNT = { sid: null, luna: "", rows: [], vir: null, murdar: false };
+const pntMin = t => t ? +String(t).slice(0, 2) * 60 + +String(t).slice(3, 5) : null;
+const pntHM = m => zi2(Math.floor(m / 60)) + ":" + zi2(m % 60);
+const pntOre = r => { const a = pntMin(r.ora_start), b = pntMin(r.ora_stop); return a != null && b != null && b > a ? b - a : 0; };
+const pntOreT = m => m ? Math.floor(m / 60) + ":" + zi2(m % 60) : "";
+const pntNorm = t => String(t || "").toUpperCase().replace(/\s+/g, " ").trim();
+const pntZile = luna => { const [y, m] = luna.split("-").map(Number), n = new Date(y, m, 0).getDate(); return Array.from({ length: n }, (_, i) => luna + "-" + zi2(i + 1)); };
+const pntSarb = luna => new Map(kalSarbatori(+luna.slice(0, 4)).map(x => [ziLocala(x.d), x.n]));
+const pntLei = v => (Math.round((+v || 0) * 100) / 100).toLocaleString("ro-RO");
+const pntPlin = r => !!(r.cod || r.ora_start || r.ora_stop || r.km != null || r.observatii);
+const pntOraLoc = iso => { if(!iso) return ""; const d = new Date(iso); return zi2(d.getHours()) + ":" + zi2(d.getMinutes()); };
+function pntCalc(rows, luna, pv, set){
+  pv = pv || {}; const S = set || {}, zile = pntZile(luna), oz = +S.ore_zi || 8, prag = (oz + (+S.prag_depasire || 0)) * 60, dow = d => dtz(d).getDay(), lv = d => dow(d) >= 1 && dow(d) <= 5;
+  const lucr = zile.filter(lv).length, n = c => rows.filter(r => r.cod === c).length, P = n("P"), D = n("D"), W = n("W"), Sb = n("S");
+  const dep = rows.filter(r => (r.cod === "P" || r.cod === "D") && pntOre(r) > prag).length, sLucr = rows.filter(r => r.cod === "S" && lv(r.zi)).length;
+  const fW = rows.filter(r => r.cod !== "W"), oreMin = fW.reduce((t, r) => t + pntOre(r), 0), km = fW.reduce((t, r) => t + (+r.km || 0), 0);
+  const azi = today(), cuCod = new Set(rows.filter(r => r.cod).map(r => r.zi)), lipsa = zile.filter(d => d <= azi && !cuCod.has(d)).length;
+  const baza = +pv.salariu_baza || 0, marire = pv.marire && (!pv.data_marire || pv.data_marire <= zile[zile.length - 1]) ? +pv.marire : 0;
+  const tr0 = +pv.transport_luna || 0, zt = P + D + sLucr, transport = !lucr ? 0 : zt >= lucr ? tr0 : Math.ceil(tr0 * zt / lucr);
+  const sW = W * (+S.spor_weekend || 0), sS = Sb * (+S.spor_sarbatoare || 0), sD = dep * (+S.diurna || 0), sporuri = marire + sW + sS + sD + transport;
+  return { zile: zile.length, lucr, P, D, prez: P + D, L: n("L"), CO: n("CO"), CM: n("CM"), W, S: Sb, N: n("N"), I: n("I"), dep, oreMin, normMin: lucr * oz * 60, km, lipsa, baza, marire, sW, sS, sD, transport, sporuri, total: baza + sporuri };
+}
+async function pntIncarca(sid, luna){
+  PNT.sid = sid; PNT.luna = luna; PNT.murdar = false; const z = pntZile(luna), el = $("pnt-card"); if(el) el.innerHTML = '<div class="card"><p class="muted" style="margin:0">Se încarcă pontajul…</p></div>';
+  const [r, v, m] = await Promise.all([db.from("pontaj_zile").select("*").eq("sofer_id", sid).gte("zi", z[0]).lte("zi", z[z.length - 1]), db.from("pontaj_luna").select("*").eq("sofer_id", sid).eq("luna", luna).maybeSingle(),
+    ANG.mas ? Promise.resolve({ data: ANG.mas }) : db.from("masini").select("nr").order("nr")]);
+  if(r.error){ toast(r.error.message, true); return; }
+  if(PNT.sid !== sid || PNT.luna !== luna) return;
+  ANG.mas = m.data || []; PNT.vir = v.data ? v.data.virament : null;
+  const by = new Map((r.data || []).map(x => [x.zi, x]));
+  PNT.rows = z.map(d => { const x = by.get(d); return x ? { zi: d, cod: x.cod || "", masina: x.masina || "", ora_start: afOra(x.ora_start), ora_stop: afOra(x.ora_stop), km: x.km, observatii: x.observatii || "", sursa: x.sursa || "manual", rsI: x.ora_start_real, reI: x.ora_stop_real, salvat: true }
+    : { zi: d, cod: "", masina: "", ora_start: "", ora_stop: "", km: null, observatii: "", sursa: "", rsI: null, reI: null, salvat: false }; });
+  if(!(r.data || []).length) await pntAuto(true); else pntDeseneaza();
+}
+async function pntAuto(tacut){
+  const x = ANG.L.find(a => a.id === PNT.sid); if(!x) return; const luna = PNT.luna, z = pntZile(luna), d1 = z[0], d2 = z[z.length - 1], azi = today();
+  const N = new Set([x.nume, ...(x.nume_vechi || [])].map(pntNorm)), eu = t => N.has(pntNorm(t));
+  const [rs, iz, pd] = await Promise.all([db.from("route_sessions").select("session_date,driver1,driver2,vehicle_plate,km_start,km_end,status,created_at,updated_at").gte("session_date", d1).lte("session_date", d2),
+    db.from("inceput_zi").select("zi,sofer1,sofer2,masina_numar,ora_start").gte("zi", d1).lte("zi", d2), db.from("prezenta_depozit").select("zi,angajat,ora_sosire,ora_plecare").gte("zi", d1).lte("zi", d2)]);
+  const er = rs.error || iz.error || pd.error; if(er){ toast("Nu am putut citi rutele: " + er.message, true); pntDeseneaza(); return; }
+  if(PNT.sid !== x.id || PNT.luna !== luna) return;
+  const rot = Math.max(1, +(ANG.set || {}).rotunjire_min || 15), sb = pntSarb(luna), Z = {};
+  const pune = (d, a, b, km, mas, fel) => { const o = Z[d] || (Z[d] = { a: null, b: null, km: 0, mas: new Set(), ruta: false, zi: false });
+    if(a && izZiLocala(a) === d && (!o.a || new Date(a) < new Date(o.a))) o.a = a; if(b && izZiLocala(b) === d && (!o.b || new Date(b) > new Date(o.b))) o.b = b;
+    if(km > 0) o.km += km; if(mas) o.mas.add(pntNorm(mas)); if(fel === "ruta") o.ruta = true; if(fel === "zi") o.zi = true; };
+  (rs.data || []).filter(s => eu(s.driver1) || eu(s.driver2)).forEach(s => pune(s.session_date, s.created_at, s.status === "finalizata" ? s.updated_at : null, s.km_end != null && s.km_start != null ? s.km_end - s.km_start : 0, s.vehicle_plate, "ruta"));
+  (iz.data || []).filter(s => eu(s.sofer1) || eu(s.sofer2)).forEach(s => pune(s.zi, s.ora_start, null, 0, s.masina_numar, "zi"));
+  (pd.data || []).filter(s => eu(s.angajat)).forEach(s => pune(s.zi, s.ora_sosire, s.ora_plecare, 0, "", "dep"));
+  let puse = 0, pastrate = 0;
+  PNT.rows.forEach(r => { const d = r.zi; if(d > azi) return;
+    if((r.sursa === "manual" || r.sursa === "excel") && pntPlin(r)){ pastrate++; return; }
+    const o = Z[d], w = dtz(d).getDay(), we = w === 0 || w === 6, s = sb.has(d); let n;
+    if(o && o.a){ const lm = t => { const q = new Date(t); return q.getHours() * 60 + q.getMinutes(); }, a = Math.floor(lm(o.a) / rot) * rot, b = o.b ? Math.min(1439, Math.ceil(lm(o.b) / rot) * rot) : null;
+      n = { cod: s ? "S" : we ? "W" : (o.ruta || o.zi ? "P" : "D"), masina: [...o.mas].join(" + "), ora_start: pntHM(a), ora_stop: b != null && b > a ? pntHM(b) : "", km: o.km || null, rsI: o.a, reI: o.b }; }
+    else if(x.program_start && x.program_stop && !we && !s) n = { cod: "P", masina: "", ora_start: afOra(x.program_start), ora_stop: afOra(x.program_stop), km: null, rsI: null, reI: null };
+    else if(we || s) n = { cod: "L", masina: "", ora_start: "", ora_stop: "", km: null, rsI: null, reI: null };
+    else return;
+    Object.assign(r, n, { sursa: "auto" }); puse++; });
+  if(puse) PNT.murdar = true;
+  pntDeseneaza();
+  if(!tacut) toast(puse + " zile completate din rute / program" + (pastrate ? " · " + pastrate + " zile scrise de mână sau din Excel au rămas neatinse" : "") + " — verifică și apasă Salvează pontajul");
+}
+const pntSemn = r => r.sursa === "auto" ? `<span class="muted" style="cursor:help" title="Completat automat${r.rsI ? " · ora reală: " + pntOraLoc(r.rsI) + (r.reI ? " – " + pntOraLoc(r.reI) : " (rută nefinalizată)") : ""}">⚙${r.rsI ? " " + pntOraLoc(r.rsI) + (r.reI ? "–" + pntOraLoc(r.reI) : "") : ""}</span>` : r.sursa === "excel" ? '<span class="muted" title="Adus din Excel">xls</span>' : r.sursa === "manual" && pntPlin(r) ? '<span class="muted" title="Scris / corectat de mână">✎</span>' : "";
+function pntStatHtml(){
+  const x = ANG.L.find(a => a.id === PNT.sid) || {}, c = pntCalc(PNT.rows, PNT.luna, ANG.priv[x.id], ANG.set), dif = c.oreMin - c.normMin, vir = +PNT.vir || 0;
+  const t = (L) => `<table style="width:100%">${L.map(([a, b, bold]) => `<tr${bold ? ' style="font-weight:700"' : ""}><td>${a}</td><td style="text-align:right;white-space:nowrap">${b}</td></tr>`).join("")}</table>`;
+  return `<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px;margin-top:12px">
+    <div><h4 style="margin:0 0 6px">Statistica zilelor</h4>${t([["Zile în lună", c.zile], ["Zile lucrătoare (luni–vineri)", c.lucr], ["Zile prezente (P + D)", c.prez], ["Zile libere (L)", c.L], ["Concediu de odihnă (CO)", c.CO], ["Concediu medical (CM)", c.CM], ["Weekend lucrat (W)", c.W], ["Sărbătoare legală lucrată (S)", c.S], ["Zile cu depășire (diurne)", c.dep], ["Absent nemotivat (N)", c.N], ["Învoire (I)", c.I]])}
+      <div style="margin-top:6px;font-weight:700;color:${c.lipsa ? "#C0392B" : "#2E8B3C"}">${c.lipsa ? "⚠ Lipsesc coduri pentru " + c.lipsa + (c.lipsa === 1 ? " zi" : " zile") + " (până azi)" : "✓ Toate zilele până azi au cod"}</div></div>
+    <div><h4 style="margin:0 0 6px">Ore și km</h4>${t([["Ore normate (zile lucrătoare × ore / zi)", pntOreT(c.normMin) || "0"], ["Ore realizate (fără W)", pntOreT(c.oreMin) || "0"], ["Diferență", (dif < 0 ? "−" : "+") + (pntOreT(Math.abs(dif)) || "0")], ["% realizare", c.normMin ? Math.round(100 * c.oreMin / c.normMin) + "%" : "—"], ["Km parcurși (fără W)", c.km.toLocaleString("ro-RO")]])}</div>
+    <div><h4 style="margin:0 0 6px">🔒 Calcul plată (estimativ)</h4>${t([["Salariu de bază", pntLei(c.baza)], ["Mărire salariu", pntLei(c.marire)], ["Spor weekend (" + c.W + " zile)", pntLei(c.sW)], ["Spor sărbătoare legală (" + c.S + " zile)", pntLei(c.sS)], ["Depășire program (" + c.dep + " zile)", pntLei(c.sD)], ["Transport", pntLei(c.transport)], ["Total sporuri", pntLei(c.sporuri)], ["Total de plată (estimativ)", pntLei(c.total), 1]])}
+      <div class="row" style="margin-top:6px;align-items:center;gap:8px"><div style="flex:1">Virament bancar (lei)</div><div style="flex:0 0 120px"><input type="number" step="0.01" value="${PNT.vir == null ? "" : PNT.vir}" onchange="PNT.vir=afNum(this.value);PNT.murdar=true;$('pnt-stat').innerHTML=pntStatHtml()" style="text-align:right"></div></div>
+      <div style="display:flex;justify-content:space-between;font-weight:700;margin-top:6px"><span>Rest de plată numerar</span><span>${pntLei(c.total - vir)}</span></div>
+      <div class="muted" style="font-size:12px;margin-top:6px">Calcul pentru uz intern; nu include impozite, contribuții sau alte rețineri.${c.baza ? "" : " Salariul nu e completat în fișa de mai sus."}</div></div></div>`;
+}
+function pntDeseneaza(){
+  const el = $("pnt-card"), x = ANG.L.find(a => a.id === PNT.sid); if(!el || !x) return;
+  const sb = pntSarb(PNT.luna), azi = today(), prag = ((+(ANG.set || {}).ore_zi || 8) + (+(ANG.set || {}).prag_depasire || 0)) * 60;
+  el.innerHTML = `<div class="card"><h3 style="margin:0 0 8px;color:var(--g)">Pontaj lunar — ${esc(x.nume)}</h3>
+    <div class="row noprint" style="align-items:flex-end">
+      <div style="flex:0;min-width:170px"><label>Luna</label><input type="month" value="${PNT.luna}" onchange="pntLuna(this.value)"></div>
+      <div style="flex:0"><label>&nbsp;</label><button class="btn sec" onclick="pntAuto(false)" title="Completează zilele din rutele șoferilor, începutul zilei, prezența la depozit și programul de birou. Zilele scrise de mână nu se schimbă.">⟳ Completează din rute</button></div>
+      <div style="flex:0"><label>&nbsp;</label><button class="btn" onclick="pntSalveaza()">Salvează pontajul</button></div>
+      <div style="flex:0"><label>&nbsp;</label><button class="btn sec" onclick="pntExcel()">Export Excel</button></div>
+      <div><p class="muted" style="margin:0">⚙ = completat automat (ora reală alături; pornirea e rotunjită în jos, sosirea în sus) · ✎ = corectat de mână · ★ = sărbătoare legală. Orice căsuță se poate corecta; nimic nu se păstrează până nu apeși <b>Salvează pontajul</b>.</p></div></div>
+    <datalist id="pnt-dl">${(ANG.mas || []).map(m => `<option value="${esc(m.nr)}">`).join("")}</datalist>
+    <div class="tw" style="margin-top:10px;max-height:none"><table><thead><tr><th>Nr</th><th>Data</th><th>Ziua</th><th>Cod</th><th>Mașina</th><th>Pornire</th><th>Sosire</th><th style="text-align:right">Ore</th><th>Km</th><th>Observații</th><th></th></tr></thead><tbody>${PNT.rows.map((r, i) => { const w = dtz(r.zi).getDay(), s = sb.get(r.zi), o = pntOre(r);
+      return `<tr style="${w === 0 || w === 6 || s ? "background:rgba(127,127,127,.10);" : ""}${r.zi === azi ? "outline:2px solid var(--g);" : ""}${r.zi > azi ? "opacity:.6;" : ""}"><td>${i + 1}</td><td style="white-space:nowrap">${fmtD(r.zi)}</td><td${s ? ` title="${esc(s)}" style="color:#C0392B;font-weight:600;white-space:nowrap"` : ""}>${PNT_ZI[w]}${s ? " ★" : ""}</td>
+        <td><select onchange="pntSch(${i},'cod',this.value)" style="min-width:66px;font-weight:700">${PNT_COD.map(c => `<option${c === (r.cod || "") ? " selected" : ""}>${c}</option>`).join("")}</select></td>
+        <td><input list="pnt-dl" value="${esc(r.masina || "")}" onchange="pntSch(${i},'masina',this.value.toUpperCase())" style="min-width:120px"></td>
+        <td><input type="time" value="${esc(r.ora_start || "")}" onchange="pntSch(${i},'ora_start',this.value)"></td><td><input type="time" value="${esc(r.ora_stop || "")}" onchange="pntSch(${i},'ora_stop',this.value)"></td>
+        <td id="pnt-o-${i}" style="text-align:right;font-weight:600${o > prag ? ";color:#D97706" : ""}">${pntOreT(o)}</td>
+        <td><input type="number" value="${r.km == null ? "" : r.km}" onchange="pntSch(${i},'km',this.value)" style="width:84px"></td>
+        <td><input value="${esc(r.observatii || "")}" onchange="pntSch(${i},'observatii',this.value)" style="min-width:170px"></td><td id="pnt-s-${i}" style="white-space:nowrap;font-size:12px">${pntSemn(r)}</td></tr>`; }).join("")}</tbody></table></div>
+    <div id="pnt-stat">${pntStatHtml()}</div></div>`;
+}
+function pntSch(i, c, v){
+  const r = PNT.rows[i]; if(!r) return;
+  r[c] = c === "km" ? (afNum(v) == null ? null : Math.round(afNum(v))) : v; r.sursa = "manual"; PNT.murdar = true;
+  const o = pntOre(r), prag = ((+(ANG.set || {}).ore_zi || 8) + (+(ANG.set || {}).prag_depasire || 0)) * 60, oc = $("pnt-o-" + i);
+  if(oc){ oc.textContent = pntOreT(o); oc.style.color = o > prag ? "#D97706" : ""; } if($("pnt-s-" + i)) $("pnt-s-" + i).innerHTML = pntSemn(r);
+  if((c === "ora_start" || c === "ora_stop") && r.ora_start && r.ora_stop && !o) toast("Ora de sosire trebuie să fie după ora de pornire", true);
+  $("pnt-stat").innerHTML = pntStatHtml();
+}
+function pntLuna(v){ if(!v) return; if(PNT.murdar && !confirm("Pontajul are schimbări nesalvate. Le pierzi?")){ pntDeseneaza(); return; } pntIncarca(PNT.sid, v); }
+async function pntSalveaza(){
+  const acum = new Date().toISOString(), sid = PNT.sid, luna = PNT.luna;
+  const up = PNT.rows.filter(pntPlin).map(r => ({ sofer_id: sid, zi: r.zi, cod: r.cod || null, masina: r.masina || null, ora_start: r.ora_start || null, ora_stop: r.ora_stop || null, km: r.km == null ? null : r.km,
+    observatii: r.observatii || null, sursa: r.sursa || "manual", ora_start_real: r.rsI || null, ora_stop_real: r.reI || null, updated_at: acum }));
+  const gol = PNT.rows.filter(r => !pntPlin(r) && r.salvat).map(r => r.zi);
+  if(up.length){ const { error } = await db.from("pontaj_zile").upsert(up, { onConflict: "sofer_id,zi" }); if(error){ toast(error.message, true); return; } }
+  if(gol.length){ const { error } = await db.from("pontaj_zile").delete().eq("sofer_id", sid).in("zi", gol); if(error){ toast(error.message, true); return; } }
+  { const { error } = await db.from("pontaj_luna").upsert({ sofer_id: sid, luna, virament: PNT.vir == null ? null : PNT.vir, updated_at: acum }); if(error){ toast(error.message, true); return; } }
+  PNT.rows.forEach(r => r.salvat = pntPlin(r)); PNT.murdar = false; toast("Pontajul s-a salvat (" + up.length + " zile)");
+  const an = new Date().getFullYear(), z = await db.from("pontaj_zile").select("sofer_id,cod").gte("zi", an + "-01-01").lte("zi", an + "-12-31").in("cod", ["CO", "CM"]);   // concediile de pe Dashboard
+  if(!z.error){ ANG.co = {}; (z.data || []).forEach(q => { const o = ANG.co[q.sofer_id] || (ANG.co[q.sofer_id] = { CO: 0, CM: 0 }); o[q.cod]++; }); }
+}
+async function pntSumar(){
+  const el = $("pnt-sumar"); if(!el) return; if(!ANG.admin){ el.style.display = "none"; return; }
+  const luna = PNT.luna || today().slice(0, 7); PNT.luna = luna; const z = pntZile(luna);
+  const [r, v] = await Promise.all([db.from("pontaj_zile").select("*").gte("zi", z[0]).lte("zi", z[z.length - 1]), db.from("pontaj_luna").select("*").eq("luna", luna)]);
+  if(!$("pnt-sumar") || ANG.tab !== "dash") return; if(r.error){ el.innerHTML = '<p class="muted">' + esc(r.error.message) + "</p>"; return; }
+  const T = { prez: 0, ore: 0, km: 0, tot: 0, vir: 0 }, d = t => `<td style="text-align:right">${t}</td>`;
+  const rnd = angViz().filter(x => x.activ !== false).map(x => { const rows = (r.data || []).filter(q => q.sofer_id === x.id).map(q => Object.assign({}, q, { ora_start: afOra(q.ora_start), ora_stop: afOra(q.ora_stop) }));
+    const c = pntCalc(rows, luna, ANG.priv[x.id], ANG.set), vir = +((v.data || []).find(q => q.sofer_id === x.id) || {}).virament || 0;
+    T.prez += c.prez; T.ore += c.oreMin; T.km += c.km; T.tot += c.total; T.vir += vir;
+    return `<tr style="cursor:pointer" onclick="angTab('${x.id}')"><td><b>${esc(x.nume)}</b></td>${d(c.prez)}${d(pntOreT(c.oreMin))}${d(pntOreT(c.normMin))}${d(c.dep || "")}${d(c.W || "")}${d(c.S || "")}${d(c.CO || "")}${d(c.CM || "")}${d(c.km ? c.km.toLocaleString("ro-RO") : "")}${d(pntLei(c.total))}${d(vir ? pntLei(vir) : "")}${d(pntLei(c.total - vir))}
+      <td style="font-weight:600;color:${!rows.length ? "var(--mut)" : c.lipsa ? "#C0392B" : "#2E8B3C"}">${!rows.length ? "nesalvat" : c.lipsa ? "lipsesc " + c.lipsa + " zile" : "OK"}</td></tr>`; }).join("");
+  el.innerHTML = `<div class="row noprint" style="align-items:flex-end;margin-bottom:8px"><div style="flex:1"><h3 style="margin:0;color:var(--g)">Sumar pontaj și plată — toți angajații</h3></div><div style="flex:0;min-width:170px"><label>Luna</label><input type="month" value="${luna}" onchange="if(this.value){PNT.luna=this.value;pntSumar()}"></div></div>
+    <div class="tw"><table><thead><tr><th>Angajat</th><th style="text-align:right">Zile prezente</th><th style="text-align:right">Ore realizate</th><th style="text-align:right">Ore normate</th><th style="text-align:right">Depășiri</th><th style="text-align:right">W</th><th style="text-align:right">S</th><th style="text-align:right">CO</th><th style="text-align:right">CM</th><th style="text-align:right">Km</th><th style="text-align:right">Total de plată</th><th style="text-align:right">Virament</th><th style="text-align:right">Rest numerar</th><th>Pontaj</th></tr></thead><tbody>${rnd}
+      <tr style="font-weight:700"><td>TOTAL</td>${d(T.prez)}${d(pntOreT(T.ore))}<td colspan="6"></td>${d(T.km.toLocaleString("ro-RO"))}${d(pntLei(T.tot))}${d(pntLei(T.vir))}${d(pntLei(T.tot - T.vir))}<td></td></tr></tbody></table></div>
+    <p class="muted" style="margin:8px 0 0">Din pontajele <b>salvate</b>. Clic pe un angajat = pontajul lui pe zile. „nesalvat” = deschide fișa lui, verifică zilele propuse și apasă Salvează pontajul.</p>`;
+}
+async function pntExcel(){
+  const x = ANG.L.find(a => a.id === PNT.sid); if(!x) return; let ExcelJS; try{ ExcelJS = await expLib("exceljs"); }catch(e){ toast("Nu s-a putut încărca ExcelJS: " + e.message, true); return; }
+  const c = pntCalc(PNT.rows, PNT.luna, ANG.priv[x.id], ANG.set), wb = new ExcelJS.Workbook(), ws = wb.addWorksheet("PONTAJ"), vir = +PNT.vir || 0, luni = ["IANUARIE", "FEBRUARIE", "MARTIE", "APRILIE", "MAI", "IUNIE", "IULIE", "AUGUST", "SEPTEMBRIE", "OCTOMBRIE", "NOIEMBRIE", "DECEMBRIE"];
+  const B = { top: { style: "thin" }, left: { style: "thin" }, bottom: { style: "thin" }, right: { style: "thin" } }, bold = { bold: true };
+  ws.columns = [6, 13, 13, 7, 16, 10, 10, 9, 9, 34].map(w => ({ width: w }));
+  ws.addRow(["PONTAJ LUNAR - " + luni[+PNT.luna.slice(5) - 1] + " " + PNT.luna.slice(0, 4)]).font = { bold: true, size: 14 };
+  ws.addRow(["Angajat", x.nume, "", "Functie", x.functie || ""]); ws.addRow(["Nr. contract", x.nr_contract || "", "", "Data angajarii", fmtD(x.data_angajare), "", "Vechime", afVechime(x.data_angajare)]); ws.addRow([]);
+  const h = ws.addRow(["Nr", "Data", "Ziua", "Cod", "Masina", "Ora pornire", "Ora sosire", "Ore lucrate", "KM parcursi", "Observatii"]); h.font = bold; h.eachCell(q => { q.border = B; q.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFE6F3EA" } }; });
+  PNT.rows.forEach((r, i) => { const w = dtz(r.zi).getDay(), rr = ws.addRow([i + 1, fmtD(r.zi), PNT_ZI[w], r.cod || "", r.masina || "", r.ora_start || "", r.ora_stop || "", pntOreT(pntOre(r)), r.km == null ? "" : r.km, faraDiac(r.observatii || "")]);
+    rr.eachCell({ includeEmpty: true }, q => { q.border = B; if(w === 0 || w === 6) q.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFF0F0F0" } }; }); });
+  ws.addRow(["TOTAL", "", "", "", "", "", "", pntOreT(c.oreMin), c.km]).font = bold; ws.addRow([]);
+  const S1 = [["Zile in luna", c.zile], ["Zile lucratoare (Luni-Vineri)", c.lucr], ["Zile prezente (P+D)", c.prez], ["Zile libere (L)", c.L], ["Concediu odihna (CO)", c.CO], ["Concediu medical (CM)", c.CM], ["Zile weekend (W)", c.W], ["Zile cu depasire (diurne)", c.dep], ["Sarbatoare legala (S)", c.S], ["Absent nemotivat (N)", c.N], ["Absent motivat (I)", c.I]];
+  const S2 = [["Salariu de baza", c.baza], ["Marire salariu", c.marire], ["Spor weekend", c.sW], ["Spor sarbatoare legala", c.sS], ["Depasire program", c.sD], ["Transport", c.transport], ["Total sporuri", c.sporuri], ["Total de plata (estimativ)", c.total], ["Virament bancar", vir], ["Rest de plata numerar", c.total - vir], ["Ore normate", pntOreT(c.normMin)]];
+  ws.addRow(["STATISTICA ZILE", "", "", "", "", "CALCUL PLATA (ESTIMATIV)"]).font = bold;
+  S1.forEach((s, i) => ws.addRow([s[0], "", "", s[1], "", S2[i][0], "", "", S2[i][1]]));
+  ws.addRow([]); ws.addRow(["Nota: calcul estimativ, pentru uz intern; nu include impozite, contributii sau alte retineri legale."]).font = { italic: true, size: 9 };
+  ws.addRow([]); ws.addRow(["Semnatura angajat:", "", "", "", "", "", "Data:"]); ws.addRow([]); ws.addRow(["Semnatura sef direct:"]);
+  ws.pageSetup = { orientation: "portrait", fitToPage: true, fitToWidth: 1, fitToHeight: 1, paperSize: 9 };
+  const buf = await wb.xlsx.writeBuffer(); expDescarca(new Blob([buf], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" }), "PONTAJ - " + x.nume + " - " + PNT.luna + ".xlsx");
 }
 
 // ---------- FLOTĂ ----------
