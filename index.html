@@ -1116,7 +1116,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
   <span id="rz-w"><button id="rz-reset" class="pictograma" title="Lățimi implicite — pune coloanele din tabelele acestei file înapoi cum erau">↺ Reset layout</button><i class="rz-sep">|</i></span>
   <span id="tz-w" title="Mărimea tabelului (doar tabelul, restul rămâne la fel), din 5 în 5%. Merge și cu Ctrl + rotița mausului, Ctrl + / Ctrl − / Ctrl 0. Dublu clic pe procent = scrii tu valoarea."><button class="pictograma" onclick="tzPas(-1)" aria-label="Micșorează tabelul">−</button><b id="tz-v" ondblclick="tzScrie()" title="Dublu clic = scrii mărimea (ex. 87), Enter">100%</b><input id="tz-in" type="number" min="30" max="300" step="5" style="display:none"><button class="pictograma" onclick="tzPas(1)" aria-label="Mărește tabelul">+</button></span>
-  <span class="ver">v8.66</span>
+  <span class="ver">v8.67</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -13896,7 +13896,7 @@ const afTabs = (id, L, sel, fn) => { $(id).innerHTML = L.map(([k, t]) => `<butto
 // ---------- ANGAJAȚI ----------
 async function angIncarca(){
   const an = new Date().getFullYear();
-  const [a, p, s, e, z] = await Promise.all([db.from("soferi").select("*").order("nume"), db.from("angajati_privat").select("*"), db.from("pontaj_setari").select("*").maybeSingle(), db.rpc("este_admin"),
+  const [a, p, s, e, z] = await Promise.all([db.from("soferi").select("*").order("ordine", { nullsFirst: false }).order("nume"), db.from("angajati_privat").select("*"), db.from("pontaj_setari").select("*").maybeSingle(), db.rpc("este_admin"),
     db.from("pontaj_zile").select("sofer_id,cod").gte("zi", an + "-01-01").lte("zi", an + "-12-31").in("cod", ["CO", "CM"])]);
   if(a.error){ toast(a.error.message, true); return; }
   ANG.L = (a.data || []).filter(x => !x.unit_in); ANG.priv = {}; (p.data || []).forEach(x => ANG.priv[x.sofer_id] = x);
@@ -13905,10 +13905,32 @@ async function angIncarca(){
   if(ANG.tab !== "dash" && ANG.tab !== "set" && ANG.tab !== "nou" && ANG.tab !== "cereri" && !ANG.L.some(x => String(x.id) === String(ANG.tab))) ANG.tab = "dash";
   angDeseneaza();
 }
+// v8.67 (cerut de Ovidiu, 13.11): ordinea angajaților se schimbă trăgând fila cu mouse-ul; se salvează în soferi.ordine
+// (aceeași ordine o folosesc și aplicațiile șoferilor la lista de șoferi).
+function angTrage(){
+  const ids = angViz().map(x => String(x.id));
+  [...$("ang-tabs").children].forEach(b => { const m = /angTab\('([^']+)'\)/.exec(b.getAttribute("onclick") || ""); if(!m || !ids.includes(m[1])) return;
+    b.draggable = true; b.dataset.k = m[1]; b.title = "Trage fila ca să schimbi ordinea angajaților";
+    b.ondragstart = e => { ANG.trag = m[1]; e.dataTransfer.effectAllowed = "move"; b.style.opacity = ".4"; };
+    b.ondragend = () => { b.style.opacity = ""; document.querySelectorAll("#ang-tabs button").forEach(q => q.style.boxShadow = ""); };
+    b.ondragover = e => { if(!ANG.trag || ANG.trag === m[1]) return; e.preventDefault(); const r = b.getBoundingClientRect(), st = e.clientX < r.left + r.width / 2;
+      document.querySelectorAll("#ang-tabs button").forEach(q => q.style.boxShadow = ""); b.style.boxShadow = (st ? "inset 3px 0 0 " : "inset -3px 0 0 ") + "var(--g)"; b.dataset.poz = st ? "st" : "dr"; };
+    b.ondragleave = () => { b.style.boxShadow = ""; };
+    b.ondrop = e => { e.preventDefault(); const de = ANG.trag; ANG.trag = null; if(!de || de === m[1]) return; angMuta(de, m[1], b.dataset.poz === "dr"); }; });
+}
+async function angMuta(de, la, dupa){
+  const L = ANG.L.slice(), i = L.findIndex(x => String(x.id) === de); if(i < 0) return; const [x] = L.splice(i, 1);
+  let j = L.findIndex(q => String(q.id) === la); if(j < 0) return; if(dupa) j++; L.splice(j, 0, x);
+  ANG.L = L; angDeseneaza();
+  const sch = L.map((q, k) => ({ id: q.id, ordine: k + 1 })).filter(q => (L.find(y => y.id === q.id) || {}).ordine !== q.ordine);
+  for(const q of sch){ const { error } = await db.from("soferi").update({ ordine: q.ordine }).eq("id", q.id); if(error){ toast("Ordinea nu s-a salvat: " + error.message, true); return; } const y = ANG.L.find(z => z.id === q.id); if(y) y.ordine = q.ordine; }
+  toast("Ordinea angajaților s-a salvat");
+}
 function angTab(k){ if(PNT.murdar && !confirm("Pontajul are schimbări nesalvate. Le pierzi?")) return; PNT.murdar = false; ANG.tab = k; angDeseneaza(); }
 const angViz = () => ANG.L.filter(x => ANG.inactivi || x.activ !== false);
 function angDeseneaza(){
   afTabs("ang-tabs", [["dash", "Dashboard"], ...angViz().map(x => [x.id, x.nume]), ["cereri", "Cereri"], ...(ANG.admin ? [["set", "Setări pontaj"]] : [])], ANG.tab, "angTab");
+  angTrage();   // v8.67: filele angajaților se mută cu mouse-ul
   if(ANG.tab === "dash") angDash(); else if(ANG.tab === "set") angSetari(); else if(ANG.tab === "cereri") crrTab(); else angFisa(ANG.tab === "nou" ? null : ANG.L.find(x => String(x.id) === String(ANG.tab)));
 }
 function angDash(){
