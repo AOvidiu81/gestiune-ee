@@ -174,6 +174,10 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   .pr-l .btn{padding:3px 8px}
   .subtab button{padding:7px 16px;border-radius:8px;border:1px solid var(--bd);background:none;color:inherit;cursor:pointer;font:inherit;font-size:14px}
   .subtab button.on{background:var(--g);border-color:var(--g);color:#fff}
+  /* v8.58: filele din Angajați / Flotă (separate de .subtab, pe care îl comută subStoc) */
+  .tabz{display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap}
+  .tabz button{padding:7px 14px;border-radius:8px;border:1px solid var(--bd);background:none;color:inherit;cursor:pointer;font:inherit;font-size:14px}
+  .tabz button.on{background:var(--g);border-color:var(--g);color:#fff}
   .pr-dep{display:flex;flex-wrap:wrap;gap:4px 14px;padding:6px 0 10px;margin-bottom:6px;border-bottom:1px solid var(--bd);font-size:13px}
   .pr-dep b{font-weight:600;color:var(--mut);font-size:11px;text-transform:uppercase;letter-spacing:.04em;width:100%}
   .pr-dep label{display:flex;align-items:center;gap:5px;cursor:pointer;white-space:nowrap}
@@ -1109,7 +1113,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
   <span id="rz-w"><button id="rz-reset" class="pictograma" title="Lățimi implicite — pune coloanele din tabelele acestei file înapoi cum erau">↺ Reset layout</button><i class="rz-sep">|</i></span>
   <span id="tz-w" title="Mărimea tabelului (doar tabelul, restul rămâne la fel), din 5 în 5%. Merge și cu Ctrl + rotița mausului, Ctrl + / Ctrl − / Ctrl 0. Dublu clic pe procent = scrii tu valoarea."><button class="pictograma" onclick="tzPas(-1)" aria-label="Micșorează tabelul">−</button><b id="tz-v" ondblclick="tzScrie()" title="Dublu clic = scrii mărimea (ex. 87), Enter">100%</b><input id="tz-in" type="number" min="30" max="300" step="5" style="display:none"><button class="pictograma" onclick="tzPas(1)" aria-label="Mărește tabelul">+</button></span>
-  <span class="ver">v8.57</span>
+  <span class="ver">v8.58</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -1130,6 +1134,8 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <button data-p="rute">Monitorizare rute</button>
   <button data-p="raportrute">Verificare rute șoferi</button>
   <button data-p="inceput" data-h="inceputul-zilei" style="display:none">Începutul zilei</button><!-- v5.36: unit în Raport foi parcurs -->
+  <button data-p="angajati" data-h="angajati">Angajați</button><!-- v8.58: registrul angajaților (sursa unică) + pontaj -->
+  <button data-p="flota" data-h="flota">Flotă</button><!-- v8.58: registrul flotei: acte, alimentări, consum -->
   <button data-p="foi" data-h="foi-parcurs">Pontaj angajați</button><!-- v6.32: fost „Raport foi parcurs”; file: Foi de parcurs / Prezență depozit -->
   <button data-p="admin">Administrare</button>
   <button data-p="verificare">Verificare <span id="v-badge" class="badge" style="display:none">0</span></button>
@@ -1399,6 +1405,16 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
     </div>
     <div class="tw" style="margin-top:10px"><table id="iz-tbl"></table></div>
   </div>
+</section>
+
+<!-- ================= v8.58: ANGAJAȚI + FLOTĂ ================= -->
+<section class="page" id="p-angajati">
+  <div class="tabz noprint" id="ang-tabs"></div>
+  <div id="ang-corp"></div>
+</section>
+<section class="page" id="p-flota">
+  <div class="tabz noprint" id="flo-tabs"></div>
+  <div id="flo-corp"></div>
 </section>
 
 <!-- ================= RAPORT FOI PARCURS ================= -->
@@ -2750,6 +2766,8 @@ document.querySelectorAll("nav button").forEach(b=>b.onclick=(ev)=>{
   if(b.dataset.p==="pv"){ pvMod(b.dataset.v || "pv"); loadPV(); }
   if(b.dataset.p==="raportrute"){ if(!RR_CERUT) RR_SID = null; loadRR(true); }   // v6.34: din meniu = toate rutele   // v5.18: la fiecare deschidere, datele proaspete din bază
   if(b.dataset.p==="inceput") loadIZ();
+  if(b.dataset.p==="angajati") angIncarca();   // v8.58
+  if(b.dataset.p==="flota") fltIncarca();   // v8.58
   if(b.dataset.p==="foi") loadFP(true);   // v6.51: mereu proaspăt (rutele se finalizează între timp)
   try{ history.replaceState(null,"","#"+(b.dataset.h||b.dataset.p)); }catch(e){}
 });
@@ -3335,6 +3353,8 @@ function kalAzi(){ const d = new Date(); KAL.an = d.getFullYear(); KAL.luna = d.
     "pv-cereri": p("M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2") + c(9, 7, 4) + p("M22 21v-2a4 4 0 0 0-3-3.87") + p("M16 3.13a4 4 0 0 1 0 7.75"),
     "fise": '<rect x="5" y="3" width="14" height="18" rx="2"/>' + p("M9 3v2h6V3") + p("M9 10h6") + p("M9 14h6") + p("M9 18h3") + p("M15.5 17.5l1.5 1.5 3-3"),   // v8.14
     "calendar": '<rect x="3" y="4" width="18" height="18" rx="2"/>' + p("M16 2v4") + p("M8 2v4") + p("M3 10h18") + p("M7 14h4") + p("M7 18h2"),   // v8.41
+    "angajati": p("M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2") + c(9, 7, 4) + p("M19 8v6") + p("M22 11h-6"),   // v8.58
+    "flota": p("M5 17H3v-5l2-5h11l3 5h2v5h-2") + p("M9 17h6") + c(7, 17, 2) + c(17, 17, 2) + p("M5 12h14"),   // v8.58
     "ghid": c(10.5, 10.5, 7) + p("m21 21-5.2-5.2") + p("M8.3 8.6a2.2 2.2 0 1 1 3.1 2c-.6.3-.9.7-.9 1.3") + p("M10.5 14.2h.01")   // v8.55: lupă cu „?”
   };
   const SCURT = { "Contracte și anexe clienți": "Contracte și anexe", "Verificare rute șoferi": "Verificare rute", "Cereri / documente angajați": "Cereri angajați", "Fișă date contract": "Fișă date contract" };
@@ -13851,6 +13871,244 @@ function deschideSectiune(nume){
   if(b && !b.classList.contains("on")) b.click();
 }
 var INIT_GATA = false;
+
+// ================= v8.58 (cerut de Ovidiu, 13.11): ANGAJAȚI + FLOTĂ — etapa 1 =================
+// Sursa unică rămâne `soferi` (angajați) și `masini` (flotă) — de aici citesc și aplicațiile șoferilor (view-urile drivers / vehicle_plates,
+// doar rândurile cu „apare la șoferi”). Salariile (angajati_privat), cardul + PIN-ul (masini_privat), pontajul (pontaj_zile) și setările
+// (pontaj_setari) se văd doar de administrator (RLS este_admin()). Rândul cu `unit_in` = contul de șofer al aceluiași angajat → ascuns aici.
+// Etapa 2: pontajul lunar pe angajat (precompletat din rute / prezență, rotunjit: pornirea în jos, sosirea în sus). Etapa 3: De urmărit.
+let ANG = { tab: "dash", L: [], priv: {}, admin: false, set: null, co: {}, inactivi: false, pont: [] };
+let FLT = { tab: "dash", L: [], priv: {}, alim: [], admin: false, luna: "" };
+const afZile = d => d ? Math.round((dtz(d) - dtz(today())) / 864e5) : null;
+const afSem = d => { const z = afZile(d); if(z == null) return '<span class="muted">—</span>'; const c = z < 0 ? "#C0392B" : z <= 30 ? "#D97706" : "#2E8B3C";
+  return `<span style="color:${c};font-weight:600;white-space:nowrap" title="${z < 0 ? "expirat de " + (-z) + " zile" : "mai sunt " + z + " zile"}">${fmtD(d)}${z < 0 ? " ✗" : z <= 30 ? " ⚠" : ""}</span>`; };
+const afStare = d => { const z = afZile(d); return z == null ? "" : z < 0 ? "EXPIRAT" : z <= 30 ? "ATENTIE" : "OK"; };
+const afVechime = d => { if(!d) return ""; const a = dtz(d), b = new Date(); let l = (b.getFullYear() - a.getFullYear()) * 12 + b.getMonth() - a.getMonth() - (b.getDate() < a.getDate() ? 1 : 0); if(l < 0) l = 0; return Math.floor(l / 12) + " ani, " + (l % 12) + " luni"; };
+const afNum = v => { const t = String(v == null ? "" : v).trim().replace(",", "."); return t === "" || isNaN(+t) ? null : +t; };
+const afOra = t => t ? String(t).slice(0, 5) : "";
+const afC = (id, et, v, tip, extra) => `<div><label>${et}</label><input id="${id}" type="${tip || "text"}" value="${esc(v == null ? "" : v)}" ${extra || ""}></div>`;
+const afBif = (id, et, on, tit) => `<div><label>&nbsp;</label><label style="display:flex;align-items:center;gap:6px;font-weight:400;cursor:pointer;padding:9px 0;text-transform:none" title="${esc(tit || "")}"><input type="checkbox" id="${id}" style="width:auto" ${on ? "checked" : ""}> ${et}</label></div>`;
+const afTabs = (id, L, sel, fn) => { $(id).innerHTML = L.map(([k, t]) => `<button class="${String(k) === String(sel) ? "on" : ""}" onclick="${fn}('${k}')">${esc(t)}</button>`).join(""); };
+
+// ---------- ANGAJAȚI ----------
+async function angIncarca(){
+  const an = new Date().getFullYear();
+  const [a, p, s, e, z] = await Promise.all([db.from("soferi").select("*").order("nume"), db.from("angajati_privat").select("*"), db.from("pontaj_setari").select("*").maybeSingle(), db.rpc("este_admin"),
+    db.from("pontaj_zile").select("sofer_id,cod").gte("zi", an + "-01-01").lte("zi", an + "-12-31").in("cod", ["CO", "CM"])]);
+  if(a.error){ toast(a.error.message, true); return; }
+  ANG.L = (a.data || []).filter(x => !x.unit_in); ANG.priv = {}; (p.data || []).forEach(x => ANG.priv[x.sofer_id] = x);
+  ANG.set = s.data || null; ANG.admin = !!e.data; ANG.co = {};
+  (z.data || []).forEach(x => { const o = ANG.co[x.sofer_id] || (ANG.co[x.sofer_id] = { CO: 0, CM: 0 }); o[x.cod]++; });
+  if(ANG.tab !== "dash" && ANG.tab !== "set" && ANG.tab !== "nou" && !ANG.L.some(x => String(x.id) === String(ANG.tab))) ANG.tab = "dash";
+  angDeseneaza();
+}
+function angTab(k){ ANG.tab = k; angDeseneaza(); }
+const angViz = () => ANG.L.filter(x => ANG.inactivi || x.activ !== false);
+function angDeseneaza(){
+  afTabs("ang-tabs", [["dash", "Dashboard"], ...angViz().map(x => [x.id, x.nume]), ...(ANG.admin ? [["set", "Setări pontaj"]] : [])], ANG.tab, "angTab");
+  if(ANG.tab === "dash") angDash(); else if(ANG.tab === "set") angSetari(); else angFisa(ANG.tab === "nou" ? null : ANG.L.find(x => String(x.id) === String(ANG.tab)));
+}
+function angDash(){
+  const L = angViz(), act = ANG.L.filter(x => x.activ !== false), adm = ANG.admin;
+  const exp = act.filter(x => afStare(x.medicina_expira) === "EXPIRAT").length, at = act.filter(x => afStare(x.medicina_expira) === "ATENTIE").length;
+  const lei = v => v == null ? "" : (+v).toLocaleString("ro-RO");
+  $("ang-corp").innerHTML = `<div class="card noprint"><div class="row" style="align-items:center">
+      <div style="flex:0"><button class="btn" onclick="angTab('nou')">+ Angajat nou</button></div>
+      <div style="flex:0"><button class="btn sec" onclick="angIncarca()">Reîncarcă</button></div>
+      <div style="flex:0"><label style="display:flex;align-items:center;gap:6px;font-weight:400;cursor:pointer;margin:0;text-transform:none"><input type="checkbox" style="width:auto" ${ANG.inactivi ? "checked" : ""} onchange="ANG.inactivi=this.checked;angDeseneaza()"> arată și inactivii</label></div>
+      <div><p class="muted" style="margin:0">Aici se țin datele angajaților — de aici le iau și aplicațiile șoferilor. Clic pe un rând = fișa lui. ${adm ? "Salariile le vezi doar tu (administrator)." : ""}</p></div></div>
+    <div class="kpi" style="margin-top:12px"><div>Angajați activi<b>${act.length}</b></div><div>Șoferi<b>${act.filter(x => /SOFER/i.test(x.functie || "")).length}</b></div>
+      <div${exp ? ' class="kpi-amb"' : ""}>Medicina muncii expirată<b>${exp}</b></div><div${at ? ' class="kpi-amb"' : ""}>Expiră în 30 de zile<b>${at}</b></div></div></div>
+    <div class="card"><div class="tw"><table><thead><tr><th>Angajat</th><th>Funcție</th><th>Nr. contract</th><th>Tip</th><th>Data angajării</th><th>Vechime</th><th>Medicina muncii</th>
+      <th title="Zile de concediu de odihnă: alocate pe an / luate anul acesta (din pontaj) / rămase">CO alocat / luat / rămas</th><th title="Concediu medical anul acesta (din pontaj)">CM</th><th>Program</th>
+      ${adm ? "<th style='text-align:right'>Salariu bază</th><th style='text-align:right'>Mărire</th><th style='text-align:right'>Transport</th>" : ""}<th>La șoferi</th><th>Status</th></tr></thead><tbody>` +
+    L.map(x => { const c = ANG.co[x.id] || { CO: 0, CM: 0 }, pv = ANG.priv[x.id] || {};
+      return `<tr style="cursor:pointer${x.activ === false ? ";opacity:.5" : ""}" onclick="angTab('${x.id}')"><td><b>${esc(x.nume)}</b></td><td>${esc(x.functie || "")}</td><td>${esc(x.nr_contract || "")}</td><td>${esc(x.tip_contract || "")}</td>
+        <td>${fmtD(x.data_angajare)}</td><td>${afVechime(x.data_angajare)}</td><td>${afSem(x.medicina_expira)}</td>
+        <td>${x.zile_co_an == null ? '<span class="muted">—</span>' : x.zile_co_an + " / " + c.CO + " / <b>" + (x.zile_co_an - c.CO) + "</b>"}</td><td>${c.CM || ""}</td>
+        <td>${x.program_start ? "birou " + afOra(x.program_start) + "–" + afOra(x.program_stop) : "din rute"}</td>
+        ${adm ? `<td style="text-align:right">${lei(pv.salariu_baza)}</td><td style="text-align:right">${lei(pv.marire)}</td><td style="text-align:right">${lei(pv.transport_luna)}</td>` : ""}
+        <td>${x.apare_la_soferi ? "da" : '<span class="muted">nu</span>'}</td><td>${x.activ === false ? "INACTIV" : "ACTIV"}</td></tr>`; }).join("") +
+    `</tbody></table></div><p class="muted" style="margin:10px 0 0">Pontajul lunar pe zile (precompletat din rute și prezența la depozit, cu orele rotunjite) și calculul plății vin în etapa următoare. Conturile de acces și PIN-urile rămân deocamdată în Administrare → Angajați.</p></div>`;
+}
+async function angFisa(x){
+  const nou = !x; x = x || { activ: true, apare_la_soferi: true }; const pv = ANG.priv[x.id] || {};
+  let pont = [];
+  if(!nou && ANG.admin){ const azi = today(), p1 = azi.slice(0, 8) + "01"; const r = await db.from("pontaj_zile").select("*").eq("sofer_id", x.id).gte("zi", p1).lte("zi", azi.slice(0, 8) + "31").order("zi"); pont = r.data || []; if(String(ANG.tab) !== String(x.id)) return; }
+  const ore = z => { if(!z.ora_start || !z.ora_stop) return ""; const [a, b] = [z.ora_start, z.ora_stop].map(t => +t.slice(0, 2) * 60 + +t.slice(3, 5)); const m = b - a; return m > 0 ? Math.floor(m / 60) + ":" + zi2(m % 60) : ""; };
+  $("ang-corp").innerHTML = `<div class="card"><h3 style="margin:0 0 10px;color:var(--g)">${nou ? "Angajat nou" : esc(x.nume)} <span class="muted" style="font-size:13px;font-weight:400">${nou ? "" : esc([x.functie, x.nr_contract ? "contract " + x.nr_contract : "", afVechime(x.data_angajare)].filter(Boolean).join(" · "))}</span></h3>
+    <div class="grid3">${afC("an-nume", "Nume și prenume (ca pe CI)", x.nume)}${afC("an-scurt", "Nume scurt", x.nume_scurt)}${afC("an-functie", "Funcție", x.functie)}
+      ${afC("an-tel", "Telefon", x.telefon)}${afC("an-email", "E-mail", x.email)}${afC("an-nastere", "Data nașterii", x.data_nasterii, "date")}
+      ${afC("an-cis", "CI seria", x.ci_serie)}${afC("an-cin", "CI numărul", x.ci_numar)}${afC("an-med", "Medicina muncii — expiră", x.medicina_expira, "date")}</div>
+    <h4 style="margin:16px 0 8px">Contract</h4>
+    <div class="grid3">${afC("an-ctr", "Nr. contract", x.nr_contract)}${afC("an-tip", "Tip contract", x.tip_contract, "text", 'placeholder="Nedeterminat"')}${afC("an-ang", "Data angajării", x.data_angajare, "date")}
+      ${afC("an-inc", "Data încetării", x.data_incetare, "date")}${afC("an-co", "Zile concediu alocate / an", x.zile_co_an, "number")}<div></div></div>
+    <h4 style="margin:16px 0 8px">Program și pontaj</h4>
+    <div class="grid3">${afC("an-ps", "Program birou — de la", afOra(x.program_start), "time")}${afC("an-pp", "Program birou — până la", afOra(x.program_stop), "time")}
+      ${afBif("an-sof", "apare în lista șoferilor (aplicațiile de rute)", x.apare_la_soferi, "Debifat = nu apare în aplicațiile șoferilor (ex. personal de birou)")}
+      <div style="grid-column:1/-1"><label>Nume vechi <span class="muted" style="text-transform:none;font-weight:400">(cum apare în rutele deja făcute — despărțite prin virgulă; pontajul le recunoaște)</span></label><input id="an-vechi" value="${esc((x.nume_vechi || []).join(", "))}"></div>
+      <div style="grid-column:1/-1"><label>Observații</label><input id="an-obs" value="${esc(x.observatii || "")}"></div>
+      ${afBif("an-activ", "angajat activ", x.activ !== false)}</div>
+    <p class="muted" style="margin:6px 0 0">Program de birou completat = zilele lucrătoare se pontează singure cu aceste ore (ziua cu rută ia orele rutei). Gol = pontajul vine din rute.</p>
+    ${ANG.admin ? `<h4 style="margin:16px 0 8px">🔒 Salarizare <span class="muted" style="font-weight:400;font-size:12px">— vizibil doar administratorului</span></h4>
+    <div class="grid3">${afC("an-sal", "Salariu de bază (lei)", pv.salariu_baza, "number")}${afC("an-mar", "Mărire salariu (lei)", pv.marire, "number")}${afC("an-dmar", "Data măririi", pv.data_marire, "date")}${afC("an-tr", "Transport (lei / lună)", pv.transport_luna, "number")}</div>` : ""}
+    <div class="row" style="margin-top:16px;justify-content:flex-end"><div style="flex:1"></div><div style="flex:0"><button class="btn sec" onclick="angTab('dash')">Înapoi</button></div><div style="flex:0"><button class="btn" onclick="angSalveaza(${nou ? "null" : x.id})">Salvează</button></div></div></div>` +
+    (nou || !ANG.admin ? "" : `<div class="card"><h3 style="margin:0 0 8px;color:var(--g)">Pontaj — luna curentă <span class="muted" style="font-size:13px;font-weight:400">(deocamdată doar ce a venit din Excel; completarea automată vine în etapa următoare)</span></h3>
+      <div class="tw"><table><thead><tr><th>Data</th><th>Cod</th><th>Mașina</th><th>Pornire</th><th>Sosire</th><th>Ore</th><th>Km</th><th>Observații</th></tr></thead><tbody>${pont.map(z => `<tr><td>${fmtD(z.zi)}</td><td><b>${esc(z.cod || "")}</b></td><td>${esc(z.masina || "")}</td><td>${afOra(z.ora_start)}</td><td>${afOra(z.ora_stop)}</td><td>${ore(z)}</td><td>${z.km == null ? "" : z.km}</td><td>${esc(z.observatii || "")}</td></tr>`).join("") || '<tr><td colspan="8" class="muted">Nicio zi pontată luna aceasta.</td></tr>'}</tbody></table></div></div>`);
+  calendarActiveaza($("ang-corp"));
+}
+async function angSalveaza(id){
+  const v = i => $(i).value.trim(), vechi = id ? ANG.L.find(x => x.id === id) : null, nume = v("an-nume").toUpperCase();
+  if(!nume){ toast("Scrie numele angajatului", true); return; }
+  if((v("an-ps") && !v("an-pp")) || (!v("an-ps") && v("an-pp"))){ toast("Programul de birou: completează ambele ore (sau lasă-le goale pe amândouă)", true); return; }
+  const nv = [...new Set(v("an-vechi").split(",").map(t => t.trim().toUpperCase()).filter(Boolean).concat(vechi && vechi.nume && vechi.nume !== nume ? [vechi.nume] : []))].filter(t => t !== nume);
+  const rec = { nume, nume_scurt: v("an-scurt") || null, functie: v("an-functie").toUpperCase() || null, telefon: v("an-tel") || null, email: v("an-email") || null, data_nasterii: v("an-nastere") || null,
+    ci_serie: v("an-cis").toUpperCase() || null, ci_numar: v("an-cin") || null, medicina_expira: v("an-med") || null, nr_contract: v("an-ctr") || null, tip_contract: v("an-tip") || null,
+    data_angajare: v("an-ang") || null, data_incetare: v("an-inc") || null, zile_co_an: afNum(v("an-co")), program_start: v("an-ps") || null, program_stop: v("an-pp") || null,
+    apare_la_soferi: $("an-sof").checked, nume_vechi: nv, observatii: v("an-obs") || null, activ: $("an-activ").checked };
+  if(vechi && vechi.nume !== nume && !confirm("Schimbi numele din „" + vechi.nume + "” în „" + nume + "”.\n\nNumele nou apare și în aplicațiile șoferilor. Rutele vechi rămân pe numele vechi — îl țin minte la „Nume vechi”, ca pontajul să le găsească.\n\nContinui?")) return;
+  let sid = id;
+  if(id){ const { error } = await db.from("soferi").update(rec).eq("id", id); if(error){ toast(error.message, true); return; } }
+  else { rec.depozit_id = (ANG.L.find(x => x.depozit_id) || {}).depozit_id || null; const { data, error } = await db.from("soferi").insert(rec).select("id").single(); if(error){ toast(error.message, true); return; } sid = data.id; }
+  if(ANG.admin){ const { error } = await db.from("angajati_privat").upsert({ sofer_id: sid, salariu_baza: afNum(v("an-sal")), marire: afNum(v("an-mar")), data_marire: v("an-dmar") || null, transport_luna: afNum(v("an-tr")), updated_at: new Date().toISOString() });
+    if(error){ toast("Angajatul s-a salvat, salarizarea nu: " + error.message, true); return; } }
+  toast("Salvat: " + nume); ANG.tab = sid; angIncarca();
+}
+function angSetari(){
+  const s = ANG.set || {};
+  $("ang-corp").innerHTML = `<div class="card"><h3 style="margin:0 0 10px;color:var(--g)">Setări pontaj <span class="muted" style="font-size:13px;font-weight:400">— comune tuturor angajaților; vizibile doar administratorului</span></h3>
+    <div class="grid3">${afC("ps-ore", "Ore standard / zi", s.ore_zi, "number")}${afC("ps-prag", "Prag depășire (ore)", s.prag_depasire, "number", 'step="0.5"')}${afC("ps-rot", "Rotunjire ore (minute)", s.rotunjire_min, "number")}
+      ${afC("ps-wk", "Spor zi de weekend (lei / zi)", s.spor_weekend, "number")}${afC("ps-sb", "Spor sărbătoare legală (lei / zi)", s.spor_sarbatoare, "number")}${afC("ps-di", "Diurnă / depășire (lei / zi)", s.diurna, "number")}</div>
+    <p class="muted" style="margin:10px 0 0"><b>Rotunjirea</b> (la precompletarea din rute): ora de pornire se rotunjește <b>în jos</b>, ora de sosire <b>în sus</b>, la numărul de minute de mai sus (ex. 08:13 → 08:00, 12:33 → 12:45). Ora reală rămâne vizibilă, iar tu poți corecta orice zi.<br>
+      <b>Codurile zilei:</b> P prezent · D depozit · L liber · W weekend lucrat · S sărbătoare legală · CO concediu de odihnă · CM concediu medical · N absent nemotivat · I învoire.</p>
+    <div class="row" style="margin-top:14px;justify-content:flex-end"><div style="flex:1"></div><div style="flex:0"><button class="btn" onclick="angSetariSalveaza()">Salvează</button></div></div></div>`;
+}
+async function angSetariSalveaza(){
+  const n = (i, d) => { const x = afNum($(i).value); return x == null ? d : x; };
+  const rec = { id: 1, ore_zi: n("ps-ore", 8), prag_depasire: n("ps-prag", 1.5), rotunjire_min: Math.max(1, Math.round(n("ps-rot", 15))), spor_weekend: n("ps-wk", 0), spor_sarbatoare: n("ps-sb", 0), diurna: n("ps-di", 0), updated_at: new Date().toISOString() };
+  const { error } = await db.from("pontaj_setari").upsert(rec); if(error){ toast(error.message, true); return; }
+  ANG.set = rec; toast("Setările de pontaj s-au salvat");
+}
+
+// ---------- FLOTĂ ----------
+const FLT_ACTE = [["card_expira", "Card alimentare"], ["rca_expira", "Asigurare RCA"], ["itp_expira", "ITP"], ["rovinieta_expira", "Rovinietă"], ["licenta_expira", "Licență transport"], ["mediu_expira", "Autorizație mediu"], ["stingator_expira", "Stingător"], ["trusa_expira", "Trusă medicală"]];
+const fltNume = m => [m.marca, m.model].filter(Boolean).join(" ") + " · " + (m.nr || "");
+async function fltIncarca(){
+  const [m, p, a, e, s] = await Promise.all([db.from("masini").select("*").order("id"), db.from("masini_privat").select("*"), db.from("alimentari").select("*").order("data").order("id").limit(5000), db.rpc("este_admin"),
+    db.from("soferi").select("id,nume,medicina_expira,activ,unit_in")]);
+  if(m.error){ toast(m.error.message, true); return; }
+  FLT.L = m.data || []; FLT.priv = {}; (p.data || []).forEach(x => FLT.priv[x.masina_id] = x); FLT.alim = a.data || []; FLT.admin = !!e.data;
+  FLT.ang = (s.data || []).filter(x => !x.unit_in && x.activ !== false);
+  if(!FLT.luna) FLT.luna = today().slice(0, 7);
+  if(!["dash", "acte", "nou"].includes(FLT.tab) && !FLT.L.some(x => String(x.id) === String(FLT.tab))) FLT.tab = "dash";
+  fltDeseneaza();
+}
+function fltTab(k){ FLT.tab = k; fltDeseneaza(); }
+function fltDeseneaza(){
+  afTabs("flo-tabs", [["dash", "Dashboard"], ...FLT.L.map(x => [x.id, x.nr || x.marca]), ["acte", "Acte și termene"]], FLT.tab, "fltTab");
+  if(FLT.tab === "dash") fltDash(); else if(FLT.tab === "acte") fltActe(); else fltFisa(FLT.tab === "nou" ? null : FLT.L.find(x => String(x.id) === String(FLT.tab)));
+}
+function fltCalc(mid){ let prev = null; return FLT.alim.filter(a => a.masina_id === mid).map(a => { const km = prev != null && a.km_bord != null ? a.km_bord - prev : null; if(a.km_bord != null) prev = a.km_bord;
+  return Object.assign({}, a, { km, cons: km > 0 ? 100 * (+a.motorina_l || 0) / km : null }); }); }
+function fltLuna(mid, luna){ const R = fltCalc(mid).filter(a => a.data.startsWith(luna)), s = c => R.reduce((t, a) => t + (+a[c] || 0), 0), km = s("km"), mot = s("motorina_l");
+  return { km, mot, ben: s("benzina_l"), cons: km > 0 ? 100 * mot / km : null, n: R.length }; }
+function fltToateActele(){
+  const L = [];
+  FLT.L.filter(m => m.status !== "INACTIV" && m.activ !== false).forEach(m => FLT_ACTE.forEach(([c, t]) => { if(m[c]) L.push({ tip: "VEHICUL", cine: m.nr, doc: t, d: m[c], tab: m.id }); }));
+  (FLT.ang || []).forEach(a => { if(a.medicina_expira) L.push({ tip: "ANGAJAT", cine: a.nume, doc: "Medicina muncii", d: a.medicina_expira, tab: null }); });
+  return L.sort((x, y) => x.d.localeCompare(y.d));
+}
+const flt1 = v => v == null ? "—" : (Math.round(v * 10) / 10).toLocaleString("ro-RO");
+function fltDash(){
+  const act = FLT.L.filter(m => m.status !== "INACTIV" && m.activ !== false), A = fltToateActele(), exp = A.filter(x => afStare(x.d) === "EXPIRAT"), at = A.filter(x => afStare(x.d) === "ATENTIE");
+  const R = act.map(m => ({ m, r: fltLuna(m.id, FLT.luna) })), km = R.reduce((t, x) => t + x.r.km, 0), mot = R.reduce((t, x) => t + x.r.mot, 0), ben = R.reduce((t, x) => t + x.r.ben, 0);
+  const ap = exp.concat(at);
+  $("flo-corp").innerHTML = `<div class="card noprint"><div class="row" style="align-items:flex-end">
+      <div style="flex:0;min-width:170px"><label>Luna</label><input type="month" id="flo-luna" value="${FLT.luna}" onchange="FLT.luna=this.value||today().slice(0,7);fltDash()"></div>
+      <div style="flex:0"><label>&nbsp;</label><button class="btn" onclick="fltTab('nou')">+ Vehicul nou</button></div>
+      <div style="flex:0"><label>&nbsp;</label><button class="btn sec" onclick="fltIncarca()">Reîncarcă</button></div>
+      <div><p class="muted" style="margin:0">Aici se țin datele mașinilor — de aici le iau și aplicațiile șoferilor. Clic pe un vehicul = fișa lui (acte, alimentări, consum).</p></div></div>
+    <div class="kpi" style="margin-top:12px"><div>Vehicule active<b>${act.length}</b></div><div${exp.length ? ' class="kpi-amb"' : ""}>Acte expirate<b>${exp.length}</b></div><div${at.length ? ' class="kpi-amb"' : ""}>Expiră în 30 de zile<b>${at.length}</b></div>
+      <div>Km în lună (flotă)<b>${km.toLocaleString("ro-RO")}</b></div><div>Consum motorină (L / 100 km)<b>${flt1(km > 0 ? 100 * mot / km : null)}</b></div></div></div>
+    <div class="card"><h3 style="margin:0 0 8px;color:var(--g)">Consum combustibil — luna aleasă</h3><div class="tw"><table><thead><tr><th>Vehicul</th><th style="text-align:right">Alimentări</th><th style="text-align:right">Km parcurși</th><th style="text-align:right">Motorină (L)</th><th style="text-align:right">Benzină (L)</th><th style="text-align:right">Consum (L / 100 km)</th><th style="text-align:right">Normat</th></tr></thead><tbody>` +
+      R.map(({ m, r }) => `<tr style="cursor:pointer" onclick="fltTab('${m.id}')"><td><b>${esc(m.nr || "")}</b> <span class="muted">${esc([m.marca, m.model].filter(Boolean).join(" "))}</span></td><td style="text-align:right">${r.n || ""}</td><td style="text-align:right">${r.km ? r.km.toLocaleString("ro-RO") : ""}</td><td style="text-align:right">${r.mot ? flt1(r.mot) : ""}</td><td style="text-align:right">${r.ben ? flt1(r.ben) : ""}</td>
+        <td style="text-align:right;font-weight:600${r.cons != null && m.consum_normat && r.cons > +m.consum_normat * 1.15 ? ";color:#C0392B" : ""}">${r.cons == null ? "" : flt1(r.cons)}</td><td style="text-align:right">${m.consum_normat == null ? "" : flt1(+m.consum_normat)}</td></tr>`).join("") +
+      `<tr style="font-weight:700"><td>TOTAL FLOTĂ</td><td></td><td style="text-align:right">${km.toLocaleString("ro-RO")}</td><td style="text-align:right">${flt1(mot)}</td><td style="text-align:right">${flt1(ben)}</td><td style="text-align:right">${flt1(km > 0 ? 100 * mot / km : null)}</td><td></td></tr></tbody></table></div>
+      <p class="muted" style="margin:8px 0 0">Km parcurși = diferența dintre km de bord de la două alimentări. Consumul cu roșu = cu peste 15% peste cel normat.</p></div>
+    <div class="card"><h3 style="margin:0 0 8px;color:var(--g)">Expirări apropiate <span class="muted" style="font-size:13px;font-weight:400">(expirate + în următoarele 30 de zile)</span></h3>` +
+      (ap.length ? `<div class="tw"><table><thead><tr><th>Vehicul / angajat</th><th>Document</th><th>Expiră</th><th style="text-align:right">Zile rămase</th></tr></thead><tbody>${ap.map(x => `<tr${x.tab ? ` style="cursor:pointer" onclick="fltTab('${x.tab}')"` : ""}><td><b>${esc(x.cine)}</b></td><td>${esc(x.doc)}</td><td>${afSem(x.d)}</td><td style="text-align:right">${afZile(x.d)}</td></tr>`).join("")}</tbody></table></div>` : '<p class="muted" style="margin:0">Nimic nu expiră în următoarele 30 de zile.</p>') + `</div>`;
+}
+function fltActe(){
+  const A = fltToateActele(), cul = { EXPIRAT: "#C0392B", ATENTIE: "#D97706", OK: "#2E8B3C" };
+  $("flo-corp").innerHTML = `<div class="card"><h3 style="margin:0 0 8px;color:var(--g)">Acte și termene — lista unică <span class="muted" style="font-size:13px;font-weight:400">(vehiculele active + medicina muncii a angajaților), în ordinea expirării</span></h3>
+    <div class="tw"><table><thead><tr><th>Tip</th><th>Vehicul / angajat</th><th>Document</th><th>Expiră</th><th style="text-align:right">Zile rămase</th><th>Status</th></tr></thead><tbody>${A.map(x => { const s = afStare(x.d);
+      return `<tr${x.tab ? ` style="cursor:pointer" onclick="fltTab('${x.tab}')"` : ""}><td>${x.tip}</td><td><b>${esc(x.cine)}</b></td><td>${esc(x.doc)}</td><td>${fmtD(x.d)}</td><td style="text-align:right">${afZile(x.d)}</td><td style="color:${cul[s]};font-weight:700">${s === "ATENTIE" ? "ATENȚIE" : s}</td></tr>`; }).join("")}</tbody></table></div>
+    <p class="muted" style="margin:8px 0 0">Verde = peste 30 de zile · portocaliu = expiră în cel mult 30 de zile · roșu = expirat. Datele se schimbă din fișa vehiculului (aici) și din fișa angajatului (meniul Angajați).</p></div>`;
+}
+function fltFisa(m){
+  const nou = !m; m = m || { status: "ACTIV", apare_la_soferi: true }; const pv = FLT.priv[m.id] || {}, R = nou ? [] : fltCalc(m.id).reverse();
+  const optS = ["ACTIV", "INACTIV", "IN SERVICE"].map(s => `<option${s === (m.status || "ACTIV") ? " selected" : ""}>${s}</option>`).join("");
+  const optC = ["", "MOTORINA", "BENZINA", "ELECTRIC", "HIBRID"].map(s => `<option${s === (m.combustibil || "") ? " selected" : ""}>${s}</option>`).join("");
+  const sof = (FLT.ang || []).map(a => `<option value="${esc(a.nume)}">`).join("");
+  $("flo-corp").innerHTML = `<div class="card"><h3 style="margin:0 0 10px;color:var(--g)">${nou ? "Vehicul nou" : esc(fltNume(m))}</h3>
+    <div class="grid3">${afC("fl-marca", "Marca", m.marca)}${afC("fl-model", "Model", m.model)}${afC("fl-nr", "Nr. înmatriculare", m.nr, "text", 'placeholder="HR 00 ECO"')}
+      ${afC("fl-an", "An fabricație", m.an_fabricatie, "number")}<div><label>Combustibil</label><select id="fl-comb">${optC}</select></div>${afC("fl-rez", "Capacitate rezervor (L)", m.rezervor_l, "number")}
+      ${afC("fl-norm", "Consum normat (L / 100 km)", m.consum_normat, "number", 'step="0.1"')}${afC("fl-kmp", "Km la preluare", m.km_preluare, "number")}${afC("fl-dprel", "Data preluării", m.data_preluare, "date")}
+      ${afC("fl-dpred", "Data predării", m.data_predare, "date")}<div><label>Status</label><select id="fl-status">${optS}</select></div>${afBif("fl-sof", "apare în lista mașinilor la șoferi", m.apare_la_soferi, "Debifat = nu apare în aplicațiile șoferilor (ex. autoturism, remorcă)")}</div>
+    <h4 style="margin:16px 0 8px">Acte și termene</h4>
+    <div class="grid3">${FLT_ACTE.map(([c, t]) => `<div><label>${t} — expiră ${m[c] ? afSem(m[c]).replace(fmtD(m[c]), afZile(m[c]) + " zile") : ""}</label><input id="fl-${c}" type="date" value="${esc(m[c] || "")}"></div>`).join("")}${afC("fl-licnr", "Nr. licență transport", m.licenta_nr)}</div>
+    <div class="grid3" style="margin-top:10px"><div style="grid-column:1/-1"><label>Dotări (vestă, triunghi etc.)</label><input id="fl-dot" value="${esc(m.dotari || "")}"></div><div style="grid-column:1/-1"><label>Observații</label><input id="fl-obs" value="${esc(m.observatii || "")}"></div></div>
+    ${FLT.admin ? `<h4 style="margin:16px 0 8px">🔒 Card de alimentare <span class="muted" style="font-weight:400;font-size:12px">— numărul și PIN-ul le vede doar administratorul</span></h4>
+    <div class="grid3">${afC("fl-card", "Nr. card", pv.card_nr)}${afC("fl-pin", "PIN card", pv.card_pin)}<div></div></div>` : ""}
+    <div class="row" style="margin-top:16px;justify-content:flex-end"><div style="flex:1"></div><div style="flex:0"><button class="btn sec" onclick="fltTab('dash')">Înapoi</button></div><div style="flex:0"><button class="btn" onclick="fltSalveaza(${nou ? "null" : m.id})">Salvează</button></div></div></div>` +
+    (nou ? "" : `<div class="card"><h3 style="margin:0 0 8px;color:var(--g)">Alimentări și consum</h3><datalist id="fl-dl-sof">${sof}</datalist>
+      <div class="row noprint" style="align-items:flex-end;gap:8px">
+        <div style="flex:0;min-width:150px"><label>Data</label><input type="date" id="al-data" value="${today()}"></div><div style="flex:0;min-width:110px"><label>Km bord</label><input type="number" id="al-km"></div>
+        <div style="flex:0;min-width:100px"><label>Motorină (L)</label><input type="number" step="0.01" id="al-mot"></div><div style="flex:0;min-width:100px"><label>Benzină (L)</label><input type="number" step="0.01" id="al-ben"></div>
+        <div style="min-width:130px"><label>Stație</label><input id="al-st"></div><div style="min-width:150px"><label>Șofer 1</label><input id="al-s1" list="fl-dl-sof"></div><div style="min-width:150px"><label>Șofer 2</label><input id="al-s2" list="fl-dl-sof"></div>
+        <div style="flex:0;min-width:90px"><label title="Nivelul din rezervor înainte de alimentare, de la 1 la 10">Nivel (1–10)</label><input type="number" min="0" max="10" id="al-niv"></div><div style="min-width:130px"><label>Observații</label><input id="al-obs" placeholder="ex. ADBLUE 10L"></div>
+        <div style="flex:0"><label>&nbsp;</label><button class="btn" onclick="fltAlimAdauga(${m.id})">+ Adaugă</button></div></div>
+      <div class="tw" style="margin-top:10px;max-height:55vh"><table><thead><tr><th>Data</th><th style="text-align:right">Km bord</th><th style="text-align:right">Km parcurși</th><th style="text-align:right">Motorină (L)</th><th style="text-align:right">Benzină (L)</th><th>Stație</th><th style="text-align:right">Consum (L / 100 km)</th><th>Șofer 1</th><th>Șofer 2</th><th title="Nivel 1–10 și litrii estimați din rezervor">Nivel</th><th>Observații</th><th class="noprint"></th></tr></thead><tbody>${R.map(a => `<tr><td>${fmtD(a.data)}</td><td style="text-align:right">${a.km_bord == null ? "" : a.km_bord.toLocaleString("ro-RO")}</td><td style="text-align:right">${a.km == null ? "" : a.km.toLocaleString("ro-RO")}</td><td style="text-align:right">${a.motorina_l == null ? "" : (+a.motorina_l).toFixed(2)}</td><td style="text-align:right">${a.benzina_l == null ? "" : (+a.benzina_l).toFixed(2)}</td><td>${esc(a.statie || "")}</td>
+          <td style="text-align:right;font-weight:600${a.cons != null && m.consum_normat && a.cons > +m.consum_normat * 1.15 ? ";color:#C0392B" : ""}">${a.cons == null ? "" : flt1(a.cons)}</td><td>${esc(a.sofer1 || "")}</td><td>${esc(a.sofer2 || "")}</td><td>${a.nivel == null ? "" : a.nivel + (m.rezervor_l ? ' <span class="muted">≈ ' + Math.round(a.nivel / 10 * m.rezervor_l) + " L</span>" : "")}</td><td>${esc(a.observatii || "")}</td>
+          <td class="noprint"><button class="btn sm danger" title="Șterge alimentarea" onclick="fltAlimSterge(${a.id})">✕</button></td></tr>`).join("") || '<tr><td colspan="12" class="muted">Nicio alimentare trecută.</td></tr>'}</tbody></table></div>
+      <p class="muted" style="margin:8px 0 0">Cele mai noi sus. Km parcurși = km de bord minus cei de la alimentarea dinainte; consumul = motorina alimentată la 100 km parcurși. O alimentare greșită: o ștergi (✕) și o adaugi din nou.</p></div>`);
+  calendarActiveaza($("flo-corp"));
+}
+async function fltSalveaza(id){
+  const v = i => $(i).value.trim(), nr = v("fl-nr").toUpperCase().replace(/[-\s]+/g, " ");
+  if(!nr){ toast("Scrie numărul de înmatriculare", true); return; }
+  if(FLT.L.some(x => x.id !== id && (x.nr || "").replace(/\s+/g, "") === nr.replace(/\s+/g, ""))){ toast("Numărul " + nr + " există deja în flotă", true); return; }
+  const st = $("fl-status").value;
+  const rec = { marca: v("fl-marca").toUpperCase() || null, model: v("fl-model").toUpperCase() || null, nr, an_fabricatie: afNum(v("fl-an")), combustibil: $("fl-comb").value || null, rezervor_l: afNum(v("fl-rez")), consum_normat: afNum(v("fl-norm")),
+    km_preluare: afNum(v("fl-kmp")), data_preluare: v("fl-dprel") || null, data_predare: v("fl-dpred") || null, status: st, activ: st !== "INACTIV", apare_la_soferi: $("fl-sof").checked,
+    licenta_nr: v("fl-licnr") || null, dotari: v("fl-dot") || null, observatii: v("fl-obs") || null };
+  FLT_ACTE.forEach(([c]) => rec[c] = v("fl-" + c) || null);
+  const vechi = id ? FLT.L.find(x => x.id === id) : null;
+  if(vechi && vechi.nr !== nr && !confirm("Schimbi numărul din „" + vechi.nr + "” în „" + nr + "”.\n\nNumărul nou apare și în aplicațiile șoferilor; rutele vechi rămân pe numărul vechi.\n\nContinui?")) return;
+  let mid = id;
+  if(id){ const { error } = await db.from("masini").update(rec).eq("id", id); if(error){ toast(error.message, true); return; } }
+  else { const { data, error } = await db.from("masini").insert(rec).select("id").single(); if(error){ toast(error.message, true); return; } mid = data.id; }
+  if(FLT.admin){ const { error } = await db.from("masini_privat").upsert({ masina_id: mid, card_nr: v("fl-card") || null, card_pin: v("fl-pin") || null, updated_at: new Date().toISOString() });
+    if(error){ toast("Vehiculul s-a salvat, cardul nu: " + error.message, true); return; } }
+  toast("Salvat: " + nr); FLT.tab = mid; fltIncarca();
+}
+async function fltAlimAdauga(mid){
+  const v = i => $(i).value.trim(), data = v("al-data"), km = afNum(v("al-km"));
+  if(!data){ toast("Alege data alimentării", true); return; }
+  if(km == null){ toast("Scrie km de bord", true); return; }
+  const ant = FLT.alim.filter(a => a.masina_id === mid && a.km_bord != null && a.data <= data).pop();
+  if(ant && km < ant.km_bord && !confirm("Km de bord (" + km + ") sunt mai puțini decât la alimentarea din " + fmtD(ant.data) + " (" + ant.km_bord + ").\n\nSalvez așa?")) return;
+  const niv = afNum(v("al-niv"));
+  const { error } = await db.from("alimentari").insert({ masina_id: mid, data, km_bord: Math.round(km), motorina_l: afNum(v("al-mot")), benzina_l: afNum(v("al-ben")), statie: v("al-st").toUpperCase() || null,
+    sofer1: v("al-s1").toUpperCase() || null, sofer2: v("al-s2").toUpperCase() || null, nivel: niv == null ? null : Math.max(0, Math.min(10, Math.round(niv))), observatii: v("al-obs") || null });
+  if(error){ toast(error.message, true); return; }
+  toast("Alimentare adăugată"); fltIncarca();
+}
+async function fltAlimSterge(id){
+  const a = FLT.alim.find(x => x.id === id); if(!a || !confirm("Ștergi alimentarea din " + fmtD(a.data) + " (" + (a.km_bord == null ? "—" : a.km_bord) + " km, " + (a.motorina_l == null ? 0 : a.motorina_l) + " L)?")) return;
+  const { error } = await db.from("alimentari").delete().eq("id", id); if(error){ toast(error.message, true); return; }
+  toast("Alimentare ștearsă"); fltIncarca();
+}
 
 // ================= GHID „HOW TO” (v8.55, cerut de Ovidiu 08.11 / 12.11) =================
 // v8.56 (12.11): toate cele 20 de fișe din lista acceptată de Ovidiu; Facturarea lunii mutată lângă celelalte rapoarte (nr. 9).
