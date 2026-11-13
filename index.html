@@ -1113,7 +1113,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
   <span id="rz-w"><button id="rz-reset" class="pictograma" title="Lățimi implicite — pune coloanele din tabelele acestei file înapoi cum erau">↺ Reset layout</button><i class="rz-sep">|</i></span>
   <span id="tz-w" title="Mărimea tabelului (doar tabelul, restul rămâne la fel), din 5 în 5%. Merge și cu Ctrl + rotița mausului, Ctrl + / Ctrl − / Ctrl 0. Dublu clic pe procent = scrii tu valoarea."><button class="pictograma" onclick="tzPas(-1)" aria-label="Micșorează tabelul">−</button><b id="tz-v" ondblclick="tzScrie()" title="Dublu clic = scrii mărimea (ex. 87), Enter">100%</b><input id="tz-in" type="number" min="30" max="300" step="5" style="display:none"><button class="pictograma" onclick="tzPas(1)" aria-label="Mărește tabelul">+</button></span>
-  <span class="ver">v8.59</span>
+  <span class="ver">v8.60</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -13899,14 +13899,14 @@ async function angIncarca(){
   ANG.L = (a.data || []).filter(x => !x.unit_in); ANG.priv = {}; (p.data || []).forEach(x => ANG.priv[x.sofer_id] = x);
   ANG.set = s.data || null; ANG.admin = !!e.data; ANG.co = {};
   (z.data || []).forEach(x => { const o = ANG.co[x.sofer_id] || (ANG.co[x.sofer_id] = { CO: 0, CM: 0 }); o[x.cod]++; });
-  if(ANG.tab !== "dash" && ANG.tab !== "set" && ANG.tab !== "nou" && !ANG.L.some(x => String(x.id) === String(ANG.tab))) ANG.tab = "dash";
+  if(ANG.tab !== "dash" && ANG.tab !== "set" && ANG.tab !== "nou" && ANG.tab !== "cereri" && !ANG.L.some(x => String(x.id) === String(ANG.tab))) ANG.tab = "dash";
   angDeseneaza();
 }
 function angTab(k){ if(PNT.murdar && !confirm("Pontajul are schimbări nesalvate. Le pierzi?")) return; PNT.murdar = false; ANG.tab = k; angDeseneaza(); }
 const angViz = () => ANG.L.filter(x => ANG.inactivi || x.activ !== false);
 function angDeseneaza(){
-  afTabs("ang-tabs", [["dash", "Dashboard"], ...angViz().map(x => [x.id, x.nume]), ...(ANG.admin ? [["set", "Setări pontaj"]] : [])], ANG.tab, "angTab");
-  if(ANG.tab === "dash") angDash(); else if(ANG.tab === "set") angSetari(); else angFisa(ANG.tab === "nou" ? null : ANG.L.find(x => String(x.id) === String(ANG.tab)));
+  afTabs("ang-tabs", [["dash", "Dashboard"], ...angViz().map(x => [x.id, x.nume]), ["cereri", "Cereri"], ...(ANG.admin ? [["set", "Setări pontaj"]] : [])], ANG.tab, "angTab");
+  if(ANG.tab === "dash") angDash(); else if(ANG.tab === "set") angSetari(); else if(ANG.tab === "cereri") crrTab(); else angFisa(ANG.tab === "nou" ? null : ANG.L.find(x => String(x.id) === String(ANG.tab)));
 }
 function angDash(){
   const L = angViz(), act = ANG.L.filter(x => x.activ !== false), adm = ANG.admin;
@@ -14148,6 +14148,92 @@ async function pntExcel(){
   ws.addRow([]); ws.addRow(["Semnatura angajat:", "", "", "", "", "", "Data:"]); ws.addRow([]); ws.addRow(["Semnatura sef direct:"]);
   ws.pageSetup = { orientation: "portrait", fitToPage: true, fitToWidth: 1, fitToHeight: 1, paperSize: 9 };
   const buf = await wb.xlsx.writeBuffer(); expDescarca(new Blob([buf], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" }), "PONTAJ - " + x.nume + " - " + PNT.luna + ".xlsx");
+}
+
+// ---------- CERERI GENERATE DIN BIROU (v8.60 — cerut de Ovidiu, 13.11) ----------
+// Aceleași texte și același aspect ca în aplicația șoferilor (pv/js/pdf-cereri.js, pv/css/print.css), pentru ORICE angajat (și personalul de birou).
+// Se deschide într-o fereastră nouă → „Tipărește / Salvează PDF”. Semnătura se pune de mână. Opțional, concediul se trece în pontaj (CO).
+let CRR = { sid: null, tip: "CO", dep: null };
+const crrDRo = d => d ? d.split("-").reverse().join(".") : "";
+const crrLucr = d => { const w = dtz(d).getDay(); return w >= 1 && w <= 5 && !pntSarb(d.slice(0, 7)).has(d); };
+function crrZileLucr(a, b){ const L = []; if(!a || !b || b < a) return L; const c = dtz(a), e = dtz(b); let n = 0; while(c <= e && n++ < 400){ const k = ziLocala(c); if(crrLucr(k)) L.push(k); c.setDate(c.getDate() + 1); } return L; }
+function crrPlus(a, n){ const c = dtz(a); let g = 0; while(n > 0 && g++ < 400){ c.setDate(c.getDate() + 1); if(crrLucr(ziLocala(c))) n--; } return ziLocala(c); }
+async function crrTab(){
+  if(!CRR.dep){ const r = await db.from("depozite").select("id,nume,reprezentant_nume,reprezentant_telefon,reprezentant_email"); CRR.dep = r.data || []; if(ANG.tab !== "cereri") return; }
+  const act = ANG.L.filter(x => x.activ !== false); if(!act.some(x => x.id === CRR.sid)) CRR.sid = (act[0] || {}).id || null;
+  const azi = today(), T = [["CO", "Concediu de odihnă"], ["INV", "Învoire"], ["ACORD", "Încetare contract — acordul părților"], ["DEM", "Demisie cu preaviz"]];
+  $("ang-corp").innerHTML = `<div class="card"><h3 style="margin:0 0 4px;color:var(--g)">Cerere nouă</h3>
+    <p class="muted" style="margin:0 0 12px">Aceleași cereri ca în aplicația șoferilor, făcute de aici pentru orice angajat. Se deschid într-o fereastră nouă: le tipărești sau le salvezi ca PDF, apoi se semnează de mână.</p>
+    <div class="grid3"><div><label>Angajat</label><select id="cr-ang" onchange="CRR.sid=+this.value;crrCampuri()">${act.map(x => `<option value="${x.id}"${x.id === CRR.sid ? " selected" : ""}>${esc(x.nume)}</option>`).join("")}</select></div>
+      <div><label>Tipul cererii</label><select id="cr-tip" onchange="CRR.tip=this.value;crrCampuri()">${T.map(([k, t]) => `<option value="${k}"${k === CRR.tip ? " selected" : ""}>${t}</option>`).join("")}</select></div><div></div></div>
+    <div id="cr-campuri" style="margin-top:12px"></div>
+    <div class="row" style="margin-top:16px;justify-content:flex-end"><div style="flex:1" id="cr-info" class="muted"></div><div style="flex:0"><button class="btn" onclick="crrGenereaza()">🖨 Deschide cererea</button></div></div></div>
+    <div class="card"><p class="muted" style="margin:0">Cererile făcute de șoferi pe telefon ajung în meniul <b>Cereri angajați</b> (de acolo le descarci). Zilele de concediu aprobate se trec în pontaj: cu bifa de mai sus sau direct în pontajul angajatului (cod CO).</p></div>`;
+  crrCampuri();
+}
+function crrCampuri(){
+  const t = CRR.tip, azi = today(); let h = "";
+  if(t === "CO") h = `<div class="grid3">${afC("cr-de", "Concediu de la", azi, "date", 'onchange="crrInfo()"')}${afC("cr-pana", "până la (inclusiv)", azi, "date", 'onchange="crrInfo()"')}
+      ${afBif("cr-pont", "trece zilele în pontaj (cod CO)", true, "Zilele lucrătoare din perioadă primesc codul CO în pontajul angajatului")}</div>`;
+  else if(t === "INV") h = `<div class="grid3">${afC("cr-de", "Data învoirii", azi, "date")}${afC("cr-o1", "De la ora", "10:00", "time")}${afC("cr-o2", "Până la ora", "12:00", "time")}
+      <div style="grid-column:1/3"><label>Motivul <span class="muted" style="text-transform:none;font-weight:400">(gol = „motive personale”)</span></label><input id="cr-motiv"></div>${afBif("cr-rec", "cu recuperarea orelor", false)}
+      ${afBif("cr-pont", "notează în pontaj (la Observații)", true, "În ziua învoirii se scrie la Observații „Învoire 10:00–12:00”; codul zilei nu se schimbă")}</div>`;
+  else if(t === "ACORD") h = `<div class="grid3">${afC("cr-de", "Încetare începând cu data", azi, "date")}<div style="grid-column:2/4"><label>Mențiuni</label><input id="cr-ment"></div></div>`;
+  else h = `<div class="grid3"><div><label>Preaviz (zile lucrătoare)</label><select id="cr-zile" onchange="$('cr-de').value=crrPlus(today(),+this.value)"><option value="20">20 — funcție de execuție</option><option value="45">45 — funcție de conducere</option></select></div>
+      ${afC("cr-de", "Data încetării", crrPlus(azi, 20), "date")}<div><label>Mențiuni</label><input id="cr-ment"></div></div>`;
+  $("cr-campuri").innerHTML = h; calendarActiveaza($("cr-campuri")); crrInfo();
+}
+function crrInfo(){ const el = $("cr-info"); if(!el) return; if(CRR.tip !== "CO"){ el.textContent = ""; return; }
+  const x = ANG.L.find(a => a.id === CRR.sid) || {}, n = crrZileLucr($("cr-de").value, $("cr-pana").value).length, c = (ANG.co[x.id] || {}).CO || 0;
+  el.innerHTML = `<b>${n}</b> ${n === 1 ? "zi lucrătoare" : "zile lucrătoare"} (fără weekend și sărbători legale)` + (x.zile_co_an != null ? ` · concediu rămas anul acesta: <b>${x.zile_co_an - c}</b> din ${x.zile_co_an}` : ""); }
+async function crrGenereaza(){
+  const x = ANG.L.find(a => a.id === CRR.sid); if(!x){ toast("Alege angajatul", true); return; }
+  const v = i => ($(i) ? $(i).value.trim() : ""), t = CRR.tip, de = v("cr-de"), nume = faraDiac(x.nume || "").toUpperCase(), ci = [x.ci_serie, x.ci_numar].filter(Boolean).join(" ").toUpperCase() || "N/A", fn = faraDiac(x.functie || "ANGAJAT").toUpperCase();
+  if(!de){ toast("Alege data", true); return; }
+  const cap = `Subsemnatul <strong>${esc(nume)}</strong>, identificat cu C.I. seria si nr. <strong>${esc(ci)}</strong>`, P = s => `<div class="doc-text doc-cerere-body">${s}</div>`;
+  const ment = () => { const m = faraDiac(v("cr-ment")); return m ? `<div class="doc-text doc-cerere-mentiuni"><strong>Mentiuni:</strong> ${esc(m)}</div>` : ""; };
+  let titlu, corp, fisier, zile = [];
+  if(t === "CO"){ const pana = v("cr-pana"); zile = crrZileLucr(de, pana);
+    if(!pana || pana < de){ toast("Data de sfârșit trebuie să fie după cea de început", true); return; } if(!zile.length){ toast("În perioada aleasă nu e nicio zi lucrătoare", true); return; }
+    titlu = "CERERE DE CONCEDIU DE ODIHNA"; fisier = "CONCEDIU - " + nume + " - " + crrDRo(de);
+    corp = P(`${cap}, angajat al societatii S.C. EURO ECOLOGIC S.R.L., in calitate de <strong>${esc(fn)}</strong>, prin prezenta va rog sa imi aprobati efectuarea de <strong>CONCEDIU DE ODIHNA</strong>, incepand cu data de <strong>${crrDRo(de)}</strong> pana in data de <strong>${crrDRo(pana)}</strong> inclusiv, adica un numar de <strong>${zile.length} ${zile.length === 1 ? "ZI LUCRATOARE" : "ZILE LUCRATOARE"}</strong>.`); }
+  else if(t === "INV"){ const o1 = v("cr-o1"), o2 = v("cr-o2"); if(!o1 || !o2 || o2 <= o1){ toast("Verifică orele învoirii", true); return; }
+    titlu = "CERERE DE INVOIRE"; fisier = "INVOIRE - " + nume + " - " + crrDRo(de);
+    corp = P(`${cap}, angajat in functia de <strong>${esc(fn)}</strong>, va rog sa aprobati acordarea unei invoiri in data de <strong>${crrDRo(de)}</strong>, in intervalul orar <strong>${o1} - ${o2}</strong>, pentru ${esc(faraDiac(v("cr-motiv")) || "motive personale")}.`) +
+      ($("cr-rec").checked ? P("Mentionez ca timpul aferent invoirii va fi recuperat ulterior, conform programului si procedurilor interne stabilite.") : "") +
+      `<div class="doc-cerere-legal-note">Nota legala: invoirea este o absenta motivata acordata prin acordul partilor; aplicarea concreta se face conform regulamentului intern/contractului colectiv, iar art. 54 din Codul muncii permite suspendarea raportului de munca prin acordul partilor.</div>`; }
+  else if(t === "ACORD"){ titlu = "CERERE DE INCETARE C.I.M. PRIN ACORDUL PARTILOR"; fisier = "INCETARE CIM - " + nume + " - " + crrDRo(de);
+    corp = P(`${cap}, avand functia de <strong>${esc(fn)}</strong>, va rog sa aprobati incetarea contractului individual de munca prin acordul partilor, incepand cu data de <strong>${crrDRo(de)}</strong>.`) + P("Temei legal: art. 55 lit. b din Codul muncii (incetare prin acordul partilor).") + ment(); }
+  else { const z = +v("cr-zile") || 20; titlu = "NOTIFICARE DE DEMISIE"; fisier = "DEMISIE - " + nume + " - " + crrDRo(de);
+    corp = P(`${cap}, avand functia de <strong>${esc(fn)}</strong>, va notific demisia cu preaviz de <strong>${z} zile lucratoare</strong>, solicitand incetarea contractului individual de munca la data de <strong>${crrDRo(de)}</strong>.`) + P("Temei legal: art. 81 din Codul muncii (demisie cu preaviz).") +
+      P(`Durata preaviz selectata: <strong>${z} zile lucratoare</strong>${z === 45 ? " (functie de conducere)" : ""}.`) + ment(); }
+  const d = (CRR.dep || []).find(q => q.id === x.depozit_id) || (CRR.dep || []).find(q => q.nume === "HUNEDOARA") || {};
+  const email = (d.reprezentant_email || "").trim() || (String(d.nume || "").toLowerCase().replace(/[^a-z0-9]+/g, "") || "office") + "@eurowc.ro", tel = (d.reprezentant_telefon || "").trim() || "0735 214 762";
+  const html = `<!doctype html><html lang="ro"><head><meta charset="utf-8"><base href="${esc(new URL("pv/", location.href).href)}"><title>${esc(fisier)}</title><link rel="stylesheet" href="css/print.css">
+    <style>body{margin:0;background:#8a93a3}.bara{position:sticky;top:0;background:#16233c;padding:10px;text-align:center;z-index:5}.bara button{font:600 15px Arial;padding:9px 18px;border-radius:8px;border:0;background:#2E8B3C;color:#fff;cursor:pointer}
+      .bara span{color:#cfd6e4;font:13px Arial;margin-left:14px}.doc-page{margin:14px auto;box-shadow:0 4px 18px rgba(0,0,0,.35)}@media print{.bara{display:none}body{background:#fff}}</style></head><body>
+    <div class="bara"><button onclick="print()">🖨 Tipărește / Salvează PDF</button><span>La „Destinație” alege „Salvare ca PDF”. Numele fișierului e deja pus.</span></div>
+    <section class="doc-page"><div class="doc-header"><img class="doc-header-img" src="assets/docs/header.png" alt=""><div class="doc-header-rule"></div></div>
+      <h1 class="doc-title">${titlu}</h1>${corp}<div class="doc-cerere-spacer"></div>
+      <div class="doc-row-2 doc-cerere-sign-row"><div class="doc-cerere-date-col"><div class="doc-label">DATA</div><div class="doc-text doc-bold">${crrDRo(today())}</div></div>
+        <div class="doc-cerere-solicitant-col"><div class="doc-cerere-solicitant-slot"></div><div class="doc-cerere-solicitant-caption">Numele si Semnatura Solicitantului</div><div class="doc-bold">${esc(nume)}</div></div></div>
+      <div class="doc-row-2" style="margin-top:5mm"><div class="doc-box doc-cerere-approval"><div class="doc-label">AVIZAT</div><div class="doc-text">${esc(faraDiac(d.reprezentant_nume || "-"))}</div><div class="doc-cerere-line"></div><div class="doc-cerere-caption">Data / Semnatura</div></div>
+        <div class="doc-box doc-cerere-approval"><div class="doc-label">APROBAT</div><div class="doc-cerere-approval-spacer"></div><div class="doc-cerere-line"></div><div class="doc-cerere-caption">Data / Semnatura</div></div></div>
+      <div class="doc-footer"><div class="doc-footer-rule"></div><div class="doc-footer-row"><img class="doc-footer-logo" src="assets/logo/euro_ecologic_logo.png" alt=""><div class="doc-footer-sep"></div><div class="doc-footer-text">
+        <div><strong>SC EURO ECOLOGIC SRL</strong> | Sediu social: Str. M. Eminescu nr. 9, Vlahita, jud. Harghita.</div><div>0742 029 410 | Nr. Reg. Com.: J 2007000205190 | CUI: RO 21311085 | Website: www.eurowc.ro</div>
+        <div>Punct de lucru <strong>${esc(String(d.nume || "").toUpperCase())}</strong>: ${esc(email)} / <strong>${esc(tel)}</strong> &nbsp;|&nbsp; <strong>${esc(faraDiac(d.reprezentant_nume || "RESPONSABIL DEPOZIT").toUpperCase())}</strong></div></div></div></div></section></body></html>`;
+  const w = window.open("", "_blank"); if(!w){ toast("Fereastra a fost blocată — permite ferestrele pop-up pentru aplicație", true); return; }
+  w.document.open(); w.document.write(html); w.document.close();
+  if(!ANG.admin || !$("cr-pont") || !$("cr-pont").checked || (t !== "CO" && t !== "INV")) return;
+  const acum = new Date().toISOString();
+  if(t === "CO"){ const { error } = await db.from("pontaj_zile").upsert(zile.map(z => ({ sofer_id: x.id, zi: z, cod: "CO", masina: null, ora_start: null, ora_stop: null, km: null, sursa: "manual", updated_at: acum })), { onConflict: "sofer_id,zi" });
+    if(error){ toast("Cererea s-a deschis, dar pontajul nu s-a completat: " + error.message, true); return; }
+    if(zile[0].startsWith(String(new Date().getFullYear()))){ const o = ANG.co[x.id] || (ANG.co[x.id] = { CO: 0, CM: 0 }); const r = await db.from("pontaj_zile").select("zi").eq("sofer_id", x.id).eq("cod", "CO").gte("zi", new Date().getFullYear() + "-01-01").lte("zi", new Date().getFullYear() + "-12-31"); if(!r.error) o.CO = (r.data || []).length; }
+    toast(zile.length + (zile.length === 1 ? " zi trecută" : " zile trecute") + " în pontaj cu CO — " + x.nume); crrInfo(); }
+  else { const txt = "Invoire " + v("cr-o1") + "-" + v("cr-o2"), r = await db.from("pontaj_zile").select("observatii").eq("sofer_id", x.id).eq("zi", de).maybeSingle(), vechi = (r.data || {}).observatii || "";
+    if(vechi.includes(txt)) return;
+    const { error } = await db.from("pontaj_zile").upsert({ sofer_id: x.id, zi: de, observatii: [vechi, txt].filter(Boolean).join("; "), updated_at: acum }, { onConflict: "sofer_id,zi" });
+    toast(error ? "Cererea s-a deschis, dar nota din pontaj nu s-a scris: " + error.message : "Învoirea e notată în pontaj, la Observații", !!error); }
 }
 
 // ---------- FLOTĂ ----------
