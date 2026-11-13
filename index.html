@@ -1116,7 +1116,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
   <span id="rz-w"><button id="rz-reset" class="pictograma" title="Lățimi implicite — pune coloanele din tabelele acestei file înapoi cum erau">↺ Reset layout</button><i class="rz-sep">|</i></span>
   <span id="tz-w" title="Mărimea tabelului (doar tabelul, restul rămâne la fel), din 5 în 5%. Merge și cu Ctrl + rotița mausului, Ctrl + / Ctrl − / Ctrl 0. Dublu clic pe procent = scrii tu valoarea."><button class="pictograma" onclick="tzPas(-1)" aria-label="Micșorează tabelul">−</button><b id="tz-v" ondblclick="tzScrie()" title="Dublu clic = scrii mărimea (ex. 87), Enter">100%</b><input id="tz-in" type="number" min="30" max="300" step="5" style="display:none"><button class="pictograma" onclick="tzPas(1)" aria-label="Mărește tabelul">+</button></span>
-  <span class="ver">v8.67</span>
+  <span class="ver">v8.68</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -14303,22 +14303,41 @@ async function crrGenereaza(){
     corp = P(`${cap}, avand functia de <strong>${esc(fn)}</strong>, va notific demisia cu preaviz de <strong>${z} zile lucratoare</strong>, solicitand incetarea contractului individual de munca la data de <strong>${crrDRo(de)}</strong>.`) + P("Temei legal: art. 81 din Codul muncii (demisie cu preaviz).") +
       P(`Durata preaviz selectata: <strong>${z} zile lucratoare</strong>${z === 45 ? " (functie de conducere)" : ""}.`) + ment(); }
   const d = (CRR.dep || []).find(q => q.id === x.depozit_id) || (CRR.dep || []).find(q => q.nume === "HUNEDOARA") || {};
-  const email = (d.reprezentant_email || "").trim() || (String(d.nume || "").toLowerCase().replace(/[^a-z0-9]+/g, "") || "office") + "@eurowc.ro", tel = (d.reprezentant_telefon || "").trim() || "0735 214 762";
-  const html = `<!doctype html><html lang="ro"><head><meta charset="utf-8"><base href="${esc(new URL("pv/", location.href).href)}"><title>${esc(fisier)}</title><link rel="stylesheet" href="css/print.css">
-    <style>body{margin:0;background:#8a93a3}.bara{position:sticky;top:0;background:#16233c;padding:10px;text-align:center;z-index:5}.bara button{font:600 15px Arial;padding:9px 18px;border-radius:8px;border:0;background:#2E8B3C;color:#fff;cursor:pointer}
-      .bara span{color:#cfd6e4;font:13px Arial;margin-left:14px}.doc-page{margin:14px auto;box-shadow:0 4px 18px rgba(0,0,0,.35)}@media print{.bara{display:none}body{background:#fff}}</style></head><body>
-    <div class="bara"><button onclick="print()">🖨 Tipărește / Salvează PDF</button><span>La „Destinație” alege „Salvare ca PDF”. Numele fișierului e deja pus.</span></div>
-    <section class="doc-page"><div class="doc-header"><img class="doc-header-img" src="assets/docs/header.png" alt=""><div class="doc-header-rule"></div></div>
-      <h1 class="doc-title">${titlu}</h1>${corp}<div class="doc-cerere-spacer"></div>
-      <div class="doc-row-2 doc-cerere-sign-row"><div class="doc-cerere-date-col"><div class="doc-label">DATA</div><div class="doc-text doc-bold">${crrDRo(today())}</div></div>
-        <div class="doc-cerere-solicitant-col"><div class="doc-cerere-solicitant-slot"></div><div class="doc-cerere-solicitant-caption">Numele si Semnatura Solicitantului</div><div class="doc-bold">${esc(nume)}</div></div></div>
-      <div class="doc-row-2" style="margin-top:5mm"><div class="doc-box doc-cerere-approval"><div class="doc-label">AVIZAT</div><div class="doc-text">${esc(faraDiac(d.reprezentant_nume || "-"))}</div><div class="doc-cerere-line"></div><div class="doc-cerere-caption">Data / Semnatura</div></div>
-        <div class="doc-box doc-cerere-approval"><div class="doc-label">APROBAT</div><div class="doc-cerere-approval-spacer"></div><div class="doc-cerere-line"></div><div class="doc-cerere-caption">Data / Semnatura</div></div></div>
-      <div class="doc-footer"><div class="doc-footer-rule"></div><div class="doc-footer-row"><img class="doc-footer-logo" src="assets/logo/euro_ecologic_logo.png" alt=""><div class="doc-footer-sep"></div><div class="doc-footer-text">
-        <div><strong>SC EURO ECOLOGIC SRL</strong> | Sediu social: Str. M. Eminescu nr. 9, Vlahita, jud. Harghita.</div><div>0742 029 410 | Nr. Reg. Com.: J 2007000205190 | CUI: RO 21311085 | Website: www.eurowc.ro</div>
-        <div>Punct de lucru <strong>${esc(String(d.nume || "").toUpperCase())}</strong>: ${esc(email)} / <strong>${esc(tel)}</strong> &nbsp;|&nbsp; <strong>${esc(faraDiac(d.reprezentant_nume || "RESPONSABIL DEPOZIT").toUpperCase())}</strong></div></div></div></div></section></body></html>`;
-  const w = window.open("", "_blank"); if(!w){ toast("Fereastra a fost blocată — permite ferestrele pop-up pentru aplicație", true); return; }
-  w.document.open(); w.document.write(html); w.document.close();
+  // v8.68 (cerut de Ovidiu, 13.11): aspectul cererilor ca modelul vechi (C. CONCEDIU - ALECU … .pdf): antet cu certificările, firma sus-stânga,
+  // titlu centrat, text aerisit, DATA + semnătura solicitantului, linie, AVIZAT / APROBAT, subsolul nou (ca la PV, v8.63). Se deschide într-o
+  // fereastră a aplicației (‒ ☐ ✕), cu „Tipărește / Salvează PDF”.
+  const baza = new URL("pv/", location.href).href, avizat = faraDiac(d.reprezentant_nume || "ANITOIU OVIDIU").toUpperCase();
+  const html = `<!doctype html><html lang="ro"><head><meta charset="utf-8"><base href="${esc(baza)}"><title>${esc(fisier)}</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Lato:wght@400;700&display=swap" rel="stylesheet">
+    <style>@page{size:A4;margin:0}*{box-sizing:border-box}html,body{margin:0}body{background:#8a93a3;font-family:Lato,Carlito,Calibri,Arial,sans-serif;color:#1a1a1a}
+      .pg{width:210mm;height:297mm;margin:12px auto;background:#fff;padding:9mm 15mm 7mm;display:flex;flex-direction:column;box-shadow:0 4px 18px rgba(0,0,0,.35)}
+      .hd img{width:100%;display:block}.hd .r{border-bottom:.6pt solid #7a7a7a;margin-top:3mm}
+      .fi{margin-top:6mm;font-size:10pt;line-height:1.45}.fi b{font-size:11.5pt}
+      h1{font-size:15pt;text-align:center;margin:14mm 0 10mm;font-weight:700;letter-spacing:.2px}
+      .tx{font-size:12pt;line-height:2.05;text-align:justify;text-indent:6mm}.tx+.tx{margin-top:2mm}.nl{font-size:9pt;color:#555;margin-top:5mm;line-height:1.4}
+      .sp{flex:1}.sg{display:flex;justify-content:space-between;align-items:flex-end;font-size:10.5pt}
+      .lb{font-weight:700;font-size:10pt}.sol{width:62mm;text-align:center}.sol .ln{border-top:.6pt solid #333;height:0;margin-top:20mm}.sol div{font-size:9pt;margin-top:1mm}
+      .sep{border-top:.6pt solid #333;margin:13mm 0 5mm}.ap{display:flex;justify-content:space-between;font-size:10.5pt}.ap>div{width:72mm}
+      .ap .ln{border-bottom:.6pt solid #333;height:15mm}.ap .cp{font-size:8.5pt;margin-top:1mm}
+      .ft{margin-top:12mm;border-top:.6pt solid #9a9a9a;padding-top:2.5mm;display:flex;gap:3mm;align-items:center;font-size:7pt;line-height:1.45;color:#333}
+      .ft img{height:9mm}.ft .t{flex:1}.ft .pa{font-weight:700;font-size:7.5pt;align-self:flex-start;white-space:nowrap}
+      .bara{position:sticky;top:0;background:#16233c;padding:8px;text-align:center;z-index:5}.bara button{font:600 14px Arial;padding:8px 16px;border-radius:8px;border:0;background:#2E8B3C;color:#fff;cursor:pointer}
+      .bara span{color:#cfd6e4;font:12px Arial;margin-left:12px}@media print{.bara{display:none}body{background:#fff}.pg{margin:0;box-shadow:none}}</style></head><body>
+    <div class="bara"><button onclick="print()">🖨 Tipărește / Salvează PDF</button><span>La „Destinație” alege „Salvare ca PDF”.</span></div>
+    <div class="pg"><div class="hd"><img src="assets/docs/header.png" alt=""><div class="r"></div></div>
+      <div class="fi"><b>SC EURO ECOLOGIC SRL</b><br>Adresa societatii: Vlahita, Str. Mihai Eminescu nr. 9, jud. Harghita</div>
+      <h1>${titlu}</h1>${corp.replace(/class="doc-text doc-cerere-body"/g, 'class="tx"').replace(/class="doc-cerere-legal-note"/g, 'class="nl"').replace(/class="doc-text doc-cerere-mentiuni"/g, 'class="tx"')}<div class="sp"></div>
+      <div class="sg"><div><div class="lb">DATA</div><div>${crrDRo(today())}</div></div><div class="sol"><div class="ln"></div><div>Numele si Semnatura Solicitantului</div><div style="font-weight:700;font-size:9.5pt">${esc(nume)}</div></div></div>
+      <div class="sep"></div>
+      <div class="ap"><div><div class="lb">AVIZAT</div><div>${esc(avizat)}</div><div class="ln"></div><div class="cp">Data / Semnatura</div></div>
+        <div><div class="lb">APROBAT</div><div>&nbsp;</div><div class="ln"></div><div class="cp">Data / Semnatura</div></div></div>
+      <div class="ft"><img src="${esc(new URL("modele-originale/logo_ee.png", location.href).href)}" alt=""><div class="t"><b>SC EURO ECOLOGIC SRL</b> | Sediu: Loc. Vlahita, Str. M. Eminescu nr. 9, jud. HR | info@eurowc.ro<br>
+        0742 029 410 | Nr. Reg. Com.: J 2007 000205 190 | CUI: RO 21311085 | Website: www.eurowc.ro<br><b>P.L. Hunedoara</b> | Sat Pestisul Mare, Nr 1, Jud. HD | hunedoara@eurowc.ro | <b>0735 214 762</b></div><div class="pa">Pagina 1 din 1</div></div>
+    </div></body></html>`;
+  document.getElementById("mod-crr")?.remove();
+  const w = document.createElement("div"); w.className = "modal on"; w.id = "mod-crr";
+  w.innerHTML = `<div class="box" style="max-width:900px;width:900px;padding:0"><h3 class="lux-cap cap-mut" style="margin:0">${esc(fisier)}</h3><iframe id="crr-fr" title="Cererea" style="width:100%;height:78vh;border:0;display:block;background:#8a93a3"></iframe></div>`;
+  document.body.appendChild(w); feFereastra(w); $("crr-fr").srcdoc = html;
   if(!ANG.admin || !$("cr-pont") || !$("cr-pont").checked || (t !== "CO" && t !== "INV")) return;
   const acum = new Date().toISOString();
   if(t === "CO"){ const { error } = await db.from("pontaj_zile").upsert(zile.map(z => ({ sofer_id: x.id, zi: z, cod: "CO", masina: null, ora_start: null, ora_stop: null, km: null, sursa: "manual", updated_at: acum })), { onConflict: "sofer_id,zi" });
