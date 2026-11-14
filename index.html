@@ -1116,7 +1116,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
   <span id="rz-w"><button id="rz-reset" class="pictograma" title="Lățimi implicite — pune coloanele din tabelele acestei file înapoi cum erau">↺ Reset layout</button><i class="rz-sep">|</i></span>
   <span id="tz-w" title="Mărimea tabelului (doar tabelul, restul rămâne la fel), din 5 în 5%. Merge și cu Ctrl + rotița mausului, Ctrl + / Ctrl − / Ctrl 0. Dublu clic pe procent = scrii tu valoarea."><button class="pictograma" onclick="tzPas(-1)" aria-label="Micșorează tabelul">−</button><b id="tz-v" ondblclick="tzScrie()" title="Dublu clic = scrii mărimea (ex. 87), Enter">100%</b><input id="tz-in" type="number" min="30" max="300" step="5" style="display:none"><button class="pictograma" onclick="tzPas(1)" aria-label="Mărește tabelul">+</button></span>
-  <span class="ver">v8.78</span>
+  <span class="ver">v8.79</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -8460,7 +8460,7 @@ function factText(x, f, tva){   // v7.15: grupuri despărțite de rânduri goale
     "Locație: " + [a.jud, a.loc, x.loc || a.sat].filter(Boolean).join(", "), "",
     ...(ftGard(x, f, tva) || ["Produs: " + cant + " " + (f[15] || "") + (f[16] ? " " + f[16] : "") + (a.forma ? " · " + a.forma : ""), "",
     "Perioada: " + (f[22] || "") + " – " + (f[23] || "") + " · *" + zile + (zile === 1 ? " zi" : " zile") + "*",
-    "Preț: *" + ftBani(pret) + " " + mon + "* / buc / zi", "",
+    "Preț: *" + ftBani(pret) + " " + mon + "* / zi / " + (String(a.um || "").trim().toLowerCase() || "buc"), "",   // v8.79: unitatea după UM-ul anexei
     "Valoare *fără TVA*: " + ftBani(fara) + " " + mon + " · cu TVA (" + Math.round(tva * 100) + "%): " + ftBani(cu) + " " + mon, ""]) ];
   if(/^FACTURA /.test(f[0])) L.push("Document: *" + f[0] + "*");
   if(f[27] !== "" && f[27] != null) L.push("Scadent: " + f[27] + " zile");
@@ -8477,7 +8477,7 @@ function ftGard(x, f, tva){
   return ["Produs: " + prodN(a.produs || "", 2) + (model ? " " + model : "") + " - " + panF(pn) + (pn === 1 ? " Panou" : " Panouri") + " [ " + panF(ml) + " ML ]" + (a.forma ? " · " + a.forma : ""),
     ...(acc.length ? ["Accesorii: " + acc.map(ftTitlu).join(" ; ")] : []), "",
     "Perioada: " + (f[22] || "") + " – " + (f[23] || "") + " · *" + zile + (zile === 1 ? " zi" : " zile") + "*",
-    "Preț: *" + ftBani(pret) + " " + mon + "* / buc / zi" + (peML ? " / ML" : ""),
+    "Preț: *" + ftBani(pret) + " " + mon + "* / zi / " + (peML ? "ML" : "panou"),   // v8.79 (cerut de Ovidiu, 14.11): unitatea după cum se facturează — ML sau panou
     "adica: " + ftBani(pret) + " lei * " + zile + (zile === 1 ? " zi" : " zile") + " * " + (peML ? panF(ml) + " ml" : panF(pn) + (pn === 1 ? " panou" : " panouri")) + " = *" + ftBani(fara) + " " + mon + "* · cu TVA (" + Math.round(tva * 100) + "%): " + ftBani(cu) + " " + mon, ""];
 }
 const FT_DEST = "harghita@eurowc.ro", FT_SUBIECT = "ROG FACTURA";
