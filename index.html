@@ -1116,7 +1116,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
   <span id="rz-w"><button id="rz-reset" class="pictograma" title="Lățimi implicite — pune coloanele din tabelele acestei file înapoi cum erau">↺ Reset layout</button><i class="rz-sep">|</i></span>
   <span id="tz-w" title="Mărimea tabelului (doar tabelul, restul rămâne la fel), din 5 în 5%. Merge și cu Ctrl + rotița mausului, Ctrl + / Ctrl − / Ctrl 0. Dublu clic pe procent = scrii tu valoarea."><button class="pictograma" onclick="tzPas(-1)" aria-label="Micșorează tabelul">−</button><b id="tz-v" ondblclick="tzScrie()" title="Dublu clic = scrii mărimea (ex. 87), Enter">100%</b><input id="tz-in" type="number" min="30" max="300" step="5" style="display:none"><button class="pictograma" onclick="tzPas(1)" aria-label="Mărește tabelul">+</button></span>
-  <span class="ver">v8.76</span>
+  <span class="ver">v8.77</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -3599,7 +3599,7 @@ let A_COLG = "";
 const RL_LAT = [90,220,240,100,96,90,170,110,110,44], RL_ZI = 36, RL_RPT = 110;
 // v6.91: lățimile din Puncte de rută (pe câmp; ACC. după Produse, apoi RT și butoanele)
 const P_LAT = { client_key:120, client:230, jud:46, localitate:130, locatie:300, ziua:84, masina:96, frecventa:84, _produse:150, status:240 }, P_LAT_ACC = 48, P_LAT_RT = 130, P_LAT_BTN = 150;
-const F_LAT = [150,80,92,100,220,44,44,100,110,96,96,40,110,200,84,90,170,44,90,64,60,130,96,96,50,100,100,64], F_LAT_ACC = 48, F_LAT_FAC = 100;
+const F_LAT = [150,80,92,100,220,44,44,100,110,96,96,40,110,200,84,90,170,44,90,64,60,130,96,96,50,100,100,64], F_LAT_ACC = 48, F_LAT_FAC = 100, F_LAT_1F = 96;   // v8.77: coloana „1 FACTURĂ” după NR. CTR
 let R_SC = new Map(), FACT_SC = {}, FSC = null, FACT_LOC = [], FLO = null;   // v6.88: FACT_LOC = facturare_locatii   // v6.86: rândurile „servisare la cerere” pe anexă (index rând → anexa) + zilele lunii
 let R_SERV = new Map();   // v6.44: rândurile de servisare fără anexă din Facturare (index rând → id comandă)
 const tipLit = t => /AMPLASARE|EVENIMENT-A|SUPLIMENTARE/.test(t)?"A":/RIDICARE|EVENIMENT-R|REDUCERE|DAUNA|FURT/.test(t)?"R":/SERVISARE/.test(t)?"S":/Transfer|VANZARE/.test(t)?"T":"X";
@@ -8169,15 +8169,84 @@ function factOrdonGata(L){   // L = [{ f, j }] — se sortează pe loc
 }
 function factCtrDe(j){ const x = R_FX[j]; if(x && x.c) return x.c; const f = R_RANDURI[j]; return f ? CTR.find(c => c.nr_ctr === f[1]) || null : null; }
 // v7.87 (cerut de Ovidiu, 05.11): bifa „1 factură” pe contract, din Facturare „În lucru”
-async function factOFactura(ctrId){
+// v8.77 (cerut de Ovidiu, 14.11): coloană proprie „1 FACTURĂ”; clic = fereastră cu toate anexele contractului,
+// bifezi care merg pe o singură factură (fiecare = o poziție), apoi sumar „Salvezi?”. Anexele nu se schimbă — contează doar în Facturare.
+// contracte.fact_o_factura = true + fact_o_factura_linii = [id anexa inițială…]; lista goală (null) la contractele vechi = toate anexele.
+const f1Lista = c => c && c.fact_o_factura ? (Array.isArray(c.fact_o_factura_linii) ? c.fact_o_factura_linii.map(String) : null) : [];
+function f1Contine(c, lin){ if(!c || !c.fact_o_factura) return false; const L = f1Lista(c); return L === null ? true : !!lin && L.includes(String(lin)); }
+function f1Buton(j){
+  if(!FCTR_PRIM.has(j)) return "";
+  const c = FCTR_PRIM.get(j), L = f1Lista(c), on = !!c.fact_o_factura;
+  const et = !on ? "☐ 1 factură" : L === null ? "☑ toate" : `☑ ${L.length} anexe`;
+  return `<button class="btn sm ${on ? "" : "sec"}" style="padding:1px 6px;font-size:10.5px${on ? ";background:#4A2E8F;border-color:#4A2E8F" : ""}" title="${on ? (L === null ? "Toate rândurile contractului pe o singură factură" : L.length + " anexe pe o singură factură, restul separat") + ". Clic = vezi / schimbi anexele." : "Clic: alegi anexele care merg pe o singură factură"}" onclick="event.stopPropagation();factOFactura(${c.id})">${et}</button>`;
+}
+function factOFactura(ctrId){
   const c = CTR.find(x => x.id === ctrId); if(!c) return;
-  const v = !c.fact_o_factura;
-  const { error } = await db.from("contracte").update({ fact_o_factura: v }).eq("id", ctrId);
+  const nrA = a => { const m = /(\d+)/.exec(String(a.anexa || "")); return m ? +m[1] : 9999; };
+  const baze = ANX.filter(a => a.contract_id === c.id && !a.linie_id).sort((x, y) => (anexaActiva(y) - anexaActiva(x)) || nrA(x) - nrA(y) || x.id - y.id);
+  if(!baze.length){ toast(`${c.nr_ctr}: contractul nu are anexe`, true); return; }
+  const inLuna = new Set(); R_RANDURI.forEach((f, j) => { const k = factCtrDe(j); const a = R_FX[j] && R_FX[j].a; if(k && k.id === c.id && a) inLuna.add(String(a.linie_id || a.id)); });
+  const L = f1Lista(c), bif = a => L === null ? c.fact_o_factura : L.includes(String(a.id));
+  const cl = (CLI || []).find(k => k.id === c.client_id);
+  const lin = a => { const pe = anexeLinie(a.id).filter(x => x.id !== a.id).map(x => x.anexa).filter(Boolean);
+    return { nume: a.anexa || ("anexa " + a.id), loc: [a.loc, a.sat].filter(Boolean).join(", "), prod: [prodN(a.produs || "", +a.cant || 1), a.model].filter(Boolean).join(" "), cant: +a.cant || 0, act: anexaActiva(a), pe, luna: inLuna.has(String(a.id)) }; };
+  document.getElementById("mod-f1")?.remove();
+  const w = document.createElement("div"); w.className = "modal on"; w.id = "mod-f1";
+  w.innerHTML = `<div class="box" style="max-width:760px"><h3 class="lux-cap cap-mut">🧾 1 factură — ${esc(c.nr_ctr)}${cl ? " · " + esc(cl.nume) : ""}</h3>
+    <style>#mod-f1 table{width:100%;border-collapse:collapse;font-size:13px}#mod-f1 td,#mod-f1 th{padding:5px 6px;border-bottom:1px solid var(--bd);text-align:left;vertical-align:top}
+      #mod-f1 tr.rid td{color:#8a8f99}#mod-f1 tr:has(input:checked) td{background:#efe9fb}#mod-f1 .tg{display:inline-block;font-size:10.5px;padding:0 6px;border-radius:8px;margin-left:4px}
+      #mod-f1 .tg.l{background:#2E8B3C;color:#fff}#mod-f1 .tg.r{background:#ddd;color:#555}#mod-f1 label.f1r{display:flex;gap:6px;align-items:center;margin:0;cursor:pointer}</style>
+    <div id="f1-pas1">
+      <p class="muted" style="margin:0 0 8px">Bifează anexele care merg pe <b>o singură factură</b> (fiecare anexă = o poziție pe factură). Cele nebifate se facturează separat, ca până acum (anexa cu suplimentările / reducerile ei rămâne pe aceeași factură). Anexele nu se schimbă — bifa contează doar în Facturare.</p>
+      <div class="row" style="justify-content:flex-start;gap:6px;margin-bottom:6px">
+        <div style="flex:0"><button class="btn sm sec" onclick="f1Toate(1)">Bifează toate</button></div>
+        <div style="flex:0"><button class="btn sm sec" onclick="f1Toate(2)" title="Doar anexele care au rânduri în Facturare pe luna aleasă">Doar cele din luna aceasta</button></div>
+        <div style="flex:0"><button class="btn sm sec" onclick="f1Toate(0)">Debifează toate</button></div>
+      </div>
+      <table><thead><tr><th style="width:36%">Anexa</th><th>Locație</th><th>Produs</th><th style="text-align:right">Cant.</th></tr></thead><tbody>
+      ${baze.map(a => { const x = lin(a); return `<tr class="${x.act ? "" : "rid"}"><td><label class="f1r"><input type="checkbox" class="f1-cb" value="${a.id}" data-luna="${x.luna ? 1 : 0}"${bif(a) ? " checked" : ""}> <b>${esc(x.nume)}</b></label>` +
+        (x.luna ? '<span class="tg l" title="Are rânduri în Facturare pe luna aleasă">în luna aceasta</span>' : "") + (x.act ? "" : '<span class="tg r">ridicată</span>') +
+        (x.pe.length ? `<div class="muted" style="font-size:11.5px">+ ${esc(x.pe.join(", "))}</div>` : "") +
+        `</td><td>${esc(x.loc)}</td><td>${esc(x.prod)}</td><td style="text-align:right">${x.cant || ""}</td></tr>`; }).join("")}
+      </tbody></table>
+      <div class="row" style="justify-content:flex-end;margin-top:12px">
+        <div style="flex:0"><button class="btn sec" onclick="document.getElementById('mod-f1').remove()">Renunță</button></div>
+        <div style="flex:0"><button class="btn" onclick="f1Sumar()">Salvează…</button></div>
+      </div>
+    </div>
+    <div id="f1-pas2" style="display:none"></div></div>`;
+  w._f1 = { c, baze, lin };
+  document.body.appendChild(w); feFereastra(w);
+}
+function f1Toate(t){ document.querySelectorAll("#mod-f1 .f1-cb").forEach(cb => { cb.checked = t === 1 || (t === 2 && cb.dataset.luna === "1"); }); }
+function f1Sumar(){
+  const w = $("mod-f1"); if(!w) return; const { c, baze, lin } = w._f1;
+  const ids = [...w.querySelectorAll(".f1-cb:checked")].map(cb => +cb.value);
+  const da = baze.filter(a => ids.includes(a.id)), nu = baze.filter(a => !ids.includes(a.id));
+  const li = a => { const x = lin(a); return `<li><b>${esc(x.nume)}</b>${x.pe.length ? " (+ " + esc(x.pe.join(", ")) + ")" : ""} — ${esc(x.loc)} · ${esc(x.prod)}${x.act ? "" : " · <i>ridicată</i>"}</li>`; };
+  w.querySelector("#f1-pas1").style.display = "none";
+  const p2 = w.querySelector("#f1-pas2"); p2.style.display = "";
+  p2.innerHTML = `<p style="margin:0 0 8px"><b>Ai făcut asta pe contractul ${esc(c.nr_ctr)}:</b></p>` +
+    (da.length >= 2 ? `<p style="margin:6px 0 2px;color:#4A2E8F"><b>Pe O SINGURĂ factură — ${da.length} anexe</b> (fiecare = o poziție):</p><ul style="margin:0 0 8px">${da.map(li).join("")}</ul>`
+      : `<p style="margin:6px 0;color:#C0392B"><b>${da.length ? "O singură anexă bifată" : "Nicio anexă bifată"}</b> — nu are ce să se lipească: contractul revine la facturi separate.</p>`) +
+    (nu.length ? `<p style="margin:6px 0 2px"><b>Facturi separate — ${nu.length} anexe</b> (fiecare anexă cu suplimentările / reducerile ei pe factura ei):</p><ul style="margin:0 0 8px">${nu.map(li).join("")}</ul>` : "") +
+    `<p class="muted" style="margin:6px 0">Anexele nu se schimbă — bifa contează doar în Facturare („Gata de trimis”). O anexă nouă pe contract nu intră singură pe factura comună: o bifezi aici.</p>` +
+    `<div class="row" style="justify-content:flex-end;margin-top:12px">
+      <div style="flex:0"><button class="btn sec" onclick="f1Inapoi()">Înapoi la bife</button></div>
+      <div style="flex:0"><button class="btn" onclick="f1Salveaza()">Da, salvez</button></div></div>`;
+  w._f1.ids = da.length >= 2 ? da.map(a => a.id) : [];
+}
+function f1Inapoi(){ const w = $("mod-f1"); if(!w) return; w.querySelector("#f1-pas2").style.display = "none"; w.querySelector("#f1-pas1").style.display = ""; }
+async function f1Salveaza(){
+  const w = $("mod-f1"); if(!w) return; const { c, ids } = w._f1;
+  const v = { fact_o_factura: ids.length >= 2, fact_o_factura_linii: ids.length >= 2 ? ids : null };
+  const { error } = await db.from("contracte").update(v).eq("id", c.id);
   if(error){ toast("Nu s-a salvat: " + error.message, true); return; }
-  c.fact_o_factura = v;
-  toast(v ? `${c.nr_ctr}: toate rândurile pe o singură factură (poziții separate)` : `${c.nr_ctr}: facturi separate, ca înainte`);
+  Object.assign(c, v); w.remove();
+  toast(v.fact_o_factura ? `${c.nr_ctr}: ${ids.length} anexe pe o singură factură, restul separat` : `${c.nr_ctr}: facturi separate, ca înainte`);
   tcPastreaza("r-tbl", genereazaRaport);
-}   // R_FCOL (v6.67): Facturare — {col: "up" | "down"} = verde (amplasare / suplimentare) / roșu (ridicare / reducere)
+}
+   // R_FCOL (v6.67): Facturare — {col: "up" | "down"} = verde (amplasare / suplimentare) / roșu (ridicare / reducere)
    // R_ROSU (v6.11; v8.54): "R" = RIDICARE în luna aleasă (roșu), "V" = AMPLASARE / SUPLIMENTARE (verde)   // R_RIDS (v4.83): pe fiecare rând din Raport lună, anexele și comenzile lui
 
 const zileInLuna = (an, luna) => new Date(an, luna, 0).getDate();
@@ -8652,7 +8721,9 @@ async function raportFacturare(){
     // v7.87: contract cu „O singură factură” → rândurile lui (aceeași monedă și același document) = o factură cu mai multe poziții:
     // primul rând are în DOCUMENT „1 FACTURĂ · N POZIȚII”, următoarele sunt în continuare (↳, italic)
     // v8.54 (cerut de Ovidiu, 12.11): și fără „1 factură” pe contract, rândurile aceleiași locații (anexa + -S / -R, ex. FLORERO 13 + 13-S1) = o factură cu mai multe poziții
-    const gk = x => !x.c || (!x.c.fact_o_factura && !x.lin) ? null : (x.c.fact_o_factura ? x.c.id : x.c.id + "|L" + x.lin) + "|" + (x.f[20] || "") + "|" + (/^FACTURA /.test(x.f[0]) ? x.f[0] : "");
+    // v8.77 (cerut de Ovidiu, 14.11): „1 factură” doar pe anexele bifate (contracte.fact_o_factura_linii); fără listă = tot contractul (ca înainte)
+    const o1 = x => !!(x.c && f1Contine(x.c, x.lin));
+    const gk = x => !x.c || (!o1(x) && !x.lin) ? null : (o1(x) ? x.c.id : x.c.id + "|L" + x.lin) + "|" + (x.f[20] || "") + "|" + (/^FACTURA /.test(x.f[0]) ? x.f[0] : "");
     const gN = new Map(); sel.forEach(x => { const k = gk(x); if(k) gN.set(k, (gN.get(k) || 0) + 1); });
     const vazut = new Set(); sel.forEach(x => { const k = gk(x); x.g = k && gN.get(k) > 1 ? (vazut.has(k) ? "cont" : (vazut.add(k), "prim")) : ""; x.gn = k ? gN.get(k) : 0; });
     R_ROSU = sel.map(x => x.ro); R_FNOTE = sel.map(x => x.nota); R_FCOL = []; R_FCODB = sel.map(x => !!x.f._cod);   // v7.85: cod client → bold
@@ -9291,12 +9362,12 @@ function deseneazaRaport(){
     prim.forEach((j, id) => { if(n.get(id) > 1) FCTR_PRIM.set(j, CTR.find(c => c.id === id)); }); }
   const rlf = R_NUME === "Raport_luna" && R_ACC.length === R_RANDURI.length;   // v6.91: la fel în Raport lună (ACC. după TIP)
   const accI = rlf ? 6 : -1, lx = fl || rlf;   // v7.06: Facturare fără coloana ACC. (TIP îngroșat)
-  const lat = fl ? F_LAT.concat(R_EXTRA_T ? [F_LAT_FAC] : [])
+  const lat = fl ? F_LAT.slice(0, 2).concat([F_LAT_1F], F_LAT.slice(2), R_EXTRA_T ? [F_LAT_FAC] : [])
     : rlf ? RL_LAT.slice(0, 7).concat([F_LAT_ACC], RL_LAT.slice(7), new Array(Math.max(0, R_ANTET.length - RL_LAT.length)).fill(RL_ZI), R_EXTRA_T ? [RL_RPT] : []) : null;
   $("r-tbl").classList.toggle("flat", lx);
   if(lx) $("r-tbl").style.setProperty("--f-lat", lat.reduce((t, w) => t + w, 0) + "px"); else $("r-tbl").style.removeProperty("--f-lat");
   $("r-tbl").innerHTML = (lx ? `<colgroup>${lat.map(w => `<col style="width:${w}px">`).join("")}</colgroup>` : "") +
-    "<thead><tr>" + R_ANTET.map((h, i) => `<th title="${esc(h)}">${esc(h)}</th>` + (i === accI ? '<th title="Accesorii">ACC.</th>' : "")).join("") +
+    "<thead><tr>" + R_ANTET.map((h, i) => `<th title="${esc(h)}">${esc(h)}</th>` + (i === accI ? '<th title="Accesorii">ACC.</th>' : "") + (fl && i === 1 ? '<th title="Clic pe buton = alegi care anexe ale contractului merg pe o singură factură">1 FACTURĂ</th>' : "")).join("") +
     (R_EXTRA_T ? `<th class="noprint" title="Se bifează de mână: - → V → L → X">${esc(R_EXTRA_T)}</th>` : "") + "</tr></thead><tbody>" +
     R_RANDURI.map((f, j) => {
       const fact = R_NUME === "Facturare" , av = fact ? (R_AVERT[j] || {}) : {};
@@ -9350,8 +9421,7 @@ function deseneazaRaport(){
         if(R_NUME === "Facturare_de_trimis" && i === 6 && R_FCODB[j]) t = `<b>${t}</b>`;
         if(R_NUME === "Facturare_de_trimis" && R_FCONT[j]) t = `<i${R_ROSU[j] && (i === 1 || i === 2) ? "" : ' style="color:#36405C"'}>${t}</i>`;   // v7.87: poziție în continuarea facturii; v8.75: culoarea verde / roșie (suplimentare / reducere) nu mai e acoperită de gri
         if(R_NUME === "Facturare_de_trimis" && i === 0 && /\b1F-\d+R\b/.test(String(v || ""))) t = `<b style="color:#4A2E8F" title="1 factură cu ${String(v).match(/1F-(\d+)R/)[1]} rânduri (poziții)">${t}</b>`;
-        if(fact && i === 1 && FCTR_PRIM.has(j)){ const c = FCTR_PRIM.get(j);
-          t += ` <button class="btn sm ${c.fact_o_factura ? "" : "sec"}" style="padding:1px 6px;font-size:10.5px${c.fact_o_factura ? ";background:#4A2E8F;border-color:#4A2E8F" : ""}" title="${c.fact_o_factura ? "Bifat: toate rândurile contractului merg pe o singură factură (fiecare rând = o poziție). Clic = facturi separate." : "Clic: toate rândurile contractului pe o singură factură (fiecare rând = o poziție)"}" onclick="event.stopPropagation();factOFactura(${c.id})">${c.fact_o_factura ? "☑" : "☐"} 1 factură</button>`; }
+        // v8.77: butonul „1 factură” s-a mutat în coloana lui, după NR. CTR (f1Buton)
         if(R_NUME === "Facturare_de_trimis" && i === 16 && /^EUR/i.test(String(v || ""))) t = `<b style="color:#0B5D1E">${t}</b>`;   // v7.86: EURO verde închis   // v7.85: codul clientului (CTP, ARL…) îngroșat
         if(R_ROSU[j] && ((fact && (i === 1 || i === 4)) || (R_NUME === "Facturare_de_trimis" && (i === 1 || i === 2))))
           t = `<span style="color:${R_ROSU[j] === "V" ? "#2E8B3C" : "var(--red)"};font-weight:700">${t}</span>`;   // v8.54: verde la amplasare / suplimentare
@@ -9367,7 +9437,7 @@ function deseneazaRaport(){
         if(R_NUME === "Raport_luna" && (i === 0 || i === 1) && rlCul(j)) t = `<span style="color:${rlCul(j) === "V" ? "#2E8B3C" : "var(--red)"};font-weight:700">${t}</span>`;   // v8.54
         const tl = !ta && lx && typeof v === "string" && v.length > 10 ? ` title="${esc(v)}"` : "";   // v6.89: textul întreg la mouse
         return `<td${rl ? ` class="rl-${rl}"` : ""}${tl}${R_NUM.has(i) ? ' style="text-align:right"' : ''}>${rl ? `<span class="rl-b">${t}</span>` : t}</td>` +
-          (i === accI ? `<td class="acc-c">${accIcon(R_ACC[j] || "")}</td>` : "");
+          (i === accI ? `<td class="acc-c">${accIcon(R_ACC[j] || "")}</td>` : "") + (fl && i === 1 ? `<td style="text-align:center">${f1Buton(j)}</td>` : "");
       }).join("") + (R_EXTRA_T ? `<td class="noprint">${R_EXTRA[j] || ""}</td>` : "") + "</tr>"; }).join("") + "</tbody>";
   verBanda();
 }
@@ -14981,7 +15051,7 @@ const HOW = [
       { t: "<b>În lucru</b> (tabelul întreg): verifici fiecare rând. Clientul cu <b>verde</b> = amplasare / suplimentare în lună, cu <b>roșu</b> = ridicare.", ar: { s: "facturare", fn: () => setModFact("lucru"), el: "#r-mod-lucru" } },
       { t: "<b>STARE LUNA</b> pe rând: <b>ACTIV</b> = se facturează; <b>NU FACTURAM</b> = nu (ex. 2–4 zile în luna ridicării); <b>FACTURA AVANS / PROFORMA</b> = document special." },
       { t: "<b>⚠ act adițional</b> pe rând = contractul sau anexa au expirat → trebuie prelungite." },
-      { t: "<b>☐ 1 factură</b> pe primul rând al unui contract = toate rândurile contractului pe o singură factură. Locația cu suplimentare / reducere (13 + 13-S1) merge singură pe o factură." },
+      { t: "Coloana <b>1 FACTURĂ</b> (după NR. CTR), pe primul rând al contractului: clic = fereastra cu toate anexele contractului; bifezi care merg pe o singură factură (fiecare = o poziție), apoi sumarul „Salvezi?”. Nebifatele se facturează separat; locația cu suplimentare / reducere (13 + 13-S1) merge pe factura ei." },
       { t: "<b>Gata de trimis</b> → <b>Export Excel</b> → trimiți fișierul la sediu.", ar: { s: "facturare", fn: () => setModFact("gata"), el: "#r-mod-gata" } },
       { t: "Când vin facturile: <b>Verificare</b> → la fiecare rând scrii nr. facturii, observația și apeși pătratul: ✓ corect, ! greșită, ✗ neprimită.", ar: { s: "facturare", fn: () => setModFact("verif"), el: "#r-mod-verif" } },
       { t: "Ce e facturat trece pe <b>FACTURAT</b> și nu mai intră la „Gata de trimis”." } ],
