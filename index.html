@@ -1116,7 +1116,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
   <span id="rz-w"><button id="rz-reset" class="pictograma" title="Lățimi implicite — pune coloanele din tabelele acestei file înapoi cum erau">↺ Reset layout</button><i class="rz-sep">|</i></span>
   <span id="tz-w" title="Mărimea tabelului (doar tabelul, restul rămâne la fel), din 5 în 5%. Merge și cu Ctrl + rotița mausului, Ctrl + / Ctrl − / Ctrl 0. Dublu clic pe procent = scrii tu valoarea."><button class="pictograma" onclick="tzPas(-1)" aria-label="Micșorează tabelul">−</button><b id="tz-v" ondblclick="tzScrie()" title="Dublu clic = scrii mărimea (ex. 87), Enter">100%</b><input id="tz-in" type="number" min="30" max="300" step="5" style="display:none"><button class="pictograma" onclick="tzPas(1)" aria-label="Mărește tabelul">+</button></span>
-  <span class="ver">v8.73</span>
+  <span class="ver">v8.74</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -8371,14 +8371,27 @@ function factText(x, f, tva){   // v7.15: grupuri despărțite de rânduri goale
     "Client: *" + (k.nume || "") + "*" + (k.cui ? " · " + (k.id_tip || "CUI") + " " + [k.atr, k.cui].filter(Boolean).join("") : ""),
     "Contract: *" + (c.nr_ctr || "") + "*" + (anx ? " · " + anx : "") + (f[9] && f[9] !== "-" ? " din " + f[9] : ""), "",
     "Locație: " + [a.jud, a.loc, x.loc || a.sat].filter(Boolean).join(", "), "",
-    "Produs: " + cant + " " + (f[15] || "") + (f[16] ? " " + f[16] : "") + (a.forma ? " · " + a.forma : ""), "",
+    ...(ftGard(x, f, tva) || ["Produs: " + cant + " " + (f[15] || "") + (f[16] ? " " + f[16] : "") + (a.forma ? " · " + a.forma : ""), "",
     "Perioada: " + (f[22] || "") + " – " + (f[23] || "") + " · *" + zile + (zile === 1 ? " zi" : " zile") + "*",
     "Preț: *" + ftBani(pret) + " " + mon + "* / buc / zi", "",
-    "Valoare *fără TVA*: " + ftBani(fara) + " " + mon + " · cu TVA (" + Math.round(tva * 100) + "%): " + ftBani(cu) + " " + mon, "" ];
+    "Valoare *fără TVA*: " + ftBani(fara) + " " + mon + " · cu TVA (" + Math.round(tva * 100) + "%): " + ftBani(cu) + " " + mon, ""]) ];
   if(/^FACTURA /.test(f[0])) L.push("Document: *" + f[0] + "*");
   if(f[27] !== "" && f[27] != null) L.push("Scadent: " + f[27] + " zile");
   L.push("", "Mențiuni: ");
   return L.join("\n");
+}
+// v8.74 (cerut de Ovidiu, 14.11 — PRISMA PLAZA, gard HERAS): la GARD / CORDON produsul apare cu panourile și metrii liniari, accesoriile pe rândul lor
+// și calculul scris pe larg („0,33 lei * 31 zile * 14 ml = 143,22 RON”). Altfel (toalete etc.) textul rămâne ca înainte.
+const ftTitlu = t => String(t || "").toLowerCase().replace(/(^|[\s(;,-])([a-zăâîșțş])/g, (m, a, b) => a + b.toUpperCase());
+function ftGard(x, f, tva){
+  const a = x.a || {}, L = panouLung(a.produs, a.model), pn = Math.abs(+x.cant || 0); if(!L || !pn) return null;
+  const ml = Math.round(pn * L * 100) / 100, peML = String(a.um || "").toUpperCase() === "ML", pret = f[19], mon = f[20] || "", zile = +f[24] || 0, fara = f[25], cu = f[26];
+  const model = String(a.model || "").replace(/\s*-\s*/g, " ").replace(/\s+/g, " ").trim(), acc = accLista(accAcord(a.accesorii));
+  return ["Produs: " + prodN(a.produs || "", 2) + (model ? " " + model : "") + " - " + panF(pn) + (pn === 1 ? " Panou" : " Panouri") + " [ " + panF(ml) + " ML ]" + (a.forma ? " · " + a.forma : ""),
+    ...(acc.length ? ["Accesorii: " + acc.map(ftTitlu).join(" ; ")] : []), "",
+    "Perioada: " + (f[22] || "") + " – " + (f[23] || "") + " · *" + zile + (zile === 1 ? " zi" : " zile") + "*",
+    "Preț: *" + ftBani(pret) + " " + mon + "* / buc / zi" + (peML ? " / ML" : ""),
+    "adica: " + ftBani(pret) + " lei * " + zile + (zile === 1 ? " zi" : " zile") + " * " + (peML ? panF(ml) + " ml" : panF(pn) + (pn === 1 ? " panou" : " panouri")) + " = *" + ftBani(fara) + " " + mon + "* · cu TVA (" + Math.round(tva * 100) + "%): " + ftBani(cu) + " " + mon, ""];
 }
 const FT_DEST = "harghita@eurowc.ro", FT_SUBIECT = "ROG FACTURA";
 function ftTextFinal(){ return $("ft-t").value.replace(/\n*Mențiuni:\s*$/, "").replace(/\s+$/, ""); }   // „Mențiuni:” gol nu se trimite
