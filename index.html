@@ -1116,7 +1116,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
   <span id="rz-w"><button id="rz-reset" class="pictograma" title="Lățimi implicite — pune coloanele din tabelele acestei file înapoi cum erau">↺ Reset layout</button><i class="rz-sep">|</i></span>
   <span id="tz-w" title="Mărimea tabelului (doar tabelul, restul rămâne la fel), din 5 în 5%. Merge și cu Ctrl + rotița mausului, Ctrl + / Ctrl − / Ctrl 0. Dublu clic pe procent = scrii tu valoarea."><button class="pictograma" onclick="tzPas(-1)" aria-label="Micșorează tabelul">−</button><b id="tz-v" ondblclick="tzScrie()" title="Dublu clic = scrii mărimea (ex. 87), Enter">100%</b><input id="tz-in" type="number" min="30" max="300" step="5" style="display:none"><button class="pictograma" onclick="tzPas(1)" aria-label="Mărește tabelul">+</button></span>
-  <span class="ver">v8.74</span>
+  <span class="ver">v8.75</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -9338,7 +9338,7 @@ function deseneazaRaport(){
         if(fact && i === 3 && av.ctr)  t += ` <span class="warn-pill" title="Contractul a expirat la ${esc(fmtD(av.ctr))} — e nevoie de act adițional">⚠ act adițional</span>`;
         if(fact && i === 10 && av.anx) t += ` <span class="warn-pill" title="Anexa a expirat la ${esc(fmtD(av.anx))}; echipamentul nu e trecut pe RIDICARE, deci se facturează mai departe">⚠ act adițional</span>`;
         if(R_NUME === "Facturare_de_trimis" && i === 6 && R_FCODB[j]) t = `<b>${t}</b>`;
-        if(R_NUME === "Facturare_de_trimis" && R_FCONT[j]) t = `<i style="color:#36405C">${t}</i>`;   // v7.87: poziție în continuarea facturii
+        if(R_NUME === "Facturare_de_trimis" && R_FCONT[j]) t = `<i${R_ROSU[j] && (i === 1 || i === 2) ? "" : ' style="color:#36405C"'}>${t}</i>`;   // v7.87: poziție în continuarea facturii; v8.75: culoarea verde / roșie (suplimentare / reducere) nu mai e acoperită de gri
         if(R_NUME === "Facturare_de_trimis" && i === 0 && /\b1F-\d+R\b/.test(String(v || ""))) t = `<b style="color:#4A2E8F" title="1 factură cu ${String(v).match(/1F-(\d+)R/)[1]} rânduri (poziții)">${t}</b>`;
         if(fact && i === 1 && FCTR_PRIM.has(j)){ const c = FCTR_PRIM.get(j);
           t += ` <button class="btn sm ${c.fact_o_factura ? "" : "sec"}" style="padding:1px 6px;font-size:10.5px${c.fact_o_factura ? ";background:#4A2E8F;border-color:#4A2E8F" : ""}" title="${c.fact_o_factura ? "Bifat: toate rândurile contractului merg pe o singură factură (fiecare rând = o poziție). Clic = facturi separate." : "Clic: toate rândurile contractului pe o singură factură (fiecare rând = o poziție)"}" onclick="event.stopPropagation();factOFactura(${c.id})">${c.fact_o_factura ? "☑" : "☐"} 1 factură</button>`; }
