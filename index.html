@@ -1116,7 +1116,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
   <span id="rz-w"><button id="rz-reset" class="pictograma" title="Lățimi implicite — pune coloanele din tabelele acestei file înapoi cum erau">↺ Reset layout</button><i class="rz-sep">|</i></span>
   <span id="tz-w" title="Mărimea tabelului (doar tabelul, restul rămâne la fel), din 5 în 5%. Merge și cu Ctrl + rotița mausului, Ctrl + / Ctrl − / Ctrl 0. Dublu clic pe procent = scrii tu valoarea."><button class="pictograma" onclick="tzPas(-1)" aria-label="Micșorează tabelul">−</button><b id="tz-v" ondblclick="tzScrie()" title="Dublu clic = scrii mărimea (ex. 87), Enter">100%</b><input id="tz-in" type="number" min="30" max="300" step="5" style="display:none"><button class="pictograma" onclick="tzPas(1)" aria-label="Mărește tabelul">+</button></span>
-  <span class="ver">v8.71</span>
+  <span class="ver">v8.72</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -13961,6 +13961,20 @@ const afBif = (id, et, on, tit) => `<div><label>&nbsp;</label><label style="disp
 const afTabs = (id, L, sel, fn) => { $(id).innerHTML = L.map(([k, t]) => `<button class="${String(k) === String(sel) ? "on" : ""}" onclick="${fn}('${k}')">${esc(t)}</button>`).join(""); };
 
 // ---------- ANGAJAȚI ----------
+// v8.72 (cerut de Ovidiu, 14.11): concediul de odihnă PROPORȚIONAL — cele 20 / 21 de zile sunt pentru un an întreg; anul acesta i se cuvin
+// zile_co_an × (zilele de contract din an: de la max(angajare, 1 ian) până la min(încetare, 31 dec)) / zilele anului (rotunjit).
+// „Cuvenit până azi” = la fel, dar până la data de azi; „Poate lua azi” = cuvenit până azi (în jos) − luat. Exemplu: CATRINA, angajat 13.07.2026,
+// 20 zile / an → 9 zile în 2026; la 14.11.2026 i se cuvin 6,8 → cu 2 luate mai poate lua 4.
+function angCO(x, luat){
+  const an = new Date().getFullYear(), z = d => dtz(d), zi = 864e5, n = x.zile_co_an;
+  if(n == null) return null;
+  const ian = new Date(an, 0, 1), dec = new Date(an, 11, 31), zAn = Math.round((dec - ian) / zi) + 1;
+  const st = x.data_angajare && z(x.data_angajare) > ian ? z(x.data_angajare) : ian, sf = x.data_incetare && z(x.data_incetare) < dec ? z(x.data_incetare) : dec, azi = z(today());
+  const zile = (a, b) => b < a ? 0 : Math.round((b - a) / zi) + 1, inAn = zile(st, sf), panaAzi = zile(st, azi < sf ? azi : sf);
+  const exact = n * inAn / zAn, cuvAzi = n * panaAzi / zAn, alocat = Math.round(exact), l = luat || 0;
+  return { n, alocat, exact, cuvAzi, luat: l, ramas: alocat - l, poate: Math.max(0, Math.floor(cuvAzi + 1e-9) - l), partial: inAn < zAn, st, sf, an };
+}
+const angCOz = v => (Math.round(v * 10) / 10).toLocaleString("ro-RO");
 async function angIncarca(){
   const an = new Date().getFullYear();
   const [a, p, s, e, z] = await Promise.all([db.from("soferi").select("*").order("ordine", { nullsFirst: false }).order("nume"), db.from("angajati_privat").select("*"), db.from("pontaj_setari").select("*").maybeSingle(), db.rpc("este_admin"),
@@ -14028,12 +14042,12 @@ function angDash(){
     <div class="kpi" style="margin-top:12px"><div>Angajați activi<b>${act.length}</b></div><div>Șoferi<b>${act.filter(x => /SOFER/i.test(x.functie || "")).length}</b></div>
       <div${exp ? ' class="kpi-amb"' : ""}>Medicina muncii expirată<b>${exp}</b></div><div${at ? ' class="kpi-amb"' : ""}>Expiră în 30 de zile<b>${at}</b></div></div></div>
     <div class="card"><div class="tw"><table><thead><tr><th>Angajat</th><th>Funcție</th><th>Nr. contract</th><th>Tip</th><th>Data angajării</th><th>Vechime</th><th>Medicina muncii</th>
-      <th title="Zile de concediu de odihnă: alocate pe an / luate anul acesta (din pontaj) / rămase">CO alocat / luat / rămas</th><th title="Concediu medical anul acesta (din pontaj)">CM</th><th>Program</th>
+      <th title="Concediu de odihnă cuvenit anul acesta: zilele pe an întreg, proporțional cu perioada de contract din an (de la angajare / 1 ianuarie până la 31 decembrie / încetare)">CO cuvenit ${new Date().getFullYear()}</th><th title="Cât i s-a strâns de la angajare (sau 1 ianuarie) până azi">Cuvenit până azi</th><th title="Zile CO din pontaj, anul acesta">CO luat</th><th title="Cuvenit pe an − luat">Rămas pe an</th><th title="Cuvenit până azi (în jos) − luat: câte zile își poate lua acum">Poate lua azi</th><th title="Concediu medical anul acesta (din pontaj)">CM</th><th>Program</th>
       ${adm ? "<th style='text-align:right'>Salariu bază</th><th style='text-align:right'>Mărire</th><th style='text-align:right'>Transport</th><th style='text-align:right' title='Se adaugă la totalul de plată din pontaj'>Alte diurne</th>" : ""}<th>La șoferi</th><th>Status</th></tr></thead><tbody>` +
     L.map(x => { const c = ANG.co[x.id] || { CO: 0, CM: 0 }, pv = ANG.priv[x.id] || {};
       return `<tr style="cursor:pointer${x.activ === false ? ";opacity:.5" : ""}" onclick="angTab('${x.id}')"><td><b>${esc(x.nume)}</b></td><td>${esc(x.functie || "")}</td><td>${esc(x.nr_contract || "")}</td><td>${esc(x.tip_contract || "")}</td>
         <td>${fmtD(x.data_angajare)}</td><td>${afVechime(x.data_angajare)}</td><td>${afSem(x.medicina_expira)}</td>
-        <td>${x.zile_co_an == null ? '<span class="muted">—</span>' : x.zile_co_an + " / " + c.CO + " / <b>" + (x.zile_co_an - c.CO) + "</b>"}</td><td>${c.CM || ""}</td>
+        ${(k => !k ? '<td colspan="5" class="muted">zilele de CO / an necompletate</td>' : `<td title="${k.n} zile / an întreg${k.partial ? " · proporțional: " + angCOz(k.exact) + " zile (contract în anul curent din " + fmtD(ziLocala(k.st)) + ")" : ""}">${k.alocat}${k.partial ? ` <span class="muted" style="font-size:11px">din ${k.n}</span>` : ""}</td><td>${angCOz(k.cuvAzi)}</td><td>${k.luat}</td><td><b${k.ramas < 0 ? ' style="color:#C0392B"' : ""}>${k.ramas}</b></td><td><b style="color:${k.poate > 0 ? "#2E8B3C" : "#C0392B"}">${k.poate}</b></td>`)(angCO(x, c.CO))}<td>${c.CM || ""}</td>
         <td>${x.program_start ? "birou " + afOra(x.program_start) + "–" + afOra(x.program_stop) : "din rute"}</td>
         ${adm ? `<td style="text-align:right">${lei(pv.salariu_baza)}</td><td style="text-align:right">${lei(pv.marire)}</td><td style="text-align:right">${lei(pv.transport_luna)}</td><td style="text-align:right">${lei(pv.alte_diurne)}</td>` : ""}
         <td>${x.apare_la_soferi ? "da" : '<span class="muted">nu</span>'}</td><td>${x.activ === false ? "INACTIV" : "ACTIV"}</td></tr>`; }).join("") +
@@ -14046,7 +14060,7 @@ async function angFisa(x){
   $("ang-corp").innerHTML = `<div class="card"><details class="an-det" ${desc ? "open" : ""} ontoggle="ANG.fisaDeschisa=this.open"><summary style="cursor:pointer;list-style:none;display:flex;align-items:center;gap:12px;flex-wrap:wrap">
       <span class="an-sag" style="display:inline-block;width:20px;font-size:14px;color:var(--g)">▸</span>
       <span style="font-size:18px;font-weight:700;color:var(--g)">${nou ? "Angajat nou" : esc(x.nume)}</span>
-      ${nou ? "" : `<span style="display:flex;gap:16px;flex-wrap:wrap;font-size:13px"><span><span class="muted">Funcție</span> <b>${esc(x.functie || "—")}</b></span><span><span class="muted">Contract</span> <b>${esc(x.nr_contract || "—")}</b>${x.data_angajare ? ` <span class="muted">din ${fmtD(x.data_angajare)}</span>` : ""}</span><span><span class="muted">Vechime</span> <b>${esc(afVechime(x.data_angajare) || "—")}</b></span>${x.medicina_expira ? `<span><span class="muted">Medicina muncii</span> ${afSem(x.medicina_expira)}</span>` : ""}</span>`}
+      ${nou ? "" : `<span style="display:flex;gap:16px;flex-wrap:wrap;font-size:13px"><span><span class="muted">Funcție</span> <b>${esc(x.functie || "—")}</b></span><span><span class="muted">Contract</span> <b>${esc(x.nr_contract || "—")}</b>${x.data_angajare ? ` <span class="muted">din ${fmtD(x.data_angajare)}</span>` : ""}</span><span><span class="muted">Vechime</span> <b>${esc(afVechime(x.data_angajare) || "—")}</b></span>${(k => k ? `<span title="Cuvenit anul acesta ${k.alocat}${k.partial ? " (proporțional din " + k.n + ")" : ""} · cuvenit până azi ${angCOz(k.cuvAzi)} · luat ${k.luat} · rămas pe an ${k.ramas}"><span class="muted">CO ${k.an}</span> <b>${k.luat}</b> luate din <b>${k.alocat}</b> · poate lua azi <b style="color:${k.poate > 0 ? "#2E8B3C" : "#C0392B"}">${k.poate}</b></span>` : "")(angCO(x, (ANG.co[x.id] || {}).CO))}${x.medicina_expira ? `<span><span class="muted">Medicina muncii</span> ${afSem(x.medicina_expira)}</span>` : ""}</span>`}
       <span class="muted noprint" style="margin-left:auto;font-size:12px">${nou ? "" : "clic = arată / ascunde datele angajatului"}</span></summary><div style="margin-top:12px">
     <div class="grid3">${afC("an-nume", "Nume și prenume (ca pe CI)", x.nume)}${afC("an-scurt", "Nume scurt", x.nume_scurt)}${afC("an-functie", "Funcție", x.functie)}
       ${afC("an-tel", "Telefon", x.telefon)}${afC("an-email", "E-mail", x.email)}${afC("an-nastere", "Data nașterii", x.data_nasterii, "date")}
@@ -14374,7 +14388,7 @@ function crrCampuri(){
 }
 function crrInfo(){ const el = $("cr-info"); if(!el) return; if(CRR.tip !== "CO"){ el.textContent = ""; return; }
   const x = ANG.L.find(a => a.id === CRR.sid) || {}, n = crrZileLucr($("cr-de").value, $("cr-pana").value).length, c = (ANG.co[x.id] || {}).CO || 0;
-  el.innerHTML = `<b>${n}</b> ${n === 1 ? "zi lucrătoare" : "zile lucrătoare"} (fără weekend și sărbători legale)` + (x.zile_co_an != null ? ` · concediu rămas anul acesta: <b>${x.zile_co_an - c}</b> din ${x.zile_co_an}` : ""); }
+  el.innerHTML = `<b>${n}</b> ${n === 1 ? "zi lucrătoare" : "zile lucrătoare"} (fără weekend și sărbători legale)` + ((k => !k ? "" : ` · CO ${k.an}: cuvenit <b>${k.alocat}</b>${k.partial ? " (proporțional din " + k.n + ")" : ""}, luat ${k.luat}, rămas pe an <b>${k.ramas}</b> · poate lua azi <b style="color:${k.poate >= n ? "#2E8B3C" : "#C0392B"}">${k.poate}</b>` + (n > k.poate ? ` <span style="color:#C0392B">— cererea depășește cu ${n - k.poate} ${n - k.poate === 1 ? "zi" : "zile"} ce i s-a strâns până azi${n <= k.ramas ? " (dar încape în ce i se cuvine pe an)" : ""}</span>` : ""))(angCO(x, c))); }
 async function crrGenereaza(){
   const x = ANG.L.find(a => a.id === CRR.sid); if(!x){ toast("Alege angajatul", true); return; }
   const v = i => ($(i) ? $(i).value.trim() : ""), t = CRR.tip, de = v("cr-de"), nume = faraDiac(x.nume || "").toUpperCase(), ci = [x.ci_serie, x.ci_numar].filter(Boolean).join(" ").toUpperCase() || "N/A", fn = faraDiac(x.functie || "ANGAJAT").toUpperCase();
