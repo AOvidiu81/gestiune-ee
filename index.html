@@ -1116,7 +1116,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
   <span id="rz-w"><button id="rz-reset" class="pictograma" title="Lățimi implicite — pune coloanele din tabelele acestei file înapoi cum erau">↺ Reset layout</button><i class="rz-sep">|</i></span>
   <span id="tz-w" title="Mărimea tabelului (doar tabelul, restul rămâne la fel), din 5 în 5%. Merge și cu Ctrl + rotița mausului, Ctrl + / Ctrl − / Ctrl 0. Dublu clic pe procent = scrii tu valoarea."><button class="pictograma" onclick="tzPas(-1)" aria-label="Micșorează tabelul">−</button><b id="tz-v" ondblclick="tzScrie()" title="Dublu clic = scrii mărimea (ex. 87), Enter">100%</b><input id="tz-in" type="number" min="30" max="300" step="5" style="display:none"><button class="pictograma" onclick="tzPas(1)" aria-label="Mărește tabelul">+</button></span>
-  <span class="ver">v8.70</span>
+  <span class="ver">v8.71</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -14520,7 +14520,8 @@ function fltRaportHtml(m){
   const dif = c => c == null || !n ? "" : ` <span style="font-size:12px;color:${c > n * 1.15 ? "#C0392B" : c > n ? "#D97706" : "#2E8B3C"}">(${c >= n ? "+" : ""}${flt1(100 * (c - n) / n)}% față de normat)</span>`;
   const k = (t, v, sub) => `<div>${t}<b>${v}</b>${sub ? `<span class="muted" style="font-size:11px;display:block;font-weight:400">${sub}</span>` : ""}</div>`;
   return `<div class="card"><div class="row" style="align-items:flex-end"><div><h3 style="margin:0;color:var(--g)">Raport de consum — ${esc(nl)}</h3></div>
-      <div style="flex:0;min-width:170px" class="noprint"><label>Luna</label><input type="month" value="${lt}" onchange="FLT.luna=this.value||today().slice(0,7);fltDeseneaza()"></div></div>
+      <div style="flex:0;min-width:170px" class="noprint"><label>Luna</label><input type="month" value="${lt}" onchange="FLT.luna=this.value||today().slice(0,7);fltDeseneaza()"></div>
+      <div style="flex:0" class="noprint"><label>&nbsp;</label><button class="btn" onclick="fltExport(${m.id})" title="Raportul de consum al lunii alese, rutele și alimentările lunii — Excel formatat, gata de tipărit">⬇ Export Excel — ${esc(nl)}</button></div></div>
     <div class="kpi" style="margin-top:10px">${r.areRute ? k("Km din rute", r.km == null ? "—" : r.km.toLocaleString("ro-RO"), r.km == null ? "" : r.kmI.toLocaleString("ro-RO") + " (" + fltDM(r.dI) + ") → " + r.kmF.toLocaleString("ro-RO") + " (" + fltDM(r.dF) + ")") : ""}
       ${k("Km bord (alimentări)", r.bord.km ? r.bord.km.toLocaleString("ro-RO") : "—", r.bord.n + (r.bord.n === 1 ? " alimentare" : " alimentări"))}${k("Motorină", flt1(r.mot) + " L")}${r.ben ? k("Benzină", flt1(r.ben) + " L") : ""}
       ${r.areRute ? k("Consum din rute", cr == null ? "—" : flt1(cr), "L / 100 km" + dif(cr)) : ""}${k("Consum din km de bord", r.bord.cons == null ? "—" : flt1(r.bord.cons), "L / 100 km" + dif(r.bord.cons))}${k("Normat", n ? flt1(n) : "—", "L / 100 km")}</div>
@@ -14556,7 +14557,7 @@ function fltDash(){
       <div style="flex:0;min-width:170px"><label>Luna</label><input type="month" id="flo-luna" value="${FLT.luna}" onchange="FLT.luna=this.value||today().slice(0,7);fltDash()"></div>
       <div style="flex:0"><label>&nbsp;</label><button class="btn" onclick="fltTab('nou')">+ Vehicul nou</button></div>
       <div style="flex:0"><label>&nbsp;</label><button class="btn sec" onclick="fltIncarca()">Reîncarcă</button></div>
-      <div style="flex:0"><label>&nbsp;</label><button class="btn sec" onclick="fltExport()" title="Raportul de consum al lunii alese, toate alimentările și lista actelor — într-un fișier Excel">Export Excel</button></div>
+      <div style="flex:0"><label>&nbsp;</label><button class="btn sec" onclick="fltExport()" title="Luna aleasă: sumarul flotei + câte o foaie pe vehicul (raport de consum, rute, alimentări) + actele — Excel formatat">⬇ Export Excel (luna aleasă)</button></div>
       <div><p class="muted" style="margin:0">Aici se țin datele mașinilor — de aici le iau și aplicațiile șoferilor. Clic pe un vehicul = fișa lui (acte, alimentări, consum).</p></div></div>
     <div class="kpi" style="margin-top:12px"><div>Vehicule active<b>${act.length}</b></div><div${exp.length ? ' class="kpi-amb"' : ""}>Acte expirate<b>${exp.length}</b></div><div${at.length ? ' class="kpi-amb"' : ""}>Expiră în 30 de zile<b>${at.length}</b></div>
       <div title="Din rapoartele de rută; mașinile fără rute — din km de bord ai alimentărilor">Km în lună (flotă)<b>${km.toLocaleString("ro-RO")}</b></div><div>Consum motorină (L / 100 km)<b>${flt1(km > 0 ? 100 * mot / km : null)}</b></div></div></div>
@@ -14605,8 +14606,7 @@ function fltFisa(m){
     <div class="grid3">${afC("fl-card", "Nr. card", pv.card_nr)}${afC("fl-pin", "PIN card", pv.card_pin)}<div></div></div>` : ""}
     <div class="row" style="margin-top:16px;justify-content:flex-end"><div style="flex:1"></div><div style="flex:0"><button class="btn sec" onclick="fltTab('dash')">Înapoi</button></div><div style="flex:0"><button class="btn" onclick="fltSalveaza(${nou ? "null" : m.id})">Salvează</button></div></div></div></details></div>` +
     (nou ? "" : fltRaportHtml(m)) +
-    (nou ? "" : `<div class="card"><div class="row" style="align-items:center;margin:0 0 8px"><h3 style="margin:0;color:var(--g);flex:1">Alimentări și consum${E ? ` <span style="font-size:13px;font-weight:600;color:#D97706">— corectezi alimentarea din ${fmtD(E.data)}</span>` : ""}</h3>
-        <div style="flex:0" class="noprint"><button class="btn sec sm" onclick="fltExport(${m.id})" title="Alimentările și rutele acestui vehicul, în Excel">Export Excel</button></div></div><datalist id="fl-dl-sof">${sof}</datalist>
+    (nou ? "" : `<div class="card"><div class="row" style="align-items:center;margin:0 0 8px"><h3 style="margin:0;color:var(--g);flex:1">Alimentări și consum${E ? ` <span style="font-size:13px;font-weight:600;color:#D97706">— corectezi alimentarea din ${fmtD(E.data)}</span>` : ""}</h3></div><datalist id="fl-dl-sof">${sof}</datalist>
       <div class="row noprint" style="align-items:flex-end;gap:8px">
         <div style="flex:0;min-width:150px"><label>Data</label><input type="date" id="al-data" value="${E ? E.data : today()}"></div><div style="flex:0;min-width:110px"><label>Km bord</label><input type="number" id="al-km" value="${ev("km_bord")}"></div>
         <div style="flex:0;min-width:100px"><label>Motorină (L)</label><input type="number" step="0.01" id="al-mot" value="${ev("motorina_l")}"></div><div style="flex:0;min-width:100px"><label>Benzină (L)</label><input type="number" step="0.01" id="al-ben" value="${ev("benzina_l")}"></div>
@@ -14658,20 +14658,126 @@ function fltKmRuta(RT, a){
   const st = Math.min(...Z.map(r => r.km_start)), fi = Math.max(...Z.map(r => r._fin != null ? r._fin : r.km_start)), afara = a.km_bord != null && (a.km_bord < st - 5 || a.km_bord > fi + 5);
   return `<span${afara ? ' style="color:#D97706;font-weight:600" title="Km de bord de la alimentare nu sunt între km de start și cei de final ai rutei din ziua aceea — verifică"' : ""}>${st.toLocaleString("ro-RO")} → ${fi.toLocaleString("ro-RO")}${afara ? " ⚠" : ""}</span>`;
 }
-// v8.70 (etapa 3 flotă): export Excel — fără vehicul = toată flota (consumul lunii alese, alimentările, actele); cu vehicul = alimentările și rutele lui
-function fltExport(mid){
-  const wb = XLSX.utils.book_new(), r1 = x => x == null ? null : Math.round(x * 10) / 10, txt = a => a.replace(/<[^>]+>/g, "");
-  const foaie = (n, R, gol) => XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(R.length ? R : [{ INFO: gol }]), n);
-  const M = mid ? FLT.L.filter(m => m.id === mid) : FLT.L.filter(m => m.status !== "INACTIV" && m.activ !== false); if(!M.length){ toast("Nu e nimic de exportat", true); return; }
-  foaie("CONSUM " + FLT.luna, M.map(m => { const r = fltRaport(m, FLT.luna); return { VEHICUL: m.nr || "", MARCA: [m.marca, m.model].filter(Boolean).join(" "), RUTE: r.rute.length, "KM DIN RUTE": r.km, "CONSUM RUTE (L/100)": r1(fltCons(r.mot, r.km)),
-    "KM BORD (ALIM.)": r.bord.km || null, "CONSUM BORD (L/100)": r1(r.bord.cons), "MOTORINA (L)": r1(r.mot), "BENZINA (L)": r1(r.ben), "NORMAT (L/100)": +m.consum_normat || null, "DE VERIFICAT": r.av.map(txt).join(" | ") }; }), "");
-  const AL = []; M.forEach(m => fltCalc(m.id).forEach(a => AL.push({ VEHICUL: m.nr || "", DATA: a.data, "KM BORD": a.km_bord, "KM PARCURSI": a.km, "MOTORINA (L)": a.motorina_l == null ? null : +a.motorina_l, "BENZINA (L)": a.benzina_l == null ? null : +a.benzina_l,
-    STATIE: a.statie || "", "CONSUM (L/100)": r1(a.cons), "SOFER 1": a.sofer1 || "", "SOFER 2": a.sofer2 || "", "NIVEL (1-10)": a.nivel, OBSERVATII: a.observatii || "" })));
-  foaie("ALIMENTARI", AL, "nicio alimentare");
-  if(mid) foaie("RUTE", fltRuteMasina(M[0]).ok.map(q => ({ DATA: q.session_date, "SOFER 1": q.driver1 || "", "SOFER 2": q.driver2 || "", "KM START": q.km_start, "KM FINAL": q.km_end, "KM": q._fin != null ? q._fin - q.km_start : null, STARE: q.status || "" })), "nicio rută");
-  else foaie("ACTE", fltToateActele().map(x => ({ TIP: x.tip, "VEHICUL / ANGAJAT": x.cine, DOCUMENT: x.doc, EXPIRA: x.d, "ZILE RAMASE": afZile(x.d), STATUS: afStare(x.d) })), "niciun act cu dată");
-  XLSX.writeFile(wb, mid ? `Flota_${String(M[0].nr || mid).replace(/\s+/g, "")}_${today()}.xlsx` : `Flota_${FLT.luna}.xlsx`);
+// v8.71 (cerut de Ovidiu, 14.11): export Excel FORMATAT pentru luna aleasă. Din fișa vehiculului = o foaie cu raportul lui; din Dashboard = SUMAR flotă
+// + câte o foaie pe vehicul + ACTE. Foaia vehiculului: antet, indicatorii lunii, „de verificat”, rutele lunii, alimentările lunii (cu km din rută), totaluri.
+const FLT_LUNI = ["IANUARIE", "FEBRUARIE", "MARTIE", "APRILIE", "MAI", "IUNIE", "IULIE", "AUGUST", "SEPTEMBRIE", "OCTOMBRIE", "NOIEMBRIE", "DECEMBRIE"];
+function fltXls(ExcelJS){
+  const FN = "Times New Roman", F = o => Object.assign({ name: FN, size: 12 }, o || {}), BT = { style: "thin", color: { argb: "FF9AA5A0" } }, B = { top: BT, left: BT, bottom: BT, right: BT };
+  const fill = h => ({ type: "pattern", pattern: "solid", fgColor: { argb: "FF" + h.replace("#", "") } }), col = h => ({ argb: "FF" + h.replace("#", "") });
+  const CE = { horizontal: "center", vertical: "middle", wrapText: true }, ST = { horizontal: "left", vertical: "middle", wrapText: true }, DR = { horizontal: "right", vertical: "middle" };
+  const X = { F, B, fill, col, CE, ST, DR, VERDE: "#1F6B3A", VDES: "#E6F3EA", PORT: "#D97706", PDES: "#FFF2CC", ROSU: "#C0392B", GRI: "#F2F2F2" };
+  X.pune = (ws, adr, v, o) => { const q = ws.getCell(adr); q.value = v === "" ? null : v; q.font = F(o && o.font); q.alignment = (o && o.al) || ST; if(o && o.fill) q.fill = fill(o.fill); if(o && o.border) q.border = B; if(o && o.fmt) q.numFmt = o.fmt; return q; };
+  X.uneste = (ws, r, v, o) => { ws.mergeCells(r); return X.pune(ws, r.split(":")[0], v, o); };
+  X.titlu = (ws, r, ult, t) => { const q = X.uneste(ws, "A" + r + ":" + ult + r, t, { font: { bold: true, size: 13, color: col("#FFFFFF") }, fill: X.VERDE, al: ST }); ws.getRow(r).height = 20; return q; };
+  X.cap = (ws, r, L) => { L.forEach((t, i) => X.pune(ws, String.fromCharCode(65 + i) + r, t, { font: { bold: true }, al: CE, fill: X.VDES, border: 1 })); ws.getRow(r).height = 32; };
+  return X;
 }
+function fltFoaieVehicul(X, wb, m, luna){
+  const r = fltRaport(m, luna), n = +m.consum_normat || 0, nl = FLT_LUNI[+luna.slice(5) - 1] + " " + luna.slice(0, 4), fd = t => faraDiac(String(t || ""));
+  const ws = wb.addWorksheet(String(m.nr || ("V" + m.id)).replace(/[\\/*?:\[\]]/g, "").slice(0, 31), { views: [{ showGridLines: false }] });
+  ws.columns = [12, 12, 13, 17, 13, 13, 18, 14, 22, 24, 10, 26].map(w => ({ width: w }));
+  const U = "L", P = X.pune, N1 = "#,##0.0", N0 = "#,##0", N2 = "#,##0.00", cr = fltCons(r.mot, r.km), peste = c => c != null && n && c > n * 1.15;
+  X.uneste(ws, "A1:L1", "RAPORT DE CONSUM - " + nl, { font: { bold: true, size: 16, color: X.col(X.VERDE) }, al: X.CE }); ws.getRow(1).height = 26;
+  X.uneste(ws, "A2:L2", fd([m.marca, m.model].filter(Boolean).join(" ")) + "  |  Nr. " + fd(m.nr) + "  |  " + fd(m.combustibil || "") + (n ? "  |  consum normat " + n.toLocaleString("ro-RO") + " L/100 km" : ""), { font: { bold: true, size: 13 }, al: X.CE });
+  X.uneste(ws, "A3:L3", "Euro Ecologic - generat din GestiuneEE la " + fmtD(today()), { font: { italic: true, size: 10, color: X.col("#666666") }, al: X.CE });
+  // indicatorii lunii (două coloane de câte trei celule: etichetă B:C, valoare D … etichetă G:I, valoare J)
+  let rr = 5; X.titlu(ws, rr, U, "INDICATORII LUNII"); rr++;
+  const k1 = [["Km din rute", r.km, N0], ["Km de inceput", r.kmI != null ? r.kmI : "", N0, r.dI ? "ruta din " + fmtD(r.dI) : ""], ["Km de sfarsit", r.kmF != null ? r.kmF : "", N0, r.dF ? "ruta din " + fmtD(r.dF) : ""], ["Rapoarte de ruta in luna", r.rute.length, N0], ["Km declarati pe rute", r.kmDecl || "", N0]];
+  const k2 = [["Motorina alimentata (L)", r.mot || 0, N2], ["Benzina alimentata (L)", r.ben || 0, N2], ["Consum din rute (L/100 km)", cr == null ? "" : Math.round(cr * 10) / 10, N1, 1], ["Km bord (alimentari)", r.bord.km || "", N0, r.bord.n + (r.bord.n === 1 ? " alimentare" : " alimentari")], ["Consum din km de bord (L/100 km)", r.bord.cons == null ? "" : Math.round(r.bord.cons * 10) / 10, N1, 2]];
+  if(!r.areRute){ k1.splice(0, 5, ["Km din rute", "fara rute (nu apare la soferi)", null]); }
+  for(let i = 0; i < Math.max(k1.length, k2.length); i++){
+    const a = k1[i], b = k2[i];
+    if(a){ X.uneste(ws, "A" + rr + ":C" + rr, a[0], { al: X.DR, border: 1, fill: X.GRI }); P(ws, "D" + rr, a[1], { font: { bold: true }, al: X.CE, border: 1, fmt: a[2] || undefined }); if(a[3]) X.uneste(ws, "E" + rr + ":F" + rr, a[3], { font: { italic: true, size: 10 }, al: X.ST }); }
+    if(b){ X.uneste(ws, "G" + rr + ":I" + rr, b[0], { al: X.DR, border: 1, fill: X.GRI }); const c = b[3] === 1 ? cr : b[3] === 2 ? r.bord.cons : null;
+      P(ws, "J" + rr, b[1], { font: { bold: true, color: X.col(peste(c) ? X.ROSU : "#000000") }, al: X.CE, border: 1, fmt: b[2] });
+      if(b[3] === 1 || b[3] === 2){ if(c != null && n) X.uneste(ws, "K" + rr + ":L" + rr, (c >= n ? "+" : "") + (Math.round(1000 * (c - n) / n) / 10).toLocaleString("ro-RO") + "% fata de normat", { font: { italic: true, size: 10, color: X.col(c > n * 1.15 ? X.ROSU : c > n ? X.PORT : "#2E8B3C") }, al: X.ST }); }
+      else if(b[3]) X.uneste(ws, "K" + rr + ":L" + rr, b[3], { font: { italic: true, size: 10 }, al: X.ST }); }
+    rr++; }
+  if(n){ X.uneste(ws, "G" + rr + ":I" + rr, "Consum normat (L/100 km)", { al: X.DR, border: 1, fill: X.GRI }); P(ws, "J" + rr, n, { font: { bold: true }, al: X.CE, border: 1, fmt: N1 }); rr++; }
+  // de verificat
+  if(r.av.length){ rr++; X.uneste(ws, "A" + rr + ":L" + rr, "DE VERIFICAT", { font: { bold: true, size: 13, color: X.col("#FFFFFF") }, fill: X.PORT }); rr++;
+    r.av.forEach(t => { X.uneste(ws, "A" + rr + ":L" + rr, "•  " + fd(t.replace(/<[^>]+>/g, "")), { fill: X.PDES, al: X.ST }); rr++; }); }
+  // rutele lunii
+  rr++; X.titlu(ws, rr, U, "RAPOARTELE DE RUTA DIN LUNA (" + r.rute.length + ")"); rr++;
+  if(r.rute.length){ X.cap(ws, rr, ["Data", "Ziua", "Km start", "Km final", "Km", "Stare", "Sofer 1", "", "Sofer 2"]); ws.mergeCells("G" + rr + ":H" + rr); ws.mergeCells("I" + rr + ":J" + rr); rr++;
+    const z0 = rr;
+    r.rute.forEach((q, i) => { const fz = i % 2 ? "#FAFAFA" : null, est = q.km_end == null && q._fin != null, o = (al, ex) => Object.assign({ border: 1, al, fill: fz }, ex || {});
+      P(ws, "A" + rr, fmtD(q.session_date), o(X.CE)); P(ws, "B" + rr, PNT_ZI[dtz(q.session_date).getDay()], o(X.CE));
+      P(ws, "C" + rr, q.km_start, o(X.DR, { fmt: N0 })); P(ws, "D" + rr, q._fin != null ? q._fin : "", o(X.DR, { fmt: N0, font: est ? { italic: true, color: X.col(X.PORT) } : {} }));
+      P(ws, "E" + rr, q._fin != null ? q._fin - q.km_start : "", o(X.DR, { fmt: N0, font: { bold: true } })); P(ws, "F" + rr, fd(q.status || ""), o(X.CE));
+      X.uneste(ws, "G" + rr + ":H" + rr, fd(q.driver1 || ""), o(X.ST)); X.uneste(ws, "I" + rr + ":J" + rr, fd(q.driver2 || ""), o(X.ST)); rr++; });
+    P(ws, "A" + rr, "TOTAL", { font: { bold: true }, al: X.CE, border: 1, fill: X.VDES }); ["B", "C", "D", "F"].forEach(c => P(ws, c + rr, "", { border: 1, fill: X.VDES }));
+    P(ws, "E" + rr, { formula: "SUM(E" + z0 + ":E" + (rr - 1) + ")", result: r.kmDecl }, { font: { bold: true }, al: X.DR, border: 1, fill: X.VDES, fmt: N0 }); X.uneste(ws, "G" + rr + ":J" + rr, "", { border: 1, fill: X.VDES }); rr++;
+    if(r.rute.some(q => q.km_end == null && q._fin != null)){ X.uneste(ws, "A" + rr + ":L" + rr, "Km final cu portocaliu = ruta fara km de final; s-au luat km de start ai rutei urmatoare.", { font: { italic: true, size: 10 } }); rr++; } }
+  else { X.uneste(ws, "A" + rr + ":L" + rr, r.areRute ? "Nicio ruta in luna aleasa." : "Vehiculul nu are rapoarte de ruta.", { font: { italic: true } }); rr++; }
+  // alimentările lunii
+  const RT = fltRuteMasina(m).ok, AL = fltCalc(m.id).filter(a => a.data.startsWith(luna));
+  rr++; X.titlu(ws, rr, U, "ALIMENTARILE DIN LUNA (" + AL.length + ")"); rr++;
+  if(AL.length){ X.cap(ws, rr, ["Data", "Km bord", "Km parcursi", "Km din ruta (ziua)", "Motorina (L)", "Benzina (L)", "Statie", "Consum (L/100 km)", "Sofer 1", "Sofer 2", "Nivel", "Observatii"]); rr++;
+    const z0 = rr;
+    AL.forEach((a, i) => { const fz = i % 2 ? "#FAFAFA" : null, o = (al, ex) => Object.assign({ border: 1, al, fill: fz }, ex || {}), Z = RT.filter(q => q.session_date === a.data);
+      let kr = "", afara = false; if(Z.length){ const st = Math.min(...Z.map(q => q.km_start)), fi = Math.max(...Z.map(q => q._fin != null ? q._fin : q.km_start)); kr = st.toLocaleString("ro-RO") + " - " + fi.toLocaleString("ro-RO"); afara = a.km_bord != null && (a.km_bord < st - 5 || a.km_bord > fi + 5); }
+      P(ws, "A" + rr, fmtD(a.data), o(X.CE)); P(ws, "B" + rr, a.km_bord, o(X.DR, { fmt: N0 })); P(ws, "C" + rr, a.km == null ? "" : a.km, o(X.DR, { fmt: N0 }));
+      P(ws, "D" + rr, kr + (afara ? " (!)" : ""), o(X.CE, { font: afara ? { bold: true, color: X.col(X.PORT) } : {} }));
+      P(ws, "E" + rr, a.motorina_l == null ? "" : +a.motorina_l, o(X.DR, { fmt: N2 })); P(ws, "F" + rr, a.benzina_l == null ? "" : +a.benzina_l, o(X.DR, { fmt: N2 })); P(ws, "G" + rr, fd(a.statie || ""), o(X.ST));
+      P(ws, "H" + rr, a.cons == null ? "" : Math.round(a.cons * 10) / 10, o(X.CE, { fmt: N1, font: { bold: true, color: X.col(peste(a.cons) ? X.ROSU : "#000000") } }));
+      P(ws, "I" + rr, fd(a.sofer1 || ""), o(X.ST)); P(ws, "J" + rr, fd(a.sofer2 || ""), o(X.ST));
+      P(ws, "K" + rr, a.nivel == null ? "" : a.nivel + (m.rezervor_l ? " (~" + Math.round(a.nivel / 10 * m.rezervor_l) + " L)" : ""), o(X.CE)); P(ws, "L" + rr, fd(a.observatii || ""), o(X.ST)); rr++; });
+    const T = { font: { bold: true }, border: 1, fill: X.VDES };
+    P(ws, "A" + rr, "TOTAL", Object.assign({ al: X.CE }, T)); P(ws, "B" + rr, "", T); P(ws, "D" + rr, "", T); ["G", "I", "J", "K", "L"].forEach(c => P(ws, c + rr, "", T));
+    P(ws, "C" + rr, { formula: "SUM(C" + z0 + ":C" + (rr - 1) + ")", result: AL.reduce((t, a) => t + (+a.km || 0), 0) }, Object.assign({ al: X.DR, fmt: N0 }, T));
+    P(ws, "E" + rr, { formula: "SUM(E" + z0 + ":E" + (rr - 1) + ")", result: r.mot }, Object.assign({ al: X.DR, fmt: N2 }, T));
+    P(ws, "F" + rr, { formula: "SUM(F" + z0 + ":F" + (rr - 1) + ")", result: r.ben }, Object.assign({ al: X.DR, fmt: N2 }, T));
+    P(ws, "H" + rr, r.bord.cons == null ? "" : Math.round(r.bord.cons * 10) / 10, Object.assign({ al: X.CE, fmt: N1 }, T)); rr++;
+    if(AL.some(a => peste(a.cons))){ X.uneste(ws, "A" + rr + ":L" + rr, "Consumul cu rosu = cu peste 15% peste cel normat.", { font: { italic: true, size: 10 } }); rr++; } }
+  else { X.uneste(ws, "A" + rr + ":L" + rr, "Nicio alimentare in luna aleasa.", { font: { italic: true } }); rr++; }
+  rr++; X.uneste(ws, "A" + rr + ":L" + rr, "Km din rute = km de final ai ultimei rute din luna minus km de final ai ultimei rute din luna anterioara. Km bord = diferenta dintre km de bord de la alimentari. Motorina si benzina = alimentarile din luna.", { font: { italic: true, size: 10, color: X.col("#555555") } });
+  ws.getRow(rr).height = 30;
+  ws.pageSetup = { orientation: "landscape", paperSize: 9, fitToPage: true, fitToWidth: 1, fitToHeight: 0, horizontalCentered: true, margins: { left: 0.4, right: 0.4, top: 0.5, bottom: 0.5, header: 0.3, footer: 0.3 } };
+  ws.headerFooter = { oddFooter: "&L&8" + fd(m.nr) + " - " + nl + "&R&8Pagina &P din &N" };
+  return { r, cr };
+}
+async function fltExport(mid){
+  let ExcelJS; try{ ExcelJS = await expLib("exceljs"); }catch(e){ toast("Nu s-a putut încărca ExcelJS: " + e.message, true); return; }
+  const luna = FLT.luna || today().slice(0, 7), nl = FLT_LUNI[+luna.slice(5) - 1] + " " + luna.slice(0, 4), X = fltXls(ExcelJS), wb = new ExcelJS.Workbook(); wb.creator = "GestiuneEE"; wb.created = new Date();
+  const M = mid ? FLT.L.filter(m => m.id === mid) : FLT.L.filter(m => m.status !== "INACTIV" && m.activ !== false); if(!M.length){ toast("Nu e nimic de exportat", true); return; }
+  if(!mid){   // SUMAR flotă
+    const ws = wb.addWorksheet("SUMAR " + luna, { views: [{ showGridLines: false }] }), P = X.pune, fd = t => faraDiac(String(t || ""));
+    ws.columns = [14, 22, 9, 13, 14, 15, 14, 14, 13, 12, 12].map(w => ({ width: w }));
+    X.uneste(ws, "A1:K1", "FLOTA - RAPORT DE CONSUM - " + nl, { font: { bold: true, size: 16, color: X.col(X.VERDE) }, al: X.CE }); ws.getRow(1).height = 26;
+    X.uneste(ws, "A2:K2", "Euro Ecologic - generat din GestiuneEE la " + fmtD(today()), { font: { italic: true, size: 10, color: X.col("#666666") }, al: X.CE });
+    X.cap(ws, 4, ["Vehicul", "Marca / model", "Rute", "Km din rute", "Consum rute (L/100)", "Km bord (alimentari)", "Consum bord (L/100)", "Motorina (L)", "Benzina (L)", "Normat (L/100)", "De verificat"]);
+    let rr = 5; const z0 = rr, R = [];
+    M.forEach((m, i) => { const r = fltRaport(m, luna), n = +m.consum_normat || 0, cr = fltCons(r.mot, r.km), rosu = c => c != null && n && c > n * 1.15, fz = i % 2 ? "#FAFAFA" : null, o = (al, ex) => Object.assign({ border: 1, al, fill: fz }, ex || {});
+      R.push({ m, r });
+      P(ws, "A" + rr, fd(m.nr), o(X.CE, { font: { bold: true } })); P(ws, "B" + rr, fd([m.marca, m.model].filter(Boolean).join(" ")), o(X.ST)); P(ws, "C" + rr, r.areRute ? r.rute.length : "", o(X.CE));
+      P(ws, "D" + rr, r.km != null ? r.km : "", o(X.DR, { fmt: "#,##0" })); P(ws, "E" + rr, cr == null ? "" : Math.round(cr * 10) / 10, o(X.CE, { fmt: "#,##0.0", font: { bold: true, color: X.col(rosu(cr) ? X.ROSU : "#000000") } }));
+      P(ws, "F" + rr, r.bord.km || "", o(X.DR, { fmt: "#,##0" })); P(ws, "G" + rr, r.bord.cons == null ? "" : Math.round(r.bord.cons * 10) / 10, o(X.CE, { fmt: "#,##0.0", font: { bold: true, color: X.col(rosu(r.bord.cons) ? X.ROSU : "#000000") } }));
+      P(ws, "H" + rr, r.mot || "", o(X.DR, { fmt: "#,##0.00" })); P(ws, "I" + rr, r.ben || "", o(X.DR, { fmt: "#,##0.00" })); P(ws, "J" + rr, n || "", o(X.CE, { fmt: "#,##0.0" }));
+      P(ws, "K" + rr, r.av.length ? r.av.length + " (vezi foaia)" : "", o(X.CE, r.av.length ? { font: { bold: true, color: X.col(X.PORT) } } : {})); rr++; });
+    const T = { font: { bold: true }, border: 1, fill: X.VDES }, km = R.reduce((t, x) => t + (x.r.km != null ? x.r.km : x.r.bord.km || 0), 0), mot = R.reduce((t, x) => t + x.r.mot, 0);
+    P(ws, "A" + rr, "TOTAL FLOTA", Object.assign({ al: X.CE }, T)); ["B", "C", "F", "G", "J", "K"].forEach(c => P(ws, c + rr, "", T));
+    P(ws, "D" + rr, km, Object.assign({ al: X.DR, fmt: "#,##0" }, T)); P(ws, "E" + rr, km > 0 ? Math.round(1000 * mot / km) / 10 : "", Object.assign({ al: X.CE, fmt: "#,##0.0" }, T));
+    P(ws, "H" + rr, { formula: "SUM(H" + z0 + ":H" + (rr - 1) + ")", result: mot }, Object.assign({ al: X.DR, fmt: "#,##0.00" }, T)); P(ws, "I" + rr, { formula: "SUM(I" + z0 + ":I" + (rr - 1) + ")", result: R.reduce((t, x) => t + x.r.ben, 0) }, Object.assign({ al: X.DR, fmt: "#,##0.00" }, T)); rr += 2;
+    X.uneste(ws, "A" + rr + ":K" + rr, "Totalul de km: din rute, iar la vehiculele fara rute din km de bord ai alimentarilor. Consumul cu rosu = cu peste 15% peste cel normat. Detaliile fiecarui vehicul sunt pe foaia lui.", { font: { italic: true, size: 10, color: X.col("#555555") } }); ws.getRow(rr).height = 30;
+    ws.pageSetup = { orientation: "landscape", paperSize: 9, fitToPage: true, fitToWidth: 1, fitToHeight: 0, horizontalCentered: true, margins: { left: 0.4, right: 0.4, top: 0.5, bottom: 0.5, header: 0.3, footer: 0.3 } };
+  }
+  M.forEach(m => fltFoaieVehicul(X, wb, m, luna));
+  if(!mid){   // ACTE
+    const ws = wb.addWorksheet("ACTE", { views: [{ showGridLines: false }] }), A = fltToateActele(), cul = { EXPIRAT: X.ROSU, ATENTIE: X.PORT, OK: "#2E8B3C" };
+    ws.columns = [12, 28, 22, 13, 13, 12].map(w => ({ width: w }));
+    X.uneste(ws, "A1:F1", "ACTE SI TERMENE - la " + fmtD(today()), { font: { bold: true, size: 16, color: X.col(X.VERDE) }, al: X.CE }); ws.getRow(1).height = 26;
+    X.cap(ws, 3, ["Tip", "Vehicul / angajat", "Document", "Expira", "Zile ramase", "Status"]); let rr = 4;
+    A.forEach(x => { const st = afStare(x.d), o = al => ({ border: 1, al, fill: st === "EXPIRAT" ? "#FDE2E0" : st === "ATENTIE" ? X.PDES : null });
+      X.pune(ws, "A" + rr, x.tip, o(X.CE)); X.pune(ws, "B" + rr, faraDiac(x.cine || ""), o(X.ST)); X.pune(ws, "C" + rr, faraDiac(x.doc), o(X.ST)); X.pune(ws, "D" + rr, fmtD(x.d), o(X.CE));
+      X.pune(ws, "E" + rr, afZile(x.d), o(X.CE)); X.pune(ws, "F" + rr, st, Object.assign(o(X.CE), { font: { bold: true, color: X.col(cul[st] || "#000000") } })); rr++; });
+    ws.pageSetup = { orientation: "portrait", paperSize: 9, fitToPage: true, fitToWidth: 1, fitToHeight: 0, horizontalCentered: true };
+  }
+  const buf = await wb.xlsx.writeBuffer();
+  expDescarca(new Blob([buf], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" }), mid ? "FLOTA - " + String(M[0].nr || "") + " - " + luna + ".xlsx" : "FLOTA - RAPORT " + luna + ".xlsx");
+  toast("Excel descărcat — " + (mid ? M[0].nr + ", " : "flota, ") + nl.toLowerCase());
+}
+
 async function fltAlimSterge(id){
   const a = FLT.alim.find(x => x.id === id); if(!a || !confirm("Ștergi alimentarea din " + fmtD(a.data) + " (" + (a.km_bord == null ? "—" : a.km_bord) + " km, " + (a.motorina_l == null ? 0 : a.motorina_l) + " L)?")) return;
   const { error } = await db.from("alimentari").delete().eq("id", id); if(error){ toast(error.message, true); return; }
