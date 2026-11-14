@@ -469,8 +469,9 @@ export async function syncMasterData(profile) {
           await CarRepo.remove(car.id);
         }
       }
-      for (const v of vehicles) {
-        await CarRepo.save({ id: 'synced-' + v.id, marca: v.brand, numar: v.plate_number, sortOrder: 0 });
+      // v8.69: ordinea vine de pe server (masini.ordine, schimbata in GestiuneEE trăgând fila vehiculului)
+      for (const [i, v] of vehicles.entries()) {
+        await CarRepo.save({ id: 'synced-' + v.id, marca: v.brand, numar: v.plate_number, sortOrder: i + 1 });
       }
       // O masina adaugata manual, local, INAINTE sa existe flota din admin
       // (id numeric vechi) care are exact acelasi numar de inmatriculare ca

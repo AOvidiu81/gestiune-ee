@@ -1116,7 +1116,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
   <span id="rz-w"><button id="rz-reset" class="pictograma" title="Lățimi implicite — pune coloanele din tabelele acestei file înapoi cum erau">↺ Reset layout</button><i class="rz-sep">|</i></span>
   <span id="tz-w" title="Mărimea tabelului (doar tabelul, restul rămâne la fel), din 5 în 5%. Merge și cu Ctrl + rotița mausului, Ctrl + / Ctrl − / Ctrl 0. Dublu clic pe procent = scrii tu valoarea."><button class="pictograma" onclick="tzPas(-1)" aria-label="Micșorează tabelul">−</button><b id="tz-v" ondblclick="tzScrie()" title="Dublu clic = scrii mărimea (ex. 87), Enter">100%</b><input id="tz-in" type="number" min="30" max="300" step="5" style="display:none"><button class="pictograma" onclick="tzPas(1)" aria-label="Mărește tabelul">+</button></span>
-  <span class="ver">v8.68</span>
+  <span class="ver">v8.69</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -2782,7 +2782,7 @@ async function init(){
       db.from("nomenclatoare").select("*").eq("activ",true).order("ordine"),
       db.from("depozite").select("*").eq("activ",true).order("ordine"),
       db.from("soferi").select("*").eq("activ",true).order("nume"),
-      db.from("masini").select("*").eq("activ",true).order("marca"),
+      db.from("masini").select("*").eq("activ",true).order("ordine",{nullsFirst:false}).order("marca"),
       db.from("clienti").select("*").order("nume"),
       db.from("contracte").select("*").order("nr_ctr"),
       db.from("anexe").select("*").order("id"),
@@ -12208,7 +12208,7 @@ async function adminReimprospateaza(){
   const [d,s,m]=await Promise.all([
     db.from("depozite").select("*").eq("activ",true).order("ordine"),
     db.from("soferi").select("*").eq("activ",true).order("nume"),
-    db.from("masini").select("*").eq("activ",true).order("marca")
+    db.from("masini").select("*").eq("activ",true).order("ordine",{nullsFirst:false}).order("marca")
   ]);
   DEP=d.data||DEP; puneTitlul(); SOF=s.data||SOF; MAS=m.data||MAS;
   fillAll();
@@ -14258,7 +14258,7 @@ async function crrTab(){
   const act = ANG.L.filter(x => x.activ !== false); if(!act.some(x => x.id === CRR.sid)) CRR.sid = (act[0] || {}).id || null;
   const azi = today(), T = [["CO", "Concediu de odihnă"], ["INV", "Învoire"], ["ACORD", "Încetare contract — acordul părților"], ["DEM", "Demisie cu preaviz"]];
   $("ang-corp").innerHTML = `<div class="card"><h3 style="margin:0 0 4px;color:var(--g)">Cerere nouă</h3>
-    <p class="muted" style="margin:0 0 12px">Aceleași cereri ca în aplicația șoferilor, făcute de aici pentru orice angajat. Se deschid într-o fereastră nouă: le tipărești sau le salvezi ca PDF, apoi se semnează de mână.</p>
+    <p class="muted" style="margin:0 0 12px">Aceleași cereri ca în aplicația șoferilor, făcute de aici pentru orice angajat. Se deschid într-o fereastră a aplicației (cu ‒ ☐ ✕), arătând ca modelul vechi: le tipărești sau le salvezi ca PDF, apoi se semnează de mână.</p>
     <div class="grid3"><div><label>Angajat</label><select id="cr-ang" onchange="CRR.sid=+this.value;crrCampuri()">${act.map(x => `<option value="${x.id}"${x.id === CRR.sid ? " selected" : ""}>${esc(x.nume)}</option>`).join("")}</select></div>
       <div><label>Tipul cererii</label><select id="cr-tip" onchange="CRR.tip=this.value;crrCampuri()">${T.map(([k, t]) => `<option value="${k}"${k === CRR.tip ? " selected" : ""}>${t}</option>`).join("")}</select></div><div></div></div>
     <div id="cr-campuri" style="margin-top:12px"></div>
@@ -14354,18 +14354,92 @@ async function crrGenereaza(){
 const FLT_ACTE = [["card_expira", "Card alimentare"], ["rca_expira", "Asigurare RCA"], ["itp_expira", "ITP"], ["rovinieta_expira", "Rovinietă"], ["licenta_expira", "Licență transport"], ["mediu_expira", "Autorizație mediu"], ["stingator_expira", "Stingător"], ["trusa_expira", "Trusă medicală"]];
 const fltNume = m => [m.marca, m.model].filter(Boolean).join(" ") + " · " + (m.nr || "");
 async function fltIncarca(){
-  const [m, p, a, e, s] = await Promise.all([db.from("masini").select("*").order("id"), db.from("masini_privat").select("*"), db.from("alimentari").select("*").order("data").order("id").limit(5000), db.rpc("este_admin"),
-    db.from("soferi").select("id,nume,medicina_expira,activ,unit_in")]);
+  const [m, p, a, e, s, r] = await Promise.all([db.from("masini").select("*").order("id"), db.from("masini_privat").select("*"), db.from("alimentari").select("*").order("data").order("id").limit(5000), db.rpc("este_admin"),
+    db.from("soferi").select("id,nume,medicina_expira,activ,unit_in"),
+    db.from("route_sessions").select("vehicle_plate,session_date,km_start,km_end,status,driver1,driver2,created_at").gte("session_date", fltLunaPlus(today().slice(0, 7), -14) + "-01").order("session_date").order("created_at").limit(5000)]);
   if(m.error){ toast(m.error.message, true); return; }
-  FLT.L = m.data || []; FLT.priv = {}; (p.data || []).forEach(x => FLT.priv[x.masina_id] = x); FLT.alim = a.data || []; FLT.admin = !!e.data;
+  FLT.L = (m.data || []).sort((x, y) => (x.ordine ?? 1e9) - (y.ordine ?? 1e9) || x.id - y.id);   // v8.69: ordinea trasă de Ovidiu
+  FLT.rute = r.error ? [] : (r.data || []); if(r.error) toast("Rapoartele de rută nu s-au încărcat: " + r.error.message, true); FLT.priv = {}; (p.data || []).forEach(x => FLT.priv[x.masina_id] = x); FLT.alim = a.data || []; FLT.admin = !!e.data;
   FLT.ang = (s.data || []).filter(x => !x.unit_in && x.activ !== false);
   if(!FLT.luna) FLT.luna = today().slice(0, 7);
   if(!["dash", "acte", "nou"].includes(FLT.tab) && !FLT.L.some(x => String(x.id) === String(FLT.tab))) FLT.tab = "dash";
   fltDeseneaza();
 }
 function fltTab(k){ FLT.tab = k; fltDeseneaza(); }
+// v8.69 (cerut de Ovidiu, 13.11): ordinea mașinilor se schimbă trăgând fila; se salvează în masini.ordine.
+// Aceeași ordine o folosesc aplicațiile șoferilor (funcția list_active_vehicles de pe server).
+function fltTrage(){
+  const ids = FLT.L.map(x => String(x.id));
+  [...$("flo-tabs").children].forEach(b => { const m = /fltTab\('([^']+)'\)/.exec(b.getAttribute("onclick") || ""); if(!m || !ids.includes(m[1])) return;
+    b.draggable = true; b.title = "Trage fila ca să schimbi ordinea mașinilor (și în aplicațiile șoferilor)";
+    b.ondragstart = e => { FLT.trag = m[1]; e.dataTransfer.effectAllowed = "move"; b.style.opacity = ".4"; };
+    b.ondragend = () => { b.style.opacity = ""; document.querySelectorAll("#flo-tabs button").forEach(q => q.style.boxShadow = ""); };
+    b.ondragover = e => { if(!FLT.trag || FLT.trag === m[1]) return; e.preventDefault(); const r = b.getBoundingClientRect(), st = e.clientX < r.left + r.width / 2;
+      document.querySelectorAll("#flo-tabs button").forEach(q => q.style.boxShadow = ""); b.style.boxShadow = (st ? "inset 3px 0 0 " : "inset -3px 0 0 ") + "var(--g)"; b.dataset.poz = st ? "st" : "dr"; };
+    b.ondragleave = () => { b.style.boxShadow = ""; };
+    b.ondrop = e => { e.preventDefault(); const de = FLT.trag; FLT.trag = null; if(!de || de === m[1]) return; fltMuta(de, m[1], b.dataset.poz === "dr"); }; });
+}
+async function fltMuta(de, la, dupa){
+  const L = FLT.L.slice(), i = L.findIndex(x => String(x.id) === de); if(i < 0) return; const [x] = L.splice(i, 1);
+  let j = L.findIndex(q => String(q.id) === la); if(j < 0) return; if(dupa) j++; L.splice(j, 0, x);
+  FLT.L = L; fltDeseneaza();
+  for(const [k, q] of L.entries()){ if(q.ordine === k + 1) continue;
+    const { error } = await db.from("masini").update({ ordine: k + 1 }).eq("id", q.id); if(error){ toast("Ordinea nu s-a salvat: " + error.message, true); return; } q.ordine = k + 1; }
+  toast("Ordinea mașinilor s-a salvat (o văd și șoferii la următoarea sincronizare)");
+}
+const fltLunaPlus = (l, n) => { const d = new Date(+l.slice(0, 4), +l.slice(5, 7) - 1 + n, 1); return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0"); };
+const fltNr = v => String(v || "").toUpperCase().replace(/\s+/g, "");
+const fltDM = d => d ? d.slice(8, 10) + "." + d.slice(5, 7) : "";
+// v8.69: rutele mașinii, curățate: km de final lipsă = km de start ai rutei următoare; rutele cu km evident greșiți (ex. ruta de probă cu 1 km) se ignoră
+function fltRuteMasina(m){
+  const R = (FLT.rute || []).filter(r => fltNr(r.vehicle_plate) === fltNr(m.nr) && r.km_start != null);
+  const st = R.map(r => r.km_start).sort((a, b) => a - b), med = st.length ? st[Math.floor(st.length / 2)] : 0;
+  const ok = [], ign = [];
+  R.forEach(r => (r.km_start < med * 0.5 ? ign : ok).push(r));
+  ok.forEach((r, i) => { const nx = ok[i + 1]; r._fin = r.km_end != null ? r.km_end : nx ? nx.km_start : null; r._finDinUrm = r.km_end == null && !!nx; });
+  return { ok, ign };
+}
+// Raportul de consum al lunii: km din rapoartele de rută (început = finalul ultimei rute din luna anterioară), motorina/benzina din alimentări
+function fltRaport(m, luna){
+  const { ok, ign } = fltRuteMasina(m), p0 = luna + "-01", bord = fltLuna(m.id, luna), av = [];
+  const inL = ok.filter(r => r.session_date.startsWith(luna)), ant = ok.filter(r => r.session_date < p0 && r._fin != null).pop();
+  const R = { bord, mot: bord.mot, ben: bord.ben, rute: inL, areRute: ok.length > 0, km: null, kmI: null, kmF: null, dI: "", dF: "", kmDecl: 0, av };
+  ign.filter(r => r.session_date.startsWith(luna)).forEach(r => av.push("Ruta din " + fltDM(r.session_date) + " (" + esc(r.driver1 || "") + ") are km de start " + r.km_start + " — nepotriviți, nu intră în calcul"));
+  if(!inL.length){ if(ok.length) av.push("Nicio rută trimisă în luna aleasă — km se iau doar din alimentări (km de bord)"); return R; }
+  if(ant){ R.kmI = ant._fin; R.dI = ant.session_date; }
+  else { R.kmI = inL[0].km_start; R.dI = inL[0].session_date; av.push("Nu există rută în luna anterioară — km de început = km de start ai primei rute din lună (" + fltDM(inL[0].session_date) + ")"); }
+  const ult = inL[inL.length - 1]; R.kmF = ult._fin != null ? ult._fin : ult.km_start; R.dF = ult.session_date;
+  if(ult._fin == null) av.push("Ultima rută (" + fltDM(ult.session_date) + ") nu are km de final — se socotește până la km de start");
+  R.km = R.kmF - R.kmI;
+  const sir = (ant ? [ant] : []).concat(inL);
+  sir.forEach((r, i) => { const nx = sir[i + 1]; if(r.session_date >= p0) R.kmDecl += Math.max(0, (r._fin != null ? r._fin : r.km_start) - r.km_start);
+    if(r._finDinUrm && r.session_date >= p0) av.push("Ruta din " + fltDM(r.session_date) + " nu are km de final — am luat km de start ai rutei următoare");
+    if(!nx || r.km_end == null) return; const d = nx.km_start - r.km_end;
+    if(d > 5) av.push("Între ruta din " + fltDM(r.session_date) + " (final " + r.km_end + ") și cea din " + fltDM(nx.session_date) + " (start " + nx.km_start + ") lipsesc <b>" + d.toLocaleString("ro-RO") + " km</b> — posibil raport de rută lipsă");
+    else if(d < -5) av.push("Ruta din " + fltDM(nx.session_date) + " pornește de la " + nx.km_start + " km, sub finalul rutei din " + fltDM(r.session_date) + " (" + r.km_end + ") — verifică km (" + d + ")"); });
+  if(R.km != null && R.km < 0){ av.push("Km de sfârșit mai mici decât cei de început — verifică rapoartele"); }
+  return R;
+}
+const fltCons = (l, km) => km > 0 ? 100 * l / km : null;
+function fltRaportHtml(m){
+  const r = fltRaport(m, FLT.luna), n = +m.consum_normat || 0, cr = fltCons(r.mot, r.km), lt = FLT.luna, nl = new Date(+lt.slice(0, 4), +lt.slice(5, 7) - 1, 1).toLocaleDateString("ro-RO", { month: "long", year: "numeric" });
+  const dif = c => c == null || !n ? "" : ` <span style="font-size:12px;color:${c > n * 1.15 ? "#C0392B" : c > n ? "#D97706" : "#2E8B3C"}">(${c >= n ? "+" : ""}${flt1(100 * (c - n) / n)}% față de normat)</span>`;
+  const k = (t, v, sub) => `<div>${t}<b>${v}</b>${sub ? `<span class="muted" style="font-size:11px;display:block;font-weight:400">${sub}</span>` : ""}</div>`;
+  return `<div class="card"><div class="row" style="align-items:flex-end"><div><h3 style="margin:0;color:var(--g)">Raport de consum — ${esc(nl)}</h3></div>
+      <div style="flex:0;min-width:170px" class="noprint"><label>Luna</label><input type="month" value="${lt}" onchange="FLT.luna=this.value||today().slice(0,7);fltDeseneaza()"></div></div>
+    <div class="kpi" style="margin-top:10px">${r.areRute ? k("Km din rute", r.km == null ? "—" : r.km.toLocaleString("ro-RO"), r.km == null ? "" : r.kmI.toLocaleString("ro-RO") + " (" + fltDM(r.dI) + ") → " + r.kmF.toLocaleString("ro-RO") + " (" + fltDM(r.dF) + ")") : ""}
+      ${k("Km bord (alimentări)", r.bord.km ? r.bord.km.toLocaleString("ro-RO") : "—", r.bord.n + (r.bord.n === 1 ? " alimentare" : " alimentări"))}${k("Motorină", flt1(r.mot) + " L")}${r.ben ? k("Benzină", flt1(r.ben) + " L") : ""}
+      ${r.areRute ? k("Consum din rute", cr == null ? "—" : flt1(cr), "L / 100 km" + dif(cr)) : ""}${k("Consum din km de bord", r.bord.cons == null ? "—" : flt1(r.bord.cons), "L / 100 km" + dif(r.bord.cons))}${k("Normat", n ? flt1(n) : "—", "L / 100 km")}</div>
+    ${r.av.length ? `<div style="margin-top:10px;border-left:3px solid #D97706;padding:4px 10px"><b style="color:#D97706">⚠ De verificat</b><ul style="margin:4px 0 0 18px;padding:0;font-size:13px">${r.av.map(a => `<li>${a}</li>`).join("")}</ul></div>` : ""}
+    ${r.rute.length ? `<details style="margin-top:10px"><summary style="cursor:pointer" class="muted">Rapoartele de rută din lună (${r.rute.length}) · km declarați pe rute: <b>${r.kmDecl.toLocaleString("ro-RO")}</b></summary>
+      <div class="tw" style="margin-top:6px"><table><thead><tr><th>Data</th><th>Șoferi</th><th style="text-align:right">Km start</th><th style="text-align:right">Km final</th><th style="text-align:right">Km</th><th>Stare</th></tr></thead><tbody>${r.rute.map(q => `<tr><td>${fmtD(q.session_date)}</td><td>${esc([q.driver1, q.driver2].filter(Boolean).join(" + "))}</td><td style="text-align:right">${q.km_start.toLocaleString("ro-RO")}</td>
+        <td style="text-align:right">${q.km_end != null ? q.km_end.toLocaleString("ro-RO") : q._fin != null ? `<span class="muted" title="Fără km de final — am luat km de start ai rutei următoare">${q._fin.toLocaleString("ro-RO")}*</span>` : '<span class="muted">—</span>'}</td>
+        <td style="text-align:right">${q._fin != null ? (q._fin - q.km_start).toLocaleString("ro-RO") : ""}</td><td>${esc(q.status || "")}</td></tr>`).join("")}</tbody></table></div></details>` : ""}
+    <p class="muted" style="margin:8px 0 0">${r.areRute ? "Km din rute = km de final ai ultimei rute din lună minus km de final ai ultimei rute din luna anterioară. " : "Mașina nu are rapoarte de rută (nu apare la șoferi) — raportul se face doar din km de bord ai alimentărilor. "}Motorina și benzina = alimentările trecute în lună.</p></div>`;
+}
 function fltDeseneaza(){
   afTabs("flo-tabs", [["dash", "Dashboard"], ...FLT.L.map(x => [x.id, x.nr || x.marca]), ["acte", "Acte și termene"]], FLT.tab, "fltTab");
+  fltTrage();   // v8.69: filele vehiculelor se mută cu mouse-ul (ca la Angajați)
   if(FLT.tab === "dash") fltDash(); else if(FLT.tab === "acte") fltActe(); else fltFisa(FLT.tab === "nou" ? null : FLT.L.find(x => String(x.id) === String(FLT.tab)));
 }
 function fltCalc(mid){ let prev = null; return FLT.alim.filter(a => a.masina_id === mid).map(a => { const km = prev != null && a.km_bord != null ? a.km_bord - prev : null; if(a.km_bord != null) prev = a.km_bord;
@@ -14381,7 +14455,8 @@ function fltToateActele(){
 const flt1 = v => v == null ? "—" : (Math.round(v * 10) / 10).toLocaleString("ro-RO");
 function fltDash(){
   const act = FLT.L.filter(m => m.status !== "INACTIV" && m.activ !== false), A = fltToateActele(), exp = A.filter(x => afStare(x.d) === "EXPIRAT"), at = A.filter(x => afStare(x.d) === "ATENTIE");
-  const R = act.map(m => ({ m, r: fltLuna(m.id, FLT.luna) })), km = R.reduce((t, x) => t + x.r.km, 0), mot = R.reduce((t, x) => t + x.r.mot, 0), ben = R.reduce((t, x) => t + x.r.ben, 0);
+  // v8.69: km din rapoartele de rută (dacă mașina are rute), altfel din km de bord ai alimentărilor (Toyota, remorca)
+  const R = act.map(m => { const r = fltRaport(m, FLT.luna); r.kmT = r.km != null ? r.km : r.bord.km; return { m, r }; }), km = R.reduce((t, x) => t + (x.r.kmT || 0), 0), mot = R.reduce((t, x) => t + x.r.mot, 0), ben = R.reduce((t, x) => t + x.r.ben, 0);
   const ap = exp.concat(at);
   $("flo-corp").innerHTML = `<div class="card noprint"><div class="row" style="align-items:flex-end">
       <div style="flex:0;min-width:170px"><label>Luna</label><input type="month" id="flo-luna" value="${FLT.luna}" onchange="FLT.luna=this.value||today().slice(0,7);fltDash()"></div>
@@ -14389,12 +14464,17 @@ function fltDash(){
       <div style="flex:0"><label>&nbsp;</label><button class="btn sec" onclick="fltIncarca()">Reîncarcă</button></div>
       <div><p class="muted" style="margin:0">Aici se țin datele mașinilor — de aici le iau și aplicațiile șoferilor. Clic pe un vehicul = fișa lui (acte, alimentări, consum).</p></div></div>
     <div class="kpi" style="margin-top:12px"><div>Vehicule active<b>${act.length}</b></div><div${exp.length ? ' class="kpi-amb"' : ""}>Acte expirate<b>${exp.length}</b></div><div${at.length ? ' class="kpi-amb"' : ""}>Expiră în 30 de zile<b>${at.length}</b></div>
-      <div>Km în lună (flotă)<b>${km.toLocaleString("ro-RO")}</b></div><div>Consum motorină (L / 100 km)<b>${flt1(km > 0 ? 100 * mot / km : null)}</b></div></div></div>
-    <div class="card"><h3 style="margin:0 0 8px;color:var(--g)">Consum combustibil — luna aleasă</h3><div class="tw"><table><thead><tr><th>Vehicul</th><th style="text-align:right">Alimentări</th><th style="text-align:right">Km parcurși</th><th style="text-align:right">Motorină (L)</th><th style="text-align:right">Benzină (L)</th><th style="text-align:right">Consum (L / 100 km)</th><th style="text-align:right">Normat</th></tr></thead><tbody>` +
-      R.map(({ m, r }) => `<tr style="cursor:pointer" onclick="fltTab('${m.id}')"><td><b>${esc(m.nr || "")}</b> <span class="muted">${esc([m.marca, m.model].filter(Boolean).join(" "))}</span></td><td style="text-align:right">${r.n || ""}</td><td style="text-align:right">${r.km ? r.km.toLocaleString("ro-RO") : ""}</td><td style="text-align:right">${r.mot ? flt1(r.mot) : ""}</td><td style="text-align:right">${r.ben ? flt1(r.ben) : ""}</td>
-        <td style="text-align:right;font-weight:600${r.cons != null && m.consum_normat && r.cons > +m.consum_normat * 1.15 ? ";color:#C0392B" : ""}">${r.cons == null ? "" : flt1(r.cons)}</td><td style="text-align:right">${m.consum_normat == null ? "" : flt1(+m.consum_normat)}</td></tr>`).join("") +
-      `<tr style="font-weight:700"><td>TOTAL FLOTĂ</td><td></td><td style="text-align:right">${km.toLocaleString("ro-RO")}</td><td style="text-align:right">${flt1(mot)}</td><td style="text-align:right">${flt1(ben)}</td><td style="text-align:right">${flt1(km > 0 ? 100 * mot / km : null)}</td><td></td></tr></tbody></table></div>
-      <p class="muted" style="margin:8px 0 0">Km parcurși = diferența dintre km de bord de la două alimentări. Consumul cu roșu = cu peste 15% peste cel normat.</p></div>
+      <div title="Din rapoartele de rută; mașinile fără rute — din km de bord ai alimentărilor">Km în lună (flotă)<b>${km.toLocaleString("ro-RO")}</b></div><div>Consum motorină (L / 100 km)<b>${flt1(km > 0 ? 100 * mot / km : null)}</b></div></div></div>
+    <div class="card"><h3 style="margin:0 0 8px;color:var(--g)">Raport de consum — luna aleasă</h3><div class="tw"><table><thead><tr><th>Vehicul</th><th style="text-align:right">Rute</th><th style="text-align:right">Km din rute</th><th style="text-align:right">Consum rute</th><th style="text-align:right">Km bord (alim.)</th><th style="text-align:right">Consum bord</th><th style="text-align:right">Motorină (L)</th><th style="text-align:right">Benzină (L)</th><th style="text-align:right">Normat</th><th>Atenție</th></tr></thead><tbody>` +
+      R.map(({ m, r }) => { const cr = fltCons(r.mot, r.km), n = +m.consum_normat || 0, rosu = c => c != null && n && c > n * 1.15 ? ";color:#C0392B" : "";
+        return `<tr style="cursor:pointer" onclick="fltTab('${m.id}')"><td><b>${esc(m.nr || "")}</b> <span class="muted">${esc([m.marca, m.model].filter(Boolean).join(" "))}</span></td>
+        <td style="text-align:right">${r.areRute ? r.rute.length : '<span class="muted">—</span>'}</td><td style="text-align:right">${r.km != null ? r.km.toLocaleString("ro-RO") : ""}</td><td style="text-align:right;font-weight:600${rosu(cr)}">${cr == null ? "" : flt1(cr)}</td>
+        <td style="text-align:right">${r.bord.km ? r.bord.km.toLocaleString("ro-RO") : ""}</td><td style="text-align:right;font-weight:600${rosu(r.bord.cons)}">${r.bord.cons == null ? "" : flt1(r.bord.cons)}</td>
+        <td style="text-align:right">${r.mot ? flt1(r.mot) : ""}</td><td style="text-align:right">${r.ben ? flt1(r.ben) : ""}</td><td style="text-align:right">${n ? flt1(n) : ""}</td>
+        <td>${r.av.length ? `<span style="color:#D97706;font-weight:700" title="${esc(r.av.map(a => a.replace(/<[^>]+>/g, "")).join("\n"))}">⚠ ${r.av.length}</span>` : ""}</td></tr>`; }).join("") +
+      `<tr style="font-weight:700"><td>TOTAL FLOTĂ</td><td></td><td colspan="3" style="text-align:right">${km.toLocaleString("ro-RO")} km</td><td></td><td style="text-align:right">${flt1(mot)}</td><td style="text-align:right">${flt1(ben)}</td><td></td><td></td></tr></tbody></table></div>
+      <p class="muted" style="margin:8px 0 0"><b>Km din rute</b> = km de final ai ultimei rute din lună minus km de final ai ultimei rute din luna anterioară (rută fără km de final → km de start ai rutei următoare). <b>Km bord</b> = diferența dintre km de bord de la alimentări. Motorina și benzina = alimentările din lună. Consumul cu roșu = cu peste 15% peste cel normat.</p>
+      ${R.some(x => x.r.av.length) ? `<div style="margin-top:10px">${R.filter(x => x.r.av.length).map(({ m, r }) => `<div style="margin-top:6px"><b>⚠ ${esc(m.nr || "")}</b><ul style="margin:2px 0 0 18px;padding:0;font-size:13px">${r.av.map(a => `<li>${a}</li>`).join("")}</ul></div>`).join("")}</div>` : ""}</div>
     <div class="card"><h3 style="margin:0 0 8px;color:var(--g)">Expirări apropiate <span class="muted" style="font-size:13px;font-weight:400">(expirate + în următoarele 30 de zile)</span></h3>` +
       (ap.length ? `<div class="tw"><table><thead><tr><th>Vehicul / angajat</th><th>Document</th><th>Expiră</th><th style="text-align:right">Zile rămase</th></tr></thead><tbody>${ap.map(x => `<tr${x.tab ? ` style="cursor:pointer" onclick="fltTab('${x.tab}')"` : ""}><td><b>${esc(x.cine)}</b></td><td>${esc(x.doc)}</td><td>${afSem(x.d)}</td><td style="text-align:right">${afZile(x.d)}</td></tr>`).join("")}</tbody></table></div>` : '<p class="muted" style="margin:0">Nimic nu expiră în următoarele 30 de zile.</p>') + `</div>`;
 }
@@ -14410,7 +14490,13 @@ function fltFisa(m){
   const optS = ["ACTIV", "INACTIV", "IN SERVICE"].map(s => `<option${s === (m.status || "ACTIV") ? " selected" : ""}>${s}</option>`).join("");
   const optC = ["", "MOTORINA", "BENZINA", "ELECTRIC", "HIBRID"].map(s => `<option${s === (m.combustibil || "") ? " selected" : ""}>${s}</option>`).join("");
   const sof = (FLT.ang || []).map(a => `<option value="${esc(a.nume)}">`).join("");
-  $("flo-corp").innerHTML = `<div class="card"><h3 style="margin:0 0 10px;color:var(--g)">${nou ? "Vehicul nou" : esc(fltNume(m))}</h3>
+  // v8.69: datele vehiculului într-un meniu restrâns (ca la Angajați); antetul: mașina, nr., status, cel mai apropiat act care expiră
+  const desc = nou || FLT.fisaDeschisa, urm = FLT_ACTE.filter(([c]) => m[c]).sort((a, b) => m[a[0]].localeCompare(m[b[0]]))[0];
+  $("flo-corp").innerHTML = `<div class="card"><details class="an-det" ${desc ? "open" : ""} ontoggle="FLT.fisaDeschisa=this.open"><summary style="cursor:pointer;list-style:none;display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+      <span class="an-sag" style="display:inline-block;width:20px;font-size:14px;color:var(--g)">▸</span>
+      <span style="font-size:18px;font-weight:700;color:var(--g)">${nou ? "Vehicul nou" : esc([m.marca, m.model].filter(Boolean).join(" ") || "Vehicul")}</span>
+      ${nou ? "" : `<span style="display:flex;gap:16px;flex-wrap:wrap;font-size:13px"><span><span class="muted">Nr.</span> <b>${esc(m.nr || "—")}</b></span><span><span class="muted">Status</span> <b${m.status === "INACTIV" ? ' style="color:#C0392B"' : m.status === "IN SERVICE" ? ' style="color:#D97706"' : ""}>${esc(m.status || "ACTIV")}</b></span>${urm ? `<span><span class="muted">Următorul act care expiră:</span> <b>${esc(urm[1])}</b> ${afSem(m[urm[0]])}</span>` : ""}</span>`}
+      <span class="muted noprint" style="margin-left:auto;font-size:12px">${nou ? "" : "clic = arată / ascunde datele vehiculului"}</span></summary><div style="margin-top:12px">
     <div class="grid3">${afC("fl-marca", "Marca", m.marca)}${afC("fl-model", "Model", m.model)}${afC("fl-nr", "Nr. înmatriculare", m.nr, "text", 'placeholder="HR 00 ECO"')}
       ${afC("fl-an", "An fabricație", m.an_fabricatie, "number")}<div><label>Combustibil</label><select id="fl-comb">${optC}</select></div>${afC("fl-rez", "Capacitate rezervor (L)", m.rezervor_l, "number")}
       ${afC("fl-norm", "Consum normat (L / 100 km)", m.consum_normat, "number", 'step="0.1"')}${afC("fl-kmp", "Km la preluare", m.km_preluare, "number")}${afC("fl-dprel", "Data preluării", m.data_preluare, "date")}
@@ -14420,7 +14506,8 @@ function fltFisa(m){
     <div class="grid3" style="margin-top:10px"><div style="grid-column:1/-1"><label>Dotări (vestă, triunghi etc.)</label><input id="fl-dot" value="${esc(m.dotari || "")}"></div><div style="grid-column:1/-1"><label>Observații</label><input id="fl-obs" value="${esc(m.observatii || "")}"></div></div>
     ${FLT.admin ? `<h4 style="margin:16px 0 8px">🔒 Card de alimentare <span class="muted" style="font-weight:400;font-size:12px">— numărul și PIN-ul le vede doar administratorul</span></h4>
     <div class="grid3">${afC("fl-card", "Nr. card", pv.card_nr)}${afC("fl-pin", "PIN card", pv.card_pin)}<div></div></div>` : ""}
-    <div class="row" style="margin-top:16px;justify-content:flex-end"><div style="flex:1"></div><div style="flex:0"><button class="btn sec" onclick="fltTab('dash')">Înapoi</button></div><div style="flex:0"><button class="btn" onclick="fltSalveaza(${nou ? "null" : m.id})">Salvează</button></div></div></div>` +
+    <div class="row" style="margin-top:16px;justify-content:flex-end"><div style="flex:1"></div><div style="flex:0"><button class="btn sec" onclick="fltTab('dash')">Înapoi</button></div><div style="flex:0"><button class="btn" onclick="fltSalveaza(${nou ? "null" : m.id})">Salvează</button></div></div></div></details></div>` +
+    (nou ? "" : fltRaportHtml(m)) +
     (nou ? "" : `<div class="card"><h3 style="margin:0 0 8px;color:var(--g)">Alimentări și consum</h3><datalist id="fl-dl-sof">${sof}</datalist>
       <div class="row noprint" style="align-items:flex-end;gap:8px">
         <div style="flex:0;min-width:150px"><label>Data</label><input type="date" id="al-data" value="${today()}"></div><div style="flex:0;min-width:110px"><label>Km bord</label><input type="number" id="al-km"></div>
