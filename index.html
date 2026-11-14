@@ -1116,7 +1116,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
   <span id="rz-w"><button id="rz-reset" class="pictograma" title="Lățimi implicite — pune coloanele din tabelele acestei file înapoi cum erau">↺ Reset layout</button><i class="rz-sep">|</i></span>
   <span id="tz-w" title="Mărimea tabelului (doar tabelul, restul rămâne la fel), din 5 în 5%. Merge și cu Ctrl + rotița mausului, Ctrl + / Ctrl − / Ctrl 0. Dublu clic pe procent = scrii tu valoarea."><button class="pictograma" onclick="tzPas(-1)" aria-label="Micșorează tabelul">−</button><b id="tz-v" ondblclick="tzScrie()" title="Dublu clic = scrii mărimea (ex. 87), Enter">100%</b><input id="tz-in" type="number" min="30" max="300" step="5" style="display:none"><button class="pictograma" onclick="tzPas(1)" aria-label="Mărește tabelul">+</button></span>
-  <span class="ver">v8.72</span>
+  <span class="ver">v8.73</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -2737,7 +2737,7 @@ function actEf(r){
   return d.status_prim === "PRIMIT" ? "V" : d.status_prim === "IN ASTEPTARE" ? "VA" : d.status_prim === "LIPSA" ? "X" : d.status_prim === "ANULAT" ? "-" : v;
 }
 const actR = r => { const e = actEf(r); return e === ((r && r.act) || "-") ? r : { ...r, act: e }; };
-const actTitlu = r => { const d = actDoc(r); return d ? ` · Registru: ${d.tip_document || ""} ${d.status_prim || ""}` + (d.data_primire ? " din " + fmtD(d.data_primire) : "") : ""; };
+const actTitlu = r => { const d = actDoc(r); return d ? ` · Registru: ${d.tip_document || ""} ${d.status_prim || ""}` + (d.data_primire ? " din " + fmtD(d.data_primire) : "") + " — clic = deschide rândul în Registru documente" + (d.status_prim !== "PRIMIT" ? " (acolo apeși „Primit azi”)" : "") : ""; };
 function clStare(r){
   const nu = flaguriNuConteaza(r), v = FLAGURI.filter(f => !nu.has(f));
   if(FLAGURI.every(f => (r[f] || "-") === "-")) return "";
@@ -10101,7 +10101,7 @@ function renderDoc(){
     "<th>Primire</th><th>Data primirii</th><th>Observații</th><th></th></tr></thead><tbody>" +
     r.map(d => {
       const neprimit = (d.status_prim || "") !== "PRIMIT";
-      return `<tr>` +
+      return `<tr data-doc="${d.id}"${d.id === DOC_ALES ? ' class="r-ver"' : ""}>` +
         `<td>${fmtD(d.data_trimitere)}</td><td>${esc(d.tip_document)}</td>` +
         `<td>${esc(d.referinta || "")}</td><td>${esc(d.denumire || "")}</td>` +
         `<td>${esc(d.status_trim || "")}${d.retrimiteri ? ` <span class="pill p-T">+${d.retrimiteri}</span>` : ""}</td>` +
@@ -10117,10 +10117,22 @@ function renderDoc(){
     `<div>Neprimite<b>${neprimite}</b></div><div>Cu retrimiteri<b>${retrimise}</b></div>`;
 }
 
+// v8.73: deschide Registru documente filtrat pe contract, cu rândul documentului marcat; „Primit azi” clipește
+let DOC_ALES = null;
+async function docMergiLa(id){
+  const b = document.querySelector('nav button[data-p="documente"]'); if(b && !b.classList.contains("on")) b.click();
+  await loadDoc();
+  const d = DOC.find(x => x.id === id); if(!d){ toast("Documentul nu mai e în registru", true); return; }
+  DOC_ALES = id; $("g-an").value = ""; $("g-prim").value = ""; $("g-cauta").value = d.referinta || ""; renderDoc();
+  const pr = (d.status_prim || "") === "PRIMIT";
+  setTimeout(() => howClipeste(`#g-tbl tr[data-doc="${id}"] ${pr ? "td" : "button"}`), 150);
+  toast(pr ? (d.tip_document || "Documentul") + " " + (d.observatii || "").split("·")[0].trim() + " e deja PRIMIT" + (d.data_primire ? " (" + fmtD(d.data_primire) + ")" : "")
+           : "Când l-ai primit, apasă „Primit azi” pe rândul marcat");
+}
 async function docPrimit(id){
   const { error } = await db.from("documente").update({ status_prim: "PRIMIT", data_primire: today() }).eq("id", id);
   if(error){ toast(error.message, true); return; }
-  toast("Marcat ca primit"); await loadDoc();
+  toast("Marcat ca primit — ACT devine verde la comandă"); await loadDoc();
 }
 
 async function docRetrimis(id){
@@ -10189,9 +10201,10 @@ async function actSpreRegistru(mid, m0){
   if(!k && c.client_id){ const r = await db.from("clienti").select("*").eq("id", c.client_id).maybeSingle(); if(r.data){ k = r.data; CLI.push(k); } }
   k = k || {};
   const ref = (c.nr_ctr || "").toUpperCase(), numeAnx = (a.anexa || "").trim();
-  const { data: ex, error } = await db.from("documente").select("tip_document,data_trimitere,observatii").eq("referinta", ref);
+  const { data: ex, error } = await db.from("documente").select("id,tip_document,data_trimitere,observatii").eq("referinta", ref);
   if(error){ toast(error.message, true); return; }
   const dubla = numeAnx && (ex || []).find(d => (d.observatii || "").toUpperCase().startsWith(numeAnx.toUpperCase()));
+  if(dubla && dubla.id){ await docMergiLa(dubla.id); return; }   // v8.73: e deja în registru → la rândul lui, fără rând nou
   // v6.27: doar ANEXA NR 1 (fără -S1 / -R1 / .1) e în contract — „ANEXA NR 1-R1” propunea greșit CONTRACT
   const prima = /\bNR\.?\s*0*1\s*$/i.test(numeAnx);
   const nota = `Din ACT = V pe ${esc(numeAnx || "anexă")}, contract <b>${esc(ref)}</b>. ` +
@@ -12419,6 +12432,9 @@ function flaguriAnexa(anexaId, f, lista){
 async function flagClic(el){
   const id = +el.dataset.mid, f = el.dataset.f;
   const mAct = f === "act" ? [MISC, CMA, R_MIS].map(L => (L || []).find(x => x.id === id)).find(Boolean) : null;   // v6.64: ACT se rotește după bifa salvată
+  // v8.73 (cerut de Ovidiu, 14.11 — rândul dublu BLISS TRUST): ACT cu rând în Registru (V galben = trimis, aștept să-l primesc; V verde; X) →
+  // clicul te duce la rândul lui din Registru documente, unde apeși „Primit azi”. Bifa nu se mai rotește și nu se mai deschide un document nou.
+  if(f === "act" && mAct && !FARA_ACT(mAct.tip_miscare)){ const d = actDoc(mAct); if(d){ await docMergiLa(d.id); return; } }
   const mF = f === "fac" ? [MISC, CMA, R_MIS].map(L => (L || []).find(x => x.id === id)).find(Boolean) : null, sF = svLoc(mF);   // v7.34
   const L = sF ? FLAGS_SVL : flagsDe(f), v = L[(L.indexOf(mAct ? (mAct.act || "-") : sF ? (mF.fac || "-") : el.textContent) + 1) % L.length];
   const tot = grupTot(id, f, !!(el.closest && el.closest("#m-tbl")));   // v5.14   // v8.04: tot grupul doar din Comenzi
