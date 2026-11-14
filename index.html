@@ -1116,7 +1116,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
   <span id="rz-w"><button id="rz-reset" class="pictograma" title="Lățimi implicite — pune coloanele din tabelele acestei file înapoi cum erau">↺ Reset layout</button><i class="rz-sep">|</i></span>
   <span id="tz-w" title="Mărimea tabelului (doar tabelul, restul rămâne la fel), din 5 în 5%. Merge și cu Ctrl + rotița mausului, Ctrl + / Ctrl − / Ctrl 0. Dublu clic pe procent = scrii tu valoarea."><button class="pictograma" onclick="tzPas(-1)" aria-label="Micșorează tabelul">−</button><b id="tz-v" ondblclick="tzScrie()" title="Dublu clic = scrii mărimea (ex. 87), Enter">100%</b><input id="tz-in" type="number" min="30" max="300" step="5" style="display:none"><button class="pictograma" onclick="tzPas(1)" aria-label="Mărește tabelul">+</button></span>
-  <span class="ver">v8.77</span>
+  <span class="ver">v8.78</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -4111,7 +4111,8 @@ function actDateAnexa(a, o){
       : tip === "SUPLIMENTARE" ? "Suplimentare produse la locatia existenta" : "",
     titlu_tabel: rid ? "REFERITOR LA PRODUSELE RIDICATE" : "REFERITOR LA CANTITATEA SI COSTUL PRODUSELOR",
     randuri, titlu_cond: rid ? "*Conditii pentru ridicare :" : "*Conditii minime de acceptare pentru livrare :", conditii: rid ? ACT_COND_RIDICARE : actCondLivrare(rows),
-    client: c.nume || "", client_sediu: actMajCuv(c.sediu), client_id_et: c.id_tip === "CNP" ? "CNP" : "CUI", client_cui: c.cui ? ((c.atr || "") + " " + c.cui).trim() : "",
+    client: c.nume || "", client_sediu: actMajCuv(c.sediu), client_id_et: ["CNP", "CIF"].includes(c.id_tip) ? c.id_tip : "CUI",   // v8.78: și CIF (instituții)
+    client_cui: c.cui ? ((c.atr || "") + " " + c.cui).trim() : "",
     client_j: c.nr_reg_com || "", reprezentant: actMajCuv(c.pers_resp), reprezentant_functie: actMajCuv(c.reprezentant_functie),
     // v8.09 (cerut de Ovidiu, 08.11): părțile contractante în formatul nou (ca în contractul PJ 2026) — prestatorul cu datele actuale, beneficiarul complet
     reprezentant_functie_mic: String(c.reprezentant_functie || "administrator").toLowerCase(),
@@ -6073,6 +6074,9 @@ function mcCatSchimbat(deMana){
   $("mc-semn-w").style.display = k === "PF" ? "none" : "";
   if(deMana){ if(k === "PF" && $("mc-idtip").value !== "CNP"){ $("mc-idtip").value = "CNP"; mcCuiVerif(); }
     if(k !== "PF" && $("mc-idtip").value === "CNP"){ $("mc-idtip").value = ["INSTITUTIE","ONG"].includes(k) ? "CIF" : "CUI"; mcCuiVerif(); }
+    // v8.78 (cerut de Ovidiu, 14.11): instituția / ONG-ul are CIF, societatea / PFA are CUI — Tip ID se schimbă odată cu categoria
+    if(["INSTITUTIE","ONG"].includes(k) && $("mc-idtip").value === "CUI"){ $("mc-idtip").value = "CIF"; mcCuiVerif(); }
+    if(["SOCIETATE","PFA"].includes(k) && $("mc-idtip").value === "CIF"){ $("mc-idtip").value = "CUI"; mcCuiVerif(); }
     if(!$("mc-func").value.trim()) $("mc-func").value = { PFA: "Titular", INSTITUTIE: "Primar", ONG: "Președinte", PF: "Beneficiar" }[k] || ""; }
 }
 function mcCatDinIdtip(){ if(MC_CAT_MANA) return; const t = $("mc-idtip").value; $("mc-cat").value = t === "CNP" ? "PF" : t === "CIF" ? "INSTITUTIE" : "SOCIETATE"; mcCatSchimbat(false); }
@@ -6703,7 +6707,10 @@ function mcAnafAplica(){
   if(bif("mca-sediu")) $("mc-sediu").value = P.dataset.sediu || "";   // v8.05
   if(bif("mca-j")) $("mc-j").value = d.nr_reg_com || "";
   if(bif("mca-iban")){ $("mc-iban").value = d.iban || ""; const b = bancaDinIban(d.iban); if(b) $("mc-banca").value = b; }
-  P.innerHTML = ""; mcCuiVerif(); toast("Completat din ANAF — verifică și salvează");
+  // v8.78 (cerut de Ovidiu, 14.11, CASA DE CULTURA A STUDENTILOR 1560 HD): instituția publică (fără Reg. Com., „PUBLIC” la ANAF sau nume de primărie / oraș…) → INSTITUȚIE + CIF
+  const inst = $("mc-idtip").value !== "CNP" && !d.nr_reg_com && (/PUBLIC/i.test([d.stare, d.forma].join(" ")) || catDinClient({ nume: d.denumire }) === "INSTITUTIE");
+  if(inst){ $("mc-cat").value = "INSTITUTIE"; if($("mc-idtip").value === "CUI") $("mc-idtip").value = "CIF"; mcCatSchimbat(false); }
+  P.innerHTML = ""; mcCuiVerif(); toast(inst ? "Completat din ANAF — instituție publică: categoria INSTITUȚIE și Tip ID = CIF. Verifică și salvează" : "Completat din ANAF — verifică și salvează");
 }
 // v4.77 (cerut de Ovidiu, 08.10): ciornele clienților nesalvați, ținute în bază (tabel `ciorne`, tip 'client').
 let MC_CIORNA = null, MC_CIORNE = [];
