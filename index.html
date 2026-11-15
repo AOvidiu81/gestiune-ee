@@ -2752,7 +2752,9 @@ function pune(sel,val){ const s=$(sel); if(!s||!val) return; if([...s.options].s
 
 // ================= NAV =================
 document.querySelectorAll("nav button").forEach(b=>b.onclick=(ev)=>{
-  if(b.dataset.p==="ghid"){ howDeschide(); return; }   // v8.55: Ghid „How to” = fereastră, pagina rămâne aceeași
+  if(b.dataset.p==="ghid"){ howDeschide(); return; }
+  // v8.80: plecarea din Angajați (meniul din stânga) cu pontaj nesalvat → aceeași întrebare (Salvează / Înapoi / Nu salvez)
+  if(typeof PNT!=="undefined" && PNT.murdar && b.dataset.p!=="angajati" && $("p-angajati") && $("p-angajati").classList.contains("on")){ pntIntreaba().then(r=>{ if(r) b.click(); }); return; }   // v8.55: Ghid „How to” = fereastră, pagina rămâne aceeași
   document.querySelectorAll("nav button").forEach(x=>x.classList.remove("on")); b.classList.add("on");
   document.querySelectorAll(".page").forEach(p=>p.classList.remove("on")); $("p-"+b.dataset.p).classList.add("on");
   // v8.70: Foi de parcurs / prezență și Cereri primite sunt file ale meniului Angajați (butoanele lor din meniu sunt ascunse)
@@ -14123,7 +14125,30 @@ async function angMuta(de, la, dupa){
   for(const q of sch){ const { error } = await db.from("soferi").update({ ordine: q.ordine }).eq("id", q.id); if(error){ toast("Ordinea nu s-a salvat: " + error.message, true); return; } const y = ANG.L.find(z => z.id === q.id); if(y) y.ordine = q.ordine; }
   toast("Ordinea angajaților s-a salvat");
 }
-function angTab(k){ if(PNT.murdar && !confirm("Pontajul are schimbări nesalvate. Le pierzi?")) return; PNT.murdar = false;
+// v8.80 (cerut de Ovidiu, 15.11): la schimbări nesalvate în pontaj — fereastră cu 💾 Salvează / ↩ Înapoi la pontaj / ✕ Nu salvez (în loc de OK / Cancel).
+// Promisiune: true = poți merge mai departe (salvat sau renunțat), false = rămâi în pontaj.
+function pntIntreaba(){
+  return new Promise(gata => {
+    document.getElementById("mod-pnt-q")?.remove();
+    const w = document.createElement("div"); w.className = "modal on"; w.id = "mod-pnt-q"; w.style.zIndex = 3000;
+    const x = (typeof ANG !== "undefined" && ANG.L || []).find(a => a.id === PNT.sid);
+    w.innerHTML = `<div class="box" style="max-width:480px;width:480px"><h3 style="margin:0 0 8px;color:var(--g)">Pontajul are schimbări nesalvate</h3>
+      <p style="margin:0 0 16px">${x ? "Pontajul lui <b>" + esc(x.nume) + "</b>" + (PNT.luna ? " pe <b>" + esc(PNT.luna.slice(5) + "." + PNT.luna.slice(0, 4)) + "</b>" : "") + " are" : "Ai"} modificări care nu sunt salvate. Ce faci cu ele?</p>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end">
+        <button class="btn" data-r="s">💾 Salvează și continuă</button>
+        <button class="btn sec" data-r="i">↩ Înapoi la pontaj</button>
+        <button class="btn danger" data-r="n">✕ Nu salvez (pierd modificările)</button></div></div>`;
+    const inchide = r => { document.removeEventListener("keydown", esc_); w.remove(); gata(r); };
+    const esc_ = e => { if(e.key === "Escape"){ e.preventDefault(); inchide(false); } };
+    document.addEventListener("keydown", esc_);
+    w.onclick = async e => { if(e.target === w){ inchide(false); return; } const b = e.target.closest("button[data-r]"); if(!b) return;
+      if(b.dataset.r === "i") inchide(false);
+      else if(b.dataset.r === "n"){ PNT.murdar = false; inchide(true); }
+      else { b.disabled = true; b.textContent = "Se salvează…"; if(await pntSalveaza()) inchide(true); else { b.disabled = false; b.textContent = "💾 Salvează și continuă"; } } };
+    document.body.appendChild(w); w.querySelector('button[data-r="s"]').focus();
+  });
+}
+function angTab(k){ if(PNT.murdar){ pntIntreaba().then(r => { if(r) angTab(k); }); return; } PNT.murdar = false;
   if(k === "foi" || k === "primite"){ const b = document.querySelector(k === "foi" ? 'nav button[data-p="foi"]' : 'nav button[data-p="pv"][data-v="cereri"]'); if(b) b.click(); return; }
   ANG.tab = k;
   if(!$("p-angajati").classList.contains("on")){ const b = document.querySelector('nav button[data-p="angajati"]'); if(b){ b.click(); return; } }   // vine din Foi de parcurs / Cereri primite
@@ -14336,8 +14361,7 @@ async function pntIncarca(sid, luna){
   pntDeseneaza();
 }
 async function pntAuto(){
-  if(PNT.murdar && !confirm("Ai schimbări nesalvate în pontaj. Le salvez întâi?\n\nOK = salvez și reîmprospătez · Anulează = renunț")) return;
-  if(PNT.murdar && !(await pntSalveaza())) return;
+  if(PNT.murdar && !(await pntIntreaba())) return;
   const x = ANG.L.find(a => a.id === PNT.sid); if(!x) return;
   let S; try{ S = await pntSurse(PNT.luna, true); }catch(e){ toast("Nu am putut citi rutele: " + (e.message || e), true); return; }
   const sch = pntPropune(x, PNT.luna, PNT.rows, S); if(!(await pntScrieAuto(x.id, sch))) return;
@@ -14392,7 +14416,7 @@ function pntSch(i, c, v){
   if((c === "ora_start" || c === "ora_stop") && r.ora_start && r.ora_stop && !pntOre(r)) toast("Ora de sosire trebuie să fie după ora de pornire", true);
   $("pnt-stat").innerHTML = pntStatHtml();
 }
-function pntLuna(v){ if(!v) return; if(PNT.murdar && !confirm("Pontajul are schimbări nesalvate. Le pierzi?")){ pntDeseneaza(); return; } pntIncarca(PNT.sid, v); }
+function pntLuna(v){ if(!v) return; if(PNT.murdar){ pntIntreaba().then(r => { if(r) pntIncarca(PNT.sid, v); else pntDeseneaza(); }); return; } pntIncarca(PNT.sid, v); }
 async function pntSalveaza(){
   const acum = new Date().toISOString(), sid = PNT.sid, luna = PNT.luna;
   const up = PNT.rows.filter(pntPlin).map(r => pntRec(sid, r, acum));
