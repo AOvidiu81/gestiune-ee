@@ -1116,7 +1116,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
   <span id="rz-w"><button id="rz-reset" class="pictograma" title="Lățimi implicite — pune coloanele din tabelele acestei file înapoi cum erau">↺ Reset layout</button><i class="rz-sep">|</i></span>
   <span id="tz-w" title="Mărimea tabelului (doar tabelul, restul rămâne la fel), din 5 în 5%. Merge și cu Ctrl + rotița mausului, Ctrl + / Ctrl − / Ctrl 0. Dublu clic pe procent = scrii tu valoarea."><button class="pictograma" onclick="tzPas(-1)" aria-label="Micșorează tabelul">−</button><b id="tz-v" ondblclick="tzScrie()" title="Dublu clic = scrii mărimea (ex. 87), Enter">100%</b><input id="tz-in" type="number" min="30" max="300" step="5" style="display:none"><button class="pictograma" onclick="tzPas(1)" aria-label="Mărește tabelul">+</button></span>
-  <span class="ver">v8.84</span>
+  <span class="ver">v8.85</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -1144,6 +1144,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <button data-p="verificare">Verificare <span id="v-badge" class="badge" style="display:none">0</span></button>
   <button data-p="pv" data-v="pv">Procese verbale</button>
   <button data-p="pv" data-v="cereri" data-h="cereri" style="display:none">Cereri / documente angajați</button><!-- v8.70: filă în Angajați -->
+  <button data-p="oferte" data-h="oferte">Oferte</button><!-- v8.85 (cerut de Ovidiu, 15.11): oferte pentru clienți, cu catalog de produse și PDF -->
   <button data-p="fise" data-h="fisa-date">Fișă date contract</button><!-- v8.14 (cerut de Ovidiu, 08.11): acces rapid la fișa „Date contract” -->
   <button data-p="calendar" data-h="calendar">Calendar</button><!-- v8.41 (cerut de Ovidiu, 09.11): calendar lună / an cu săptămânile și sărbătorile legale -->
   <button data-p="ghid" data-h="ghid" id="nav-how">Ghid „How to”</button><!-- v8.55 (cerut de Ovidiu, 08.11 / 12.11): fișe cu pași + „Du-mă acolo”, offline -->
@@ -1285,6 +1286,21 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
     </div>
   </div>
   <div class="card" id="cd-card"></div>
+</section>
+
+<!-- ================= OFERTE (v8.85) ================= -->
+<section class="page" id="p-oferte">
+  <div class="card noprint">
+    <div class="row" style="align-items:center">
+      <div style="flex:0"><button class="btn" onclick="ofForm()">📝 Ofertă nouă</button></div>
+      <div style="flex:0"><button class="btn sec" onclick="ofCatalog()">📚 Catalog de ofertă</button></div>
+      <div style="flex:0"><button class="btn sec" onclick="ofLoad()">↻ Reîncarcă</button></div>
+      <div style="flex:0;min-width:200px"><input id="of-q" placeholder="Caută client / produs / locație" oninput="ofRender()"></div>
+      <div style="flex:0;min-width:140px"><select id="of-fs" onchange="ofRender()"><option value="">toate stările</option><option value="ciorna">ciornă</option><option value="trimisa">trimisă</option><option value="acceptata">acceptată</option><option value="respinsa">respinsă</option></select></div>
+      <div><p class="muted" style="margin:0">Faci oferta, o vezi ca PDF și o trimiți clientului. Când o acceptă: starea <b>✔ acceptată</b> → <b>📋 Fișă</b> deschide fișa „Date contract” cu produsele și prețurile din ofertă.</p></div>
+    </div>
+  </div>
+  <div class="card" id="of-card"></div>
 </section>
 
 <!-- ================= CALENDAR (v8.41) ================= -->
@@ -2783,6 +2799,7 @@ document.querySelectorAll("nav button").forEach(b=>b.onclick=(ev)=>{
   if(b.dataset.p==="rute") deschideRute();
   if(b.dataset.p==="admin"){ if(b.dataset.a) $("a-tabel").value = b.dataset.a; else if($("a-tabel").value === "clients") $("a-tabel").value = "soferi"; adminSchimba(); }   // v5.35: Puncte de rută doar în fila lor
   if(b.dataset.p==="verificare") loadVerif();
+  if(b.dataset.p==="oferte") ofLoad();   // v8.85: meniul Oferte
   if(b.dataset.p==="fise") cdLoad();   // v8.27: pagina proprie a fișelor
   if(b.dataset.p==="calendar"){ KAL_M = {}; KAL_C = {}; kalArata(); }   // v8.41 / v8.42: comenzile se reîncarcă la fiecare deschidere
   if(b.dataset.p==="pv"){ pvMod(b.dataset.v || "pv"); loadPV(); }
@@ -6230,6 +6247,320 @@ function feFereastra(m, inchide){
   cap.addEventListener("dblclick", () => { dx = dy = 0; box.style.transform = ""; box.style.width = ""; box.style.height = ""; box.classList.remove("fe-max"); });
   new MutationObserver(() => { if(!m.isConnected){ scoateChip(); document.removeEventListener("mousemove", mv); document.removeEventListener("mouseup", up); } }).observe(document.body, { childList: true });
 }
+// ══════════════════════════════════════════════════════════════════════════════════════════════════════
+// v8.85 (cerut de Ovidiu, 15.11): MENIUL „OFERTE” — după modelele lui de ofertă (Primăria Deva / Hunedoara / Petroșani, Momentum Energy):
+// lista ofertelor (nr., dată, către, valoare, stare), formularul (un produs / mai multe produse / variante de servisare cu valoarea totală),
+// catalogul de ofertă (nume, dotări, text „Avantaje”, poză, preț de listă — tabela `oferta_catalog`) și PDF-ul cu antetul firmei (fără diacritice).
+// Oferta NU atinge nicio anexă: când e ✔ acceptată, „📋 Fișă” deschide fișa „Date contract” cu secțiunea „Din oferta acceptată” completată,
+// iar prețurile ajung pe anexa făcută din fișă (ca la v8.82). Oferta de eveniment (cu calculul de transport) = etapa 2.
+const OF = { L: [], C: [], poze: {}, url: null, blob: null, fisier: "" };
+const OF_TVA = 0.21;
+const OF_ST = { ciorna: ["ciornă", "#6b7280"], trimisa: ["trimisă", "#1a5fb4"], acceptata: ["✔ acceptată", "#2E8B3C"], respinsa: ["respinsă", "#C0392B"] };
+const OF_SEMN = [["Anitoiu OVIDIU", "Area Sales Manager", "0735 214 762"], ["Anitoiu ANA-MARIA", "Regional Manager", "0735 214 751"]];
+const OF_PLATA = ["Plata facturi scadenta in 30 zile.", "Plata facturi scadenta in 15 zile.",
+  "Beneficiarul are obligatia de a achita integral facturile in termen de 15 zile calendaristice de la data emiterii si comunicarii acestora prin sistemul e-Factura, conform legislatiei fiscale in vigoare.",
+  "Plata se efectueaza in avans, anterior datei de livrare."];
+const OF_FRL = ["1 / Sap", "2 / Sap", "3 / Sap", "4 / Sap", "2 / Luna", "1 / Luna", "Zilnic", "La Cerere"];
+const OF_FR = { "1 / Sap": "1 pe Saptamana", "2 / Sap": "2 pe Saptamana", "3 / Sap": "3 pe Saptamana", "4 / Sap": "4 pe Saptamana", "2 / Luna": "2 pe Luna", "1 / Luna": "1 pe Luna", "Zilnic": "1 pe Zi", "La Cerere": "la cerere" };
+const OF_PE = { zi: "zi", luna: "luna", eveniment: "eveniment", buc: "" };
+const ofCat = k => OF.C.find(c => c.cheie === k);
+const ofNr = o => "OF " + String(o.nr).padStart(3, "0") + " / " + o.an;
+const ofTotalRand = (r, zile) => (r.pe === "zi" && +r.buc > 0 && +zile > 0 && r.pret != null) ? Math.round(r.buc * zile * r.pret * 100) / 100 : null;
+function ofValoare(k){   // valoarea ofertei = prima variantă a fiecărui produs (pe zile) + transportul
+  const vazut = new Set(); let s = 0;
+  (k.randuri || []).forEach(r => { const c = r.cat || r.nume; if(vazut.has(c)) return; vazut.add(c); s += ofTotalRand(r, k.zile) || 0; });
+  s += +k.transport || 0; return s ? Math.round(s * 100) / 100 : null;
+}
+async function ofLoad(){
+  const [a, c] = await Promise.all([db.from("oferte").select("*").order("an", { ascending: false }).order("nr", { ascending: false }).limit(400),
+    db.from("oferta_catalog").select("id,cheie,nume,produs,tip,um,pret,dotari,descriere,activ,ordine").order("ordine")]);
+  const er = a.error || c.error; if(er){ $("of-card").innerHTML = '<p class="muted" style="margin:0">Ofertele nu s-au putut încărca: ' + esc(er.message || "") + "</p>"; return; }
+  OF.L = a.data || []; OF.C = c.data || []; ofRender();
+}
+function ofRender(){
+  const el = $("of-card"); if(!el) return;
+  const q = faraDiac(($("of-q") || {}).value || "").toLowerCase().trim(), fs = ($("of-fs") || {}).value || "";
+  const L = OF.L.filter(o => (!fs || o.stare === fs) && (!q || faraDiac(o.catre + " " + ((o.continut || {}).randuri || []).map(r => r.nume).join(" ") + " " + ((o.continut || {}).locatia || "")).toLowerCase().includes(q)));
+  if(!OF.L.length){ el.innerHTML = '<p class="muted" style="margin:0">Nicio ofertă încă. Apasă <b>📝 Ofertă nouă</b>.</p>'; return; }
+  el.innerHTML = '<div style="overflow:auto"><table><tr><th>Nr.</th><th>Data</th><th>Către</th><th>Produse</th><th style="text-align:right">Valoare (fără TVA)</th><th>Stare</th><th></th></tr>' + L.map(o => { const k = o.continut || {}, st = OF_ST[o.stare] || OF_ST.ciorna;
+    const pr = (k.randuri || []).map(r => (r.buc ? r.buc + " × " : "") + r.nume + (r.pret != null ? " — " + ftBani(r.pret) + " lei" + (OF_PE[r.pe] ? " / " + OF_PE[r.pe] : "") : "") + (r.frecventa ? " (" + r.frecventa + ")" : "")).join("; ");
+    return `<tr><td style="white-space:nowrap"><b>${esc(ofNr(o))}</b></td><td style="white-space:nowrap">${fmtD(o.data)}</td><td><b>${esc(o.catre)}</b>${k.locatia ? `<br><span class="muted" style="font-size:12px">${esc(k.locatia)}</span>` : ""}</td>
+      <td style="font-size:12.5px;max-width:420px">${esc(pr)}</td><td style="text-align:right;white-space:nowrap">${o.valoare != null ? ftBani(o.valoare) + " lei" : "—"}</td>
+      <td><select onchange="ofStare(${o.id}, this.value)" title="Schimbă starea ofertei" style="font-weight:700;color:${st[1]};min-width:118px">${Object.keys(OF_ST).map(s => `<option value="${s}" ${s === o.stare ? "selected" : ""}>${OF_ST[s][0]}</option>`).join("")}</select></td>
+      <td style="white-space:nowrap"><button class="btn sm" onclick="ofPdf(${o.id})" title="Vezi oferta ca PDF — o tipărești sau o salvezi">📄 PDF</button> <button class="btn sm sec" onclick="ofForm(${o.id})" title="Deschide și modifică oferta">✏ Deschide</button>
+        <button class="btn sm sec" onclick="ofForm(${o.id}, true)" title="Ofertă nouă pornind de la aceasta (alt client, aceleași produse)">⧉ Copie</button>
+        ${o.stare === "acceptata" ? `<button class="btn sm" onclick="ofLaFisa(${o.id})" title="Deschide fișa „Date contract” cu produsele și prețurile din ofertă">📋 Fișă</button> ` : ""}<button class="btn sm sec" onclick="ofSterge(${o.id})" title="Șterge oferta">✕</button></td></tr>`; }).join("") +
+    (L.length ? "" : '<tr><td colspan="7" class="muted">Nicio ofertă pentru filtrul ales.</td></tr>') + "</table></div>";
+}
+async function ofStare(id, st){
+  const o = OF.L.find(x => x.id === id); if(!o) return;
+  const { error } = await db.from("oferte").update({ stare: st }).eq("id", id); if(error){ toast(error.message, true); ofRender(); return; }
+  o.stare = st; ofRender();
+  toast(st === "acceptata" ? "Ofertă acceptată — apasă „📋 Fișă” ca să pornești fișa „Date contract” cu produsele din ofertă" : "Stare: " + OF_ST[st][0]);
+}
+async function ofSterge(id){
+  const o = OF.L.find(x => x.id === id); if(!o || !confirm("Ștergi oferta " + ofNr(o) + " — " + o.catre + "?")) return;
+  const { error } = await db.from("oferte").delete().eq("id", id); if(error){ toast(error.message, true); return; }
+  OF.L = OF.L.filter(x => x.id !== id); ofRender();
+}
+// ── formularul ofertei ──
+function ofForm(id, copie){
+  const o0 = id ? OF.L.find(x => x.id === id) : null, k = o0 ? JSON.parse(JSON.stringify(o0.continut || {})) : {}, nou = !o0 || copie;
+  const sm = k.semnatar || { nume: OF_SEMN[0][0], functie: OF_SEMN[0][1], tel: OF_SEMN[0][2] };
+  document.getElementById("mod-of")?.remove();
+  const w = document.createElement("div"); w.className = "modal on"; w.id = "mod-of"; w.dataset.id = nou ? "" : id;
+  w.innerHTML = `<div class="box" style="max-width:980px"><h3 class="lux-cap cap-mut">📝 ${nou ? "Ofertă nouă" : "Oferta " + esc(ofNr(o0))}</h3>
+    <style>#mod-of h4{margin:14px 0 4px}#mod-of .ofg{display:grid;grid-template-columns:repeat(4,1fr);gap:8px 10px}#mod-of .ofg .d2{grid-column:span 2}#mod-of .ofg .tot{grid-column:1/-1}
+      #mod-of .ofr{display:grid;grid-template-columns:1.5fr 1.7fr 62px 84px 96px 104px 30px;gap:6px;align-items:end;margin-bottom:6px}#mod-of label{font-size:11px;margin:0}
+      #mod-of .ofr input,#mod-of .ofr select{min-width:0;width:100%}@media(max-width:760px){#mod-of .ofg{grid-template-columns:1fr 1fr}#mod-of .ofr{grid-template-columns:1fr 1fr}}</style>
+    <h4>1. Către cine</h4>
+    <div class="ofg"><div class="d2"><label>În atenția (client sau nume liber)</label><input id="of-catre" list="of-cli" value="${esc(copie ? "" : (o0 ? o0.catre : ""))}" placeholder="ex. PRIMARIA MUNICIPIULUI DEVA"><datalist id="of-cli">${CLI.map(c => `<option value="${esc(c.nume)}">`).join("")}</datalist></div>
+      <div><label>Categoria</label><select id="of-categ">${Object.keys(CAT_ET).map(c => `<option value="${c}" ${(o0 ? o0.categorie : "SOCIETATE") === c ? "selected" : ""}>${CAT_ET[c]}</option>`).join("")}</select></div>
+      <div><label>Data ofertei</label><input id="of-data" type="date" value="${nou ? today() : o0.data}"></div>
+      <div class="d2"><label>Titlul de sub „OFERTA” <span class="muted" style="text-transform:none">(gol = se pune singur)</span></label><input id="of-titlu" value="${esc(k.titlu || "")}" placeholder="ex. TOALETE ECOLOGICE / PRODUSE"></div>
+      <div class="d2"><label>Locația</label><input id="of-loc" value="${esc(k.locatia || "")}" placeholder="ex. Deva / HD"></div></div>
+    <h4>2. Produse și prețuri <span class="muted" style="text-transform:none;font-weight:400">(același produs pe mai multe rânduri = variante, ex. 1 / 2 / 3 servisări pe săptămână)</span></h4>
+    <div id="of-rd"></div><button type="button" class="btn sm sec" onclick="ofRand({})">+ Produs</button>
+    <div class="ofg" style="margin-top:10px"><div><label>Perioada — nr. zile</label><input id="of-zile" type="number" min="0" value="${esc(k.zile || "")}" placeholder="ex. 365" oninput="ofSuma()"></div>
+      <div style="align-self:end"><label style="display:flex;gap:6px;align-items:center;text-transform:none;font-size:13px;cursor:pointer"><input type="checkbox" id="of-tot" ${k.arata_total ? "checked" : ""} style="width:16px;height:16px;margin:0"> scrie valoarea totală (zile × buc. × preț)</label></div>
+      <div class="d2 muted" id="of-suma" style="align-self:end;font-size:13px"></div>
+      <div><label>Servisare la cerere (lei / buc.)</label><input id="of-svc" type="number" step="0.01" min="0" value="${k.sv_cerere ?? ""}"></div>
+      <div><label>Preț eveniment (lei / zi / buc.)</label><input id="of-pev" type="number" step="0.01" min="0" value="${k.pret_ev ?? ""}"></div>
+      <div><label>Transport (lei, fără TVA)</label><input id="of-tr" type="number" step="0.01" min="0" value="${k.transport ?? ""}" oninput="ofSuma()"></div>
+      <div style="align-self:end"><label style="display:flex;gap:6px;align-items:center;text-transform:none;font-size:13px;cursor:pointer"><input type="checkbox" id="of-trav" ${k.transport_avans === false ? "" : "checked"} style="width:16px;height:16px;margin:0"> transportul se achită în avans</label></div></div>
+    <h4>3. Condiții</h4>
+    <div class="ofg"><div><label>Minim bucăți</label><input id="of-minb" value="${esc(k.minim_buc || "")}" placeholder="ex. 10 toalete ecologice"></div>
+      <div><label>Perioada minimă</label><input id="of-minp" value="${esc(k.minim_per || "")}" placeholder="ex. 90 de zile / 6 luni"></div>
+      <div><label>Livrare în (zile lucrătoare)</label><input id="of-liv" type="number" min="0" value="${esc(k.livrare || "")}" placeholder="ex. 4"></div>
+      <div><label>Oferta e valabilă (zile)</label><input id="of-val" type="number" min="0" value="${esc(k.valabil || "")}" placeholder="ex. 30"></div>
+      <div class="tot"><label>Plata</label><input id="of-plata" list="of-pl" value="${esc(k.plata ?? OF_PLATA[0])}"><datalist id="of-pl">${OF_PLATA.map(p => `<option value="${esc(p)}">`).join("")}</datalist></div>
+      <div class="tot"><label>Alte mențiuni <span class="muted" style="text-transform:none">(câte una pe rând; apar în ofertă)</span></label><textarea id="of-ment" rows="2" style="width:100%">${esc(k.mentiuni || "")}</textarea></div></div>
+    <h4>4. Cum arată PDF-ul</h4>
+    <div class="ofg"><div class="d2"><label>Semnează</label><select id="of-semn">${OF_SEMN.map(s => `<option value="${esc(s.join("|"))}" ${s[0] === sm.nume ? "selected" : ""}>${esc(s[0] + " — " + s[1] + ", " + s[2])}</option>`).join("")}</select></div>
+      <div class="d2" style="align-self:end;display:flex;gap:14px;flex-wrap:wrap">
+        <label style="display:flex;gap:6px;align-items:center;text-transform:none;font-size:13px;cursor:pointer"><input type="checkbox" id="of-poze" ${k.poze === false ? "" : "checked"} style="width:16px;height:16px;margin:0"> poze + dotări</label>
+        <label style="display:flex;gap:6px;align-items:center;text-transform:none;font-size:13px;cursor:pointer"><input type="checkbox" id="of-stamp" ${k.stampila === false ? "" : "checked"} style="width:16px;height:16px;margin:0"> ștampila</label></div></div>
+    <div class="row" style="margin-top:16px;justify-content:flex-end"><div style="flex:1"></div>
+      <div style="flex:0"><button class="btn sec" onclick="this.closest('.modal').remove()">Renunță</button></div>
+      <div style="flex:0"><button class="btn sec" onclick="ofSalveaza(false)">💾 Salvează</button></div>
+      <div style="flex:0"><button class="btn" onclick="ofSalveaza(true)">📄 Salvează și vezi PDF</button></div></div></div>`;
+  document.body.appendChild(w); feFereastra(w);
+  (k.randuri && k.randuri.length ? k.randuri : [{}]).forEach(ofRand); ofSuma();
+}
+function ofRand(r){
+  const d = document.createElement("div"); d.className = "ofr";
+  const act = OF.C.filter(c => c.activ || c.cheie === r.cat);
+  d.innerHTML = `<div><label>Din catalog</label><select class="r-cat"><option value="">— alt produs (scris de mână) —</option>${act.map(c => `<option value="${esc(c.cheie)}" ${c.cheie === r.cat ? "selected" : ""}>${esc(c.nume)}</option>`).join("")}</select></div>
+    <div><label>Cum apare în ofertă</label><input class="r-nume" value="${esc(r.nume || "")}"></div>
+    <div><label>Buc.</label><input class="r-buc" type="number" min="0" value="${esc(r.buc || "")}"></div>
+    <div><label>Preț (lei)</label><input class="r-pret" type="number" step="0.01" min="0" value="${r.pret ?? ""}"></div>
+    <div><label>pe</label><select class="r-pe"><option value="zi">zi / buc.</option><option value="luna" ${r.pe === "luna" ? "selected" : ""}>lună / buc.</option><option value="eveniment" ${r.pe === "eveniment" ? "selected" : ""}>eveniment / buc.</option><option value="buc" ${r.pe === "buc" ? "selected" : ""}>bucată (o dată)</option></select></div>
+    <div><label>Servisare</label><select class="r-fr"><option value="">—</option>${OF_FRL.map(f => `<option ${f === r.frecventa ? "selected" : ""}>${f}</option>`).join("")}</select></div>
+    <button type="button" class="btn sm sec" title="Scoate rândul">✕</button>`;
+  const cs = d.querySelector(".r-cat");
+  cs.onchange = () => { const c = ofCat(cs.value); if(!c) return; d.querySelector(".r-nume").value = c.nume; if(c.pret != null && d.querySelector(".r-pret").value === "") d.querySelector(".r-pret").value = c.pret; ofSuma(); };
+  d.querySelectorAll("input,select").forEach(i => i.addEventListener("input", ofSuma));
+  d.querySelector("button").onclick = () => { d.remove(); ofSuma(); }; $("of-rd").appendChild(d);
+}
+function ofCiteste(){
+  const v = i => $(i).value.trim(), n = i => v(i) === "" ? null : Math.round(+v(i) * 100) / 100, sm = v("of-semn").split("|");
+  const randuri = [...$("of-rd").children].map(d => { const g = c => d.querySelector(c).value.trim(), cat = g(".r-cat"), c = ofCat(cat), p = g(".r-pret");
+    return { cat, nume: g(".r-nume") || (c ? c.nume : ""), um: c ? c.um : "Bucata", buc: +g(".r-buc") || null, pret: p === "" ? null : Math.round(+p * 100) / 100, pe: g(".r-pe"), frecventa: g(".r-fr") }; }).filter(r => r.nume);
+  return { titlu: v("of-titlu"), locatia: v("of-loc"), randuri, zile: +v("of-zile") || null, arata_total: $("of-tot").checked, sv_cerere: n("of-svc"), pret_ev: n("of-pev"), transport: n("of-tr"), transport_avans: $("of-trav").checked,
+    minim_buc: v("of-minb"), minim_per: v("of-minp"), livrare: +v("of-liv") || null, valabil: +v("of-val") || null, plata: v("of-plata"), mentiuni: v("of-ment"),
+    semnatar: { nume: sm[0], functie: sm[1], tel: sm[2] }, poze: $("of-poze").checked, stampila: $("of-stamp").checked };
+}
+function ofSuma(){
+  const el = $("of-suma"); if(!el || !$("of-rd")) return; const k = ofCiteste(), val = ofValoare(k);
+  el.innerHTML = val ? `Valoarea ofertei: <b>${ftBani(val)} lei</b> + TVA = <b>${ftBani(val * (1 + OF_TVA))} lei</b>` : '<span class="muted">valoarea se calculează când pui bucăți, preț pe zi și numărul de zile</span>';
+}
+async function ofSalveaza(siPdf){
+  const catre = $("of-catre").value.trim().toUpperCase(), k = ofCiteste(); if(!catre){ toast("Scrie către cine e oferta", true); return; }
+  if(!k.randuri.length){ toast("Adaugă cel puțin un produs", true); return; }
+  if(k.randuri.some(r => r.pret == null)){ toast("Pune prețul la fiecare produs", true); return; }
+  const data = $("of-data").value || today(), cl = CLI.find(c => (c.nume || "").toUpperCase() === catre), id = +$("mod-of").dataset.id || null;
+  const rec = { catre, client_id: cl ? cl.id : null, categorie: $("of-categ").value, data, continut: k, valoare: ofValoare(k) };
+  let r;
+  if(id) r = await db.from("oferte").update(rec).eq("id", id).select("*").single();
+  else { const an = +data.slice(0, 4), m = await db.from("oferte").select("nr").eq("an", an).order("nr", { ascending: false }).limit(1);
+    if(m.error){ toast(m.error.message, true); return; }
+    r = await db.from("oferte").insert({ ...rec, an, nr: ((m.data[0] || {}).nr || 0) + 1 }).select("*").single(); }
+  if(r.error){ toast(r.error.message, true); return; }
+  const i = OF.L.findIndex(x => x.id === r.data.id); if(i >= 0) OF.L[i] = r.data; else OF.L.unshift(r.data);
+  document.getElementById("mod-of")?.remove(); ofRender(); toast("Oferta " + ofNr(r.data) + " salvată");
+  if(siPdf) ofPdf(r.data.id);
+}
+// ── oferta acceptată → fișa „Date contract” (secțiunea „Din oferta acceptată”); anexa se face apoi din fișă, cu prețurile de aici ──
+function ofLaFisa(id){
+  const o = OF.L.find(x => x.id === id); if(!o) return; const k = o.continut || {};
+  cdNou();
+  const rc = document.querySelector(`input[name="cdn-cat"][value="${o.categorie}"]`); if(rc) rc.checked = true; cdnCat();
+  $("cdn-nume").value = o.catre; const cl = CLI.find(c => c.id === o.client_id); if(cl){ if(cl.cui && $("cdn-cui")) $("cdn-cui").value = cl.cui; if(cl.telefon) $("cdn-tel").value = cl.telefon; if(cl.email) $("cdn-email").value = cl.email; }
+  let n = 0; (k.randuri || []).forEach(r => { const c = ofCat(r.cat); if(!c || !c.produs) return; n++;
+    cdnProd({ produs: c.produs, tip: c.tip || "", buc: r.buc || 1, pret: r.pret, pe: r.pe === "buc" ? "eveniment" : r.pe, frecventa: r.frecventa }); });
+  if(k.plata) $("cdn-cond").value = k.plata; if(k.minim_per) $("cdn-per-txt").value = k.minim_per;
+  const dub = (k.randuri || []).length > new Set((k.randuri || []).map(r => r.cat || r.nume)).size;
+  toast(dub ? "Oferta avea variante — lasă în fișă doar varianta aleasă de client (✕ pe celelalte)" : n ? "Fișa e completată din oferta " + ofNr(o) + " — verifică și apasă „🔗 Creează link”" : "Produsele din ofertă nu sunt legate de catalog — adaugă-le de mână în fișă");
+}
+// ── PDF-ul ofertei: blocuri măsurate și împărțite pe pagini A4 (antet + subsol pe fiecare pagină) ──
+async function ofPozeIa(chei){
+  const lipsa = chei.filter(c => c && !(c in OF.poze)); if(!lipsa.length) return;
+  const { data } = await db.from("oferta_catalog").select("cheie,poza").in("cheie", lipsa); (data || []).forEach(x => { OF.poze[x.cheie] = x.poza || ""; });
+}
+function ofHtml(o){
+  const k = o.continut || {}, T = s => esc(faraDiac(s == null ? "" : String(s))), R = k.randuri || [], B = [];
+  const chei = [...new Set(R.map(r => r.cat).filter(Boolean))], cats = chei.map(ofCat).filter(Boolean), unul = cats.length === 1 && chei.length === new Set(R.map(r => r.cat || r.nume)).size;
+  const toal = R.some(r => /toalet/i.test(r.nume)), titlu = k.titlu || (unul ? (toal ? "TOALETE ECOLOGICE" : cats[0].nume.toUpperCase()) : cats.length <= 1 && toal ? "TOALETE ECOLOGICE" : "PRODUSE");
+  const poza = c => { const x = k.poze !== false ? OF.poze[c.cheie] : ""; return !x ? "" : /^data:/.test(x) ? x : esc(new URL(x, location.href).href); };   // poza = imagine ținută în catalog sau fișier din folderul aplicației
+  B.push(`<div class="nr">Nr. ${o.nr} / ${fmtD(o.data).replace(/-/g, ".")}</div><div class="at">In atentia : <b>${T(o.catre)}</b></div><div class="ti"><u><b>OFERTA</b></u><br>${T(titlu)}</div>`);
+  if(k.poze !== false && unul && (cats[0].dotari || poza(cats[0]))){ const c = cats[0];
+    B.push(`<div class="car"><div class="l"><b>Caracteristici ${T(c.nume)}</b>${c.dotari ? `<br><u>Dotari:</u><br>${c.dotari.split("\n").filter(x => x.trim()).map(x => "- " + T(x.trim())).join("<br>")}` : ""}</div>${poza(c) ? `<div class="p"><img src="${poza(c)}" alt=""><div class="inf">* imagine cu caracter informativ</div></div>` : ""}</div>`);
+    if(c.descriere) B.push(`<div class="av"><b><u>Avantaje:</u></b><br><span>${T(c.descriere)}</span></div>`); }
+  else if(k.poze !== false && cats.some(poza))
+    B.push(`<div class="gal">${cats.filter(poza).slice(0, 4).map(c => `<figure><img src="${poza(c)}" alt=""><figcaption>${T(c.nume)}</figcaption></figure>`).join("")}</div><div class="inf" style="text-align:right">* imagini cu caracter informativ</div>`);
+  B.push(`<div class="pt"><b><u>PRET:</u></b></div>`);
+  R.forEach(r => { const pe = OF_PE[r.pe], um = r.um || "Bucata", tot = k.arata_total ? ofTotalRand(r, k.zile) : null, fr = OF_FR[r.frecventa] || r.frecventa;
+    B.push(`<div class="pr">Chirie 1 ${T(r.nume)}${r.buc && !tot ? ` <span class="q">[ ${r.buc} ${um === "ML" ? "ML" : "buc."} ]</span>` : ""}:<br><b>${ftBani(r.pret)} Lei</b>${pe ? " / " + pe : ""} / ${T(um)} + TVA` +
+      (fr ? `<div class="sv">Frecventa de Servisare / Intretinere este de : <b>${T(fr)}</b>${/toalet/i.test(r.nume) ? " / toaleta" : ""}</div>` : "") +
+      (tot != null ? `<div class="vt">Valoare totala: ${k.zile} zile * ${r.buc} ${um === "ML" ? "ML" : "buc."} * ${ftBani(r.pret)} lei = <b>${ftBani(tot)} lei + TVA</b> (${ftBani(tot * (1 + OF_TVA))} lei cu TVA)</div>` : "") + `</div>`); });
+  if(k.locatia) B.push(`<div class="lc">Locatia: ${T(k.locatia)}</div>`);
+  if(R.some(r => r.frecventa)) B.push(`<div class="sv">Oferta include servicii de SERVISARE / INTRETINERE${toal && cats.length > 1 ? " [ toalete ecologice ]" : ""}:<br>absorbtie, spalare, solutie biodegradabila, odorizare si hartie igienica.</div>`);
+  if(k.transport) B.push(`<div class="tr">Valoarea transportului${k.transport_avans !== false ? " se achita integral, in avans" : ""}: <b>${ftBani(k.transport)} lei + TVA</b>, pentru toate produsele.${k.livrare ? ` Dupa confirmare${k.transport_avans !== false ? "a sumei de transport" : ""}, livrarea se va efectua la locatia stabilita, in termen de minimum ${k.livrare} zile lucratoare.` : ""}</div>`);
+  else if(k.livrare) B.push(`<div class="tr">Livrarea se efectueaza la locatia stabilita, in termen de minimum ${k.livrare} zile lucratoare de la confirmare.</div>`);
+  if(k.minim_buc || k.minim_per) B.push(`<div class="mn">Oferta este pentru${k.minim_buc ? " un minim de " + T(k.minim_buc) : ""}${k.minim_per ? (k.minim_buc ? "," : "") + " pentru o perioada de " + T(k.minim_per) : ""}.</div>`);
+  if(k.sv_cerere != null) B.push(`<div class="ln">Servisare la cerere, in alte zile decat cele contractate: <b>${ftBani(k.sv_cerere)} lei + TVA</b> / 1 ${toal ? "toaleta" : "bucata"}</div>`);
+  if(k.pret_ev != null) B.push(`<div class="ln">Valoare per ${toal ? "toaleta" : "bucata"} pentru eveniment: <b>${ftBani(k.pret_ev)} lei + TVA</b> / zi / 1 ${toal ? "toaleta" : "bucata"} - servisare zilnica</div>`);
+  (k.mentiuni || "").split("\n").filter(x => x.trim()).forEach(m => B.push(`<div class="ln">${T(m.trim())}</div>`));
+  if(k.plata) B.push(`<div class="pl">${T(k.plata)}</div>`);
+  if(k.valabil) B.push(`<div class="ln">Oferta este valabila ${k.valabil} zile de la data emiterii.</div>`);
+  const sm = k.semnatar || {};
+  B.push(`<div class="sg"><div class="s1">${k.stampila !== false ? `<img src="${esc(new URL("pv/assets/docs/stampila_euro_ecologic.png", location.href).href)}" alt="">` : ""}<b>SC EURO-ECOLOGIC SRL</b><br>www.eurowc.ro<br>email: hunedoara@eurowc.ro</div><div class="s2">Cu stima, <b>${T(sm.nume)}</b><br>${T(sm.functie)}<br>${T(sm.tel)}</div></div>`);
+  if(k.poze !== false && !unul) cats.filter(c => c.dotari).forEach(c => B.push(`<div class="car" data-pb="1"><div class="l"><div class="th">Date tehnice si specificatii produs: ${T(c.nume)}</div><u>Dotari:</u><br>${c.dotari.split("\n").filter(x => x.trim()).map(x => "- " + T(x.trim())).join("<br>")}</div>${poza(c) ? `<div class="p"><img src="${poza(c)}" alt=""><div class="inf">* imagine cu caracter informativ</div></div>` : ""}</div>` + (c.descriere ? `<div class="av" style="margin-top:6mm"><span>${T(c.descriere)}</span></div>` : "")));
+  return `<!doctype html><html lang="ro"><head><meta charset="utf-8"><style>*{box-sizing:border-box}html,body{margin:0;background:#fff}
+    body{font-family:"Times New Roman",Tinos,"Liberation Serif",serif;color:#111;font-size:12pt;line-height:1.3}
+    .pg{width:794px;height:1123px;background:#fff;padding:30px 57px 24px;display:flex;flex-direction:column;overflow:hidden}
+    .hd img{width:100%;display:block}.hd .r{border-bottom:.6pt solid #7a7a7a;margin-top:2mm}.co{padding-top:2mm}.sp{flex:1}
+    .bl{padding-top:3.2mm}.nr{text-align:right;font-size:9.5pt;color:#444}.at{font-size:13pt;margin-top:1mm}.ti{text-align:center;font-size:14pt;margin-top:5mm;line-height:1.25}
+    .car{display:flex;gap:6mm;align-items:flex-start;font-size:10.5pt;line-height:1.28}.car .l{flex:1}.car .p{width:74mm;text-align:center}.car .p img{max-width:74mm;max-height:58mm;display:block;margin:0 auto}
+    .th{font-size:13pt;font-weight:700;text-align:center;margin:4mm 0 6mm}.inf{font-size:8pt;color:#333;margin-top:1mm}
+    .av{font-size:8.6pt;line-height:1.25;text-align:justify}.gal{display:flex;gap:5mm;justify-content:center;align-items:flex-end}.gal figure{margin:0;text-align:center;font-size:9pt;flex:0 1 44mm}.gal img{max-width:100%;max-height:50mm;display:block;margin:0 auto 1mm}
+    .pt{font-size:13pt}.pr{font-size:12.5pt}.pr .q{font-size:10.5pt;color:#333}.sv{font-style:italic;font-size:11pt;margin-top:.6mm}.vt{font-size:11.5pt;margin-top:.6mm}
+    .lc{font-size:13pt}.tr{font-size:12.5pt;text-indent:9mm;text-align:justify}.mn{font-size:13.5pt;font-style:italic}.ln{font-size:12pt}.pl{font-weight:700;font-size:11.5pt}
+    .sg{display:flex;justify-content:space-between;font-size:11.5pt;position:relative;padding-top:9mm;min-height:36mm}.sg .s1{position:relative}.sg .s1 img{position:absolute;left:22mm;top:-9mm;height:33mm;opacity:.9}.sg .s2{width:74mm}
+    .ft{margin-top:4mm;border-top:1.3pt solid #E3000F;padding-top:3mm;display:flex;gap:4mm;align-items:flex-start;font-size:9.5pt;line-height:1.35}.ft img{height:12mm;margin-top:1mm}.ft .t{flex:1}.ft .pa{white-space:nowrap;text-align:right}
+    </style></head><body><div id="src" style="width:794px;padding:0 57px">${B.map(b => /^<div class="car" data-pb/.test(b) ? `<div class="bl" data-pb="1">${b}</div>` : `<div class="bl">${b}</div>`).join("")}</div>
+    <template id="hd"><div class="hd"><img src="${esc(new URL("pv/assets/docs/header.png", location.href).href)}" alt=""><div class="r"></div></div></template>
+    <template id="ft"><div class="ft"><img src="${esc(new URL("icons/logo-ee-subsol.png", location.href).href)}" alt=""><div class="t"><b>SC EURO ECOLOGIC SRL</b> Sediu Social, Str. M. Eminescu nr. 9, COD 535800 Vlahita, jud. Harghita.<br>
+      0742-029 410, * Nr. Reg. Com. : J 2007 000205 190 * CUI: RO 21311085 &nbsp; Website * www.eurowc.ro<br><b>Punct de Lucru Hunedoara</b> : hunedoara@eurowc.ro / <b>0735 214 762</b></div><div class="pa"></div></div></template></body></html>`;
+}
+async function ofPdfBlob(o){
+  await cdLib(); await ofPozeIa(((o.continut || {}).randuri || []).map(r => r.cat));
+  const f = document.createElement("iframe"); f.style.cssText = "position:fixed;left:-10000px;top:0;width:794px;height:1123px;border:0"; document.body.appendChild(f);
+  try{
+    await new Promise(ok => { f.onload = ok; f.srcdoc = ofHtml(o); });
+    const dd = f.contentDocument; try{ await dd.fonts.ready; }catch(e){}
+    const gata = () => Promise.all([...dd.images].map(i => i.complete ? 0 : new Promise(ok => { i.onload = i.onerror = ok; })));
+    await gata();
+    const src = dd.getElementById("src"), bl = [...src.children], H = 1123 - 30 - 24, pg = [];
+    const nou = () => { const p = dd.createElement("div"); p.className = "pg"; p.appendChild(dd.getElementById("hd").content.cloneNode(true));
+      const co = dd.createElement("div"); co.className = "co"; p.appendChild(co); const sp = dd.createElement("div"); sp.className = "sp"; p.appendChild(sp);
+      p.appendChild(dd.getElementById("ft").content.cloneNode(true)); dd.body.appendChild(p); pg.push(p); return p; };
+    let p = nou(); await gata(); const fix = p.querySelector(".hd").offsetHeight + p.querySelector(".ft").offsetHeight + 16 + 8, liber = H - fix; let folosit = 0;
+    bl.forEach(b => { const h = b.offsetHeight; if(folosit && (b.dataset.pb || folosit + h > liber)){ p = nou(); folosit = 0; } p.querySelector(".co").appendChild(b); folosit += h; });
+    src.remove(); pg.forEach((q, i) => { q.querySelector(".pa").innerHTML = "Pagina " + (i + 1) + " din " + pg.length + "<br>" + fmtD(o.data).replace(/-/g, "."); });
+    await gata();
+    const pdf = new window.jspdf.jsPDF({ unit: "mm", format: "a4" });
+    for(let i = 0; i < pg.length; i++){ const cv = await html2canvas(pg[i], { scale: 2.5, backgroundColor: "#ffffff", windowWidth: 794, windowHeight: 1123 });
+      if(i) pdf.addPage(); pdf.addImage(cv.toDataURL("image/jpeg", 0.92), "JPEG", 0, 0, 210, 297); }
+    return pdf.output("blob");
+  } finally { f.remove(); }
+}
+async function ofPdf(id){
+  const o = OF.L.find(x => x.id === id); if(!o) return;
+  OF.fisier = ("Oferta - " + faraDiac(o.catre).replace(/[\\/:*?"<>|]+/g, " ").trim() + " - " + fmtD(o.data).replace(/-/g, ".") + ".pdf"); OF.blob = null; OF.id = id;
+  document.getElementById("mod-ofp")?.remove();
+  const w = document.createElement("div"); w.className = "modal on"; w.id = "mod-ofp";
+  w.innerHTML = `<div class="box" style="max-width:900px;width:900px;padding:0"><h3 class="lux-cap cap-mut" style="margin:0">${esc(OF.fisier)}</h3>
+    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:8px 12px;background:#16233c;color:#e6ebf4;font-size:13px">
+      <span id="ofp-st" style="flex:1;color:#cfd6e4;font-size:12px">Pregătesc PDF-ul…</span>
+      <button class="btn" id="ofp-b1" disabled onclick="ofPdfAct('print')">🖨 Tipărește</button>
+      <button class="btn" id="ofp-b2" disabled onclick="ofPdfAct('pdf')" title="Salvează oferta ca fișier PDF, ca s-o trimiți clientului">💾 Salvează PDF în calculator</button></div>
+    <iframe id="ofp-fr" title="Oferta" style="width:100%;height:78vh;border:0;display:block;background:#525659"></iframe></div>`;
+  document.body.appendChild(w); feFereastra(w);
+  try{ OF.blob = await ofPdfBlob(o); }catch(e){ if($("ofp-st")) $("ofp-st").textContent = "PDF-ul n-a mers: " + (e.message || e); return; }
+  if(!$("ofp-fr")) return;
+  if(OF.url) URL.revokeObjectURL(OF.url); OF.url = URL.createObjectURL(OF.blob);
+  $("ofp-fr").src = OF.url + "#view=Fit"; $("ofp-b1").disabled = $("ofp-b2").disabled = false;
+  $("ofp-st").textContent = "Citește oferta, apoi tipărește-o sau salveaz-o. După ce o trimiți clientului, pune starea „trimisă” în listă.";
+}
+async function ofPdfAct(ce){
+  if(!OF.blob) return;
+  if(ce === "print"){ try{ $("ofp-fr").contentWindow.focus(); $("ofp-fr").contentWindow.print(); }catch(e){ window.open(OF.url, "_blank"); toast("Am deschis PDF-ul într-o filă nouă — tipărește de acolo (Ctrl+P)"); } return; }
+  let ok = false;
+  if(window.showSaveFilePicker){ try{ const h = await showSaveFilePicker({ suggestedName: OF.fisier, id: "ee-oferte", startIn: "documents", types: [{ description: "PDF", accept: { "application/pdf": [".pdf"] } }] });
+    const wr = await h.createWritable(); await wr.write(OF.blob); await wr.close(); ok = true; }catch(e){ if(e.name === "AbortError") return; } }
+  if(!ok){ const a = document.createElement("a"); a.href = OF.url; a.download = OF.fisier; document.body.appendChild(a); a.click(); a.remove(); }
+  toast("PDF salvat: " + OF.fisier);
+}
+// ── catalogul de ofertă: ce scrie în ofertă despre fiecare produs (nume, dotări, „Avantaje”, poză, preț de listă) ──
+async function ofCatalog(){
+  document.getElementById("mod-ofc")?.remove();
+  const w = document.createElement("div"); w.className = "modal on"; w.id = "mod-ofc";
+  w.innerHTML = `<div class="box" style="max-width:900px"><h3 class="lux-cap cap-mut">📚 Catalog de ofertă</h3>
+    <p class="muted" style="margin:6px 0 10px">Ce scrie în ofertă despre fiecare produs. „Produs / Tip” leagă produsul de cele din aplicație (ca să treacă în fișa „Date contract” când oferta e acceptată).</p>
+    <div id="ofc-l"><p class="muted">Se încarcă…</p></div>
+    <div class="row" style="margin-top:10px"><div style="flex:0"><button class="btn sec" onclick="ofCatEd(0)">+ Produs nou în catalog</button></div><div style="flex:1"></div><div style="flex:0"><button class="btn" onclick="this.closest('.modal').remove()">Gata</button></div></div></div>`;
+  document.body.appendChild(w); feFereastra(w);
+  await ofPozeIa(OF.C.map(c => c.cheie)); ofCatLista();
+}
+function ofCatLista(){
+  const el = $("ofc-l"); if(!el) return;
+  el.innerHTML = '<div style="overflow:auto"><table><tr><th></th><th>Cum apare în ofertă</th><th>Produs / Tip</th><th>U.M.</th><th style="text-align:right">Preț listă</th><th>Dotări</th><th></th></tr>' + OF.C.map(c =>
+    `<tr style="${c.activ ? "" : "opacity:.5"}"><td>${OF.poze[c.cheie] ? `<img src="${OF.poze[c.cheie]}" alt="" style="height:54px;max-width:70px;object-fit:contain;display:block">` : '<span class="muted">fără poză</span>'}</td>
+      <td><b>${esc(c.nume)}</b>${c.activ ? "" : " <span class=\"muted\">(ascuns)</span>"}</td><td>${esc([c.produs, c.tip].filter(Boolean).join(" / ") || "—")}</td><td>${esc(c.um)}</td>
+      <td style="text-align:right">${c.pret != null ? ftBani(c.pret) : "—"}</td><td>${c.dotari ? "✔" : "—"}${c.descriere ? " + text" : ""}</td><td><button class="btn sm sec" onclick="ofCatEd(${c.id})">✏ Modifică</button></td></tr>`).join("") + "</table></div>";
+}
+function ofCatEd(id){
+  const c = OF.C.find(x => x.id === id) || { activ: true, um: "Bucata", ordine: (Math.max(0, ...OF.C.map(x => x.ordine || 0)) + 10) };
+  document.getElementById("mod-ofe")?.remove();
+  const w = document.createElement("div"); w.className = "modal on"; w.id = "mod-ofe"; w.dataset.id = id || ""; w.dataset.poza = OF.poze[c.cheie] || "";
+  const opt = (l, v) => '<option value="">—</option>' + l.map(x => `<option ${x === v ? "selected" : ""}>${esc(x)}</option>`).join("");
+  w.innerHTML = `<div class="box" style="max-width:760px"><h3 class="lux-cap cap-mut">${id ? "✏ " + esc(c.nume) : "Produs nou în catalog"}</h3>
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px 10px;margin-top:8px">
+      <div style="grid-column:1/-1"><label>Cum apare în ofertă</label><input id="ofe-nume" value="${esc(c.nume || "")}" placeholder="ex. Toaleta ecologica simpla"></div>
+      <div><label>Produs (din aplicație)</label><select id="ofe-prod">${opt(nomv("produs"), c.produs)}</select></div>
+      <div><label>Tip</label><select id="ofe-tip"></select></div>
+      <div><label>U.M. în ofertă</label><input id="ofe-um" value="${esc(c.um || "Bucata")}" list="ofe-uml"><datalist id="ofe-uml"><option value="Bucata"><option value="ML"><option value="Cabina de paza"><option value="Container"></datalist></div>
+      <div><label>Preț de listă (lei)</label><input id="ofe-pret" type="number" step="0.01" min="0" value="${c.pret ?? ""}"></div>
+      <div style="grid-column:1/-1"><label>Dotări / date tehnice (câte una pe rând)</label><textarea id="ofe-dot" rows="7" style="width:100%">${esc(c.dotari || "")}</textarea></div>
+      <div style="grid-column:1/-1"><label>Textul „Avantaje” (opțional)</label><textarea id="ofe-des" rows="5" style="width:100%">${esc(c.descriere || "")}</textarea></div>
+      <div style="grid-column:span 2"><label>Poza</label><div style="display:flex;gap:10px;align-items:center"><img id="ofe-img" alt="" style="height:90px;max-width:120px;object-fit:contain;border:1px solid var(--bd);border-radius:6px;${w.dataset.poza ? "" : "display:none"}" src="${w.dataset.poza}">
+        <div><input type="file" accept="image/*" onchange="ofCatPoza(this)" style="max-width:220px"><br><button type="button" class="btn sm sec" style="margin-top:4px" onclick="const m=$('mod-ofe');m.dataset.poza='';$('ofe-img').style.display='none'">Scoate poza</button></div></div></div>
+      <div><label>Ordinea în listă</label><input id="ofe-ord" type="number" value="${esc(c.ordine || 100)}"></div>
+      <div style="align-self:end"><label style="display:flex;gap:6px;align-items:center;text-transform:none;font-size:13px;cursor:pointer"><input type="checkbox" id="ofe-act" ${c.activ ? "checked" : ""} style="width:16px;height:16px;margin:0"> apare la alegere</label></div></div>
+    <div class="row" style="margin-top:14px;justify-content:flex-end"><div style="flex:1"></div><div style="flex:0"><button class="btn sec" onclick="this.closest('.modal').remove()">Renunță</button></div><div style="flex:0"><button class="btn" onclick="ofCatSalv()">💾 Salvează</button></div></div></div>`;
+  document.body.appendChild(w); feFereastra(w);
+  const pr = $("ofe-prod"), tp = $("ofe-tip"), act = v => { tp.innerHTML = opt(modeleDe(pr.value).filter(x => !/PROPRI|DAUNA|SECOND/i.test(x)), v); }; pr.onchange = () => act(""); act(c.tip);
+}
+function ofCatPoza(inp){   // poza se micșorează în browser (max 900 px) și se ține în catalog
+  const f = inp.files[0]; if(!f) return; const im = new Image(), u = URL.createObjectURL(f);
+  im.onload = () => { const s = Math.min(1, 900 / Math.max(im.width, im.height)), cv = document.createElement("canvas"); cv.width = Math.round(im.width * s); cv.height = Math.round(im.height * s);
+    const cx = cv.getContext("2d"); cx.fillStyle = "#fff"; cx.fillRect(0, 0, cv.width, cv.height); cx.drawImage(im, 0, 0, cv.width, cv.height); URL.revokeObjectURL(u);
+    const d = cv.toDataURL("image/jpeg", 0.85); $("mod-ofe").dataset.poza = d; $("ofe-img").src = d; $("ofe-img").style.display = ""; };
+  im.onerror = () => toast("Poza nu s-a putut citi", true); im.src = u;
+}
+async function ofCatSalv(){
+  const m = $("mod-ofe"), id = +m.dataset.id || null, v = i => $(i).value.trim(), nume = v("ofe-nume"); if(!nume){ toast("Scrie cum apare produsul în ofertă", true); return; }
+  const rec = { nume, produs: v("ofe-prod") || null, tip: v("ofe-tip") || null, um: v("ofe-um") || "Bucata", pret: v("ofe-pret") === "" ? null : +v("ofe-pret"), dotari: faraDiac(v("ofe-dot")) || null, descriere: faraDiac(v("ofe-des")) || null,
+    poza: m.dataset.poza || null, ordine: +v("ofe-ord") || 100, activ: $("ofe-act").checked };
+  if(!id) rec.cheie = faraDiac(nume).toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 40) + "-" + Date.now().toString(36).slice(-4);
+  const r = id ? await db.from("oferta_catalog").update(rec).eq("id", id).select("cheie").single() : await db.from("oferta_catalog").insert(rec).select("cheie").single();
+  if(r.error){ toast(r.error.message, true); return; }
+  OF.poze[r.data.cheie] = rec.poza || ""; m.remove();
+  const c = await db.from("oferta_catalog").select("id,cheie,nume,produs,tip,um,pret,dotari,descriere,activ,ordine").order("ordine"); if(!c.error) OF.C = c.data || [];
+  ofCatLista(); toast("Catalog salvat");
+}
+
 // v8.13 (cerut de Ovidiu, 08.11): fereastră cu bife în loc de întrebări una după alta
 const CD_CAT = [["SOCIETATE","🏢","Societate","SRL, SA…"],["PFA","👤","PFA / II / IF","persoană fizică autorizată, întreprindere"],["INSTITUTIE","🏛️","Instituție publică","primărie, școală, spital"],
   ["ONG","🤝","ONG","asociație, fundație, club"],["PF","🪪","Persoană fizică","cu copia buletinului"],["ALTELE","📄","Altele","cabinet, parohie, firmă străină"]];
@@ -15461,6 +15792,20 @@ const HOW = [
       { t: "Pe rândul fișei apare <b>🧾 Comandă nouă</b>: comanda AMPLASARE completată cu livrarea, contactele, produsele și perioada din fișă." },
       { t: "<b>✕</b> pe rând = anulezi fișa (linkul nu mai merge)." } ],
     du: { s: "fisa-date", el: '#p-fise button[onclick="cdNou()"]' } },
+  { id: "oferte", cat: "Urmărire și documente", t: "Ofertă pentru client — faci, trimiți, apoi fișa „Date contract”",
+    k: "oferta oferte pret client nou primarie institutie variante servisare catalog poze dotari pdf trimit oferta acceptata",
+    cand: "Un client (sau unul care încă nu e client) cere o ofertă de preț.",
+    anexa: "Oferta <b>nu atinge nicio anexă</b>. Abia când e <b>✔ acceptată</b> și apeși <b>📋 Fișă</b>, produsele și prețurile trec în fișa „Date contract”, iar de acolo pe anexa făcută din fișă.",
+    pasi: [
+      { t: "Meniul <b>Oferte</b> → <b>📝 Ofertă nouă</b>.", ar: { s: "oferte", el: '#p-oferte button[onclick="ofForm()"]' } },
+      { t: "Scrii <b>către cine</b> (alegi un client sau scrii un nume nou), categoria și locația." },
+      { t: "<b>+ Produs</b>: alegi din catalog, pui bucățile, prețul și servisarea. Același produs pe mai multe rânduri = <b>variante</b> (ex. 1 / 2 / 3 servisări pe săptămână)." },
+      { t: "Opțional: numărul de zile + bifa <b>scrie valoarea totală</b>, transportul, minimul de bucăți / perioadă, plata." },
+      { t: "<b>📄 Salvează și vezi PDF</b> → citești oferta → <b>💾 Salvează PDF în calculator</b> și o trimiți clientului." },
+      { t: "În listă schimbi <b>starea</b>: trimisă → ✔ acceptată / respinsă. <b>⧉ Copie</b> = ofertă nouă cu aceleași produse pentru alt client.", ar: { s: "oferte", el: "#of-card" } },
+      { t: "La <b>✔ acceptată</b> apare <b>📋 Fișă</b>: fișa „Date contract” se deschide cu produsele și prețurile din ofertă → <b>🔗 Creează link</b>." },
+      { t: "<b>📚 Catalog de ofertă</b>: aici schimbi ce scrie despre fiecare produs — nume, dotări, textul „Avantaje”, poza, prețul de listă." } ],
+    du: { s: "oferte", el: '#p-oferte button[onclick="ofForm()"]' } },
 
   { id: "angajati", cat: "Angajați, PV-uri și calendar", t: "Angajați — fișa, contul / PIN-ul și ordinea",
     k: "angajati angajat nou fisa contract medicina muncii salariu salarizare cont acces parola pin sofer ordine nume vechi program birou concediu alocat",
