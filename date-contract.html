@@ -48,6 +48,7 @@
   .cont{display:grid;grid-template-columns:1fr 1fr auto;gap:8px;margin-bottom:8px}
   @media (max-width:560px){.cont{grid-template-columns:1fr auto}.cont input:first-child{grid-column:1/-1}}
   .rec{font-size:11px;font-weight:600;color:#9a6700;background:#FFF4D6;border-radius:5px;padding:1px 6px;margin-left:4px}
+  .tprod{width:100%;border-collapse:collapse;font-size:14px}.tprod th,.tprod td{border:1px solid var(--ln);padding:7px 8px;text-align:left}.tprod th{background:var(--gl);color:var(--g);font-size:12px}
   .card.info{border-left:5px solid var(--g2)}.card.info ul{margin:4px 0 0;padding-left:20px}.card.info li{margin:3px 0}
   .ci-btns{display:flex;flex-wrap:wrap;gap:8px}.ci-btns .btn{padding:10px 14px}
   .ci-prevs{display:flex;flex-wrap:wrap;gap:10px;margin-top:10px}.ci-prevs figure{margin:0;position:relative}.ci-prevs img{max-width:220px;max-height:160px;border:1px solid var(--ln);border-radius:8px;display:block}
@@ -103,7 +104,12 @@ function deseneaza(){
   // copia CI: poză față + verso sau din galerie (1–2 poze) sau PDF — opțională la trimitere, obligatorie pentru contract; fără igienizare la produse.
   const k = C.categorie in CAT ? C.categorie : "SOCIETATE", d = CAT[k], P = C.precompletat || {}, ev = C.felul === "eveniment";
   let h = "";
-  if(k === "PF") h += `<div class="card info"><h2>De știut</h2><ul><li><b>Plata facturii se face în avans.</b></li><li><b>Chiria minimă este de 30 de zile.</b></li><li><b>Copia actului de identitate este obligatorie pentru contract.</b> O puteți atașa acum (mai jos) sau o trimiteți ulterior.</li></ul></div>`;
+  // v8.82: condițiile / plata scrise de Euro Ecologic din ofertă (P.conditii) apar sus, alături de regulile pentru persoane fizice
+  const DS = [];
+  if(P.conditii) DS.push(...String(P.conditii).split(/\n+/).filter(x => x.trim()).map(x => esc(x.trim())));
+  if(k === "PF") DS.push("<b>Plata facturii se face în avans.</b>", "<b>Chiria minimă este de 30 de zile.</b>", "<b>Copia actului de identitate este obligatorie pentru contract.</b> O puteți atașa acum (mai jos) sau o trimiteți ulterior.");
+  if(DS.length) h += `<div class="card info"><h2>De știut</h2><ul>${DS.map(x => "<li>" + x + "</li>").join("")}</ul></div>`;
+  if(k === "INSTITUTIE" && P.sicap) h += `<div class="card info"><h2>Achiziția</h2><p style="margin:0">Achiziție SICAP: <b>${esc(P.sicap)}</b></p></div>`;
   h += `<div class="card"><h2>${esc(d.titlu)}</h2><p class="n">Completați câmpurile de mai jos. Cele cu <span style="color:var(--rd)">*</span> sunt obligatorii.${d.anaf ? " Scrieți CUI-ul și apăsați „Caută la ANAF” — se completează singure denumirea, adresa și nr. de înregistrare." : ""}</p><div class="rand">`;
   if(k === "PF"){
     h += camp("nume", "Nume și prenume", { ob: 1, tot: 1 }) + camp("cnp", "CNP", { ob: 1, extra: 'inputmode="numeric" maxlength="13"' }) + camp("telefon", "Telefon", { ob: 1, tip: "tel" })
@@ -141,9 +147,13 @@ function deseneaza(){
     + `<div class="tot ajut" id="liv_vez"></div><datalist id="dl_loc"></datalist><datalist id="dl_sat"></datalist>`
     + camp("contact_nume", "Persoana de contact la locație", { ob: 1 }) + camp("contact_tel", "Telefonul ei", { ob: 1, tip: "tel" })
     + `<div class="tot"><div id="contacte"></div><button type="button" class="btn sec" id="b_cont">+ Adaugă încă o persoană de contact</button></div>`;
-  h += `</div></div><div class="card"><h2>Comanda</h2><p class="n">Alegeți produsele. Pentru mai multe produse apăsați „+ Adaugă produs”.</p><div id="prod"></div>
+  const FIX = !!(P.produse_fixe && Array.isArray(P.produse_lista) && P.produse_lista.length);
+  h += (FIX ? `</div></div><div class="card"><h2>Comanda — din oferta acceptată</h2><p class="n">Produsele și prețurile stabilite cu Euro Ecologic. Dacă doriți altceva, scrieți mai jos, la „Alte detalii”.</p>
+      <table class="tprod"><tr><th>Produs</th><th>Buc.</th><th>Preț (lei, fără TVA)</th>${P.produse_lista.some(x => x.frecventa) ? "<th>Servisare</th>" : ""}</tr>${P.produse_lista.map(x => `<tr><td>${esc(x.produs + (x.tip ? " " + x.tip : ""))}</td><td>${esc(x.buc)}</td><td>${x.pret != null ? esc(lei(x.pret)) + " / " + (PE[x.pe] || "zi") + " / buc." : "—"}</td>${P.produse_lista.some(y => y.frecventa) ? `<td>${esc(frTxt(x.frecventa || ""))}</td>` : ""}</tr>`).join("")}</table><div class="rand" style="margin-top:12px">`
+      + camp("produse_obs", "Alte detalii despre comandă (opțional)", { tot: 1, ta: 1 })
+    : `</div></div><div class="card"><h2>Comanda</h2><p class="n">Alegeți produsele. Pentru mai multe produse apăsați „+ Adaugă produs”.</p><div id="prod"></div>
     <button type="button" class="btn sec" id="b_prod" style="margin-bottom:12px">+ Adaugă produs</button><div class="rand">`
-    + camp("produse_obs", "Alte detalii despre comandă (opțional)", { tot: 1, ta: 1 })
+    + camp("produse_obs", "Alte detalii despre comandă (opțional)", { tot: 1, ta: 1 }))
     + (ev ? "" : camp("perioada_de", "De la data", { tip: "date", ob: 1 }) + camp("perioada_pana", "Până la data (sau scrieți mai jos câte zile / luni)", { tip: "date" }) + camp("perioada_text", "Perioada (dacă nu știți datele exacte)", { tot: 1, ph: "ex. 60 de zile / 6 luni / până la finalizarea lucrării" }));
   if(ev){
     h += `</div></div><div class="card"><h2>Evenimentul</h2><div class="rand">`
@@ -163,7 +173,7 @@ function deseneaza(){
   $("f").querySelectorAll(".ci-btns input[type=file]").forEach(i => i.onchange = () => alegeCi(i));
   if($("iban")) $("iban").addEventListener("input", () => { const b = bancaDinIban($("iban").value); if(b && !$("banca").value.trim()) $("banca").value = b; });
   $("b_cont").onclick = () => adCont("", ""); (Array.isArray(P.contacte_extra) ? P.contacte_extra : []).forEach(c => adCont(c.nume, c.telefon));
-  $("b_prod").onclick = () => adProd({}); (Array.isArray(P.produse_lista) && P.produse_lista.length ? P.produse_lista : [{}]).forEach(adProd);
+  if($("b_prod")){ $("b_prod").onclick = () => adProd({}); (Array.isArray(P.produse_lista) && P.produse_lista.length ? P.produse_lista : [{}]).forEach(adProd); }
   ["liv_jud", "liv_loc", "liv_sat", "liv_str", "liv_nr"].forEach(i => $(i).addEventListener("input", livActual));
   $("liv_jud").addEventListener("change", livActual); livActual();
   if(ev){ EV_SERV = new Set(Array.isArray(P.ev_servisare) ? P.ev_servisare : []); ["ev_de", "ev_pana"].forEach(i => $(i).addEventListener("change", evZile)); evZile(); }
@@ -235,10 +245,14 @@ function adProd(o){
   pr.onchange = () => { o.tip = ""; actual(); }; actual();
   d.querySelector(".x").onclick = () => d.remove(); $("prod").appendChild(d);
 }
+const PE = { zi: "zi", luna: "lună", eveniment: "eveniment" };
+const lei = v => (+v || 0).toLocaleString("ro-RO", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " lei";
+const frTxt = x => String(x).replace(/\s*\/\s*Sap$/i, " / săptămână").replace(/\s*\/\s*Luna$/i, " / lună").replace(/^La Cerere$/i, "La cerere");
 function citesteProd(){
+  const P = C.precompletat || {}; if(P.produse_fixe && Array.isArray(P.produse_lista) && P.produse_lista.length) return P.produse_lista;   // v8.82: din ofertă, neschimbate
   return [...$("prod").children].map(d => ({ produs: d.querySelector(".p-prod").value, tip: d.querySelector(".p-tip").value, buc: +d.querySelector(".p-buc").value || 0 })).filter(x => x.produs);
 }
-const textProd = l => l.map(x => x.buc + " " + x.produs + (x.tip ? " " + x.tip : "")).join("; ");
+const textProd = l => l.map(x => x.buc + " " + x.produs + (x.tip ? " " + x.tip : "") + (x.pret != null ? " — " + lei(x.pret) + " / " + (PE[x.pe] || "zi") + " / buc." : "") + (x.frecventa ? " (servisare " + x.frecventa + ")" : "")).join("; ");
 async function adresaDinGps(lat, lon){   // v8.81: pe căsuțe (județ, localitate, sat, stradă, nr.)
   try{
     const r = await fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lon}&zoom=18&addressdetails=1&accept-language=ro`);
@@ -333,7 +347,7 @@ async function trimite(ev){
       "servisare: " + (R.ev_servisare.length ? R.ev_servisare.map(z => z.slice(8) + "." + z.slice(5, 7)).join(", ") : "fără"),
       R.ev_amp_data && "amplasare " + dRo(R.ev_amp_data) + (R.ev_amp_ora ? " ora " + R.ev_amp_ora : ""), R.ev_rid_data && "ridicare " + dRo(R.ev_rid_data) + (R.ev_rid_ora ? " ora " + R.ev_rid_ora : "")].filter(Boolean).join("; ");
     R.perioada_de = R.ev_amp_data || R.ev_de; R.perioada_pana = R.ev_rid_data || R.ev_pana; }
-  R.produse_lista = citesteProd(); R.produse = textProd(R.produse_lista) + (R.produse_obs ? (R.produse_lista.length ? "; " : "") + R.produse_obs : "");
+  R.produse_lista = citesteProd(); { const P = C.precompletat || {}; if(P.sicap) R.sicap = P.sicap; if(P.conditii) R.conditii = P.conditii; } R.produse = textProd(R.produse_lista) + (R.produse_obs ? (R.produse_lista.length ? "; " : "") + R.produse_obs : "");
   if($("semn")) R.semnatari = [...$("semn").children].map(d => { const i = d.querySelectorAll("input"); return { nume: i[0].value.trim(), functie: i[1].value.trim() }; }).filter(s => s.nume || s.functie);
   if($("iban") && $("iban").value.trim() === "-" && !$("banca").value.trim()){ $("banca").value = "-"; R.banca = "-"; }   // fără IBAN → nici bancă
   $("f").querySelectorAll(".gres").forEach(e => e.classList.remove("gres"));

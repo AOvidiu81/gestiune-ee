@@ -1116,7 +1116,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
   <span id="rz-w"><button id="rz-reset" class="pictograma" title="Lățimi implicite — pune coloanele din tabelele acestei file înapoi cum erau">↺ Reset layout</button><i class="rz-sep">|</i></span>
   <span id="tz-w" title="Mărimea tabelului (doar tabelul, restul rămâne la fel), din 5 în 5%. Merge și cu Ctrl + rotița mausului, Ctrl + / Ctrl − / Ctrl 0. Dublu clic pe procent = scrii tu valoarea."><button class="pictograma" onclick="tzPas(-1)" aria-label="Micșorează tabelul">−</button><b id="tz-v" ondblclick="tzScrie()" title="Dublu clic = scrii mărimea (ex. 87), Enter">100%</b><input id="tz-in" type="number" min="30" max="300" step="5" style="display:none"><button class="pictograma" onclick="tzPas(1)" aria-label="Mărește tabelul">+</button></span>
-  <span class="ver">v8.81</span>
+  <span class="ver">v8.82</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -6172,32 +6172,77 @@ const CD_CAT = [["SOCIETATE","🏢","Societate","SRL, SA…"],["PFA","👤","PFA
 function cdNou(){
   document.getElementById("mod-cdn")?.remove();
   const w = document.createElement("div"); w.className = "modal on"; w.id = "mod-cdn";
-  w.innerHTML = `<div class="box" style="max-width:720px"><h3 class="lux-cap cap-mut">📋 Fișă „Date contract” pentru client</h3>
+  w.innerHTML = `<div class="box" style="max-width:860px"><h3 class="lux-cap cap-mut">📋 Fișă „Date contract” pentru client</h3>
     <style>#mod-cdn .cdg{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:6px 0 14px}@media(max-width:620px){#mod-cdn .cdg{grid-template-columns:1fr 1fr}}
       #mod-cdn .cdo{border:2px solid var(--bd);border-radius:10px;padding:10px;cursor:pointer;display:block;margin:0}#mod-cdn .cdo:has(input:checked){border-color:var(--g2,#2e7d4f);background:var(--gl,#e6f3ea)}
       #mod-cdn .cdo input{display:none}#mod-cdn .cdo b{display:block;font-size:14px}#mod-cdn .cdo small{color:var(--mut,#6b7a72);font-size:12px}
       #mod-cdn .cdf{display:flex;gap:8px;margin:6px 0 14px}#mod-cdn .cdf .cdo{flex:1}#mod-cdn h4{margin:0;font-size:13px;text-transform:uppercase;letter-spacing:.04em;color:var(--mut,#6b7a72)}
-      #mod-cdn .cdr{display:grid;grid-template-columns:1fr 1fr;gap:8px 10px;margin:6px 0 4px}#mod-cdn .cdr .tot{grid-column:1/-1}</style>
+      #mod-cdn .cdr{display:grid;grid-template-columns:1fr 1fr;gap:8px 10px;margin:6px 0 4px}#mod-cdn .cdr .tot{grid-column:1/-1}
+      #mod-cdn .cdp{display:grid;grid-template-columns:1.4fr 1.4fr 62px 86px 104px 1.2fr 30px;gap:6px;align-items:end;margin-bottom:6px}#mod-cdn .cdp label{font-size:11px;margin:0}
+      #mod-cdn .cdsv{display:flex;flex-wrap:wrap;gap:5px}#mod-cdn .cdsv label{display:flex;align-items:center;gap:4px;border:1px solid var(--bd);border-radius:7px;padding:4px 8px;margin:0;font-size:12px;cursor:pointer;text-transform:none}
+      #mod-cdn .cdsv label:has(input:checked){background:var(--gl,#e6f3ea);border-color:var(--g2,#2e7d4f)}#mod-cdn .cdsv input{width:auto;margin:0}</style>
     <h4>1. Cine e clientul?</h4>
     <div class="cdg">${CD_CAT.map(([k, ic, t, d], i) => `<label class="cdo"><input type="radio" name="cdn-cat" value="${k}" ${i ? "" : "checked"} onchange="cdnCat()"><b>${ic} ${t}</b><small>${d}</small></label>`).join("")}</div>
     <h4>2. Ce fel de contract?</h4>
-    <div class="cdf"><label class="cdo"><input type="radio" name="cdn-fel" value="perioada" checked><b>📅 Închiriere pe perioadă</b><small>șantier, lucrare, lunar</small></label>
-      <label class="cdo"><input type="radio" name="cdn-fel" value="eveniment"><b>🎪 Eveniment</b><small>câteva zile, cu program</small></label></div>
+    <div class="cdf"><label class="cdo"><input type="radio" name="cdn-fel" value="perioada" checked onchange="cdnCat()"><b>📅 Închiriere pe perioadă</b><small>șantier, lucrare, lunar</small></label>
+      <label class="cdo"><input type="radio" name="cdn-fel" value="eveniment" onchange="cdnCat()"><b>🎪 Eveniment</b><small>câteva zile, cu program</small></label></div>
     <h4>3. Ce știi deja <span style="text-transform:none;font-weight:400">(opțional — restul completează clientul)</span></h4>
     <div class="cdr">
       <div id="cdn-cui-w"><label>CUI / CIF</label><div style="display:flex;gap:6px"><input id="cdn-cui" inputmode="numeric" style="flex:1;min-width:0"><button type="button" class="btn sm sec" onclick="cdnAnaf()">ANAF</button></div></div>
       <div><label id="cdn-nume-l">Denumire</label><input id="cdn-nume"></div>
       <div><label>Telefon</label><input id="cdn-tel"></div><div><label>E-mail</label><input id="cdn-email"></div>
-      <div class="tot"><label>Produse / bucăți</label><input id="cdn-prod" placeholder="ex. 2 toalete + 1 lavoar"></div>
     </div>
+    <h4 style="margin-top:14px">4. Din oferta acceptată <span style="text-transform:none;font-weight:400">(opțional — clientul vede produsele cu preț, dar nu le poate schimba)</span></h4>
+    <div id="cdn-pr" style="margin-top:6px"></div><button type="button" class="btn sm sec" onclick="cdnProd({})">+ Produs din ofertă</button>
+    <div class="cdr" style="margin-top:10px">
+      <div id="cdn-per-w"><label>Perioada — de la</label><input id="cdn-per-de" type="date"></div>
+      <div id="cdn-per-w2"><label>Perioada (text)</label><input id="cdn-per-txt" placeholder="ex. 6 luni / până la finalizarea lucrării"></div>
+      <div id="cdn-sicap-w" class="tot"><label>Achiziție SICAP (nr.)</label><input id="cdn-sicap" placeholder="ex. DA 123456"></div>
+      <div class="tot"><label>Condiții / plata <span class="muted" style="text-transform:none;font-weight:400">(le vede clientul în fișă)</span></label><textarea id="cdn-cond" rows="2" style="width:100%"></textarea></div>
+    </div>
+    <div id="cdn-ev" style="display:none;margin-top:6px;padding:10px;border:1px dashed var(--bd);border-radius:10px">
+      <div class="cdr" style="margin-top:0"><div><label>Prima zi a evenimentului</label><input id="cdn-ev-de" type="date" onchange="cdnEvZile()"></div><div><label>Ultima zi</label><input id="cdn-ev-pana" type="date" onchange="cdnEvZile()"></div>
+        <div class="tot"><label>Zilele cu servisare</label><div id="cdn-ev-sv" class="cdsv"><span class="muted">alege prima și ultima zi</span></div></div>
+        <div><label>Amplasare — ziua / ora</label><div style="display:flex;gap:6px"><input id="cdn-ev-ad" type="date"><input id="cdn-ev-ao" type="time" style="max-width:110px"></div></div>
+        <div><label>Ridicare — ziua / ora</label><div style="display:flex;gap:6px"><input id="cdn-ev-rd" type="date"><input id="cdn-ev-ro" type="time" style="max-width:110px"></div></div></div>
+      <p class="muted" style="margin:6px 0 0;font-size:12px">Clientul le vede completate și le poate corecta.</p></div>
     <div class="row" style="margin-top:16px;justify-content:flex-end"><div style="flex:1"></div>
       <div style="flex:0"><button class="btn sec" onclick="this.closest('.modal').remove()">Renunță</button></div>
       <div style="flex:0"><button class="btn" onclick="cdnGata('link')">🔗 Creează link</button></div></div>
     <div id="cdn-rez"></div></div>`;
   document.body.appendChild(w); feFereastra(w); cdnCat();
 }
+// v8.82 (cerut de Ovidiu, 15.11 — etapa 2 a fișei): produsele / prețurile / servisarea din oferta acceptată, zilele și orele evenimentului,
+// condițiile de plată și nr. SICAP (instituții) se completează ÎNAINTE de link; clientul vede produsele cu preț fără să le poată schimba.
+function cdnProd(o){
+  const d = document.createElement("div"); d.className = "cdp";
+  const opt = (l, v, gol) => `<option value="">${gol || ""}</option>` + l.map(x => `<option ${x === v ? "selected" : ""}>${esc(x)}</option>`).join("");
+  d.innerHTML = `<div><label>Produs</label><select class="p-prod">${opt(nomv("produs").filter(x => !/PROPRI/i.test(x)), o.produs, "—")}</select></div>
+    <div><label>Tip</label><select class="p-tip"></select></div><div><label>Buc.</label><input class="p-buc" type="number" min="1" value="${esc(o.buc || 1)}"></div>
+    <div><label>Preț (lei)</label><input class="p-pret" type="number" step="0.01" min="0" value="${o.pret ?? ""}"></div>
+    <div><label>pe</label><select class="p-pe"><option value="zi">zi / buc.</option><option value="luna" ${o.pe === "luna" ? "selected" : ""}>lună / buc.</option><option value="eveniment" ${o.pe === "eveniment" ? "selected" : ""}>eveniment / buc.</option></select></div>
+    <div><label>Servisare</label><select class="p-fr">${opt(FRECV_LISTA, o.frecventa, "—")}</select></div>
+    <button type="button" class="btn sm sec" title="Scoate">✕</button>`;
+  const pr = d.querySelector(".p-prod"), tp = d.querySelector(".p-tip");
+  const act = () => { const L = modeleDe(pr.value).filter(x => !/PROPRI|DAUNA|SECOND/i.test(x)); tp.innerHTML = opt(L, o.tip, L.length ? "— oricare —" : ""); };
+  pr.onchange = () => { o.tip = ""; act(); }; act();
+  d.querySelector("button").onclick = () => d.remove(); $("cdn-pr").appendChild(d);
+}
+function cdnEvZile(){
+  const a = $("cdn-ev-de").value, b = $("cdn-ev-pana").value, box = $("cdn-ev-sv"), bif = new Set([...box.querySelectorAll("input:checked")].map(i => i.value));
+  if(!a || !b || b < a){ box.innerHTML = '<span class="muted">alege prima și ultima zi</span>'; return; }
+  const Z = [], d = dtz(a), e = dtz(b), ZS = ["dum", "lun", "mar", "mie", "joi", "vin", "sâm"]; while(d <= e && Z.length < 31){ Z.push(ziLocala(d)); d.setDate(d.getDate() + 1); }
+  box.innerHTML = Z.map(z => `<label><input type="checkbox" value="${z}" ${bif.has(z) ? "checked" : ""}> ${ZS[dtz(z).getDay()]} ${z.slice(8)}.${z.slice(5, 7)}</label>`).join("");
+  if(!$("cdn-ev-ad").value){ const x = dtz(a); x.setDate(x.getDate() - 1); $("cdn-ev-ad").value = ziLocala(x); }
+  if(!$("cdn-ev-rd").value){ const x = dtz(b); x.setDate(x.getDate() + 1); $("cdn-ev-rd").value = ziLocala(x); }
+}
+const cdnPeTxt = { zi: "zi", luna: "lună", eveniment: "eveniment" };
+const cdnProdTxt = x => x.buc + " " + x.produs + (x.tip ? " " + x.tip : "") + (x.pret != null ? " — " + ftBani(x.pret) + " lei / " + (cdnPeTxt[x.pe] || "zi") + " / buc." : "") + (x.frecventa ? " (servisare " + x.frecventa + ")" : "");
 function cdnCat(){
-  const k = (document.querySelector('input[name="cdn-cat"]:checked') || {}).value;
+  const k = (document.querySelector('input[name="cdn-cat"]:checked') || {}).value, ev = (document.querySelector('input[name="cdn-fel"]:checked') || {}).value === "eveniment";
+  if($("cdn-ev")){ $("cdn-ev").style.display = ev ? "" : "none"; $("cdn-per-w").style.display = $("cdn-per-w2").style.display = ev ? "none" : ""; $("cdn-sicap-w").style.display = k === "INSTITUTIE" ? "" : "none";
+    if(ev && !$("cdn-cond").value.trim()) $("cdn-cond").placeholder = "ex. Plata facturii se face conform ofertei, în avans, înainte de data amplasării";
+    else $("cdn-cond").placeholder = k === "PF" ? "ex. Plata facturii se face în avans" : "ex. Factura se emite la sfârșitul lunii, plata în 15 zile"; }
   $("cdn-cui-w").style.display = k === "PF" ? "none" : "";
   $("cdn-nume-l").textContent = k === "PF" ? "Nume și prenume" : "Denumire";
 }
@@ -6217,7 +6262,15 @@ async function cdnGata(cum){
   if(cat !== "PF" && $("cdn-cui").value.trim()) pre.cui = $("cdn-cui").value.trim().toUpperCase();
   if($("cdn-tel").value.trim()) pre.telefon = $("cdn-tel").value.trim();
   if($("cdn-email").value.trim()) pre.email = $("cdn-email").value.trim();
-  if($("cdn-prod").value.trim()) pre.produse = $("cdn-prod").value.trim();
+  const PL = [...$("cdn-pr").children].map(d => { const v = c => d.querySelector(c).value.trim(), pr = v(".p-pret");
+    return { produs: v(".p-prod"), tip: v(".p-tip"), buc: +v(".p-buc") || 1, pret: pr === "" ? null : Math.round(+pr * 100) / 100, pe: v(".p-pe"), frecventa: fel === "eveniment" ? "" : v(".p-fr") }; }).filter(x => x.produs);
+  if(PL.length){ pre.produse_lista = PL; pre.produse_fixe = true; pre.produse = PL.map(cdnProdTxt).join("; "); }
+  if($("cdn-cond").value.trim()) pre.conditii = $("cdn-cond").value.trim();
+  if(cat === "INSTITUTIE" && $("cdn-sicap").value.trim()) pre.sicap = $("cdn-sicap").value.trim().toUpperCase();
+  if(fel === "eveniment"){ [["ev_de", "cdn-ev-de"], ["ev_pana", "cdn-ev-pana"], ["ev_amp_data", "cdn-ev-ad"], ["ev_amp_ora", "cdn-ev-ao"], ["ev_rid_data", "cdn-ev-rd"], ["ev_rid_ora", "cdn-ev-ro"]].forEach(([k, i]) => { if($(i).value) pre[k] = $(i).value; });
+    const sv = [...$("cdn-ev-sv").querySelectorAll("input:checked")].map(i => i.value); if(sv.length) pre.ev_servisare = sv;
+    if(pre.ev_de && pre.ev_pana && pre.ev_pana < pre.ev_de){ toast("Ultima zi a evenimentului e înainte de prima", true); return; } }
+  else { if($("cdn-per-de").value) pre.perioada_de = $("cdn-per-de").value; if($("cdn-per-txt").value.trim()) pre.perioada_text = $("cdn-per-txt").value.trim(); }
   const { data, error } = await db.from("cereri_date").insert({ cod: cdCod(), categorie: cat, felul: fel, precompletat: pre }).select("*").single();
   if(error){ toast(error.message, true); return; }
   CD.unshift(data); cdRender();
@@ -6258,6 +6311,8 @@ function cdCampuri(cat, felul){
       ["reprezentant","Semnează — nume"],["functie","Semnează — funcția"],["semnatari","Alți semnatari (nume — funcția)"],["telefon","Telefon"],["email","E-mail"],["email_efactura","E-mail facturi"]);
   }
   L.push(["notif_adresa","Adresa pentru notificări"],["notif_atentie","În atenția"],["livrare_adresa","Adresa de livrare"],["livrare_gps","GPS livrare"],["contact_nume","Persoana de contact la locație"],["contact_tel","Telefonul ei"],["contacte_extra","Alte persoane de contact"],["produse","Produse (bucăți, tip)"]);   // v8.20
+  if(cat === "INSTITUTIE") L.push(["sicap","Achiziție SICAP (nr.)"]);   // v8.82
+  L.push(["conditii","Condiții / plata (din ofertă)"]);
   if(felul === "eveniment") L.push(["eveniment","Evenimentul (zile, ore, servisări)"]); else L.push(["perioada_de","Perioada — de la"],["perioada_pana","Perioada — până la"],["perioada_text","Perioada (text)"]);
   L.push(["observatii","Observații"]);
   return L;
@@ -6432,7 +6487,7 @@ async function comandaDinFisa(id){
 // (numărul anexei îl scrii tu), până se termină produsele; apoi anexele se deschid pe rând, completate, și le salvezi.
 // Comanda de acum se leagă de prima anexă; pentru celelalte: „🧾 Comandă nouă” la fișă deschide comanda pe următoarea anexă fără comandă.
 let MA_FISA = false;
-const fisaProdTxt = p => p.buc + " " + p.produs + (p.tip ? " " + p.tip : "") + (p.frecventa ? " (igienizare " + p.frecventa + ")" : "");
+const fisaProdTxt = p => p.buc + " " + p.produs + (p.tip ? " " + p.tip : "") + (p.frecventa ? " (servisare " + p.frecventa + ")" : "");
 function fisaImparte(k){
   const F = MM_FISA; let G = [{ nr: "ANEXA NR ", sel: new Set() }];
   const w = document.createElement("div"); w.className = "modal on"; w.id = "mod-fi";
@@ -6475,7 +6530,7 @@ function fisaPuneRanduri(F){
   if(F.pana) $("ma-dx").value = F.pana; if(F.R.perioada_text) $("ma-xt").value = F.R.perioada_text;
   if(g.nr && g.nr.replace(/ANEXA\s*NR\.?/i, "").trim()) $("ma-an").value = g.nr;
   maRandPastreaza(); const b = { ...MA_RAND[0] };
-  MA_RAND = g.prod.map(p => ({ ...b, id: undefined, produs: p.produs, model: p.tip || "", model_fizic: "", accesorii: "", cant: p.buc || 1, frecv_servisare: p.frecventa || "" }));
+  MA_RAND = g.prod.map(p => ({ ...b, id: undefined, produs: p.produs, model: p.tip || "", model_fizic: "", accesorii: "", cant: p.buc || 1, frecv_servisare: p.frecventa || "", ...(p.pret != null && (p.pe || "zi") === "zi" ? { pret: p.pret } : {}) }));   // v8.82: prețul pe zi din ofertă
   maRandArata(0); MA_FISA = true;
   const nr = F.total > 1 ? " — anexa " + (F.total - F.coada.length + 1) + " din " + F.total : "";
   toast("Anexa are produsele din fișă (" + g.prod.length + ")" + nr + " — completează prețul la fiecare și Salvează");
