@@ -1116,7 +1116,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
   <span id="rz-w"><button id="rz-reset" class="pictograma" title="Lățimi implicite — pune coloanele din tabelele acestei file înapoi cum erau">↺ Reset layout</button><i class="rz-sep">|</i></span>
   <span id="tz-w" title="Mărimea tabelului (doar tabelul, restul rămâne la fel), din 5 în 5%. Merge și cu Ctrl + rotița mausului, Ctrl + / Ctrl − / Ctrl 0. Dublu clic pe procent = scrii tu valoarea."><button class="pictograma" onclick="tzPas(-1)" aria-label="Micșorează tabelul">−</button><b id="tz-v" ondblclick="tzScrie()" title="Dublu clic = scrii mărimea (ex. 87), Enter">100%</b><input id="tz-in" type="number" min="30" max="300" step="5" style="display:none"><button class="pictograma" onclick="tzPas(1)" aria-label="Mărește tabelul">+</button></span>
-  <span class="ver">v8.83</span>
+  <span class="ver">v8.84</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -4315,6 +4315,54 @@ function ctrBenef(c){
       ". Beneficiarul anunta in scris Prestatorul, in 5 zile, orice schimbare a acestei situatii.",
     garantie_a: "Beneficiarul declara ca " + CTR_GAR_A[cat] + " si ca are capacitatea de a-si asuma obligatiile din contract." };
 }
+// ── v8.84 (cerut de Ovidiu, 15.11): CONTRACTUL PERSOANĂ FIZICĂ — beneficiarul cu CNP și CI (ca în modelul lui 1510 HD), „Dl.” / „Dna” după CNP
+function ctrBenefPF(c){
+  const S = [], n = t => S.push({ t, b: false }), b = t => S.push({ t: t || "______", b: true }), cnp = String(c.cui || "").trim(), sx = /^[1357]/.test(cnp) ? "M" : /^[2468]/.test(cnp) ? "F" : "";
+  const titlu = sx === "M" ? "Dl." : sx === "F" ? "Dna" : "Dl./Dna", dom = sx === "F" ? "domiciliata" : sx === "M" ? "domiciliat" : "domiciliat(a)";
+  n(titlu + " "); b(c.nume); n(", " + dom + " in "); b(actMajCuv(c.sediu)); n(", CNP "); b(cnp); n(", identificat" + (sx === "F" ? "a" : sx === "M" ? "" : "(a)") + " cu CI seria "); b(String(c.ci_serie || "").toUpperCase()); n(" nr. "); b(c.ci_numar);
+  if(c.ci_eliberat_de){ n(", eliberata de "); b(actMajCuv(c.ci_eliberat_de)); }
+  if(c.ci_expira){ n(", valabila pana la "); b(actD(c.ci_expira)); }
+  if(c.telefon){ n(", Tel: "); b(c.telefon); }
+  if(c.email){ n(", E-mail: "); b(c.email); }
+  n(", denumit" + (sx === "F" ? "a" : sx === "M" ? "" : "(a)") + " in continuare \""); b("BENEFICIAR"); n("\",");
+  return { benef: S, client_titlu: titlu, client_domiciliat: dom, ci_serie: String(c.ci_serie || "").toUpperCase() || "______", ci_numar: c.ci_numar || "______",
+    reprezentant: actMajCuv(c.nume), ci_img: "CI_IMG_AICI",
+    declaratie: "Beneficiarul declara ca are capacitate deplina de exercitiu, ca datele de identificare din contract sunt reale si corespund actului de identitate din Anexa CI si ca va anunta in scris Prestatorul, in 5 zile, orice schimbare a acestora (domiciliu, telefon, e-mail)." };
+}
+// copia CI (fișa clientului sau ultima fișă „Date contract”) → poză pe pagina ANEXA CI; PDF / fără copie → rămâne textul de atașare
+async function ctrPuneCI(zip, c){
+  const f = "word/document.xml"; let x = zip.file(f).asText();
+  const i = x.indexOf("CI_IMG_AICI"); if(i < 0) return null;
+  const pa = Math.max(x.lastIndexOf("<w:p ", i), x.lastIndexOf("<w:p>", i)), pb = x.indexOf("</w:p>", i) + 6, p = x.slice(pa, pb);
+  const head = (p.match(/^<w:p[ >][\s\S]*?<\/w:pPr>/) || [p.match(/^<w:p[^>]*>/)[0]])[0];
+  const text = t => head + '<w:r><w:rPr><w:i/><w:sz w:val="18"/></w:rPr><w:t xml:space="preserve">' + t + '</w:t></w:r></w:p>';
+  let cale = c.ci_path || null;
+  if(!cale){ try{ const r = await db.from("cereri_date").select("ci_path").eq("client_id", c.id).not("ci_path", "is", null).order("id", { ascending: false }).limit(1); cale = r.data && r.data[0] && r.data[0].ci_path; }catch(e){} }
+  const gol = t => { zip.file(f, x.slice(0, pa) + text(t) + x.slice(pb)); return false; };
+  if(!cale) return gol("[ Aici se ataseaza copia actului de identitate al Beneficiarului ]");
+  if(/\.pdf$/i.test(cale)) return gol("[ Copia actului de identitate este in format PDF - se ataseaza separat la contract ]");
+  try{
+    const { data } = await db.storage.from("acte").createSignedUrl(cale, 120); if(!data || !data.signedUrl) throw new Error("fără acces");
+    const bl = await (await fetch(data.signedUrl)).blob(), bm = await createImageBitmap(bl);
+    const k = Math.min(1, 1800 / Math.max(bm.width, bm.height)), cv = document.createElement("canvas"); cv.width = Math.round(bm.width * k); cv.height = Math.round(bm.height * k);
+    const g = cv.getContext("2d"); g.fillStyle = "#fff"; g.fillRect(0, 0, cv.width, cv.height); g.drawImage(bm, 0, 0, cv.width, cv.height);
+    const b64 = cv.toDataURL("image/jpeg", 0.85).split(",")[1];
+    zip.file("word/media/anexa_ci.jpeg", b64, { base64: true });
+    let rel = zip.file("word/_rels/document.xml.rels").asText();
+    if(!rel.includes('Id="rIdCI1"')) rel = rel.replace("</Relationships>", '<Relationship Id="rIdCI1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="media/anexa_ci.jpeg"/></Relationships>');
+    zip.file("word/_rels/document.xml.rels", rel);
+    let ct = zip.file("[Content_Types].xml").asText();
+    if(!/Extension="jpeg"/i.test(ct)) ct = ct.replace("<Default ", '<Default Extension="jpeg" ContentType="image/jpeg"/><Default ');
+    zip.file("[Content_Types].xml", ct);
+    const E = 360000, maxW = 16 * E, maxH = 17 * E; let w = maxW, h = Math.round(maxW * cv.height / cv.width); if(h > maxH){ w = Math.round(w * maxH / h); h = maxH; }
+    const img = `<w:r><w:drawing><wp:inline distT="0" distB="0" distL="0" distR="0"><wp:extent cx="${w}" cy="${h}"/><wp:docPr id="9101" name="Copie CI"/>`
+      + `<a:graphic xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"><a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/picture">`
+      + `<pic:pic xmlns:pic="http://schemas.openxmlformats.org/drawingml/2006/picture"><pic:nvPicPr><pic:cNvPr id="0" name="anexa_ci.jpeg"/><pic:cNvPicPr/></pic:nvPicPr>`
+      + `<pic:blipFill><a:blip r:embed="rIdCI1"/><a:stretch><a:fillRect/></a:stretch></pic:blipFill><pic:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="${w}" cy="${h}"/></a:xfrm>`
+      + `<a:prstGeom prst="rect"><a:avLst/></a:prstGeom></pic:spPr></pic:pic></a:graphicData></a:graphic></wp:inline></w:drawing></w:r>`;
+    zip.file(f, x.slice(0, pa) + head + img + "</w:p>" + x.slice(pb)); return true;
+  }catch(e){ toast("Copia CI nu s-a putut pune în contract: " + (e.message || e), true); return gol("[ Aici se ataseaza copia actului de identitate al Beneficiarului ]"); }
+}
 function ctrDurata(k, a){   // „07 Luni” — din textul perioadei, altfel din emitere → expirare; fără expirare = nedeterminată
   const t = String(k.expirare_text || (a && a.expirare_text) || ""), m = /(\d+)\s*(lun|zi|s[aă]pt|an)/i.exec(t);
   const u = { lun: "Luni", zi: "Zile", sapt: "Saptamani", "săpt": "Saptamani", an: "Ani" };
@@ -4329,7 +4377,7 @@ async function ctrGenereaza(kid){
   const k = CTR.find(x => x.id === kid); if(!k) return;
   const c = CLI.find(x => x.id === k.client_id) || {};
   if(c.emite_contract){ toast("La " + (c.nume || "acest client") + " contractul îl emite clientul — din aplicație faci doar Anexa + PV (📄 din comandă)", true); return; }
-  if(c.categorie === "PF" || c.id_tip === "CNP"){ toast("Pentru persoane fizice modelul de contract vine la pasul următor (modelul PF, cu Anexa CI)", true); return; }
+  const PF = c.categorie === "PF" || c.id_tip === "CNP";   // v8.84: persoanele fizice au modelul lor (modele/contract_pf.docx), cu Anexa CI
   const baze = ANX.filter(a => a.contract_id === k.id && !a.tip_anexa && !a.linie_id).sort((x, y) => (x.data_emitere || "").localeCompare(y.data_emitere || "") || x.id - y.id);
   if(!baze.length){ toast("Contractul nu are încă anexă — fă întâi Anexa 1 (din comandă sau „+ Anexă”)", true); return; }
   const a = baze[0], anr = String(a.anexa || "").trim();
@@ -4367,7 +4415,7 @@ async function ctrGenereaza(kid){
   const vazut = new Set(), daune = [];
   ANX.filter(x => x.contract_id === k.id && !x.linie_id).forEach(r => { const den = [prodN(r.produs || "", 1), r.model, r.model_fizic].filter(Boolean).join(" ");
     if(!den || vazut.has(den)) return; vazut.add(den); daune.push({ den, val: actValDauna(r) || "______" }); });
-  Object.assign(date, ctrBenef(c), { obiect: ctrObiect(ANX.filter(x => x.contract_id === k.id && !x.linie_id)),
+  Object.assign(date, PF ? ctrBenefPF(c) : ctrBenef(c), { obiect: ctrObiect(ANX.filter(x => x.contract_id === k.id && !x.linie_id)),
     contract_nr: k.nr_ctr || "______", contract_data: actD(k.data_emitere) || "______",
     durata: ctrDurata(k, a), data_start: actD(a.data_livrarii || k.data_emitere) || "______",
     daune: daune.length ? daune : [{ den: "______", val: "______" }],
@@ -4383,20 +4431,23 @@ async function ctrGenereaza(kid){
   try{
     toast("Se pregătește contractul…");
     await actScript("lib/pizzip.min.js"); await actScript("lib/docxtemplater.min.js");
-    const rsp = await fetch("modele/contract_pj.docx", { cache: "no-cache" }); if(!rsp.ok) throw new Error("modelul nu s-a găsit (modele/contract_pj.docx)");
+    const MOD = PF ? "modele/contract_pf.docx" : "modele/contract_pj.docx";
+    const rsp = await fetch(MOD, { cache: "no-cache" }); if(!rsp.ok) throw new Error("modelul nu s-a găsit (" + MOD + ")");
     const doc = new window.docxtemplater(new PizZip(await rsp.arrayBuffer()), { paragraphLoop: true, linebreaks: true, nullGetter: () => "______" });
     Object.keys(date).forEach(x => { if(date[x] === "" && !["info", "client_email", "client_tel", "client_iban", "client_banca"].includes(x)) date[x] = "______"; });
     doc.render(actFaraDiac(date));   // v8.35: fără diacritice
+    let ciOk = null; if(PF) ciOk = await ctrPuneCI(doc.getZip(), c);   // v8.84: poza buletinului pe pagina ANEXA CI
     const blob = doc.getZip().generate({ type: "blob", mimeType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document" });
     const nume = ((k.nr_ctr || "CTR") + "_ " + (c.nume || "")).replace(/[\\/:*?"<>|]+/g, " ").replace(/\s+/g, " ").trim() + ".docx";   // ca la el: „1557 HD_ VIO LOGISTIC SOLUTIONS SRL.docx”
     // v8.50 (cerut de Ovidiu, 09.11): fără „Salvare ca” / arhivă — contractul se descarcă și se deschide, îl verifici și îl salvezi tu
     const u = URL.createObjectURL(blob), l = document.createElement("a"); l.href = u; l.download = nume; document.body.appendChild(l); l.click(); l.remove(); setTimeout(() => URL.revokeObjectURL(u), 5000);
-    ctrLipsuri(c, daune, nume, false, tarzii);
+    ctrLipsuri(c, daune, nume, false, tarzii, ciOk);
   }catch(e){ toast("Contractul nu s-a putut genera: " + (e.message || e), true); }
 }
-function ctrLipsuri(c, daune, nume, salvat, tarzii){
+function ctrLipsuri(c, daune, nume, salvat, tarzii, ciOk){
   const cat = c.categorie || "SOCIETATE";
-  const lips = [!c.sediu && "sediul", !c.cui && "CUI / CIF", (cat === "SOCIETATE" || cat === "PFA") && !c.nr_reg_com && "nr. Reg. Com.", cat === "ONG" && !c.inregistrare && "înscrierea în Registrul Asociațiilor",
+  const lips = (cat === "PF" || c.id_tip === "CNP") ? [!c.sediu && "domiciliul", !c.cui && "CNP-ul", !(c.ci_serie && c.ci_numar) && "seria / nr. CI", ciOk === false && "copia CI (pagina Anexa CI rămâne goală — încarc-o în fișa clientului)",
+    daune.some(d => d.val === "______") && "valoarea la daună/furt la unele produse"].filter(Boolean) : [!c.sediu && "sediul", !c.cui && "CUI / CIF", (cat === "SOCIETATE" || cat === "PFA") && !c.nr_reg_com && "nr. Reg. Com.", cat === "ONG" && !c.inregistrare && "înscrierea în Registrul Asociațiilor",
     !c.pers_resp && "reprezentantul", daune.some(d => d.val === "______") && "valoarea la daună/furt la unele produse"].filter(Boolean);
   toast((salvat ? "Contract salvat: " : "Contract descărcat: ") + nume + (lips.length ? " — lipsesc: " + lips.join(", ") + " (rămân „______” în Word)" : "")
     + (tarzii ? " · " + tarzii + (tarzii > 1 ? " anexe făcute" : " anexă făcută") + " după Anexa 1 nu intră în contract (le faci cu 📄 din comandă)" : ""), !!lips.length);
