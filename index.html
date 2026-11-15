@@ -1116,7 +1116,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
   <span id="rz-w"><button id="rz-reset" class="pictograma" title="Lățimi implicite — pune coloanele din tabelele acestei file înapoi cum erau">↺ Reset layout</button><i class="rz-sep">|</i></span>
   <span id="tz-w" title="Mărimea tabelului (doar tabelul, restul rămâne la fel), din 5 în 5%. Merge și cu Ctrl + rotița mausului, Ctrl + / Ctrl − / Ctrl 0. Dublu clic pe procent = scrii tu valoarea."><button class="pictograma" onclick="tzPas(-1)" aria-label="Micșorează tabelul">−</button><b id="tz-v" ondblclick="tzScrie()" title="Dublu clic = scrii mărimea (ex. 87), Enter">100%</b><input id="tz-in" type="number" min="30" max="300" step="5" style="display:none"><button class="pictograma" onclick="tzPas(1)" aria-label="Mărește tabelul">+</button></span>
-  <span class="ver">v8.86</span>
+  <span class="ver">v8.87</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -6457,10 +6457,10 @@ function ofHtml(o){
     .bl{padding-top:3.2mm}.nr{text-align:right;font-size:9.5pt;color:#444}.at{font-size:13pt;margin-top:1mm}.ti{text-align:center;font-size:14pt;margin-top:5mm;line-height:1.25}
     .car{display:flex;gap:6mm;align-items:flex-start;font-size:10.5pt;line-height:1.28}.car .l{flex:1}.car .p{width:74mm;text-align:center}.car .p img{max-width:74mm;max-height:58mm;display:block;margin:0 auto}
     .th{font-size:13pt;font-weight:700;text-align:center;margin:4mm 0 6mm}.inf{font-size:8pt;color:#333;margin-top:1mm}
-    .av{font-size:8.6pt;line-height:1.25;text-align:justify}.gal{display:flex;gap:5mm;justify-content:center;align-items:flex-end}.gal figure{margin:0;text-align:center;font-size:9pt;flex:0 1 44mm}.gal img{max-width:100%;max-height:50mm;display:block;margin:0 auto 1mm}
+    .av{font-size:8.6pt;line-height:1.25;text-align:justify}.gal{display:flex;gap:5mm;justify-content:center;align-items:flex-end}.gal figure{margin:0;text-align:center;font-size:9pt;flex:0 1 44mm}.gal img{max-width:100%;max-height:42mm;display:block;margin:0 auto 1mm}
     .pt{font-size:13pt}.pr{font-size:12.5pt}.pr .q{font-size:10.5pt;color:#333}.sv{font-style:italic;font-size:11pt;margin-top:.6mm}.vt{font-size:11.5pt;margin-top:.6mm}
     .lc{font-size:13pt}.tr{font-size:12.5pt;text-indent:9mm;text-align:justify}.mn{font-size:13.5pt;font-style:italic}.ln{font-size:12pt}.pl{font-weight:700;font-size:11.5pt}
-    .sg{display:flex;justify-content:space-between;font-size:11.5pt;position:relative;padding-top:9mm;min-height:36mm}.sg .s1{position:relative}.sg .s1 img{position:absolute;left:22mm;top:-9mm;height:33mm;opacity:.9}.sg .s2{width:74mm}
+    .sg{display:flex;justify-content:space-between;font-size:11.5pt;position:relative;padding-top:5mm;min-height:24mm}.sg .s1{position:relative}.sg .s1 img{position:absolute;left:24mm;top:-6mm;height:27mm;opacity:.9}.sg .s2{width:74mm}
     .ft{margin-top:4mm;border-top:1.3pt solid #E3000F;padding-top:3mm;display:flex;gap:4mm;align-items:flex-start;font-size:9.5pt;line-height:1.35}.ft img{height:12mm;margin-top:1mm}.ft .t{flex:1}.ft .pa{white-space:nowrap;text-align:right}
     </style></head><body><div id="src" style="width:794px;padding:0 57px">${B.map(b => /^<div class="car" data-pb/.test(b) ? `<div class="bl" data-pb="1">${b}</div>` : `<div class="bl">${b}</div>`).join("")}</div>
     <template id="hd"><div class="hd"><img src="${esc(new URL("pv/assets/docs/header.png", location.href).href)}" alt=""><div class="r"></div></div></template>
