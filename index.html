@@ -1116,7 +1116,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
   <span id="rz-w"><button id="rz-reset" class="pictograma" title="Lățimi implicite — pune coloanele din tabelele acestei file înapoi cum erau">↺ Reset layout</button><i class="rz-sep">|</i></span>
   <span id="tz-w" title="Mărimea tabelului (doar tabelul, restul rămâne la fel), din 5 în 5%. Merge și cu Ctrl + rotița mausului, Ctrl + / Ctrl − / Ctrl 0. Dublu clic pe procent = scrii tu valoarea."><button class="pictograma" onclick="tzPas(-1)" aria-label="Micșorează tabelul">−</button><b id="tz-v" ondblclick="tzScrie()" title="Dublu clic = scrii mărimea (ex. 87), Enter">100%</b><input id="tz-in" type="number" min="30" max="300" step="5" style="display:none"><button class="pictograma" onclick="tzPas(1)" aria-label="Mărește tabelul">+</button></span>
-  <span class="ver">v8.79</span>
+  <span class="ver">v8.80</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -14482,21 +14482,19 @@ async function crrTab(){
   const act = ANG.L.filter(x => x.activ !== false); if(!act.some(x => x.id === CRR.sid)) CRR.sid = (act[0] || {}).id || null;
   const azi = today(), T = [["CO", "Concediu de odihnă"], ["INV", "Învoire"], ["ACORD", "Încetare contract — acordul părților"], ["DEM", "Demisie cu preaviz"]];
   $("ang-corp").innerHTML = `<div class="card"><h3 style="margin:0 0 4px;color:var(--g)">Cerere nouă</h3>
-    <p class="muted" style="margin:0 0 12px">Aceleași cereri ca în aplicația șoferilor, făcute de aici pentru orice angajat. Se deschid într-o fereastră a aplicației (cu ‒ ☐ ✕), arătând ca modelul vechi: le tipărești sau le salvezi ca PDF, apoi se semnează de mână.</p>
+    <p class="muted" style="margin:0 0 12px">Aceleași cereri ca în aplicația șoferilor, făcute de aici pentru orice angajat. Se deschid ca PDF într-o fereastră a aplicației (cu ‒ ☐ ✕): o citești, apoi <b>🖨 Tipărește pe hârtie</b> sau <b>💾 Salvează PDF în calculator</b>. Bifa „trece în pontaj” e în fereastră și se aplică abia când tipărești / salvezi.</p>
     <div class="grid3"><div><label>Angajat</label><select id="cr-ang" onchange="CRR.sid=+this.value;crrCampuri()">${act.map(x => `<option value="${x.id}"${x.id === CRR.sid ? " selected" : ""}>${esc(x.nume)}</option>`).join("")}</select></div>
       <div><label>Tipul cererii</label><select id="cr-tip" onchange="CRR.tip=this.value;crrCampuri()">${T.map(([k, t]) => `<option value="${k}"${k === CRR.tip ? " selected" : ""}>${t}</option>`).join("")}</select></div><div></div></div>
     <div id="cr-campuri" style="margin-top:12px"></div>
     <div class="row" style="margin-top:16px;justify-content:flex-end"><div style="flex:1" id="cr-info" class="muted"></div><div style="flex:0"><button class="btn" onclick="crrGenereaza()">🖨 Deschide cererea</button></div></div></div>
-    <div class="card"><p class="muted" style="margin:0">Cererile făcute de șoferi pe telefon ajung în fila <b>Cereri primite (telefon)</b> (de acolo le descarci; concediul îl treci în pontaj cu butonul „→ CO în pontaj”). Zilele de concediu aprobate se trec în pontaj: cu bifa de mai sus sau direct în pontajul angajatului (cod CO).</p></div>`;
+    <div class="card"><p class="muted" style="margin:0">Cererile făcute de șoferi pe telefon ajung în fila <b>Cereri primite (telefon)</b> (de acolo le descarci; concediul îl treci în pontaj cu butonul „→ CO în pontaj”). Zilele de concediu aprobate se trec în pontaj: cu bifa din fereastra cererii sau direct în pontajul angajatului (cod CO).</p></div>`;
   crrCampuri();
 }
 function crrCampuri(){
   const t = CRR.tip, azi = today(); let h = "";
-  if(t === "CO") h = `<div class="grid3">${afC("cr-de", "Concediu de la", azi, "date", 'onchange="crrInfo()"')}${afC("cr-pana", "până la (inclusiv)", azi, "date", 'onchange="crrInfo()"')}
-      ${afBif("cr-pont", "trece zilele în pontaj (cod CO)", true, "Zilele lucrătoare din perioadă primesc codul CO în pontajul angajatului")}</div>`;
+  if(t === "CO") h = `<div class="grid3">${afC("cr-de", "Concediu de la", azi, "date", 'onchange="crrInfo()"')}${afC("cr-pana", "până la (inclusiv)", azi, "date", 'onchange="crrInfo()"')}</div>`;
   else if(t === "INV") h = `<div class="grid3">${afC("cr-de", "Data învoirii", azi, "date")}${afC("cr-o1", "De la ora", "10:00", "time")}${afC("cr-o2", "Până la ora", "12:00", "time")}
-      <div style="grid-column:1/3"><label>Motivul <span class="muted" style="text-transform:none;font-weight:400">(gol = „motive personale”)</span></label><input id="cr-motiv"></div>${afBif("cr-rec", "cu recuperarea orelor", false)}
-      ${afBif("cr-pont", "notează în pontaj (la Observații)", true, "În ziua învoirii se scrie la Observații „Învoire 10:00–12:00”; codul zilei nu se schimbă")}</div>`;
+      <div style="grid-column:1/3"><label>Motivul <span class="muted" style="text-transform:none;font-weight:400">(gol = „motive personale”)</span></label><input id="cr-motiv"></div>${afBif("cr-rec", "cu recuperarea orelor", false)}</div>`;
   else if(t === "ACORD") h = `<div class="grid3">${afC("cr-de", "Încetare începând cu data", azi, "date")}<div style="grid-column:2/4"><label>Mențiuni</label><input id="cr-ment"></div></div>`;
   else h = `<div class="grid3"><div><label>Preaviz (zile lucrătoare)</label><select id="cr-zile" onchange="$('cr-de').value=crrPlus(today(),+this.value)"><option value="20">20 — funcție de execuție</option><option value="45">45 — funcție de conducere</option></select></div>
       ${afC("cr-de", "Data încetării", crrPlus(azi, 20), "date")}<div><label>Mențiuni</label><input id="cr-ment"></div></div>`;
@@ -14527,51 +14525,93 @@ async function crrGenereaza(){
     corp = P(`${cap}, avand functia de <strong>${esc(fn)}</strong>, va notific demisia cu preaviz de <strong>${z} zile lucratoare</strong>, solicitand incetarea contractului individual de munca la data de <strong>${crrDRo(de)}</strong>.`) + P("Temei legal: art. 81 din Codul muncii (demisie cu preaviz).") +
       P(`Durata preaviz selectata: <strong>${z} zile lucratoare</strong>${z === 45 ? " (functie de conducere)" : ""}.`) + ment(); }
   const d = (CRR.dep || []).find(q => q.id === x.depozit_id) || (CRR.dep || []).find(q => q.nume === "HUNEDOARA") || {};
-  // v8.68 (cerut de Ovidiu, 13.11): aspectul cererilor ca modelul vechi (C. CONCEDIU - ALECU … .pdf): antet cu certificările, firma sus-stânga,
-  // titlu centrat, text aerisit, DATA + semnătura solicitantului, linie, AVIZAT / APROBAT, subsolul nou (ca la PV, v8.63). Se deschide într-o
-  // fereastră a aplicației (‒ ☐ ✕), cu „Tipărește / Salvează PDF”.
+  // v8.68: aspectul ca modelul vechi (antet cu certificările, titlu centrat, DATA + solicitant, AVIZAT / APROBAT).
+  // v8.80 (cerut de Ovidiu, 15.11): cererea devine PDF adevărat, afișat în fereastra aplicației cu vizualizatorul de PDF (zoom, pagină întreagă);
+  // semnătura solicitantului din aplicația șoferilor (profiles.signature_url, prin RPC semnatura_angajat); subsolul ca la contracte (linie roșie, logo, Times);
+  // bifa „trece în pontaj” e în fereastră și se aplică abia la 🖨 Tipărește / 💾 Salvează PDF (după ce ai citit cererea).
   const baza = new URL("pv/", location.href).href, avizat = faraDiac(d.reprezentant_nume || "ANITOIU OVIDIU").toUpperCase();
+  let semn = ""; try{ const r = await db.rpc("semnatura_angajat", { p_sofer: x.id }); if(!r.error && r.data) semn = r.data; }catch(e){}
   const html = `<!doctype html><html lang="ro"><head><meta charset="utf-8"><base href="${esc(baza)}"><title>${esc(fisier)}</title>
     <link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Lato:wght@400;700&display=swap" rel="stylesheet">
-    <style>@page{size:A4;margin:0}*{box-sizing:border-box}html,body{margin:0}body{background:#8a93a3;font-family:Lato,Carlito,Calibri,Arial,sans-serif;color:#1a1a1a}
-      .pg{width:210mm;height:297mm;margin:12px auto;background:#fff;padding:9mm 15mm 7mm;display:flex;flex-direction:column;box-shadow:0 4px 18px rgba(0,0,0,.35)}
+    <style>*{box-sizing:border-box}html,body{margin:0;background:#fff}body{font-family:Lato,Carlito,Calibri,Arial,sans-serif;color:#1a1a1a}
+      .pg{width:794px;height:1123px;background:#fff;padding:34px 57px 26px;display:flex;flex-direction:column}
       .hd img{width:100%;display:block}.hd .r{border-bottom:.6pt solid #7a7a7a;margin-top:3mm}
       .fi{margin-top:6mm;font-size:10pt;line-height:1.45}.fi b{font-size:11.5pt}
       h1{font-size:15pt;text-align:center;margin:14mm 0 10mm;font-weight:700;letter-spacing:.2px}
       .tx{font-size:12pt;line-height:2.05;text-align:justify;text-indent:6mm}.tx+.tx{margin-top:2mm}.nl{font-size:9pt;color:#555;margin-top:5mm;line-height:1.4}
       .sp{flex:1}.sg{display:flex;justify-content:space-between;align-items:flex-end;font-size:10.5pt}
-      .lb{font-weight:700;font-size:10pt}.sol{width:62mm;text-align:center}.sol .ln{border-top:.6pt solid #333;height:0;margin-top:20mm}.sol div{font-size:9pt;margin-top:1mm}
+      .lb{font-weight:700;font-size:10pt}.sol{width:62mm;text-align:center}.sol .sm{height:20mm;display:flex;align-items:flex-end;justify-content:center}.sol .sm img{max-height:19mm;max-width:58mm;display:block}
+      .sol .ln{border-top:.6pt solid #333;height:0}.sol div.c{font-size:9pt;margin-top:1mm}
       .sep{border-top:.6pt solid #333;margin:13mm 0 5mm}.ap{display:flex;justify-content:space-between;font-size:10.5pt}.ap>div{width:72mm}
       .ap .ln{border-bottom:.6pt solid #333;height:15mm}.ap .cp{font-size:8.5pt;margin-top:1mm}
-      .ft{margin-top:12mm;border-top:.6pt solid #9a9a9a;padding-top:2.5mm;display:flex;gap:3mm;align-items:center;font-size:7pt;line-height:1.45;color:#333}
-      .ft img{height:9mm}.ft .t{flex:1}.ft .pa{font-weight:700;font-size:7.5pt;align-self:flex-start;white-space:nowrap}
-      .bara{position:sticky;top:0;background:#16233c;padding:8px;text-align:center;z-index:5}.bara button{font:600 14px Arial;padding:8px 16px;border-radius:8px;border:0;background:#2E8B3C;color:#fff;cursor:pointer}
-      .bara span{color:#cfd6e4;font:12px Arial;margin-left:12px}@media print{.bara{display:none}body{background:#fff}.pg{margin:0;box-shadow:none}}</style></head><body>
-    <div class="bara"><button onclick="print()">🖨 Tipărește / Salvează PDF</button><span>La „Destinație” alege „Salvare ca PDF”.</span></div>
+      .ft{margin-top:10mm;border-top:1.3pt solid #E3000F;padding-top:3mm;display:flex;gap:4mm;align-items:flex-start;font-family:"Times New Roman",Tinos,"Liberation Serif",serif;font-size:9.5pt;line-height:1.35;color:#111}
+      .ft img{height:12mm;margin-top:1mm}.ft .t{flex:1}.ft .pa{font-size:9.5pt;white-space:nowrap}</style></head><body>
     <div class="pg"><div class="hd"><img src="assets/docs/header.png" alt=""><div class="r"></div></div>
       <div class="fi"><b>SC EURO ECOLOGIC SRL</b><br>Adresa societatii: Vlahita, Str. Mihai Eminescu nr. 9, jud. Harghita</div>
       <h1>${titlu}</h1>${corp.replace(/class="doc-text doc-cerere-body"/g, 'class="tx"').replace(/class="doc-cerere-legal-note"/g, 'class="nl"').replace(/class="doc-text doc-cerere-mentiuni"/g, 'class="tx"')}<div class="sp"></div>
-      <div class="sg"><div><div class="lb">DATA</div><div>${crrDRo(today())}</div></div><div class="sol"><div class="ln"></div><div>Numele si Semnatura Solicitantului</div><div style="font-weight:700;font-size:9.5pt">${esc(nume)}</div></div></div>
+      <div class="sg"><div><div class="lb">DATA</div><div>${crrDRo(today())}</div></div><div class="sol"><div class="sm">${semn ? `<img src="${esc(semn)}" alt="">` : ""}</div><div class="ln"></div><div class="c">Numele si Semnatura Solicitantului</div><div class="c" style="font-weight:700;font-size:9.5pt">${esc(nume)}</div></div></div>
       <div class="sep"></div>
       <div class="ap"><div><div class="lb">AVIZAT</div><div>${esc(avizat)}</div><div class="ln"></div><div class="cp">Data / Semnatura</div></div>
         <div><div class="lb">APROBAT</div><div>&nbsp;</div><div class="ln"></div><div class="cp">Data / Semnatura</div></div></div>
-      <div class="ft"><img src="${esc(new URL("modele-originale/logo_ee.png", location.href).href)}" alt=""><div class="t"><b>SC EURO ECOLOGIC SRL</b> | Sediu: Loc. Vlahita, Str. M. Eminescu nr. 9, jud. HR | info@eurowc.ro<br>
-        0742 029 410 | Nr. Reg. Com.: J 2007 000205 190 | CUI: RO 21311085 | Website: www.eurowc.ro<br><b>P.L. Hunedoara</b> | Sat Pestisul Mare, Nr 1, Jud. HD | hunedoara@eurowc.ro | <b>0735 214 762</b></div><div class="pa">Pagina 1 din 1</div></div>
+      <div class="ft"><img src="${esc(new URL("modele-originale/logo_ee.png", location.href).href)}" alt=""><div class="t"><b>SC EURO ECOLOGIC SRL</b> Sediu: Loc. Vlahita, Str. M. Eminescu nr. 9, jud. HR | info@eurowc.ro<br>
+        0742-029 410, * Nr. Reg. Com. : J 2007 000205 190 * CUI: RO 21311085 &nbsp; Website * www.eurowc.ro<br><b>P.L. Hunedoara</b> | Sat Pestisul Mare, Nr 1, Jud. HD | hunedoara@eurowc.ro | <b>0735 214 762</b></div><div class="pa">Pagina 1</div></div>
     </div></body></html>`;
+  const poatePont = ANG.admin && (t === "CO" || t === "INV");
+  CRR.p = { t, x, zile, de, txt: t === "INV" ? "Invoire " + v("cr-o1") + "-" + v("cr-o2") : "", fisier: fisier + ".pdf", gata: false, blob: null };
   document.getElementById("mod-crr")?.remove();
   const w = document.createElement("div"); w.className = "modal on"; w.id = "mod-crr";
-  w.innerHTML = `<div class="box" style="max-width:900px;width:900px;padding:0"><h3 class="lux-cap cap-mut" style="margin:0">${esc(fisier)}</h3><iframe id="crr-fr" title="Cererea" style="width:100%;height:78vh;border:0;display:block;background:#8a93a3"></iframe></div>`;
-  document.body.appendChild(w); feFereastra(w); $("crr-fr").srcdoc = html;
-  if(!ANG.admin || !$("cr-pont") || !$("cr-pont").checked || (t !== "CO" && t !== "INV")) return;
-  const acum = new Date().toISOString();
-  if(t === "CO"){ const { error } = await db.from("pontaj_zile").upsert(zile.map(z => ({ sofer_id: x.id, zi: z, cod: "CO", masina: null, ora_start: null, ora_stop: null, km: null, sursa: "manual", updated_at: acum })), { onConflict: "sofer_id,zi" });
-    if(error){ toast("Cererea s-a deschis, dar pontajul nu s-a completat: " + error.message, true); return; }
-    if(zile[0].startsWith(String(new Date().getFullYear()))){ const o = ANG.co[x.id] || (ANG.co[x.id] = { CO: 0, CM: 0 }); const r = await db.from("pontaj_zile").select("zi").eq("sofer_id", x.id).eq("cod", "CO").gte("zi", new Date().getFullYear() + "-01-01").lte("zi", new Date().getFullYear() + "-12-31"); if(!r.error) o.CO = (r.data || []).length; }
-    toast(zile.length + (zile.length === 1 ? " zi trecută" : " zile trecute") + " în pontaj cu CO — " + x.nume); crrInfo(); }
-  else { const txt = "Invoire " + v("cr-o1") + "-" + v("cr-o2"), r = await db.from("pontaj_zile").select("observatii").eq("sofer_id", x.id).eq("zi", de).maybeSingle(), vechi = (r.data || {}).observatii || "";
-    if(vechi.includes(txt)) return;
-    const { error } = await db.from("pontaj_zile").upsert({ sofer_id: x.id, zi: de, observatii: [vechi, txt].filter(Boolean).join("; "), updated_at: acum }, { onConflict: "sofer_id,zi" });
-    toast(error ? "Cererea s-a deschis, dar nota din pontaj nu s-a scris: " + error.message : "Învoirea e notată în pontaj, la Observații", !!error); }
+  w.innerHTML = `<div class="box" style="max-width:900px;width:900px;padding:0"><h3 class="lux-cap cap-mut" style="margin:0">${esc(fisier)}</h3>
+    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:8px 12px;background:#16233c;color:#e6ebf4;font-size:13px">
+      ${poatePont ? `<label style="display:flex;align-items:center;gap:6px;cursor:pointer;margin:0;color:#e6ebf4;text-transform:none;font-size:13px;font-weight:600"><input type="checkbox" id="crr-pont" checked style="width:16px;height:16px;margin:0">${t === "CO" ? `trece ${zile.length === 1 ? "ziua" : "cele " + zile.length + " zile"} în pontaj (cod CO)` : "notează învoirea în pontaj (la Observații)"}</label>` : ""}
+      <span id="crr-st" style="flex:1;color:#cfd6e4;font-size:12px">Pregătesc PDF-ul…</span>
+      <button class="btn" id="crr-b1" disabled onclick="crrActiune('print')" title="Deschide fereastra de tipărire — alegi imprimanta și tipărești pe hârtie">🖨 Tipărește pe hârtie</button>
+      <button class="btn" id="crr-b2" disabled onclick="crrActiune('pdf')" title="Salvează cererea ca fișier PDF în calculator">💾 Salvează PDF în calculator</button></div>
+    <iframe id="crr-fr" title="Cererea" style="width:100%;height:78vh;border:0;display:block;background:#525659"></iframe></div>`;
+  document.body.appendChild(w); feFereastra(w);
+  try{ CRR.p.blob = await crrPdf(html); }catch(e){ $("crr-st").textContent = "PDF-ul n-a mers: " + (e.message || e); return; }
+  if(!$("crr-fr")) return;
+  if(CRR.url) URL.revokeObjectURL(CRR.url); CRR.url = URL.createObjectURL(CRR.p.blob);
+  $("crr-fr").src = CRR.url + "#view=Fit"; $("crr-b1").disabled = false; $("crr-b2").disabled = false;
+  $("crr-st").innerHTML = "Citește cererea (zoom / pagină întreagă din bara PDF-ului), apoi alege:";
+}
+// pagina HTML → PDF A4 (html2canvas + jsPDF, ca la fișa „Date contract”), randată într-un iframe ascuns
+async function crrPdf(html){
+  await cdLib();
+  const f = document.createElement("iframe"); f.style.cssText = "position:fixed;left:-10000px;top:0;width:794px;height:1123px;border:0"; document.body.appendChild(f);
+  try{
+    await new Promise(ok => { f.onload = ok; f.srcdoc = html; });
+    const dd = f.contentDocument; try{ await dd.fonts.ready; }catch(e){}
+    await Promise.all([...dd.images].map(i => i.complete ? 0 : new Promise(ok => { i.onload = i.onerror = ok; })));
+    const cv = await html2canvas(dd.querySelector(".pg"), { scale: 2.5, backgroundColor: "#ffffff", windowWidth: 794, windowHeight: 1123 });
+    const pdf = new window.jspdf.jsPDF({ unit: "mm", format: "a4" });
+    pdf.addImage(cv.toDataURL("image/jpeg", 0.92), "JPEG", 0, 0, 210, 297);
+    return pdf.output("blob");
+  } finally { f.remove(); }
+}
+async function crrActiune(ce){
+  const P = CRR.p; if(!P || !P.blob) return;
+  if(ce === "print"){
+    try{ $("crr-fr").contentWindow.focus(); $("crr-fr").contentWindow.print(); }
+    catch(e){ window.open(CRR.url, "_blank"); toast("Am deschis PDF-ul într-o filă nouă — tipărește de acolo (Ctrl+P)"); }
+  } else {
+    let ok = false;
+    if(window.showSaveFilePicker){ try{ const h = await showSaveFilePicker({ suggestedName: P.fisier, id: "ee-cereri", startIn: "documents", types: [{ description: "PDF", accept: { "application/pdf": [".pdf"] } }] });
+      const wr = await h.createWritable(); await wr.write(P.blob); await wr.close(); ok = true; }catch(e){ if(e.name === "AbortError") return; } }
+    if(!ok){ const a = document.createElement("a"); a.href = CRR.url; a.download = P.fisier; document.body.appendChild(a); a.click(); a.remove(); }
+    toast("PDF salvat: " + P.fisier);
+  }
+  if(P.gata || !$("crr-pont") || !$("crr-pont").checked) return;
+  P.gata = true; const x = P.x, acum = new Date().toISOString();
+  if(P.t === "CO"){ const { error } = await db.from("pontaj_zile").upsert(P.zile.map(z => ({ sofer_id: x.id, zi: z, cod: "CO", masina: null, ora_start: null, ora_stop: null, km: null, sursa: "manual", updated_at: acum })), { onConflict: "sofer_id,zi" });
+    if(error){ P.gata = false; toast("Pontajul nu s-a completat: " + error.message, true); return; }
+    if(P.zile[0].startsWith(String(new Date().getFullYear()))){ const o = ANG.co[x.id] || (ANG.co[x.id] = { CO: 0, CM: 0 }); const r = await db.from("pontaj_zile").select("zi").eq("sofer_id", x.id).eq("cod", "CO").gte("zi", new Date().getFullYear() + "-01-01").lte("zi", new Date().getFullYear() + "-12-31"); if(!r.error) o.CO = (r.data || []).length; }
+    toast(P.zile.length + (P.zile.length === 1 ? " zi trecută" : " zile trecute") + " în pontaj cu CO — " + x.nume); crrInfo(); }
+  else { const r = await db.from("pontaj_zile").select("observatii").eq("sofer_id", x.id).eq("zi", P.de).maybeSingle(), vechi = (r.data || {}).observatii || "";
+    if(vechi.includes(P.txt)) return;
+    const { error } = await db.from("pontaj_zile").upsert({ sofer_id: x.id, zi: P.de, observatii: [vechi, P.txt].filter(Boolean).join("; "), updated_at: acum }, { onConflict: "sofer_id,zi" });
+    if(error) P.gata = false;
+    toast(error ? "Nota din pontaj nu s-a scris: " + error.message : "Învoirea e notată în pontaj, la Observații", !!error); }
+  const cb = $("crr-pont"); if(cb && P.gata){ cb.disabled = true; cb.parentElement.style.opacity = ".6"; cb.parentElement.title = "Deja trecut în pontaj"; }
 }
 
 // ---------- FLOTĂ ----------
@@ -15219,8 +15259,8 @@ const HOW = [
     cand: "Cineva cere concediu / învoire / demisie, sau vrei foile de parcurs și prezența la depozit.",
     anexa: "Fără legătură cu anexele — la clienți <b>nu se schimbă nimic</b>.",
     pasi: [
-      { t: "Meniul <b>Angajați</b> → fila <b>Cereri</b>: faci tu cererea pentru orice angajat (concediu, învoire, încetare prin acord, demisie) → <b>🖨 Deschide cererea</b> → Tipărește / Salvează PDF.", ar: { s: "angajati", fn: () => angTab("cereri"), el: "#cr-tip" } },
-      { t: "La concediu, bifa <b>„trece zilele în pontaj (cod CO)”</b> pune CO pe zilele lucrătoare din perioadă; la învoire se notează la Observații." },
+      { t: "Meniul <b>Angajați</b> → fila <b>Cereri</b>: faci tu cererea pentru orice angajat (concediu, învoire, încetare prin acord, demisie) → <b>🖨 Deschide cererea</b> → o citești → <b>🖨 Tipărește pe hârtie</b> sau <b>💾 Salvează PDF în calculator</b>.", ar: { s: "angajati", fn: () => angTab("cereri"), el: "#cr-tip" } },
+      { t: "La concediu, bifa din fereastra cererii <b>„trece zilele în pontaj (cod CO)”</b> (se aplică la tipărire / salvare) pune CO pe zilele lucrătoare din perioadă; la învoire se notează la Observații." },
       { t: "Fila <b>Cereri primite (telefon)</b>: cererile făcute de șoferi în aplicația lor. <b>Deschide</b> = o vezi · <b>Descarcă</b> = o salvezi pe PC · <b>Șterge</b> apare după descărcare.", ar: { s: "cereri", el: "#pv-tip" } },
       { t: "La o cerere de concediu primită: <b>→ CO în pontaj</b> trece zilele lucrătoare din perioadă în pontajul omului (după ce ai aprobat-o). Când sunt trecute scrie <b>✔ CO în pontaj</b>." },
       { t: "Fila <b>Foi de parcurs / prezență</b>: <b>Foi de parcurs</b> = un rând pe rută (mașina, șoferii, km, orele, vizitele); 👁 PDF = raportul zilnic.", ar: { s: "foi-parcurs", fn: () => fpSub("foi"), el: "#fp-tbl" } },
