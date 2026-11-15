@@ -1116,7 +1116,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
   <span id="rz-w"><button id="rz-reset" class="pictograma" title="Lățimi implicite — pune coloanele din tabelele acestei file înapoi cum erau">↺ Reset layout</button><i class="rz-sep">|</i></span>
   <span id="tz-w" title="Mărimea tabelului (doar tabelul, restul rămâne la fel), din 5 în 5%. Merge și cu Ctrl + rotița mausului, Ctrl + / Ctrl − / Ctrl 0. Dublu clic pe procent = scrii tu valoarea."><button class="pictograma" onclick="tzPas(-1)" aria-label="Micșorează tabelul">−</button><b id="tz-v" ondblclick="tzScrie()" title="Dublu clic = scrii mărimea (ex. 87), Enter">100%</b><input id="tz-in" type="number" min="30" max="300" step="5" style="display:none"><button class="pictograma" onclick="tzPas(1)" aria-label="Mărește tabelul">+</button></span>
-  <span class="ver">v8.85</span>
+  <span class="ver">v8.86</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -6391,16 +6391,30 @@ async function ofSalveaza(siPdf){
   if(siPdf) ofPdf(r.data.id);
 }
 // ── oferta acceptată → fișa „Date contract” (secțiunea „Din oferta acceptată”); anexa se face apoi din fișă, cu prețurile de aici ──
-function ofLaFisa(id){
-  const o = OF.L.find(x => x.id === id); if(!o) return; const k = o.continut || {};
+function ofLaFisa(id, alese){
+  const o = OF.L.find(x => x.id === id); if(!o) return; const k = o.continut || {}, R = k.randuri || [];
+  // v8.86: oferta pe variante (același produs pe mai multe rânduri) → întâi alegi varianta acceptată de client; în fișă intră doar ea
+  const grup = r => r.cat || r.nume, G = [...new Set(R.map(grup))];
+  if(!alese && G.some(g => R.filter(r => grup(r) === g).length > 1)){
+    document.getElementById("mod-ofv")?.remove();
+    const w = document.createElement("div"); w.className = "modal on"; w.id = "mod-ofv";
+    w.innerHTML = `<div class="box" style="max-width:620px"><h3 class="lux-cap cap-mut">Ce variantă a acceptat clientul?</h3>
+      ${G.map((g, gi) => { const L = R.map((r, i) => [r, i]).filter(([r]) => grup(r) === g);
+        return `<div style="margin:10px 0 4px;font-weight:700">${esc(L[0][0].nume)}</div>` + L.map(([r, i], j) => `<label style="display:flex;gap:8px;align-items:center;text-transform:none;font-size:14px;margin:4px 0;cursor:pointer"><input type="radio" name="ofv-${gi}" value="${i}" ${j ? "" : "checked"} style="width:16px;height:16px;margin:0">
+          ${r.buc ? r.buc + " × " : ""}${ftBani(r.pret)} lei${OF_PE[r.pe] ? " / " + OF_PE[r.pe] : ""}${r.frecventa ? " — servisare " + esc(r.frecventa) : ""}</label>`).join(""); }).join("")}
+      <div class="row" style="margin-top:14px;justify-content:flex-end"><div style="flex:1"></div><div style="flex:0"><button class="btn sec" onclick="this.closest('.modal').remove()">Renunță</button></div>
+        <div style="flex:0"><button class="btn" onclick="const a=[...document.querySelectorAll('#mod-ofv input:checked')].map(x=>+x.value);this.closest('.modal').remove();ofLaFisa(${id},a)">📋 Deschide fișa</button></div></div></div>`;
+    document.body.appendChild(w); feFereastra(w); return; }
+  const RA = alese ? R.filter((r, i) => alese.includes(i) || R.filter(q => grup(q) === grup(r)).length === 1) : R;
   cdNou();
   const rc = document.querySelector(`input[name="cdn-cat"][value="${o.categorie}"]`); if(rc) rc.checked = true; cdnCat();
   $("cdn-nume").value = o.catre; const cl = CLI.find(c => c.id === o.client_id); if(cl){ if(cl.cui && $("cdn-cui")) $("cdn-cui").value = cl.cui; if(cl.telefon) $("cdn-tel").value = cl.telefon; if(cl.email) $("cdn-email").value = cl.email; }
-  let n = 0; (k.randuri || []).forEach(r => { const c = ofCat(r.cat); if(!c || !c.produs) return; n++;
-    cdnProd({ produs: c.produs, tip: c.tip || "", buc: r.buc || 1, pret: r.pret, pe: r.pe === "buc" ? "eveniment" : r.pe, frecventa: r.frecventa }); });
+  let n = 0; RA.forEach(r => { const c = ofCat(r.cat); if(!c || !c.produs) return; n++;
+    cdnProd({ produs: c.produs, tip: c.tip || "", buc: r.buc || 1, pret: r.pret, pe: r.pe === "buc" ? "eveniment" : r.pe, frecventa: r.frecventa });
+    const fr = $("cdn-pr").lastElementChild.querySelector(".p-fr");   // v8.86: frecvența din ofertă (ex. 3 / Sap) apare și dacă nu e în lista obișnuită
+    if(r.frecventa && fr && fr.value !== r.frecventa){ const op = document.createElement("option"); op.textContent = r.frecventa; fr.appendChild(op); fr.value = r.frecventa; } });
   if(k.plata) $("cdn-cond").value = k.plata; if(k.minim_per) $("cdn-per-txt").value = k.minim_per;
-  const dub = (k.randuri || []).length > new Set((k.randuri || []).map(r => r.cat || r.nume)).size;
-  toast(dub ? "Oferta avea variante — lasă în fișă doar varianta aleasă de client (✕ pe celelalte)" : n ? "Fișa e completată din oferta " + ofNr(o) + " — verifică și apasă „🔗 Creează link”" : "Produsele din ofertă nu sunt legate de catalog — adaugă-le de mână în fișă");
+  toast(n ? "Fișa e completată din oferta " + ofNr(o) + " — verifică și apasă „🔗 Creează link”" : "Produsele din ofertă nu sunt legate de catalog — adaugă-le de mână în fișă");
 }
 // ── PDF-ul ofertei: blocuri măsurate și împărțite pe pagini A4 (antet + subsol pe fiecare pagină) ──
 async function ofPozeIa(chei){
