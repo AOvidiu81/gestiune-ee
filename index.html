@@ -1116,7 +1116,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
   <span id="rz-w"><button id="rz-reset" class="pictograma" title="Lățimi implicite — pune coloanele din tabelele acestei file înapoi cum erau">↺ Reset layout</button><i class="rz-sep">|</i></span>
   <span id="tz-w" title="Mărimea tabelului (doar tabelul, restul rămâne la fel), din 5 în 5%. Merge și cu Ctrl + rotița mausului, Ctrl + / Ctrl − / Ctrl 0. Dublu clic pe procent = scrii tu valoarea."><button class="pictograma" onclick="tzPas(-1)" aria-label="Micșorează tabelul">−</button><b id="tz-v" ondblclick="tzScrie()" title="Dublu clic = scrii mărimea (ex. 87), Enter">100%</b><input id="tz-in" type="number" min="30" max="300" step="5" style="display:none"><button class="pictograma" onclick="tzPas(1)" aria-label="Mărește tabelul">+</button></span>
-  <span class="ver">v8.82</span>
+  <span class="ver">v8.83</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -1334,6 +1334,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
     </div>
     <div class="kpi" id="r-kpi" style="margin-top:12px"></div>
     <p class="muted" id="r-nota" data-info="Facturare — cum se calculează" style="margin:4px 0 0"></p>
+    <div id="r-sicap"></div>
   </div>
   <div class="card noprint ver-banda" id="r-ver" style="display:none"></div>
   <div class="card ecran-t"><div class="tw"><table id="r-tbl"></table></div></div>
@@ -2005,6 +2006,11 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   #mod-k .mk-g{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px}
   @media(max-width:600px){ #mod-k .mk-g{grid-template-columns:1fr} }
   #mod-k .mk-sec{margin-bottom:10px}
+  #mod-k .mk-sc-r{border:1px solid var(--bd);border-radius:10px;padding:8px 10px;margin-bottom:8px}
+  #mod-k .mk-sc-g{display:grid;grid-template-columns:130px 140px 70px 1fr;gap:6px 8px;align-items:end}#mod-k .mk-sc-g label{font-size:11px;margin:0}
+  #mod-k .mk-sc-g2{display:grid;grid-template-columns:140px 140px 110px 1fr auto;gap:6px 8px;align-items:end;margin-top:6px}#mod-k .mk-sc-g2 label{font-size:11px;margin:0}
+  #mod-k .mk-sc-v{font-size:12.5px;line-height:1.5}#mod-k .mk-sc-c{font-size:12.5px;margin-top:6px}
+  @media(max-width:600px){ #mod-k .mk-sc-g,#mod-k .mk-sc-g2{grid-template-columns:1fr 1fr} }
   #mod-k .mk-nr-r{display:flex;align-items:flex-end;gap:16px;margin-bottom:10px;flex-wrap:wrap}
   #mod-k .mk-nr-r input{width:170px}
   #mod-k .mk-cl{padding-bottom:9px;font-size:14px;font-weight:600}
@@ -2053,6 +2059,10 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
     <div class="mk-sec"><label>Prelungire tacită, conform contract</label>
       <div class="mk-tac"><span>începând cu data de</span><input type="date" id="mk-tdin" oninput="mkPer()" onchange="mkPer()">
         <label class="mk-chip" title="Apasă ca să treci contractul pe nedeterminat (nu mai expiră)"><input type="checkbox" id="mk-tacit" onchange="mkTacit()"><span>Nedeterminat</span></label></div>
+    </div>
+    <div class="mk-sec" id="mk-sc-w"><label>Achiziție SICAP <span class="muted" style="text-transform:none;font-weight:400">(instituții — valoarea contractată; o achiziție nouă la prelungirea prin act adițional)</span></label>
+      <div id="mk-sc"></div>
+      <button type="button" class="btn sm sec" onclick="mkScAdauga()">+ Achiziție SICAP</button>
     </div>
     <div class="mk-g">
       <div><label>Stare</label><select id="mk-stare"></select>
@@ -4367,6 +4377,9 @@ async function ctrGenereaza(kid){
       + " parte integranta din prezentul contract:" + D.map((d, i) => "\n" + actMajCuv("- Anexa Nr. " + nrA(d) + ": " + d.produse.map(p => (+p.bucati || p.bucati) + " " + p.den).join(", ")
         + (d.amplasament ? "; Amplasament: " + d.amplasament : "") + "; Data Livrarii: " + (actD(lista[i].data_livrarii || lista[i].data_emitere) || "______")) + ";").join(""),
     semnatari: Array.isArray(c.semnatari) ? c.semnatari.filter(x => x && (x.nume || x.functie)).map(x => ({ nume: actMajCuv(x.nume) || "______", functie: actMajCuv(x.functie) || "______" })) : [] });
+  // v8.83 (cerut de Ovidiu, 15.11): instituția cu achiziție SICAP → la art. 5.1 nr. achiziției + valoarea fără TVA, TVA-ul și totalul cu TVA
+  { const sc = Array.isArray(k.sicap) ? (k.sicap.find(x => x && !x.act) || k.sicap[0]) : null, v = sc && sicapVal(sc);
+    Object.assign(date, sc && v.fara ? { sicap: true, sicap_nr: sc.nr || "______", sicap_fara: ftBani(v.fara), sicap_cota: String(v.cota), sicap_tva: ftBani(v.tva), sicap_total: ftBani(v.total) } : { sicap: false }); }
   try{
     toast("Se pregătește contractul…");
     await actScript("lib/pizzip.min.js"); await actScript("lib/docxtemplater.min.js");
@@ -6935,6 +6948,7 @@ function openContract(id,clientId){
   const k=id?CTR.find(x=>x.id===id):null; $("mk-title").textContent=k?"Editare contract":"Contract nou"; $("mk-id").value=k?k.id:""; $("mk-client").value=k?k.client_id:clientId;
   $("mk-nr").value=k?k.nr_ctr:""; $("mk-de").value=k?(k.data_emitere||""):today(); $("mk-dx").value=k?(k.data_expirare||""):""; $("mk-xt").value=k?(k.expirare_text||""):""; $("mk-stare").value=k?k.stare:"ACTIV";
   $("mk-intern").checked = !!(k && k.intern);   // v6.71
+  MK_SC = k && Array.isArray(k.sicap) ? k.sicap.map(x => ({ ...x })) : []; mkScDeseneaza(k);   // v8.83
   MK_AA = k ? ctrAA(k).map(x => ({ ...x })) : []; $("mk-tacit").checked = !!(k && k.prelungire_tacita); $("mk-tdin").value = k ? (k.prelungire_tacita_din || "") : ""; mkAADeseneaza();
   const cl = CLI.find(x => x.id === +$("mk-client").value); $("mk-cl").textContent = cl ? "Client: " + cl.nume : "";
   MK_CIORNA = null; $("mk-conf").classList.remove("on"); $("mk-ciorne").innerHTML = "";
@@ -6959,6 +6973,50 @@ function ctrExpText(k){
   const t = u ? fmtD(u) + (ult && ult.pana_la === u ? " (AA " + (ult.nr || "?") + ")" : "") : (k.prelungire_tacita ? "" : (k.expirare_text || ""));
   return k.prelungire_tacita ? "Nedeterminat" : t;   // v6.10: „Nedeterminat” = ultima dată a contractului (nu mai expiră)
 }
+// ── v8.83 (cerut de Ovidiu, 15.11): ACHIZIȚIA SICAP la instituții — nr. (ex. DA123446) + valoarea totală fără TVA; TVA-ul și totalul
+// se calculează (cota 21%, se poate schimba). O achiziție = un contract; la prelungirea prin act adițional (ex. Primăria Hunedoara) se adaugă
+// o achiziție nouă, pe perioada nouă, la același contract. „Facturat” = valorile lunilor marcate FACTURAT / FACTURA AVANS în Facturare.
+let MK_SC = [];
+const sicapVal = x => { const fara = Math.round((+x.fara || 0) * 100) / 100, cota = x.cota == null || x.cota === "" ? 21 : +x.cota, tva = Math.round(fara * cota) / 100; return { fara, cota, tva, total: Math.round((fara + tva) * 100) / 100 }; };
+function mkScCiteste(){
+  MK_SC = [...document.querySelectorAll("#mk-sc .mk-sc-r")].map(r => { const v = c => r.querySelector(c).value.trim();
+    return { nr: v(".sc-nr").toUpperCase().replace(/\s+/g, ""), fara: v(".sc-fara") === "" ? null : +String(v(".sc-fara")).replace(",", "."), cota: v(".sc-cota") === "" ? 21 : +v(".sc-cota"),
+      de: v(".sc-de"), pana: v(".sc-pana"), act: v(".sc-act") }; }).filter(x => x.nr || x.fara);
+  return MK_SC;
+}
+function mkScDeseneaza(k){
+  const cl = CLI.find(x => x.id === +$("mk-client").value), inst = cl && (cl.categorie === "INSTITUTIE" || cl.id_tip === "CIF");
+  $("mk-sc-w").style.display = inst || MK_SC.length ? "" : "none";
+  $("mk-sc").innerHTML = MK_SC.map((x, i) => `<div class="mk-sc-r" data-i="${i}">
+      <div class="mk-sc-g"><div><label>Nr. achiziție</label><input class="sc-nr" value="${esc(x.nr || "")}" placeholder="ex: DA123446"></div>
+        <div><label>Valoare fără TVA (lei)</label><input class="sc-fara" type="number" step="0.01" min="0" value="${x.fara ?? ""}" oninput="mkScCalc(this)"></div>
+        <div><label>TVA %</label><input class="sc-cota" type="number" step="1" min="0" value="${x.cota ?? 21}" oninput="mkScCalc(this)"></div>
+        <div class="mk-sc-v"></div></div>
+      <div class="mk-sc-g2"><div><label>Perioada — de la</label><input type="date" class="sc-de" value="${esc(x.de || "")}"></div><div><label>până la</label><input type="date" class="sc-pana" value="${esc(x.pana || "")}"></div>
+        <div><label>La act adițional nr.</label><input class="sc-act" value="${esc(x.act || "")}" placeholder="— (contractul)"></div><div></div>
+        <button type="button" class="btn sm sec" title="Scoate achiziția" onclick="mkScCiteste();MK_SC.splice(${i},1);mkScDeseneaza()">✕</button></div>
+      <div class="mk-sc-c" data-c="${i}"></div></div>`).join("") || (inst ? '<div class="muted" style="font-size:12px;margin-bottom:6px">Nicio achiziție SICAP.</div>' : "");
+  calendarActiveaza($("mk-sc")); $("mk-sc").querySelectorAll(".sc-fara").forEach(e => mkScCalc(e));
+  const kid = +$("mk-id").value; if(kid && MK_SC.length) sicapConsum(CTR.find(c => c.id === kid), MK_SC).then(L => L.forEach((z, i) => { const el = document.querySelector(`#mk-sc [data-c="${i}"]`); if(el) el.innerHTML = sicapConsumHtml(z); }));
+}
+function mkScCalc(el){ const r = el.closest(".mk-sc-r"), v = sicapVal({ fara: r.querySelector(".sc-fara").value, cota: r.querySelector(".sc-cota").value });
+  r.querySelector(".mk-sc-v").innerHTML = v.fara ? `TVA: <b>${ftBani(v.tva)}</b> lei<br>Total cu TVA: <b>${ftBani(v.total)}</b> lei` : '<span class="muted">TVA-ul și totalul se calculează</span>'; }
+function mkScAdauga(){ mkScCiteste(); const k = CTR.find(c => c.id === +$("mk-id").value) || {};
+  MK_SC.push({ nr: "", fara: null, cota: 21, de: MK_SC.length ? "" : ($("mk-de").value || ""), pana: MK_SC.length ? "" : ($("mk-dx").value || ""), act: "" }); mkScDeseneaza(k); }
+// facturat pe fiecare achiziție = valorile salvate în facturare_stare (FACTURAT / FACTURA AVANS) pe anexele contractului, în lunile perioadei achiziției
+async function sicapConsum(k, L){
+  if(!k || !L || !L.length) return [];
+  const ids = ANX.filter(a => a.contract_id === k.id).map(a => a.id); let F = [];
+  if(ids.length){ const r = await db.from("facturare_stare").select("anexa_id,an,luna,stare,valoare").in("anexa_id", ids).in("stare", ["FACTURAT", "FACTURA AVANS"]); F = r.data || []; }
+  return L.map(x => { const v = sicapVal(x), lu = z => z ? z.slice(0, 7) : "";
+    const ale = F.filter(f => { const m = f.an + "-" + String(f.luna).padStart(2, "0"); return (!x.de || m >= lu(x.de)) && (!x.pana || m <= lu(x.pana)); });
+    const fact = Math.round(ale.reduce((t, f) => t + (+f.valoare || 0), 0) * 100) / 100, faraVal = ale.filter(f => f.valoare == null).length;
+    return { x, v, fact, ramas: Math.round((v.fara - fact) * 100) / 100, faraVal }; });
+}
+const sicapConsumHtml = z => { const p = z.v.fara ? Math.min(100, Math.round(z.fact / z.v.fara * 100)) : 0, cul = z.ramas < 0 ? "#C0392B" : p >= 90 ? "#B45309" : "#2E8B3C";
+  return `<div style="height:7px;border-radius:4px;background:#e3e8ef;overflow:hidden;margin-bottom:3px"><div style="width:${p}%;height:100%;background:${cul}"></div></div>`
+    + `Facturat: <b>${ftBani(z.fact)}</b> lei din ${ftBani(z.v.fara)} (fără TVA) · rămas: <b style="color:${cul}">${ftBani(z.ramas)}</b> lei` + (z.ramas < 0 ? " — <b style='color:#C0392B'>depășit!</b>" : "")
+    + (z.faraVal ? ` <span class="muted">· ${z.faraVal} ${z.faraVal === 1 ? "lună marcată" : "luni marcate"} înainte de v8.83, fără valoare salvată — remarchează-le în Facturare</span>` : ""); };
 let MK_AA = [];
 function mkAACiteste(){
   MK_AA = [...document.querySelectorAll("#mk-aa .mk-aa-r")].map(x => ({ nr: x.querySelector(".aa-nr").value.trim(),
@@ -7007,7 +7065,7 @@ let MK_CIORNA = null, MK_CIORNE = [];
 const MK_CAMPURI = [["mk-nr","nr_ctr","Nr. contract"],["mk-de","data_emitere","Data emitere"],["mk-dx","data_expirare","Data expirare"],["mk-stare","stare","Stare"]];
 const mkDate = () => Object.assign(Object.fromEntries(MK_CAMPURI.map(([el, c]) => [c, ($(el).value || "").trim()])), {
   acte_aditionale: mkAACiteste().filter(x => x.nr || x.pana_la).sort((a, b) => (a.pana_la || "").localeCompare(b.pana_la || "")),
-  prelungire_tacita: $("mk-tacit").checked, prelungire_tacita_din: $("mk-tacit").checked ? ($("mk-tdin").value || "") : "" });
+  prelungire_tacita: $("mk-tacit").checked, prelungire_tacita_din: $("mk-tacit").checked ? ($("mk-tdin").value || "") : "", sicap: mkScCiteste() });
 async function mkCiorne(){
   const cid = +$("mk-client").value;
   const { data, error } = await db.from("ciorne").select("*").eq("tip", "contract").order("id");
@@ -7049,7 +7107,7 @@ async function mkAnuleaza(){
 }
 function mkGoleste(){
   if(!confirm("Ștergeți informațiile din acest card?")) return;
-  $("mk-nr").value = ""; $("mk-de").value = today(); $("mk-dx").value = ""; $("mk-xt").value = ""; $("mk-stare").value = "ACTIV"; $("mk-tacit").checked = false; $("mk-tdin").value = ""; MK_AA = []; mkAADeseneaza();
+  $("mk-nr").value = ""; $("mk-de").value = today(); $("mk-dx").value = ""; $("mk-xt").value = ""; $("mk-stare").value = "ACTIV"; $("mk-tacit").checked = false; $("mk-tdin").value = ""; MK_AA = []; mkAADeseneaza(); MK_SC = []; mkScDeseneaza(null);
   MK_CIORNA = null; mkCiorneDeseneaza();
 }
 // v5.20 (cerut de Ovidiu, 11.10): perioada dintre emitere și expirare, doar informativ (ambele zile incluse).
@@ -7084,6 +7142,8 @@ function mkVerifica(){
   if(d.prelungire_tacita && !d.prelungire_tacita_din){ toast("Prelungire tacită: completează data de început", true); $("mk-tdin").focus(); return; }
   if(d.prelungire_tacita && d.prelungire_tacita_din <= ctrUltimaData(d)){ toast("Prelungirea tacită trebuie să înceapă după " + fmtD(ctrUltimaData(d)), true); $("mk-tdin").focus(); return; }
   if(aaInapoi){ toast("Actul adițional " + (aaInapoi.nr || "") + ": „prelungit până la” trebuie să fie după data expirării din contract", true); return; }
+  { const g = d.sicap.find(x => !x.nr || !(+x.fara > 0)); if(g){ toast("Achiziția SICAP: completează nr. și valoarea fără TVA (sau scoate rândul)", true); return; }
+    const p = d.sicap.find(x => x.de && x.pana && x.pana < x.de); if(p){ toast("Achiziția SICAP " + p.nr + ": „până la” e înainte de „de la”", true); return; } }
   const nou = !$("mk-id").value, cl = CLI.find(x => x.id === +$("mk-client").value);
   $("mk-conf-t").textContent = nou ? "Creați acest contract?" : "Salvați modificările contractului?";
   $("mk-conf-ok").textContent = nou ? "Creează contract nou" : "Salvează modificările";
@@ -7091,6 +7151,7 @@ function mkVerifica(){
   $("mk-conf-date").innerHTML = "<table>" + `<tr><td>Client</td><td><b>${esc(cl ? cl.nume : "—")}</b></td></tr>` +
     MK_CAMPURI.map(([, c, l]) => `<tr><td>${esc(l)}</td><td><b>${esc(v(c) || "—")}</b></td></tr>` +
       (c === "data_expirare" ? d.acte_aditionale.map(x => `<tr><td>Act adițional nr. ${esc(x.nr || "?")}${x.data ? " din " + esc(fmtD(x.data)) : ""}</td><td><b>prelungit până la ${esc(fmtD(x.pana_la))}</b></td></tr>`).join("") +
+        d.sicap.map(x => { const v = sicapVal(x); return `<tr><td>Achiziție SICAP ${esc(x.nr || "?")}</td><td><b>${esc(ftBani(v.fara))} lei fără TVA · TVA ${esc(ftBani(v.tva))} · total ${esc(ftBani(v.total))} lei</b>${x.de || x.pana ? " · " + esc(fmtD(x.de) + " – " + fmtD(x.pana)) : ""}</td></tr>`; }).join("") +
         `<tr><td>Prelungire tacită</td><td><b>${d.prelungire_tacita ? "Nedeterminat, începând cu " + esc(fmtD(d.prelungire_tacita_din)) : "nu"}</b></td></tr>` +
         `<tr><td>Perioada contract <span class="muted">(informativ)</span></td><td>${esc(perioadaCtr(d.data_emitere, ctrUltimaData(d)) || "—")}</td></tr>` : "")).join("") + "</table>";
   confSubBara("mk-conf");
@@ -7102,6 +7163,7 @@ async function saveContract(dupa){
   const rec={client_id:+$("mk-client").value,nr_ctr:$("mk-nr").value.trim(),data_emitere:$("mk-de").value||null,data_expirare:$("mk-dx").value||null,stare:$("mk-stare").value,intern:$("mk-intern").checked};
   const dk = mkDate(); rec.acte_aditionale = dk.acte_aditionale; rec.prelungire_tacita = dk.prelungire_tacita; rec.prelungire_tacita_din = dk.prelungire_tacita_din || null;
   rec.expirare_text = dk.prelungire_tacita ? "Nedeterminat" : null;
+  rec.sicap = dk.sicap.length ? dk.sicap : null;   // v8.83
   if(!rec.nr_ctr){toast("Nr. contract obligatoriu",true);return;}
   $("mk-conf").classList.remove("on");
   const id=$("mk-id").value; let noulId = id ? +id : null;
@@ -8754,6 +8816,7 @@ async function raportFacturare(){
   R_RANDURI.forEach(f => { const m = f[20] || "RON"; pe[m] = pe[m] || [0, 0]; pe[m][0] += f[25]; pe[m][1] += f[26]; });
   $("r-kpi").innerHTML = `<div>Poziții<b>${R_RANDURI.length}</b></div>` +
     Object.keys(pe).sort().map(m => `<div>Fără TVA (${esc(m)})<b>${bani(pe[m][0])}</b></div><div>Cu TVA (${esc(m)})<b>${bani(pe[m][1])}</b></div>`).join("");
+  factSicapBanda(anF, lunaF);   // v8.83
   const nDep = R_AVERT.filter(v => v.anx || v.ctr).length;
   if(nDep) $("r-kpi").innerHTML += `<div class="kpi-amb">Termen depășit<b>${nDep}</b></div>`;
   const deFact = R_RANDURI.filter(f => FACT_VAL(f[0])).length;
@@ -8820,6 +8883,43 @@ async function raportFacturare(){
 let R_VKX = new Map(), R_VK = [], FVER = {}, FV_FILTRU = "", R_FVJ = [];
 const FV_NUME = { V: "CORECT", G: "GRESITA", N: "NEPRIMITA" }, FV_SIM = { V: "✓", G: "!", N: "✗" }, FV_URM = { "-": "V", V: "G", G: "N", N: "-" };
 const fvSt = k => (FVER[k] && FVER[k].stare) || "-";
+// ── v8.83 (cerut de Ovidiu, 15.11): valoarea lunii (fără TVA) se salvează pe anexă când luna devine FACTURAT / FACTURA AVANS —
+// din ea se urmărește consumul achiziției SICAP. Calculul = ca în raport: zile × preț × cantitate (+ servisările la cerere ale anexei).
+function factValAnexa(aid){
+  let t = 0, mon = "";
+  (R_FX || []).forEach(x => { if(!x || !x.a || x.a.id !== aid || x.acoperit || x.locZero) return; t += (x.zile || 0) * (+x.a.pret || 0) * cantFact(x.a, x.cant); mon = mon || x.a.moneda || "RON"; });
+  const a = ANX.find(y => y.id === aid), sc = (FACT_SC || {})[aid];
+  if(a && a.serv_cerere && sc){ t += scZile(sc).reduce((s, z) => s + (+z.buc || 0), 0) * (+a.serv_pret || 0); }
+  return { valoare: Math.round(t * 100) / 100, moneda: mon || (a && a.moneda) || "RON" };
+}
+const factValSnap = (aid, st) => /^(FACTURAT|FACTURA AVANS)$/.test(st) ? factValAnexa(aid) : { valoare: null, moneda: null };
+// Banda SICAP din Facturare: pe fiecare contract din raport cu achiziție SICAP pe luna aleasă — contractat, facturat înainte, rămas, luna aceasta
+async function factSicapBanda(an, luna){
+  const el = $("r-sicap"); if(!el) return; el.innerHTML = "";
+  const m = an + "-" + String(luna).padStart(2, "0"), lu = z => z ? z.slice(0, 7) : "";
+  const K = new Map(); (R_FX || []).forEach(x => { if(x && x.c && Array.isArray(x.c.sicap) && x.c.sicap.length) K.set(x.c.id, x.c); });
+  if(!K.size) return;
+  const out = [];
+  for(const k of K.values()){
+    const ach = k.sicap.filter(x => (!x.de || lu(x.de) <= m) && (!x.pana || lu(x.pana) >= m)); if(!ach.length) continue;
+    const ids = ANX.filter(a => a.contract_id === k.id).map(a => a.id);
+    const r = await db.from("facturare_stare").select("anexa_id,an,luna,stare,valoare").in("anexa_id", ids).in("stare", ["FACTURAT", "FACTURA AVANS"]);
+    const F = r.data || [], cl = CLI.find(c => c.id === k.client_id) || {};
+    const acum = [...new Set((R_FX || []).filter(x => x && x.c && x.c.id === k.id).map(x => x.a.id))].reduce((t, aid) => t + factValAnexa(aid).valoare, 0);
+    ach.forEach(x => { const v = sicapVal(x);
+      const ant = F.filter(f => { const mm = f.an + "-" + String(f.luna).padStart(2, "0"); return mm < m && (!x.de || mm >= lu(x.de)); });
+      const fact = Math.round(ant.reduce((t, f) => t + (+f.valoare || 0), 0) * 100) / 100, ramas = Math.round((v.fara - fact) * 100) / 100, urm = Math.round(acum * 100) / 100;
+      const ultima = x.pana && lu(x.pana) === m, dif = Math.round((urm - ramas) * 100) / 100;
+      const st = urm > ramas + 0.005 ? ["#C0392B", "⚠ Luna aceasta depășește achiziția cu " + ftBani(dif) + " lei — corectează ca să nu treci de valoarea contractată"]
+        : ultima && Math.abs(dif) > 0.005 ? ["#B45309", "⚠ Ultima factură a achiziției: trebuie să fie exact " + ftBani(ramas) + " lei (acum " + ftBani(urm) + ", diferență " + ftBani(-dif) + ")"]
+        : ultima ? ["#2E8B3C", "✓ Ultima factură închide achiziția exact pe valoare"] : ["#2E8B3C", "✓ În limita achiziției"];
+      out.push(`<div style="border:1px solid var(--bd);border-left:5px solid ${st[0]};border-radius:10px;padding:8px 12px;margin-top:8px;font-size:13px">
+        <b>${esc(cl.nume || "")}</b> · CTR ${esc(k.nr_ctr || "")} · SICAP <b>${esc(x.nr || "?")}</b>${x.pana ? " · până la " + esc(fmtD(x.pana)) : ""}<br>
+        Contractat <b>${ftBani(v.fara)}</b> lei fără TVA · facturat înainte de ${zi2(luna)}.${an}: <b>${ftBani(fact)}</b> · rămas: <b>${ftBani(ramas)}</b> · luna aceasta: <b>${ftBani(urm)}</b>
+        ${ant.some(f => f.valoare == null) ? '<span class="muted"> · unele luni marcate înainte de v8.83 n-au valoarea salvată</span>' : ""}<br><span style="color:${st[0]};font-weight:600">${st[1]}</span></div>`); });
+  }
+  el.innerHTML = out.join("");
+}
 async function factVerifica(an, luna){
   const { data, error } = await db.from("facturare_verificare").select("*").eq("an", an).eq("luna", luna);
   if(error) toast("Verificare: " + error.message, true);
@@ -8859,7 +8959,7 @@ async function fvFacturat(t, pune){   // ✓ corect → FACTURAT; din ✓ înapo
   if(t.serv){ const rec = { fact_stare: pune ? "FACTURAT" : null, fac: pune ? "V" : "-" }; r = await db.from("miscari").update(rec).eq("id", t.serv);
     [MISC, CMA, R_MIS].forEach(L => (L || []).forEach(m => { if(m.id === t.serv) Object.assign(m, rec); })); }
   else if(t.sc) r = await db.from("facturare_servisari").upsert({ anexa_id: t.sc, an, luna, stare: pune ? "FACTURAT" : null, actualizat_la: new Date().toISOString() }, { onConflict: "anexa_id,an,luna" });
-  else if(t.anx) r = pune ? await db.from("facturare_stare").upsert({ anexa_id: t.aid, an, luna, stare: "FACTURAT", actualizat_la: new Date().toISOString() })
+  else if(t.anx) r = pune ? await db.from("facturare_stare").upsert(Object.assign({ anexa_id: t.aid, an, luna, stare: "FACTURAT", actualizat_la: new Date().toISOString() }, factValSnap(t.aid, "FACTURAT")))
                           : await db.from("facturare_stare").delete().eq("anexa_id", t.aid).eq("an", an).eq("luna", luna);
   if(r && r.error) toast("STARE LUNA: " + r.error.message, true);
 }
@@ -9271,7 +9371,7 @@ async function setStareFact(anexaId, v){
   const ax = ANX.find(x => x.id === anexaId), implicit = ax && ax.fact_avans ? "FACTURA AVANS" : "ACTIV";   // v7.02: la anexa în avans se ține ACTIV ales de mână
   const q = v === implicit
     ? db.from("facturare_stare").delete().eq("anexa_id", anexaId).eq("an", an).eq("luna", luna)
-    : db.from("facturare_stare").upsert({ anexa_id: anexaId, an, luna, stare: v, actualizat_la: new Date().toISOString() });
+    : db.from("facturare_stare").upsert(Object.assign({ anexa_id: anexaId, an, luna, stare: v, actualizat_la: new Date().toISOString() }, factValSnap(anexaId, v)));
   const { error } = await q;
   if(error){ toast(error.message, true); return; }
   toast("Stare " + zi2(luna) + "." + an + ": " + v);

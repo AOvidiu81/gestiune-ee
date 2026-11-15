@@ -69,7 +69,7 @@ X.append(P('4.6. La livrare și la ridicare se întocmește un proces-verbal de 
 X.append(P('4.7. Livrarea se consideră făcută la descărcarea produselor la locul indicat. Din acel moment Beneficiarul răspunde de paza și integritatea produselor, până la predarea lor către Prestator.'))
 X.append(P('4.8. Când vremea nu permite, serviciile se fac imediat ce condițiile o permit, conform rutei.'))
 X.append(H('Art. 5. Prețul, facturarea și plata'))
-X.append(P('5.1. Chiria și serviciile se plătesc la prețurile din anexe. La preț se adaugă TVA.'))
+X.append(P('5.1. Chiria și serviciile se plătesc la prețurile din anexe. La preț se adaugă TVA.{#sicap} Valoarea totală a contractului, conform achiziției directe nr. **{sicap_nr}**, este de **{sicap_fara} lei fără TVA**, la care se adaugă TVA ({sicap_cota}%) în valoare de **{sicap_tva} lei**, respectiv **{sicap_total} lei cu TVA**. Valoarea totală facturată pe durata contractului nu poate depăși această valoare.{/sicap}'))   # v8.83: achiziția SICAP (instituții)
 X.append(P('5.2. Factura se emite la sfârșitul fiecărei luni și se transmite prin sistemul RO e-Factura. Pentru închirieri mai scurte de 90 de zile, plata se face integral înainte de livrare, pe bază de factură de avans sau proformă.'))
 X.append(P('5.3. Plata se face în 15 zile calendaristice de la data la care factura e disponibilă în RO e-Factura. Beneficiarul poate contesta în scris o factură până la scadență; necontestată până atunci, factura se consideră acceptată.'))
 X.append(P('5.4. Pentru întârziere, Beneficiarul datorează penalități de 0,1% pe zi din suma neachitată, de la scadență până la plată.'))
