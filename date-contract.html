@@ -47,6 +47,13 @@
   @media (max-width:560px){.prod{grid-template-columns:1fr 1fr;padding:10px;border:1px solid var(--ln);border-radius:8px}.prod .x{grid-column:2;justify-self:end}}
   .cont{display:grid;grid-template-columns:1fr 1fr auto;gap:8px;margin-bottom:8px}
   @media (max-width:560px){.cont{grid-template-columns:1fr auto}.cont input:first-child{grid-column:1/-1}}
+  .rec{font-size:11px;font-weight:600;color:#9a6700;background:#FFF4D6;border-radius:5px;padding:1px 6px;margin-left:4px}
+  .card.info{border-left:5px solid var(--g2)}.card.info ul{margin:4px 0 0;padding-left:20px}.card.info li{margin:3px 0}
+  .ci-btns{display:flex;flex-wrap:wrap;gap:8px}.ci-btns .btn{padding:10px 14px}
+  .ci-prevs{display:flex;flex-wrap:wrap;gap:10px;margin-top:10px}.ci-prevs figure{margin:0;position:relative}.ci-prevs img{max-width:220px;max-height:160px;border:1px solid var(--ln);border-radius:8px;display:block}
+  .ci-prevs figcaption{font-size:12px;color:var(--mu);margin-top:2px}.ci-prevs button{position:absolute;top:4px;right:4px;border:0;border-radius:6px;background:#fff;cursor:pointer;padding:2px 7px}
+  .ev-serv{display:flex;flex-wrap:wrap;gap:6px}.ev-serv label{display:flex;align-items:center;gap:5px;font-weight:600;color:var(--tx);border:1px solid var(--ln);border-radius:8px;padding:7px 10px;margin:0;cursor:pointer;background:#fff}
+  .ev-serv label:has(input:checked){background:var(--gl);border-color:var(--g2)}.ev-serv input{width:auto}
   .adr-gasit{font-size:12px;color:var(--ok);margin-top:3px}
 </style>
 </head>
@@ -66,7 +73,7 @@ const CHEIE = "sb_publishable_P1TSfVqqbyr3L-elKVgopg_1FpIpkv4";   // cheia publi
 const COD = new URLSearchParams(location.search).get("c") || "";
 const $ = id => document.getElementById(id);
 const esc = s => String(s == null ? "" : s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
-let C = null, CI = null;
+let C = null;
 
 async function api(o){
   const r = await fetch(URL_F, { method: "POST", headers: { "Content-Type": "application/json", apikey: CHEIE, Authorization: "Bearer " + CHEIE }, body: JSON.stringify({ c: COD, ...o }) });
@@ -76,69 +83,132 @@ function stare(t, cls){ const s = $("stare"); s.className = "msg " + (cls || "in
 
 // ---------- câmpurile pe categorie ----------
 const CAT = {
-  SOCIETATE: { titlu: "Societate (SRL, SA…)", den: "Denumirea societății", reg: "Nr. Registrul Comerțului (J…)", cui: "CUI", sediu: "Adresa sediului social", iban: "Cont IBAN", banca: "Banca (și sucursala)", fct: "Administrator", anaf: true },
-  PFA: { titlu: "PFA / Întreprindere individuală / familială", den: "Denumirea (ex. POPESCU ION PFA)", reg: "Nr. Registrul Comerțului (F… / J…)", cui: "CUI", sediu: "Sediul profesional", iban: "Cont IBAN", banca: "Banca (și sucursala)", fct: "Titular", anaf: true },
-  INSTITUTIE: { titlu: "Instituție publică / Primărie", den: "Denumirea instituției (ex. COMUNA X / ORAȘUL X)", reg: null, cui: "Cod de identificare fiscală (CIF)", sediu: "Adresa sediului", iban: "Cont IBAN (Trezorerie)", banca: "Trezoreria", fct: "Primar", anaf: true },
-  ONG: { titlu: "Asociație / Fundație / ONG", den: "Denumirea organizației", reg: null, inreg: "Înscrisă în Registrul Asociațiilor și Fundațiilor de pe lângă (Judecătoria / Tribunalul) … sub nr. …", cui: "Cod de identificare fiscală (CIF)", sediu: "Adresa sediului", iban: "Cont IBAN", banca: "Banca (și sucursala)", fct: "Președinte", anaf: true },
-  ALTELE: { titlu: "Altă entitate", den: "Denumirea", reg: null, inreg: "Înregistrată la / în baza (act de înființare, registru, nr.)", cui: "Cod fiscal / Cod TVA", sediu: "Adresa sediului", iban: "Cont IBAN", banca: "Banca", fct: "Reprezentant", anaf: true },
+  SOCIETATE: { titlu: "Societate (SRL, SA…)", den: "Denumirea societății", reg: "Nr. Registrul Comerțului (J…)", cui: "CUI", sediu: "Adresa sediului social", iban: "Cont IBAN", banca: "Banca (și sucursala)", fct: "Administrator", fctAj: "la societăți: administratorul", anaf: true },
+  PFA: { titlu: "PFA / Întreprindere individuală / familială", den: "Denumirea (ex. POPESCU ION PFA)", reg: "Nr. Registrul Comerțului (F… / J…)", cui: "CUI", sediu: "Sediul profesional", iban: "Cont IBAN", banca: "Banca (și sucursala)", fct: "Titular", fctAj: "la PFA / II: titularul; la IF: reprezentantul familiei", anaf: true },
+  INSTITUTIE: { titlu: "Instituție publică / Primărie", den: "Denumirea instituției (ex. COMUNA X / ORAȘUL X)", reg: null, cui: "Cod de identificare fiscală (CIF)", sediu: "Adresa sediului", iban: "Cont IBAN (Trezorerie)", banca: "Trezoreria", fct: "Primar", fctAj: "primarul / directorul / conducătorul instituției", anaf: true },
+  ONG: { titlu: "Asociație / Fundație / ONG", den: "Denumirea organizației", reg: null, inreg: "Înscrisă în Registrul Asociațiilor și Fundațiilor de pe lângă (Judecătoria / Tribunalul) … sub nr. …", cui: "Cod de identificare fiscală (CIF)", sediu: "Adresa sediului", iban: "Cont IBAN", banca: "Banca (și sucursala)", fct: "Președinte", fctAj: "de obicei președintele", anaf: true },
+  ALTELE: { titlu: "Altă entitate", den: "Denumirea", reg: null, inreg: "Înregistrată la / în baza (act de înființare, registru, nr.)", cui: "Cod fiscal / Cod TVA", sediu: "Adresa sediului", iban: "Cont IBAN", banca: "Banca", fct: "Reprezentant", fctAj: "cel care are dreptul să semneze", anaf: true },
   PF: { titlu: "Persoană fizică" }
 };
 const camp = (id, et, o) => { o = o || {};
   const v = esc((C.precompletat || {})[id] ?? o.val ?? "");
-  const lab = `<label for="${id}">${esc(et)}${o.ob ? ' <span class="o">*</span>' : ""}</label>`;
+  const lab = `<label for="${id}">${esc(et)}${o.ob ? ' <span class="o">*</span>' : ""}${o.rec ? ' <span class="rec">recomandat</span>' : ""}</label>`;
   const el = o.ta ? `<textarea id="${id}" name="${id}" ${o.ob ? "data-ob" : ""}>${v}</textarea>`
     : `<input id="${id}" name="${id}" type="${o.tip || "text"}" value="${v}" ${o.ob ? "data-ob" : ""} ${o.ph ? `placeholder="${esc(o.ph)}"` : ""} ${o.extra || ""}>`;
   return `<div class="${o.tot ? "tot" : ""}">${lab}${o.btn ? o.btn : el}${o.aj ? `<div class="ajut">${esc(o.aj)}</div>` : ""}</div>`;
 };
 function deseneaza(){
+  // v8.81 (cerut de Ovidiu, 15.11 — notițele din laboratorul fișei): obligatoriu doar ce trebuie; CUI opțional (cu confirmare la trimitere);
+  // adresa de livrare pe căsuțe (județ, localitate, sat, stradă / reper, nr.); la eveniment zilele, servisările, amplasarea și ridicarea;
+  // copia CI: poză față + verso sau din galerie (1–2 poze) sau PDF — opțională la trimitere, obligatorie pentru contract; fără igienizare la produse.
   const k = C.categorie in CAT ? C.categorie : "SOCIETATE", d = CAT[k], P = C.precompletat || {}, ev = C.felul === "eveniment";
-  let h = `<div class="card"><h2>${esc(d.titlu)}</h2><p class="n">Completați câmpurile de mai jos. Cele cu <span style="color:var(--rd)">*</span> sunt obligatorii.${d.anaf ? " Scrieți CUI-ul și apăsați „Caută la ANAF” — se completează singure denumirea, adresa și nr. de înregistrare." : ""}</p><div class="rand">`;
+  let h = "";
+  if(k === "PF") h += `<div class="card info"><h2>De știut</h2><ul><li><b>Plata facturii se face în avans.</b></li><li><b>Chiria minimă este de 30 de zile.</b></li><li><b>Copia actului de identitate este obligatorie pentru contract.</b> O puteți atașa acum (mai jos) sau o trimiteți ulterior.</li></ul></div>`;
+  h += `<div class="card"><h2>${esc(d.titlu)}</h2><p class="n">Completați câmpurile de mai jos. Cele cu <span style="color:var(--rd)">*</span> sunt obligatorii.${d.anaf ? " Scrieți CUI-ul și apăsați „Caută la ANAF” — se completează singure denumirea, adresa și nr. de înregistrare." : ""}</p><div class="rand">`;
   if(k === "PF"){
     h += camp("nume", "Nume și prenume", { ob: 1, tot: 1 }) + camp("cnp", "CNP", { ob: 1, extra: 'inputmode="numeric" maxlength="13"' }) + camp("telefon", "Telefon", { ob: 1, tip: "tel" })
       + camp("ci_serie", "CI — seria", { ob: 1, extra: 'maxlength="3" style="text-transform:uppercase"' }) + camp("ci_numar", "CI — numărul", { ob: 1, extra: 'inputmode="numeric"' })
       + camp("ci_emis_de", "CI — emisă de", { ob: 1 }) + camp("ci_expira", "CI — valabilă până la", { ob: 1, tip: "date" })
-      + camp("domiciliu", "Domiciliul (localitate, stradă, nr., județ)", { ob: 1, tot: 1, ta: 1 }) + camp("email", "E-mail", { tip: "email", tot: 1 });
-    h += `</div></div><div class="card"><h2>Copia actului de identitate <span style="color:var(--rd)">*</span></h2><p class="n">Fotografiați buletinul (fața) sau încărcați o poză / un PDF. Copia se anexează la contract (Anexa CI) și validează contractul. Se păstrează doar la Euro Ecologic.</p><div>
-      <input id="ci_fis" type="file" accept="image/*,application/pdf" capture="environment"><div id="ci_info" class="ajut"></div><img id="ci_prev" class="ci-prev ascuns" alt="">`;
+      + camp("domiciliu", "Domiciliul (localitate, stradă, nr., județ)", { ob: 1, tot: 1, ta: 1 }) + camp("email", "E-mail", { tip: "email", tot: 1, rec: 1 });
+    h += `</div></div><div class="card"><h2>Copia actului de identitate</h2><p class="n">Obligatorie pentru contract (se anexează — Anexa CI). Faceți poză la buletin (față și, dacă e cazul, verso), alegeți 1–2 poze din galerie sau un PDF. Se păstrează doar la Euro Ecologic.</p>
+      <div class="ci-btns"><label class="btn sec">📷 Poză — față<input type="file" accept="image/*" capture="environment" data-p="fata" hidden></label>
+        <label class="btn sec">📷 Poză — verso<input type="file" accept="image/*" capture="environment" data-p="verso" hidden></label>
+        <label class="btn sec">🖼 Din galerie (1–2 poze)<input type="file" accept="image/*" multiple data-p="gal" hidden></label>
+        <label class="btn sec">📄 PDF<input type="file" accept="application/pdf" data-p="pdf" hidden></label></div>
+      <div id="ci_prevs" class="ci-prevs"></div><div id="ci_info" class="ajut"></div>`;
   } else {
-    h += camp("cui", d.cui, { ob: k !== "ALTELE", btn: `<div class="cu-btn"><input id="cui_v" value="${esc(P.cui || "")}" inputmode="numeric" ${k !== "ALTELE" ? "data-ob" : ""}><button type="button" class="btn sec" id="b_anaf">Caută la ANAF</button></div>` })
-      + (d.reg ? camp("nr_reg", d.reg, { ob: 1 }) : "<div></div>")
+    h += camp("cui", d.cui, { btn: `<div class="cu-btn"><input id="cui_v" value="${esc(P.cui || "")}" inputmode="numeric"><button type="button" class="btn sec" id="b_anaf">Caută la ANAF</button></div>` })
+      + (d.reg ? camp("nr_reg", d.reg) : "<div></div>")
       + camp("denumire", d.den, { ob: 1, tot: 1 })
-      + (d.inreg ? camp("inregistrare", d.inreg, { ob: k === "ONG", tot: 1, ta: 1, ph: k === "ONG" ? "ex. Judecătoria Deva, nr. 23/2002" : "" }) : "")
-      + camp("sediu", d.sediu, { ob: 1, tot: 1, ta: 1 })
-      + camp("iban", d.iban, { ob: 1, ph: "RO.. ....  (dacă nu aveți acum, scrieți -)", aj: "Dacă nu îl aveți la îndemână, scrieți „-”." }) + camp("banca", d.banca, { ob: 1, aj: "Se completează singură din IBAN." });
-    h += `</div></div><div class="card"><h2>Cine semnează contractul</h2><p class="n">Reprezentantul legal. Dacă la dvs. semnează și alte persoane (ex. consilier juridic, viză CFP, director economic), adăugați-le mai jos — vor apărea la semnături.</p><div class="rand">`
+      + (d.inreg ? camp("inregistrare", d.inreg, { tot: 1, ta: 1, ph: k === "ONG" ? "ex. Judecătoria Deva, nr. 23/2002" : "" }) : "")
+      + camp("sediu", d.sediu, { tot: 1, ta: 1 })
+      + camp("iban", d.iban, { ph: "RO.. ....", aj: "Dacă nu îl aveți acum, lăsați gol." }) + camp("banca", d.banca, { aj: "Se completează singură din IBAN." });
+    h += `</div></div><div class="card"><h2>Cine semnează contractul</h2><p class="n">Reprezentantul legal (${esc(d.fctAj)}). Dacă la dvs. semnează și alte persoane (ex. consilier juridic, viză CFP, director economic), adăugați-le mai jos — vor apărea la semnături.</p><div class="rand">`
       + camp("reprezentant", "Nume și prenume", { ob: 1 }) + camp("functie", "Funcția", { ob: 1, val: d.fct }) + `</div>
       <div style="margin-top:12px"><label>Alți semnatari (opțional)</label><div id="semn"></div><button type="button" class="btn sec" id="b_semn">+ Adaugă semnatar</button></div>`;
-    h += `</div><div class="card"><h2>Contact</h2><div class="rand">` + camp("telefon", "Telefon", { ob: 1, tip: "tel" }) + camp("email", "E-mail", { ob: 1, tip: "email" })
-      + camp("email_efactura", "E-mail pentru facturi (dacă e altul)", { tip: "email", tot: 1 });
+    h += `</div><div class="card"><h2>Contact</h2><div class="rand">` + camp("telefon", "Telefon", { ob: 1, tip: "tel" }) + camp("email", "E-mail", { tip: "email", rec: 1 })
+      + camp("email_efactura", "E-mail pentru facturi (dacă e altul)", { tip: "email", tot: 1, rec: 1, aj: "Aici primiți facturile. Dacă e același e-mail, lăsați gol." });
   }
   h += `</div></div><div class="card"><h2>Adresa pentru notificări</h2><p class="n">Doar dacă e alta decât ${k === "PF" ? "domiciliul" : "sediul"}.</p><div class="rand">`
     + camp("notif_adresa", "Adresa", { tot: 1, ta: 1 }) + camp("notif_atentie", "În atenția (nume)", { tot: 1 });
-  h += `</div></div><div class="card"><h2>Livrare</h2><div class="rand">`
-    + camp("livrare_adresa", "Adresa de livrare (județ, localitate, stradă, nr.)", { ob: 1, tot: 1, ta: 1 })
-    + camp("livrare_gps", "Coordonate GPS (opțional)", { tot: 1, ph: "ex. 45.7512, 22.9034", btn: `<div class="cu-btn"><input id="livrare_gps_v" value="${esc(P.livrare_gps || "")}" placeholder="ex. 45.7512, 22.9034"><button type="button" class="btn sec" id="b_gps">📍 Locația mea</button></div>`, aj: "Dacă sunteți acum la locul livrării, apăsați „Locația mea”." })
+  h += `</div></div><div class="card"><h2>Livrare</h2><p class="n">Dacă sunteți acum la locul livrării, apăsați „📍 Locația mea” — adresa se completează singură; verificați-o.</p><div class="rand">`
+    + camp("livrare_gps", "Coordonate GPS (opțional)", { tot: 1, btn: `<div class="cu-btn"><input id="livrare_gps_v" value="${esc(P.livrare_gps || "")}" placeholder="ex. 45.7512, 22.9034"><button type="button" class="btn sec" id="b_gps">📍 Locația mea</button></div>` })
+    + camp("liv_jud", "Județul", { ob: 1, btn: `<select id="liv_jud" name="liv_jud" data-ob><option value="">— alegeți —</option>${Object.entries(JUD).map(([c, n]) => `<option value="${c}" ${c === (P.liv_jud || "") ? "selected" : ""}>${esc(n)}</option>`).join("")}</select>` })
+    + camp("liv_loc", "Localitatea (oraș / comună)", { ob: 1, extra: 'list="dl_loc" autocomplete="off"' })
+    + camp("liv_sat", "Satul (dacă e cazul)", { extra: 'list="dl_sat" autocomplete="off"' })
+    + camp("liv_str", "Strada (sau un reper)", { ob: 1, ph: "ex. Str. Libertății / lângă Căminul Cultural" })
+    + camp("liv_nr", "Nr.", { ph: "ex. 12" })
+    + `<div class="tot ajut" id="liv_vez"></div><datalist id="dl_loc"></datalist><datalist id="dl_sat"></datalist>`
     + camp("contact_nume", "Persoana de contact la locație", { ob: 1 }) + camp("contact_tel", "Telefonul ei", { ob: 1, tip: "tel" })
     + `<div class="tot"><div id="contacte"></div><button type="button" class="btn sec" id="b_cont">+ Adaugă încă o persoană de contact</button></div>`;
   h += `</div></div><div class="card"><h2>Comanda</h2><p class="n">Alegeți produsele. Pentru mai multe produse apăsați „+ Adaugă produs”.</p><div id="prod"></div>
     <button type="button" class="btn sec" id="b_prod" style="margin-bottom:12px">+ Adaugă produs</button><div class="rand">`
     + camp("produse_obs", "Alte detalii despre comandă (opțional)", { tot: 1, ta: 1 })
-    + (ev ? camp("eveniment", "Evenimentul: zilele, orele de amplasare / ridicare, câte servisări", { ob: 1, tot: 1, ta: 1 })
-          : camp("perioada_de", "De la data", { tip: "date" }) + camp("perioada_pana", "Până la data (sau scrieți mai jos câte zile / luni)", { tip: "date" }) + camp("perioada_text", "Perioada (dacă nu știți datele exacte)", { tot: 1, ph: "ex. 60 de zile / 6 luni / până la finalizarea lucrării" }))
-    + camp("observatii", "Observații", { tot: 1, ta: 1 });
+    + (ev ? "" : camp("perioada_de", "De la data", { tip: "date", ob: 1 }) + camp("perioada_pana", "Până la data (sau scrieți mai jos câte zile / luni)", { tip: "date" }) + camp("perioada_text", "Perioada (dacă nu știți datele exacte)", { tot: 1, ph: "ex. 60 de zile / 6 luni / până la finalizarea lucrării" }));
+  if(ev){
+    h += `</div></div><div class="card"><h2>Evenimentul</h2><div class="rand">`
+      + camp("ev_de", "Prima zi a evenimentului", { tip: "date", ob: 1 }) + camp("ev_pana", "Ultima zi a evenimentului", { tip: "date", ob: 1 })
+      + `<div class="tot"><label>Zilele cu servisare (curățare)</label><div id="ev_serv" class="ev-serv"><span class="ajut">Alegeți întâi prima și ultima zi.</span></div></div>`;
+    h += `</div></div><div class="card"><h2>Amplasare și ridicare</h2><p class="n">Când aducem produsele și când le ridicăm. Dacă nu știți încă orele, lăsați gol.</p><div class="rand">`
+      + camp("ev_amp_data", "Amplasare — ziua", { tip: "date" }) + camp("ev_amp_ora", "Amplasare — ora", { tip: "time" })
+      + camp("ev_rid_data", "Ridicare — ziua", { tip: "date" }) + camp("ev_rid_ora", "Ridicare — ora", { tip: "time" });
+  }
+  h += `</div><div class="rand" style="margin-top:10px">` + camp("observatii", "Observații", { tot: 1, ta: 1 });
   h += `</div></div><div id="err" class="msg err ascuns"></div><button type="submit" class="btn trimite" id="b_trim">Trimite datele</button>`;
   $("f").innerHTML = h; $("f").classList.remove("ascuns");
-  // semnatari
   (Array.isArray(P.semnatari) ? P.semnatari : []).forEach(s => adSemn(s.nume, s.functie));
   if($("b_semn")) $("b_semn").onclick = () => adSemn("", "");
   if($("b_anaf")) $("b_anaf").onclick = cautaAnaf;
   if($("b_gps")) $("b_gps").onclick = gps;
-  if($("ci_fis")) $("ci_fis").onchange = alegeCi;
+  $("f").querySelectorAll(".ci-btns input[type=file]").forEach(i => i.onchange = () => alegeCi(i));
   if($("iban")) $("iban").addEventListener("input", () => { const b = bancaDinIban($("iban").value); if(b && !$("banca").value.trim()) $("banca").value = b; });
   $("b_cont").onclick = () => adCont("", ""); (Array.isArray(P.contacte_extra) ? P.contacte_extra : []).forEach(c => adCont(c.nume, c.telefon));
   $("b_prod").onclick = () => adProd({}); (Array.isArray(P.produse_lista) && P.produse_lista.length ? P.produse_lista : [{}]).forEach(adProd);
+  ["liv_jud", "liv_loc", "liv_sat", "liv_str", "liv_nr"].forEach(i => $(i).addEventListener("input", livActual));
+  $("liv_jud").addEventListener("change", livActual); livActual();
+  if(ev){ EV_SERV = new Set(Array.isArray(P.ev_servisare) ? P.ev_servisare : []); ["ev_de", "ev_pana"].forEach(i => $(i).addEventListener("change", evZile)); evZile(); }
   $("f").onsubmit = trimite;
 }
+// ---------- adresa de livrare pe căsuțe (lista oficială SIRUTA, aceeași ca în GestiuneEE) ----------
+const JUD = { AB:"Alba", AR:"Arad", AG:"Argeș", BC:"Bacău", BH:"Bihor", BN:"Bistrița-Năsăud", BT:"Botoșani", BV:"Brașov", BR:"Brăila", B:"București", BZ:"Buzău",
+  CS:"Caraș-Severin", CL:"Călărași", CJ:"Cluj", CT:"Constanța", CV:"Covasna", DB:"Dâmbovița", DJ:"Dolj", GL:"Galați", GR:"Giurgiu", GJ:"Gorj", HR:"Harghita",
+  HD:"Hunedoara", IL:"Ialomița", IS:"Iași", IF:"Ilfov", MM:"Maramureș", MH:"Mehedinți", MS:"Mureș", NT:"Neamț", OT:"Olt", PH:"Prahova", SM:"Satu Mare", SJ:"Sălaj",
+  SB:"Sibiu", SV:"Suceava", TR:"Teleorman", TM:"Timiș", TL:"Tulcea", VS:"Vaslui", VL:"Vâlcea", VN:"Vrancea" };
+let LOC = null, LOC_P = null;
+const fd = s => String(s || "").normalize("NFD").replace(/[̀-ͯ]/g, "").toUpperCase().replace(/[^A-Z0-9 ]/g, " ").replace(/\s+/g, " ").trim();
+const tit = s => String(s || "").toLowerCase().replace(/(^|[\s-])(\p{L})/gu, (m, a, b) => a + b.toUpperCase());
+function locIncarca(){ if(LOC) return Promise.resolve(LOC); if(!LOC_P) LOC_P = fetch("localitati.json").then(r => r.json()).then(d => (LOC = d)).catch(() => { LOC_P = null; return null; }); return LOC_P; }
+function livUat(){ if(!LOC) return null; const j = $("liv_jud").value, n = fd($("liv_loc").value).replace(/^(COMUNA|COM|ORASUL|ORAS|MUNICIPIUL|MUN)\s+/, "");
+  const i = LOC.u.findIndex(u => u[2] === j && fd(u[0]) === n); return i < 0 ? null : i; }
+async function livActual(){
+  await locIncarca();
+  if(LOC){ const j = $("liv_jud").value, KN = { M: "municipiu", O: "oraș", C: "comună" };
+    const L = j ? LOC.u.filter(u => u[2] === j) : [];
+    const sig = j + "|" + L.length; if($("dl_loc").dataset.s !== sig){ $("dl_loc").dataset.s = sig; $("dl_loc").innerHTML = L.map(u => `<option value="${esc(tit(u[0]))}">${KN[u[1]] || ""}</option>`).join(""); }
+    const ui = livUat(), S = ui == null ? [] : LOC.l.filter(l => l[1] === ui);
+    const s2 = String(ui); if($("dl_sat").dataset.s !== s2){ $("dl_sat").dataset.s = s2; $("dl_sat").innerHTML = S.map(l => `<option value="${esc(tit(l[0]))}">`).join(""); } }
+  const t = livText(); $("liv_vez").innerHTML = t ? "Adresa: <b>" + esc(t) + "</b>" : "";
+}
+// „Com. Peștișu Mic, Sat Peștișu Mare, Str. Principală nr. 12, Jud. HD”
+function livText(){
+  const j = $("liv_jud").value, loc = $("liv_loc").value.trim(), sat = $("liv_sat").value.trim(), str = $("liv_str").value.trim(), nr = $("liv_nr").value.trim();
+  if(!loc && !str) return "";
+  const ui = livUat(), com = ui != null && LOC.u[ui][1] === "C";
+  return [loc && (com && !/^com/i.test(loc) ? "Com. " + loc : loc), sat && (/^sat\b/i.test(sat) ? sat : "Sat " + sat), [str, nr && "nr. " + nr].filter(Boolean).join(" "), j && "Jud. " + j].filter(Boolean).join(", ");
+}
+// ---------- eveniment: zilele cu servisare ----------
+let EV_SERV = new Set();
+function evZile(){
+  const a = $("ev_de").value, b = $("ev_pana").value, box = $("ev_serv");
+  [...box.querySelectorAll("input:checked")].forEach(i => EV_SERV.add(i.value)); [...box.querySelectorAll("input:not(:checked)")].forEach(i => EV_SERV.delete(i.value));
+  if(!a || !b || b < a){ box.innerHTML = '<span class="ajut">' + (a && b ? "Ultima zi trebuie să fie după prima." : "Alegeți întâi prima și ultima zi.") + "</span>"; return; }
+  const Z = [], d = new Date(a + "T12:00:00"), e = new Date(b + "T12:00:00"), ZS = ["dum", "lun", "mar", "mie", "joi", "vin", "sâm"];
+  while(d <= e && Z.length < 31){ Z.push(d.toISOString().slice(0, 10)); d.setDate(d.getDate() + 1); }
+  box.innerHTML = Z.map(z => `<label><input type="checkbox" value="${z}" ${EV_SERV.has(z) ? "checked" : ""}> ${ZS[new Date(z + "T12:00:00").getDay()]} ${z.slice(8)}.${z.slice(5, 7)}</label>`).join("");
+  if(!$("ev_amp_data").value){ const x = new Date(a + "T12:00:00"); x.setDate(x.getDate() - 1); $("ev_amp_data").value = x.toISOString().slice(0, 10); }
+  if(!$("ev_rid_data").value){ const x = new Date(b + "T12:00:00"); x.setDate(x.getDate() + 1); $("ev_rid_data").value = x.toISOString().slice(0, 10); }
+}
+const dRo = z => z ? z.slice(8) + "." + z.slice(5, 7) + "." + z.slice(0, 4) : "";
 // v8.20 (cerut de Ovidiu, 08.11): banca din IBAN; mai multe persoane de contact; produsele pe rânduri (din catalog); adresa din GPS
 const BANCI = { RNCB:"BCR", BRDE:"BRD", BTRL:"Banca Transilvania", RZBR:"Raiffeisen Bank", INGB:"ING Bank", CECE:"CEC Bank", TREZ:"Trezoreria Statului",
   BACX:"UniCredit Bank", PIRB:"First Bank", OTPV:"OTP Bank", BRMA:"Banca Românească", UGBI:"Garanti BBVA", LIBR:"Libra Internet Bank", CARP:"Patria Bank",
@@ -149,42 +219,37 @@ function adCont(n, t){
   d.innerHTML = `<input placeholder="Nume și prenume" value="${esc(n)}"><input type="tel" placeholder="Telefon" value="${esc(t)}"><button type="button" class="btn sec" title="Scoate">✕</button>`;
   d.querySelector("button").onclick = () => d.remove(); $("contacte").appendChild(d);
 }
-// v8.21 (cerut de Ovidiu, 08.11): clientul alege doar 1 / săpt., 2 / săpt., 2 / lună, 1 / lună, La cerere — în ordinea asta
-const FR_OK = ["1 / Sap", "2 / Sap", "2 / Luna", "1 / Luna", "La Cerere"];
-const CAT_P = () => (C.catalog && C.catalog.produse) || [], FRECV = () => { const l = (C.catalog && C.catalog.frecvente) || []; return FR_OK.filter(x => l.includes(x)); };
-const areFrecv = p => /TOALET/i.test(p || "");
-const frTxt = x => String(x).replace(/\s*\/\s*Sap$/i, " / săptămână").replace(/\s*\/\s*Luna$/i, " / lună").replace(/^La Cerere$/i, "La cerere");
+// v8.81 (cerut de Ovidiu, 15.11): fără igienizare (frecvența o stabilim noi, din ofertă); la toaletă doar tipurile SIMPLA și CU LAVOAR INTERIOR
+const CAT_P = () => (C.catalog && C.catalog.produse) || [];
+const tipuriOk = p => { const t = (p && p.tipuri) || []; return /TOALET/i.test(p && p.nume || "") ? t.filter(x => /^(SIMPLA|CU LAVOAR INTERIOR)$/i.test(x)) : t; };
 function adProd(o){
   const d = document.createElement("div"); d.className = "prod";
   const opt = (l, v, gol) => (gol ? `<option value="">${gol}</option>` : "") + l.map(x => `<option ${x === v ? "selected" : ""}>${esc(x)}</option>`).join("");
   d.innerHTML = `<div><label>Produs</label><select class="p-prod">${opt(CAT_P().map(p => p.nume), o.produs, "— alegeți —")}</select></div>
     <div class="p-tip-w"><label>Tip</label><select class="p-tip"></select></div>
     <div><label>Bucăți</label><input class="p-buc" type="number" min="1" inputmode="numeric" value="${esc(o.buc || 1)}"></div>
-    <div class="p-fr-w"><label>Igienizare (curățare)</label><select class="p-fr"><option value="">— cât de des —</option>${FRECV().map(x => `<option value="${esc(x)}" ${x === o.frecventa ? "selected" : ""}>${esc(frTxt(x))}</option>`).join("")}</select></div>
     <button type="button" class="btn sec x" title="Scoate produsul">✕</button>`;
   const pr = d.querySelector(".p-prod"), tp = d.querySelector(".p-tip");
-  const actual = () => { const p = CAT_P().find(x => x.nume === pr.value), t = (p && p.tipuri) || [];
-    tp.innerHTML = opt(t, o.tip, t.length > 1 ? "— oricare —" : ""); d.querySelector(".p-tip-w").style.visibility = t.length ? "" : "hidden";
-    d.querySelector(".p-fr-w").style.visibility = areFrecv(pr.value) ? "" : "hidden"; };
+  const actual = () => { const t = tipuriOk(CAT_P().find(x => x.nume === pr.value));
+    tp.innerHTML = opt(t, o.tip, t.length > 1 ? "— oricare —" : ""); d.querySelector(".p-tip-w").style.visibility = t.length ? "" : "hidden"; };
   pr.onchange = () => { o.tip = ""; actual(); }; actual();
   d.querySelector(".x").onclick = () => d.remove(); $("prod").appendChild(d);
 }
 function citesteProd(){
-  return [...$("prod").children].map(d => ({ produs: d.querySelector(".p-prod").value, tip: d.querySelector(".p-tip").value, buc: +d.querySelector(".p-buc").value || 0,
-    frecventa: areFrecv(d.querySelector(".p-prod").value) ? d.querySelector(".p-fr").value : "" })).filter(x => x.produs);
+  return [...$("prod").children].map(d => ({ produs: d.querySelector(".p-prod").value, tip: d.querySelector(".p-tip").value, buc: +d.querySelector(".p-buc").value || 0 })).filter(x => x.produs);
 }
-const textProd = l => l.map(x => x.buc + " " + x.produs + (x.tip ? " " + x.tip : "") + (x.frecventa ? " (igienizare " + x.frecventa + ")" : "")).join("; ");
-async function adresaDinGps(lat, lon){
+const textProd = l => l.map(x => x.buc + " " + x.produs + (x.tip ? " " + x.tip : "")).join("; ");
+async function adresaDinGps(lat, lon){   // v8.81: pe căsuțe (județ, localitate, sat, stradă, nr.)
   try{
     const r = await fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lon}&zoom=18&addressdetails=1&accept-language=ro`);
-    const j = await r.json(), a = j.address || {}, P = [];
-    const jud = String(a.county || a.state || "").replace(/^Jude[țt]ul\s+/i, "");
-    if(jud) P.push("Jud. " + jud);
-    const loc = a.city || a.town || (a.municipality ? "Com. " + a.municipality : ""), sat = a.village || a.hamlet || "";
-    if(loc) P.push(loc); if(sat && sat !== (a.city || a.town || a.municipality)) P.push("Sat " + sat);
-    if(a.road) P.push(a.road.replace(/^Strada\s+/i, "Str. ") + (a.house_number ? " nr. " + a.house_number : ""));
-    return P.join(", ") || j.display_name || "";
-  }catch(e){ return ""; }
+    const j = await r.json(), a = j.address || {};
+    const jn = fd(String(a.county || a.state || "").replace(/^Jude[țt]ul\s+/i, "").replace(/^Municipiul\s+/i, ""));
+    const jud = Object.keys(JUD).find(c => fd(JUD[c]) === jn) || (/BUCURESTI/.test(jn) ? "B" : "");
+    const loc = a.city || a.town || a.municipality || "", sat = a.village || a.hamlet || "";
+    const o = { jud, loc: loc || sat, sat: loc && sat && sat !== loc ? sat : "", str: String(a.road || "").replace(/^Strada\s+/i, "Str. "), nr: a.house_number || "" };
+    o.text = [o.loc, o.sat && "Sat " + o.sat, [o.str, o.nr && "nr. " + o.nr].filter(Boolean).join(" "), jud && "Jud. " + jud].filter(Boolean).join(", ");
+    return o;
+  }catch(e){ return null; }
 }
 function adSemn(n, f){
   const d = document.createElement("div"); d.className = "semn";
@@ -212,36 +277,62 @@ function gps(){
   navigator.geolocation.getCurrentPosition(async p => {
     const la = p.coords.latitude.toFixed(6), lo = p.coords.longitude.toFixed(6); $("livrare_gps_v").value = la + ", " + lo;
     const adr = await adresaDinGps(la, lo); b.disabled = false; b.textContent = "📍 Locația mea";
-    if(adr){ const t = $("livrare_adresa"); if(!t.value.trim() || confirm("Am găsit adresa:\n" + adr + "\n\nO trec la „Adresa de livrare” în locul celei scrise?")) t.value = adr;
-      let n = $("adr_gasit"); if(!n){ n = document.createElement("div"); n.id = "adr_gasit"; n.className = "adr-gasit"; t.parentElement.appendChild(n); }
-      n.textContent = "✓ Adresa găsită după locație — verificați-o și completați ce lipsește (ex. numărul)."; } },
+    if(adr && adr.jud){ const are = $("liv_loc").value.trim() || $("liv_str").value.trim();
+      if(!are || confirm("Am găsit adresa:\n" + adr.text + "\n\nO trec la livrare în locul celei scrise?")){
+        $("liv_jud").value = adr.jud; $("liv_loc").value = adr.loc; $("liv_sat").value = adr.sat; $("liv_str").value = adr.str; $("liv_nr").value = adr.nr; await livActual(); }
+      let n = $("adr_gasit"); if(!n){ n = document.createElement("div"); n.id = "adr_gasit"; n.className = "adr-gasit tot"; $("liv_vez").after(n); }
+      n.textContent = "✓ Adresa găsită după locație — verificați-o și completați ce lipsește (ex. numărul sau un reper)."; } },
     () => { b.disabled = false; b.textContent = "📍 Locația mea"; alert("Nu am putut afla locația (permisiunea a fost refuzată?)"); }, { enableHighAccuracy: true, timeout: 15000 });
 }
-// copia CI: poza se micșorează la max. 2000 px (JPEG); PDF-ul merge cum e
-async function alegeCi(){
-  const f = $("ci_fis").files[0]; CI = null; $("ci_prev").classList.add("ascuns"); $("ci_info").textContent = "";
-  if(!f) return;
-  if(f.type === "application/pdf"){
-    if(f.size > 7.5 * 1024 * 1024){ $("ci_info").textContent = "PDF-ul e prea mare (max. 7 MB)."; return; }
-    CI = { tip: "application/pdf", base64: await b64(f) }; $("ci_info").textContent = "✓ PDF atașat: " + f.name; return;
-  }
+// v8.81: copia CI — poză față / verso (cameră), 1–2 poze din galerie sau un PDF; pozele se lipesc într-o singură imagine (față sus, verso jos)
+let CIP = { fata: null, verso: null, pdf: null };
+async function micsoreaza(f){
+  const img = await new Promise((ok, nu) => { const i = new Image(); i.onload = () => ok(i); i.onerror = nu; i.src = URL.createObjectURL(f); });
+  const k = Math.min(1, 1800 / Math.max(img.width, img.height)), cv = document.createElement("canvas");
+  cv.width = Math.round(img.width * k); cv.height = Math.round(img.height * k); cv.getContext("2d").drawImage(img, 0, 0, cv.width, cv.height); return cv;
+}
+async function alegeCi(inp){
+  const F = [...inp.files], p = inp.dataset.p; inp.value = ""; if(!F.length) return; $("ci_info").textContent = "";
   try{
-    const img = await new Promise((ok, nu) => { const i = new Image(); i.onload = () => ok(i); i.onerror = nu; i.src = URL.createObjectURL(f); });
-    const k = Math.min(1, 2000 / Math.max(img.width, img.height)), cv = document.createElement("canvas");
-    cv.width = Math.round(img.width * k); cv.height = Math.round(img.height * k); cv.getContext("2d").drawImage(img, 0, 0, cv.width, cv.height);
-    const url = cv.toDataURL("image/jpeg", 0.85); CI = { tip: "image/jpeg", base64: url.split(",")[1] };
-    $("ci_prev").src = url; $("ci_prev").classList.remove("ascuns"); $("ci_info").textContent = "✓ Poză atașată. Verificați să se citească bine.";
+    if(p === "pdf"){ const f = F[0]; if(f.size > 7.5 * 1024 * 1024){ $("ci_info").textContent = "PDF-ul e prea mare (max. 7 MB)."; return; }
+      CIP = { fata: null, verso: null, pdf: { nume: f.name, base64: await b64(f) } }; }
+    else { CIP.pdf = null;
+      if(p === "gal"){ const a = await micsoreaza(F[0]); if(F[1]){ CIP.fata = a; CIP.verso = await micsoreaza(F[1]); } else if(!CIP.fata) CIP.fata = a; else CIP.verso = a; }
+      else CIP[p] = await micsoreaza(F[0]); }
   }catch(e){ $("ci_info").textContent = "Fișierul nu poate fi citit. Încercați o poză JPG."; }
+  ciArata();
+}
+function ciArata(){
+  const box = $("ci_prevs"); if(!box) return; box.innerHTML = "";
+  if(CIP.pdf){ box.innerHTML = `<figure><div class="msg ok" style="margin:0">📄 ${esc(CIP.pdf.nume)}</div><button type="button" data-x="pdf">✕</button></figure>`; }
+  ["fata", "verso"].forEach(k => { if(!CIP[k]) return; const f = document.createElement("figure");
+    f.innerHTML = `<img src="${CIP[k].toDataURL("image/jpeg", .7)}" alt=""><figcaption>${k === "fata" ? "Față" : "Verso"}</figcaption><button type="button" data-x="${k}" title="Scoate">✕</button>`; box.appendChild(f); });
+  box.querySelectorAll("[data-x]").forEach(b => b.onclick = () => { CIP[b.dataset.x] = null; ciArata(); });
+  $("ci_info").textContent = CIP.pdf || CIP.fata || CIP.verso ? "✓ Verificați să se citească bine." + (CIP.fata && !CIP.verso && !CIP.pdf ? " Dacă buletinul are și verso, adăugați-l." : "") : "";
+}
+function ciFinal(){
+  if(CIP.pdf) return { tip: "application/pdf", base64: CIP.pdf.base64 };
+  const L = [CIP.fata, CIP.verso].filter(Boolean); if(!L.length) return null;
+  const g = 20, cv = document.createElement("canvas"); cv.width = Math.max(...L.map(c => c.width)); cv.height = L.reduce((s, c) => s + c.height, 0) + g * (L.length - 1);
+  const x = cv.getContext("2d"); x.fillStyle = "#fff"; x.fillRect(0, 0, cv.width, cv.height); let y = 0; L.forEach(c => { x.drawImage(c, 0, y); y += c.height + g; });
+  return { tip: "image/jpeg", base64: cv.toDataURL("image/jpeg", 0.85).split(",")[1] };
 }
 const b64 = f => new Promise(ok => { const r = new FileReader(); r.onload = () => ok(String(r.result).split(",")[1]); r.readAsDataURL(f); });
 const cnpOk = c => { if(!/^\d{13}$/.test(c)) return false; const k = "279146358279"; let s = 0; for(let i = 0; i < 12; i++) s += +c[i] * +k[i]; let r = s % 11; if(r === 10) r = 1; return r === +c[12]; };
 async function trimite(ev){
   ev.preventDefault();
   const R = {}, lips = [];
-  $("f").querySelectorAll("input[name],textarea[name]").forEach(e => { R[e.name] = e.value.trim(); });
+  $("f").querySelectorAll("input[name],textarea[name],select[name]").forEach(e => { R[e.name] = e.value.trim(); });
   if($("cui_v")) R.cui = $("cui_v").value.trim();
   if($("livrare_gps_v")) R.livrare_gps = $("livrare_gps_v").value.trim();
   if($("contacte")) R.contacte_extra = [...$("contacte").children].map(d => { const i = d.querySelectorAll("input"); return { nume: i[0].value.trim(), telefon: i[1].value.trim() }; }).filter(c => c.nume || c.telefon);
+  // v8.81: adresa de livrare compusă din căsuțe (+ părțile, pentru comanda din aplicație); evenimentul compus din zile / servisări / amplasare / ridicare
+  R.livrare_adresa = livText(); R.livrare = { jud: R.liv_jud, loc: R.liv_loc, sat: R.liv_sat, str: R.liv_str, nr: R.liv_nr, uat_tip: livUat() != null ? LOC.u[livUat()][1] : "" };
+  if(C.felul === "eveniment"){ R.ev_servisare = [...$("ev_serv").querySelectorAll("input:checked")].map(i => i.value);
+    R.eveniment = ["Eveniment " + dRo(R.ev_de) + (R.ev_pana && R.ev_pana !== R.ev_de ? " – " + dRo(R.ev_pana) : ""),
+      "servisare: " + (R.ev_servisare.length ? R.ev_servisare.map(z => z.slice(8) + "." + z.slice(5, 7)).join(", ") : "fără"),
+      R.ev_amp_data && "amplasare " + dRo(R.ev_amp_data) + (R.ev_amp_ora ? " ora " + R.ev_amp_ora : ""), R.ev_rid_data && "ridicare " + dRo(R.ev_rid_data) + (R.ev_rid_ora ? " ora " + R.ev_rid_ora : "")].filter(Boolean).join("; ");
+    R.perioada_de = R.ev_amp_data || R.ev_de; R.perioada_pana = R.ev_rid_data || R.ev_pana; }
   R.produse_lista = citesteProd(); R.produse = textProd(R.produse_lista) + (R.produse_obs ? (R.produse_lista.length ? "; " : "") + R.produse_obs : "");
   if($("semn")) R.semnatari = [...$("semn").children].map(d => { const i = d.querySelectorAll("input"); return { nume: i[0].value.trim(), functie: i[1].value.trim() }; }).filter(s => s.nume || s.functie);
   if($("iban") && $("iban").value.trim() === "-" && !$("banca").value.trim()){ $("banca").value = "-"; R.banca = "-"; }   // fără IBAN → nici bancă
@@ -250,15 +341,17 @@ async function trimite(ev){
   const err = [];
   if(lips.length) err.push("Completați câmpurile marcate cu roșu.");
   if(!R.produse_lista.length || R.produse_lista.some(x => x.buc < 1)){ err.push("Alegeți cel puțin un produs și numărul de bucăți."); }
-  else if(R.produse_lista.some(x => areFrecv(x.produs) && !x.frecventa)) err.push("Alegeți cât de des se face igienizarea la toalete.");
   if(C.categorie === "PF"){
     if(R.cnp && !cnpOk(R.cnp)){ $("cnp").classList.add("gres"); err.push("CNP-ul nu este valid."); }
-    if(!CI) err.push("Atașați copia actului de identitate.");
     if(R.ci_expira && R.ci_expira < new Date().toISOString().slice(0, 10)){ $("ci_expira").classList.add("gres"); err.push("Actul de identitate este expirat."); }
   }
+  if(C.felul === "eveniment" && R.ev_de && R.ev_pana && R.ev_pana < R.ev_de){ $("ev_pana").classList.add("gres"); err.push("Ultima zi a evenimentului trebuie să fie după prima."); }
   if(R.iban && R.iban !== "-" && !/^RO\d{2}[A-Z]{4}[A-Z0-9]{16}$/i.test(R.iban.replace(/\s+/g, ""))){ $("iban").classList.add("gres"); err.push("IBAN-ul nu pare corect (RO + 22 de caractere)."); }
   if(err.length){ $("err").innerHTML = err.map(esc).join("<br>"); $("err").classList.remove("ascuns"); (lips[0] || $("err")).scrollIntoView({ behavior: "smooth", block: "center" }); return; }
   $("err").classList.add("ascuns");
+  if(C.categorie !== "PF" && !R.cui && !confirm("Nu ați completat " + (CAT[C.categorie] || {}).cui + "-ul.\n\nFără el nu putem întocmi contractul — Euro Ecologic vă va contacta pentru a-l afla.\n\nTrimiteți datele fără " + (CAT[C.categorie] || {}).cui + "?")){ $("cui_v").focus(); return; }
+  if(C.categorie === "PF" && !CIP.pdf && !CIP.fata && !CIP.verso && !confirm("Nu ați atașat copia actului de identitate.\n\nEste obligatorie pentru contract — va trebui să o trimiteți ulterior.\n\nTrimiteți datele fără ea?")) return;
+  const CI = C.categorie === "PF" ? ciFinal() : null;
   const b = $("b_trim"); b.disabled = true; b.textContent = "Se trimite…";
   try{
     const j = await api({ actiune: "trimite", raspuns: R, ci: CI });

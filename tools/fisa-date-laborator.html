@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Laborator — Fișa „Date contract” (12 variante)</title>
+<style>
+  /* Fișier de lucru pentru Ovidiu (15.11.2026) — SEPARAT de aplicație: nu se leagă de Supabase, nu trimite nimic.
+     Arată fișa „Date contract” exact cum o vede clientul, pe fiecare din cele 12 variante (6 categorii × perioadă / eveniment),
+     și lasă notițe pe fiecare câmp. Notițele stau în browser (pe acest calculator) și se exportă ca text pentru Claude. */
+  :root{--g:#17275A;--g2:#2F55A4;--gl:#EEF2FA;--tx:#141A2E;--mu:#5E6A82;--ln:#D7DDEA;--rd:#B4232A;--ok:#15803d;--bg:#F4F6FB;--am:#B45309}
+  *{box-sizing:border-box}
+  body{margin:0;font-family:Arial,Helvetica,sans-serif;background:var(--bg);color:var(--tx);font-size:15px;line-height:1.4}
+  header{background:var(--g);color:#fff;padding:12px 18px;display:flex;align-items:center;gap:14px;flex-wrap:wrap;position:sticky;top:0;z-index:10}
+  header h1{font-size:17px;margin:0}header small{display:block;font-size:12px;opacity:.85;font-weight:400}
+  header .sp{flex:1}
+  header button{font:600 13px Arial;border:0;border-radius:8px;padding:8px 12px;cursor:pointer;background:#fff;color:var(--g)}
+  header button.v{background:#2E8B3C;color:#fff}
+  .wrap{display:grid;grid-template-columns:250px 1fr;gap:16px;padding:16px;max-width:1500px;margin:0 auto}
+  nav{position:sticky;top:70px;align-self:start}
+  nav h3{font-size:12px;text-transform:uppercase;letter-spacing:.05em;color:var(--mu);margin:12px 0 6px}
+  nav .cat{background:#fff;border:1px solid var(--ln);border-radius:10px;padding:8px;margin-bottom:8px}
+  nav .cat b{display:block;font-size:13px;margin-bottom:6px}
+  nav .cat .r{display:flex;gap:6px}
+  nav button{flex:1;font:600 12px Arial;border:1px solid var(--ln);border-radius:7px;padding:6px 4px;cursor:pointer;background:var(--gl);color:var(--g);position:relative}
+  nav button.on{background:var(--g);color:#fff;border-color:var(--g)}
+  nav button .nr{position:absolute;top:-7px;right:-6px;background:var(--am);color:#fff;border-radius:9px;font-size:10px;padding:1px 5px}
+  nav .tab{width:100%;margin-bottom:6px;padding:9px}
+  main{min-width:0}
+  .bandou{background:#fff;border:1px solid var(--ln);border-left:5px solid var(--g2);border-radius:10px;padding:12px 14px;margin-bottom:14px}
+  .bandou h2{margin:0 0 4px;font-size:18px;color:var(--g)}
+  .bandou p{margin:0;color:var(--mu);font-size:13px}
+  .card{background:#fff;border:1px solid var(--ln);border-radius:10px;padding:14px 16px;margin-bottom:14px}
+  .card h2{font-size:14px;margin:0 0 4px;color:var(--g);text-transform:uppercase;letter-spacing:.03em}
+  .card p.n{margin:0 0 10px;color:var(--mu);font-size:13px}
+  .f{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);gap:14px;padding:9px 0;border-top:1px dashed var(--ln)}
+  .f:first-of-type{border-top:0}
+  .f label{display:block;font-size:13px;font-weight:600;color:var(--mu);margin-bottom:4px}
+  .f label .o{color:var(--rd)}
+  .f .id{font:11px monospace;color:#9aa3b5;margin-left:6px}
+  input,textarea,select{width:100%;font:inherit;padding:8px 10px;border:1px solid var(--ln);border-radius:8px;background:#fff;color:var(--tx)}
+  textarea{min-height:54px;resize:vertical}
+  .ajut{font-size:12px;color:var(--mu);margin-top:3px}
+  .cu-btn{display:flex;gap:8px}.cu-btn input{flex:1}
+  .btn{font:600 13px Arial;border:0;border-radius:8px;padding:8px 12px;cursor:pointer;background:var(--gl);color:var(--g);white-space:nowrap}
+  .nota{background:#FFFBEB;border:1px solid #F3E2B3;border-radius:8px;padding:8px}
+  .nota .r{display:flex;gap:6px;margin-bottom:6px;flex-wrap:wrap}
+  .nota .r label{display:flex;align-items:center;gap:4px;font-size:12px;font-weight:600;color:var(--tx);margin:0;cursor:pointer;border:1px solid #E7D7A8;border-radius:6px;padding:3px 7px;background:#fff}
+  .nota .r input{width:auto;margin:0}
+  .nota .r label:has(input:checked){background:var(--g);color:#fff;border-color:var(--g)}
+  .nota .r label.scot:has(input:checked){background:var(--rd);border-color:var(--rd)}
+  .nota .r label.ok:has(input:checked){background:var(--ok);border-color:var(--ok)}
+  .nota textarea{min-height:34px;font-size:13px;padding:6px 8px}
+  .nota .tot{font-size:11.5px;color:var(--mu);display:flex;align-items:center;gap:4px;margin-top:4px}
+  .nota .tot input{width:auto}
+  .f.are .nota{background:#FEF3C7;border-color:var(--am)}
+  .f.scos > div:first-child{opacity:.45;text-decoration:line-through}
+  .nou{margin-top:10px;background:#F0FDF4;border:1px dashed #86C79A;border-radius:8px;padding:8px}
+  .nou label{font-size:12px;font-weight:700;color:var(--ok);display:block;margin-bottom:4px}
+  .gen{background:#FFFBEB;border:1px solid var(--am)}
+  .prod{display:grid;grid-template-columns:2fr 2fr 70px 1.6fr;gap:8px;align-items:end}
+  .prod label{font-size:11px}
+  table.m{border-collapse:collapse;width:100%;background:#fff;font-size:12.5px}
+  table.m th,table.m td{border:1px solid var(--ln);padding:5px 7px;vertical-align:top}
+  table.m th{background:var(--g);color:#fff;font-size:12px;position:sticky;top:62px}
+  table.m td.s{background:var(--gl);font-weight:700;color:var(--g)}
+  table.m td.x{text-align:center;color:#b8c0d0}
+  table.m td.ob{background:#FDECEC}
+  table.m td.op{background:#F2F7FF}
+  table.m td small{color:var(--mu);display:block}
+  .leg{font-size:12px;color:var(--mu);margin:0 0 10px}
+  .leg span{display:inline-block;padding:1px 8px;border-radius:5px;margin-right:6px}
+  pre#exp{white-space:pre-wrap;background:#fff;border:1px solid var(--ln);border-radius:10px;padding:14px;font-size:13px}
+  @media print{
+    header,nav,.nu-print{display:none!important}.wrap{display:block;padding:0}body{background:#fff}
+    .card,.bandou{break-inside:avoid-page;border-color:#bbb}table.m th{position:static}
+    .f{break-inside:avoid}input,textarea,select{border-color:#999}
+  }
+</style>
+</head>
+<body>
+<header>
+  <div><h1>Laborator — Fișa „Date contract”<small>Separat de aplicație · nu se salvează nimic în GestiuneEE · notițele rămân în acest browser</small></h1></div>
+  <div class="sp"></div>
+  <button onclick="window.print()" title="Tipărește varianta deschisă (cu notițele) sau salvează ca PDF">🖨 Tipărește / PDF</button>
+  <button onclick="arataExport()" class="v" title="Toate notițele, ca text, de trimis lui Claude">📤 Exportă notițele</button>
+</header>
+<div class="wrap">
+  <nav id="nav"></nav>
+  <main id="main"></main>
+</div>
+<script>
+// ---------- definițiile — copiate din date-contract.html (GestiuneEE v8.79), ca să arate exact ce vede clientul ----------
+const CAT = {
+  SOCIETATE: { titlu: "Societate (SRL, SA…)", scurt: "Societate", ic: "🏢", den: "Denumirea societății", reg: "Nr. Registrul Comerțului (J…)", cui: "CUI", sediu: "Adresa sediului social", iban: "Cont IBAN", banca: "Banca (și sucursala)", fct: "Administrator" },
+  PFA: { titlu: "PFA / Întreprindere individuală / familială", scurt: "PFA / II / IF", ic: "👤", den: "Denumirea (ex. POPESCU ION PFA)", reg: "Nr. Registrul Comerțului (F… / J…)", cui: "CUI", sediu: "Sediul profesional", iban: "Cont IBAN", banca: "Banca (și sucursala)", fct: "Titular" },
+  INSTITUTIE: { titlu: "Instituție publică / Primărie", scurt: "Instituție publică", ic: "🏛️", den: "Denumirea instituției (ex. COMUNA X / ORAȘUL X)", reg: null, cui: "Cod de identificare fiscală (CIF)", sediu: "Adresa sediului", iban: "Cont IBAN (Trezorerie)", banca: "Trezoreria", fct: "Primar" },
+  ONG: { titlu: "Asociație / Fundație / ONG", scurt: "ONG", ic: "🤝", den: "Denumirea organizației", reg: null, inreg: "Înscrisă în Registrul Asociațiilor și Fundațiilor de pe lângă (Judecătoria / Tribunalul) … sub nr. …", cui: "Cod de identificare fiscală (CIF)", sediu: "Adresa sediului", iban: "Cont IBAN", banca: "Banca (și sucursala)", fct: "Președinte" },
+  PF: { titlu: "Persoană fizică", scurt: "Persoană fizică", ic: "🪪" },
+  ALTELE: { titlu: "Altă entitate", scurt: "Altele", ic: "📄", den: "Denumirea", reg: null, inreg: "Înregistrată la / în baza (act de înființare, registru, nr.)", cui: "Cod fiscal / Cod TVA", sediu: "Adresa sediului", iban: "Cont IBAN", banca: "Banca", fct: "Reprezentant" }
+};
+const ORD = ["SOCIETATE", "PFA", "INSTITUTIE", "ONG", "PF", "ALTELE"];
+const FEL = { perioada: "📅 Perioadă", eveniment: "🎪 Eveniment" };
+
+// carduri → câmpuri: { id, et, ob, tip, ta, ph, aj, gen } (gen = câmp „special”: buton, listă)
+function fisa(k, fel){
+  const d = CAT[k], ev = fel === "eveniment", C = [];
+  if(k === "PF"){
+    C.push({ t: "Persoană fizică", n: "Completați câmpurile de mai jos. Cele cu * sunt obligatorii.", f: [
+      { id: "nume", et: "Nume și prenume", ob: 1 }, { id: "cnp", et: "CNP", ob: 1 }, { id: "telefon", et: "Telefon", ob: 1, tip: "tel" },
+      { id: "ci_serie", et: "CI — seria", ob: 1 }, { id: "ci_numar", et: "CI — numărul", ob: 1 }, { id: "ci_emis_de", et: "CI — emisă de", ob: 1 },
+      { id: "ci_expira", et: "CI — valabilă până la", ob: 1, tip: "date" }, { id: "domiciliu", et: "Domiciliul (localitate, stradă, nr., județ)", ob: 1, ta: 1 },
+      { id: "email", et: "E-mail", tip: "email" } ] });
+    C.push({ t: "Copia actului de identitate *", n: "Fotografiați buletinul (fața) sau încărcați o poză / un PDF. Copia se anexează la contract (Anexa CI) și validează contractul.", f: [
+      { id: "ci_fisier", et: "Poză / PDF cu buletinul", ob: 1, gen: "fisier" } ] });
+  } else {
+    C.push({ t: d.titlu, n: "Completați câmpurile de mai jos. Cele cu * sunt obligatorii. Scrieți CUI-ul și apăsați „Caută la ANAF” — se completează singure denumirea, adresa și nr. de înregistrare.", f: [
+      { id: "cui", et: d.cui, ob: k !== "ALTELE", gen: "anaf" },
+      ...(d.reg ? [{ id: "nr_reg", et: d.reg, ob: 1 }] : []),
+      { id: "denumire", et: d.den, ob: 1 },
+      ...(d.inreg ? [{ id: "inregistrare", et: d.inreg, ob: k === "ONG", ta: 1, ph: k === "ONG" ? "ex. Judecătoria Deva, nr. 23/2002" : "" }] : []),
+      { id: "sediu", et: d.sediu, ob: 1, ta: 1 },
+      { id: "iban", et: d.iban, ob: 1, ph: "RO.. ....  (dacă nu aveți acum, scrieți -)", aj: "Dacă nu îl aveți la îndemână, scrieți „-”." },
+      { id: "banca", et: d.banca, ob: 1, aj: "Se completează singură din IBAN." } ] });
+    C.push({ t: "Cine semnează contractul", n: "Reprezentantul legal. Dacă la dvs. semnează și alte persoane (ex. consilier juridic, viză CFP, director economic), adăugați-le mai jos — vor apărea la semnături.", f: [
+      { id: "reprezentant", et: "Nume și prenume", ob: 1 }, { id: "functie", et: "Funcția", ob: 1, val: d.fct },
+      { id: "semnatari", et: "Alți semnatari (opțional) — nume + funcție, „+ Adaugă semnatar”", gen: "lista" } ] });
+    C.push({ t: "Contact", f: [ { id: "telefon", et: "Telefon", ob: 1, tip: "tel" }, { id: "email", et: "E-mail", ob: 1, tip: "email" },
+      { id: "email_efactura", et: "E-mail pentru facturi (dacă e altul)", tip: "email" } ] });
+  }
+  C.push({ t: "Adresa pentru notificări", n: "Doar dacă e alta decât " + (k === "PF" ? "domiciliul" : "sediul") + ".", f: [
+    { id: "notif_adresa", et: "Adresa", ta: 1 }, { id: "notif_atentie", et: "În atenția (nume)" } ] });
+  C.push({ t: "Livrare", f: [
+    { id: "livrare_adresa", et: "Adresa de livrare (județ, localitate, stradă, nr.)", ob: 1, ta: 1 },
+    { id: "livrare_gps", et: "Coordonate GPS (opțional)", gen: "gps", aj: "Dacă sunteți acum la locul livrării, apăsați „Locația mea”." },
+    { id: "contact_nume", et: "Persoana de contact la locație", ob: 1 }, { id: "contact_tel", et: "Telefonul ei", ob: 1, tip: "tel" },
+    { id: "contacte_extra", et: "Alte persoane de contact — „+ Adaugă încă o persoană de contact”", gen: "lista" } ] });
+  C.push({ t: "Comanda", n: "Alegeți produsele. Pentru mai multe produse apăsați „+ Adaugă produs”.", f: [
+    { id: "produse", et: "Produse: Produs / Tip / Bucăți / Igienizare (frecvența doar la toalete)", gen: "produse" },
+    { id: "produse_obs", et: "Alte detalii despre comandă (opțional)", ta: 1 },
+    ...(ev ? [{ id: "eveniment", et: "Evenimentul: zilele, orele de amplasare / ridicare, câte servisări", ob: 1, ta: 1 }]
+           : [{ id: "perioada_de", et: "De la data", tip: "date" }, { id: "perioada_pana", et: "Până la data (sau scrieți mai jos câte zile / luni)", tip: "date" },
+              { id: "perioada_text", et: "Perioada (dacă nu știți datele exacte)", ph: "ex. 60 de zile / 6 luni / până la finalizarea lucrării" }]),
+    { id: "observatii", et: "Observații", ta: 1 } ] });
+  return C;
+}
+
+// ---------- notițele (localStorage) ----------
+const CH = "ee-lab-fisa-date-v1";
+let N = {}; try{ N = JSON.parse(localStorage.getItem(CH) || "{}"); }catch(e){ N = {}; }
+const salv = () => { try{ localStorage.setItem(CH, JSON.stringify(N)); }catch(e){} deseneazaNav(); };
+const cheie = (k, fel) => k + "|" + fel;
+const nota = (v, id) => (N[v] && N[v][id]) || null;
+function notaEf(k, fel, id){ return nota(cheie(k, fel), id) || nota("*", id) || null; }   // „*” = pentru toate variantele
+const ACT = [["ok", "✔ OK"], ["mod", "✎ Modific"], ["scot", "✕ Scot"], ["ob", "★ Obligatoriu"], ["opt", "☆ Opțional"]];
+const ACT_T = { ok: "OK", mod: "MODIFIC", scot: "SCOT", ob: "FAC OBLIGATORIU", opt: "FAC OPȚIONAL" };
+const esc = s => String(s == null ? "" : s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+
+let V = { k: "SOCIETATE", fel: "perioada", ecran: "fisa" };
+
+function nrNote(k, fel){ const o = N[cheie(k, fel)] || {}; return Object.keys(o).filter(x => o[x] && (o[x].a || o[x].t)).length; }
+function deseneazaNav(){
+  let h = `<button class="btn tab ${V.ecran === "tabel" ? "on" : ""}" onclick="V.ecran='tabel';deseneaza()">📊 Tabel: toate câmpurile × categorii</button>
+    <h3>Cele 12 variante</h3>`;
+  ORD.forEach(k => { h += `<div class="cat"><b>${CAT[k].ic} ${CAT[k].scurt}</b><div class="r">` +
+    Object.keys(FEL).map(f => { const n = nrNote(k, f); return `<button class="${V.ecran === "fisa" && V.k === k && V.fel === f ? "on" : ""}" onclick="V={k:'${k}',fel:'${f}',ecran:'fisa'};deseneaza()">${FEL[f]}${n ? `<span class="nr">${n}</span>` : ""}</button>`; }).join("") + `</div></div>`; });
+  const g = Object.keys(N["*"] || {}).length;
+  h += `<p style="font-size:12px;color:var(--mu)">Cifra portocalie = câte notițe ai pe varianta aceea.${g ? ` Ai și <b>${g}</b> notițe „pentru toate variantele”.` : ""}</p>
+    <button class="btn tab" style="background:#FDECEC;color:var(--rd)" onclick="if(confirm('Ștergi TOATE notițele din laborator?')){N={};salv();deseneaza();}">Șterge toate notițele</button>`;
+  document.getElementById("nav").innerHTML = h;
+}
+
+function campHtml(c){
+  const v = esc(c.val || ""), ph = c.ph ? ` placeholder="${esc(c.ph)}"` : "";
+  if(c.gen === "anaf") return `<div class="cu-btn"><input${ph}><button type="button" class="btn">Caută la ANAF</button></div>`;
+  if(c.gen === "gps") return `<div class="cu-btn"><input placeholder="ex. 45.7512, 22.9034"><button type="button" class="btn">📍 Locația mea</button></div>`;
+  if(c.gen === "fisier") return `<input type="file" accept="image/*,application/pdf">`;
+  if(c.gen === "lista") return `<div class="cu-btn"><input placeholder="Nume și prenume"><input placeholder="${c.id === "semnatari" ? "Funcția (ex. Consilier juridic / Vizat CFP)" : "Telefon"}"></div><button type="button" class="btn" style="margin-top:6px">+ Adaugă</button>`;
+  if(c.gen === "produse") return `<div class="prod"><div><label>Produs</label><select><option>— alegeți —</option><option>TOALETA</option><option>LAVOAR EXTERIOR</option><option>CONTAINER</option><option>GARD</option></select></div>
+      <div><label>Tip</label><select><option>— oricare —</option><option>SIMPLA</option><option>CU LAVOAR INTERIOR</option><option>CLASIC</option></select></div>
+      <div><label>Bucăți</label><input type="number" value="1"></div>
+      <div><label>Igienizare (curățare)</label><select><option>— cât de des —</option><option>1 / săptămână</option><option>2 / săptămână</option><option>2 / lună</option><option>1 / lună</option><option>La cerere</option></select></div></div>
+      <button type="button" class="btn" style="margin-top:6px">+ Adaugă produs</button>`;
+  if(c.ta) return `<textarea${ph}>${v}</textarea>`;
+  return `<input type="${c.tip || "text"}" value="${v}"${ph}>`;
+}
+function notaHtml(c){
+  const vk = cheie(V.k, V.fel), loc = nota(vk, c.id), gl = nota("*", c.id), x = loc || gl || {}, toate = !loc && !!gl;
+  return `<div class="nota nu-print-gol" data-id="${c.id}">
+    <div class="r">${ACT.map(([a, t]) => `<label class="${a}"><input type="radio" name="a-${c.id}" value="${a}" ${x.a === a ? "checked" : ""} onchange="scrie('${c.id}')">${t}</label>`).join("")}
+      <label title="Șterge alegerea"><input type="radio" name="a-${c.id}" value="" onchange="scrie('${c.id}')">–</label></div>
+    <textarea placeholder="Notița ta: ce schimbăm la câmpul ăsta (eticheta, explicația, obligatoriu, unde merge în contract…)" oninput="scrie('${c.id}')">${esc(x.t || "")}</textarea>
+    <label class="tot"><input type="checkbox" ${toate ? "checked" : ""} onchange="scrie('${c.id}')"> se aplică la toate cele 12 variante</label></div>`;
+}
+function scrie(id){
+  const el = document.querySelector(`.nota[data-id="${id}"]`), a = (el.querySelector("input[type=radio]:checked") || {}).value || "",
+    t = el.querySelector("textarea").value.trim(), toate = el.querySelector(".tot input").checked, vk = cheie(V.k, V.fel);
+  [vk, "*"].forEach(q => { if(N[q]) delete N[q][id]; });
+  if(a || t){ const q = toate ? "*" : vk; (N[q] = N[q] || {})[id] = { a, t }; }
+  Object.keys(N).forEach(q => { if(!Object.keys(N[q]).length) delete N[q]; });
+  salv(); const f = el.closest(".f"); f.classList.toggle("are", !!(a || t)); f.classList.toggle("scos", a === "scot");
+}
+function scrieGen(q, cmp, val){ const k = q; N[k] = N[k] || {}; if(val.trim()) N[k][cmp] = { a: "", t: val.trim() }; else delete N[k][cmp]; if(!Object.keys(N[k]).length) delete N[k]; salv(); }
+
+function deseneaza(){
+  deseneazaNav(); const M = document.getElementById("main");
+  if(V.ecran === "tabel"){ M.innerHTML = tabel(); scrollTo(0, 0); return; }
+  if(V.ecran === "export"){ return; }
+  const vk = cheie(V.k, V.fel), d = CAT[V.k], C = fisa(V.k, V.fel);
+  let h = `<div class="bandou"><h2>${d.ic} ${esc(d.titlu)} · ${FEL[V.fel]}</h2><p>Stânga: fișa exact cum o vede clientul pe telefon / calculator (poți scrie în ea, ca probă). Dreapta: notițele tale pe fiecare câmp — alegi ✔ / ✎ / ✕ / ★ / ☆ și scrii ce schimbăm. Se păstrează singure.</p></div>`;
+  C.forEach((card, i) => {
+    h += `<div class="card"><h2>${esc(card.t)}</h2>${card.n ? `<p class="n">${esc(card.n)}</p>` : ""}`;
+    card.f.forEach(c => { const x = notaEf(V.k, V.fel, c.id) || {};
+      h += `<div class="f ${x.a || x.t ? "are" : ""} ${x.a === "scot" ? "scos" : ""}"><div><label>${esc(c.et)}${c.ob ? ' <span class="o">*</span>' : ""}<span class="id">${c.id}</span></label>${campHtml(c)}${c.aj ? `<div class="ajut">${esc(c.aj)}</div>` : ""}</div>${notaHtml(c)}</div>`; });
+    const nk = "_nou_" + i, nv = ((N[vk] || {})[nk] || {}).t || "";
+    h += `<div class="nou"><label>＋ Câmp nou în „${esc(card.t)}” (ce lipsește aici?)</label><textarea placeholder="ex. „Nr. autorizație de construire” — obligatoriu doar la șantiere" oninput="scrieGen('${vk}','${nk}',this.value)">${esc(nv)}</textarea></div></div>`;
+  });
+  const gv = ((N[vk] || {})._general || {}).t || "";
+  h += `<div class="card gen"><h2>📝 Notă generală pentru varianta asta</h2><p class="n">Ce vrei altfel la ${esc(d.scurt)} · ${FEL[V.fel].slice(3)}: ordinea cardurilor, texte, ce documente se fac după (contract / anexă / doar PV), alte cazuri…</p>
+    <textarea style="min-height:110px" oninput="scrieGen('${vk}','_general',this.value)">${esc(gv)}</textarea></div>
+    <div class="card gen"><h2>🔗 Și la contract</h2><p class="n">Ce trebuie să conțină contractul / anexa pentru varianta asta (ex. la persoane fizice — alt model; la instituții — viză CFP, cod angajament…).</p>
+    <textarea style="min-height:90px" oninput="scrieGen('${vk}','_contract',this.value)">${esc(((N[vk] || {})._contract || {}).t || "")}</textarea></div>`;
+  M.innerHTML = h; scrollTo(0, 0);
+}
+
+function tabel(){
+  // rânduri: toate câmpurile, în ordinea în care apar; coloane: cele 6 categorii; perioadă/eveniment marcate pe rând
+  const R = [], idx = {};
+  ["perioada", "eveniment"].forEach(fel => ORD.forEach(k => fisa(k, fel).forEach(card => card.f.forEach(c => {
+    if(!(c.id in idx)){ idx[c.id] = R.length; R.push({ id: c.id, card: card.t.startsWith(CAT[k].titlu) || card.t === "Persoană fizică" ? "Date de identificare" : card.t.replace(" *", ""), cel: {}, fel: {} }); }
+    const r = R[idx[c.id]]; r.cel[k] = c; r.fel[fel] = true; }))));
+  let h = `<div class="bandou"><h2>📊 Toate câmpurile fișei × cele 6 categorii</h2><p>În fiecare căsuță: eticheta pe care o vede clientul. Roșu = obligatoriu, albastru = opțional, gol = câmpul nu apare. Câmpurile marcate „doar perioadă” / „doar eveniment” țin de felul contractului. Notițele tale apar sub etichetă.</p></div>
+    <p class="leg"><span style="background:#FDECEC">obligatoriu *</span><span style="background:#F2F7FF">opțional</span><span style="background:#fff;border:1px solid var(--ln)">nu apare</span></p>
+    <table class="m"><tr><th style="width:150px">Câmp</th>${ORD.map(k => `<th>${CAT[k].ic} ${CAT[k].scurt}</th>`).join("")}</tr>`;
+  let ult = "";
+  R.forEach(r => {
+    if(r.card !== ult){ ult = r.card; h += `<tr><td class="s" colspan="7">${esc(r.card)}</td></tr>`; }
+    const fel = r.fel.perioada && r.fel.eveniment ? "" : r.fel.perioada ? " <small>doar perioadă</small>" : " <small>doar eveniment</small>";
+    h += `<tr><td><code>${r.id}</code>${fel}</td>` + ORD.map(k => { const c = r.cel[k]; if(!c) return `<td class="x">—</td>`;
+      const f = r.fel.eveniment && !r.fel.perioada ? "eveniment" : "perioada", n = notaEf(k, f, r.id);
+      return `<td class="${c.ob ? "ob" : "op"}">${esc(c.et)}${c.ob ? " *" : ""}${n ? `<small style="color:var(--am)">📝 ${n.a ? ACT_T[n.a] : ""}${n.a && n.t ? " — " : ""}${esc(n.t || "")}</small>` : ""}</td>`; }).join("") + `</tr>`; });
+  return h + `</table>`;
+}
+
+function textExport(){
+  const L = ["NOTIȚE — Laborator fișa „Date contract” (" + new Date().toLocaleString("ro-RO") + ")", ""];
+  const etich = (k, fel, id) => { if(id === "_general") return "NOTĂ GENERALĂ"; if(id === "_contract") return "LA CONTRACT"; if(id.startsWith("_nou_")) return "CÂMP NOU (card " + (+id.slice(5) + 1) + ")";
+    for(const c of fisa(k, fel)) for(const f of c.f) if(f.id === id) return f.et + " [" + id + "]"; return id; };
+  const linie = (k, fel, id, n) => "  • " + etich(k, fel, id) + ": " + [n.a ? ACT_T[n.a] : "", n.t].filter(Boolean).join(" — ");
+  if(N["*"]){ L.push("== PENTRU TOATE CELE 12 VARIANTE =="); Object.keys(N["*"]).forEach(id => L.push(linie("SOCIETATE", "perioada", id, N["*"][id]))); L.push(""); }
+  ORD.forEach(k => Object.keys(FEL).forEach(fel => { const o = N[cheie(k, fel)]; if(!o) return;
+    L.push("== " + CAT[k].scurt.toUpperCase() + " · " + (fel === "eveniment" ? "EVENIMENT" : "ÎNCHIRIERE PE PERIOADĂ") + " ==");
+    Object.keys(o).forEach(id => L.push(linie(k, fel, id, o[id]))); L.push(""); }));
+  if(L.length === 2) L.push("(nicio notiță încă)");
+  return L.join("\n");
+}
+function arataExport(){
+  V.ecran = "export"; deseneazaNav(); const t = textExport();
+  document.getElementById("main").innerHTML = `<div class="bandou"><h2>📤 Notițele tale, ca text</h2><p>Apasă „Copiază” și lipește textul în chat la Claude. Sau descarcă fișierul .txt.</p></div>
+    <p class="nu-print"><button class="btn" onclick="navigator.clipboard.writeText(document.getElementById('exp').textContent).then(()=>this.textContent='✓ Copiat')">📋 Copiază</button>
+    <button class="btn" onclick="desc()">💾 Descarcă .txt</button> <button class="btn" onclick="V.ecran='fisa';deseneaza()">↩ Înapoi la fișă</button></p><pre id="exp">${esc(t)}</pre>`;
+  scrollTo(0, 0);
+}
+function desc(){ const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([textExport()], { type: "text/plain;charset=utf-8" })); a.download = "notite-fisa-date-contract.txt"; a.click(); }
+deseneaza();
+</script>
+</body>
+</html>
