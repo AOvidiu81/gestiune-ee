@@ -1116,7 +1116,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
   <span id="rz-w"><button id="rz-reset" class="pictograma" title="Lățimi implicite — pune coloanele din tabelele acestei file înapoi cum erau">↺ Reset layout</button><i class="rz-sep">|</i></span>
   <span id="tz-w" title="Mărimea tabelului (doar tabelul, restul rămâne la fel), din 5 în 5%. Merge și cu Ctrl + rotița mausului, Ctrl + / Ctrl − / Ctrl 0. Dublu clic pe procent = scrii tu valoarea."><button class="pictograma" onclick="tzPas(-1)" aria-label="Micșorează tabelul">−</button><b id="tz-v" ondblclick="tzScrie()" title="Dublu clic = scrii mărimea (ex. 87), Enter">100%</b><input id="tz-in" type="number" min="30" max="300" step="5" style="display:none"><button class="pictograma" onclick="tzPas(1)" aria-label="Mărește tabelul">+</button></span>
-  <span class="ver">v8.94</span>
+  <span class="ver">v8.95</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -8506,8 +8506,9 @@ async function serSalveaza(){
   const LP=SR_PUNCT ? SR_LOCS.find(x=>x.key===SR_PUNCT) : null;
   const totS=SR_PUNCT ? (LP?LP.n:0) : cantLocatie(a.id);
   if(laClient>totS && !confirm((SR_PUNCT?"Pe locația "+SR_PUNCT+" sunt "+totS+" produse (după punctul de rută)":"La client sunt "+totS+" bucăți (după anexe)")+", dar ai "+laClient+" serii la client. Salvezi oricum?")) return;
+  if(!SR_CMD){ try{ await serLeagaCmd(SR_ROWS, serLocIds(a.id).concat([a.id])); }catch(e){ console.warn("serLeagaCmd:", e); } }   // v8.95
   const baza=r=>({anexa_id:r.anexa_id||a.id,contract_id:a.contract_id,client_id:k?k.client_id:null,jud:a.jud||null,loc:a.loc||null,sat:a.sat||null,
-    ...(SR_CMD ? { miscare_amplasare_id: r.miscare_amplasare_id || SR_CMD.id } : {}),
+    ...(SR_CMD ? { miscare_amplasare_id: r.miscare_amplasare_id || SR_CMD.id } : r.miscare_amplasare_id ? { miscare_amplasare_id: r.miscare_amplasare_id } : {}),
     produs:r.produs,tip:r.tip||null,model:r.model||null,serie:(r.serie||"").trim()||null,stare:r.stare||"LA CLIENT",
     data_amplasarii:r.data_amplasarii||null,data_ridicarii:r.data_ridicarii||null,observatii:(r.observatii||"").trim()||null,punct:r.punct||null,
     ...(r.miscare_ridicare_id ? { miscare_ridicare_id: r.miscare_ridicare_id } : {})});   // v8.03
@@ -8523,6 +8524,30 @@ async function serSalveaza(){
   if(A_TBL==="clients" && A_ROWS.length) renderAdmin();   // v5.41: butonul 🔢 din Puncte de rută
   if(a.id && SR_ROWS.some(r=>r.stare!=="LA CLIENT")) inchVerifica(a.id);
   toast(nesterse?"Salvat, dar "+nesterse+" bucăți nu s-au șters (doar administratorul poate șterge)":"Serii salvate", !!nesterse);
+}
+// v8.95 (Ovidiu, 16.11): seriile trecute din 🔢 Serii pe o locație cu anexă (Puncte de rută / Contracte) nu se legau de comanda de amplasare,
+// iar Stocul pe modele vedea comanda „cu PV, dar fără serie confirmată”. Acum, la salvare, fiecare serie la client fără comandă se leagă:
+// 1) de comanda din PV-ul în care șoferul a trecut seria (pv_records.serii + miscare_id); 2) altfel de comanda de amplasare / suplimentare
+// a locației, același produs, cu data cel mult data amplasării și cu bucăți încă fără serie (cea mai recentă).
+async function serLeagaCmd(rows, anexe){
+  const fara = rows.filter(r => !r.miscare_amplasare_id && r.stare === "LA CLIENT" && r.produs);
+  if(!fara.length || !anexe.length) return;
+  const { data: cm } = await db.from("miscari").select("id,data,produs,buc,anexa_id,tip_miscare").in("anexa_id", [...new Set(anexe)])
+    .in("tip_miscare", ["AMPLASARE", "SUPLIMENTARE", "EVENIMENT-A"]).limit(3000);
+  if(!cm || !cm.length) return;
+  const ids = cm.map(m => m.id);
+  const [{ data: leg }, { data: pvs }] = await Promise.all([db.from("serii").select("id,miscare_amplasare_id").in("miscare_amplasare_id", ids),
+    db.from("pv_records").select("miscare_id,serii").in("miscare_id", ids)]);
+  const ocup = {}; (leg || []).forEach(x => { if(!rows.some(r => r.id && r.id === x.id)) ocup[x.miscare_amplasare_id] = (ocup[x.miscare_amplasare_id] || 0) + 1; });
+  rows.filter(r => r.miscare_amplasare_id).forEach(r => { ocup[r.miscare_amplasare_id] = (ocup[r.miscare_amplasare_id] || 0) + 1; });
+  const liber = m => (ocup[m.id] || 0) < Math.abs(+m.buc || 0);
+  fara.forEach(r => {
+    const s = serN(r.serie);
+    let c = s ? cm.find(m => m.produs === r.produs && liber(m) && (pvs || []).some(p => p.miscare_id === m.id && String(p.serii || "").split(",").some(x => serN(x) === s))) : null;
+    if(!c) c = cm.filter(m => m.produs === r.produs && liber(m) && (!r.data_amplasarii || (m.data || "") <= r.data_amplasarii))
+      .sort((x, y) => (y.data || "").localeCompare(x.data || "") || y.id - x.id)[0];
+    if(c){ r.miscare_amplasare_id = c.id; ocup[c.id] = (ocup[c.id] || 0) + 1; }
+  });
 }
 function exportClienti(){
   const rows=[]; CLI.forEach(c=>CTR.filter(k=>k.client_id===c.id).forEach(k=>{ const an=ANX.filter(a=>a.contract_id===k.id); (an.length?an:[{}]).forEach(a=>rows.push({STARE:k.stare,"NR. CTR.":k.nr_ctr,"DATA EMITERE CTR":fmtD(k.data_emitere),"DATA EXPIRARE CTR":ctrExpText(k),"NUME CLIENT":c.nume,ID:c.id_tip,"ATR.":c.atr,NUMAR:c.cui,"ANEXA NR:":a.anexa,"DATA EMITERE ANEXA":fmtD(a.data_emitere),"DATA EXPIRARE ANEXA":a.data_expirare?fmtD(a.data_expirare):a.expirare_text,JUDET:a.jud,"LOCALITATE / COMUNA":a.loc,"SAT / LOCATIE / STRADA":a.sat,FORMA:a.forma,PRODUS:a.produs,TIP:a.model,UM:a.um,"CANT.":a.cant,PRET:a.pret,MONEDA:a.moneda,STATUS:a.status,SCADENT:a.scadent})); }));
@@ -11603,7 +11628,10 @@ async function pvDescarca(id){
   const { data, error } = await db.storage.from("pv-documents").download(r.storage_path);
   if(error || !data){ toast(error ? error.message : "Nu am putut descărca documentul", true); return; }
   const curat = t => String(t || "").replace(/[\\/:*?"<>|]+/g, " ").replace(/\s+/g, " ").trim();
-  const loc = curat([r.county, r.location].filter(Boolean).join(" ")).slice(0, 60);
+  // v8.95 (cerut de Ovidiu, 16.11): „Loc. PETRILA, STR REPUBLICII, BL 62, Jud. HD” (înainte: „HD Jud. HD, PETRILA, …”)
+  const parti = String(r.location || "").split(",").map(x => x.trim()).filter(Boolean), pj = parti.find(x => /^jud(et)?\b\.?/i.test(faraDiac(x)));
+  const jud = (r.county || (pj ? pj.replace(/^jud(et|eț)?\.?\s*/i, "") : "")).trim().toUpperCase(), rest = parti.filter(x => x !== pj).join(", ");
+  const loc = curat([rest && "Loc. " + rest, jud && "Jud. " + jud].filter(Boolean).join(", ")).slice(0, 110);
   const nume = [pvPrefix(r.pv_number), curat(r.client_name) || "CLIENT", loc, dRO(new Date(r.created_at))]   // v7.19 (cerut de Ovidiu, 28.10): fără numărul PV în numele fișierului
     .filter(Boolean).join(" - ") + ".pdf";
   const url = URL.createObjectURL(data);
