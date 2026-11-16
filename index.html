@@ -1116,7 +1116,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
   <span id="rz-w"><button id="rz-reset" class="pictograma" title="Lățimi implicite — pune coloanele din tabelele acestei file înapoi cum erau">↺ Reset layout</button><i class="rz-sep">|</i></span>
   <span id="tz-w" title="Mărimea tabelului (doar tabelul, restul rămâne la fel), din 5 în 5%. Merge și cu Ctrl + rotița mausului, Ctrl + / Ctrl − / Ctrl 0. Dublu clic pe procent = scrii tu valoarea."><button class="pictograma" onclick="tzPas(-1)" aria-label="Micșorează tabelul">−</button><b id="tz-v" ondblclick="tzScrie()" title="Dublu clic = scrii mărimea (ex. 87), Enter">100%</b><input id="tz-in" type="number" min="30" max="300" step="5" style="display:none"><button class="pictograma" onclick="tzPas(1)" aria-label="Mărește tabelul">+</button></span>
-  <span class="ver">v8.90</span>
+  <span class="ver">v8.91</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -6719,50 +6719,58 @@ async function ofEvSalveaza(siPdf){
   if(siPdf) ofPdf(r.data.id);
 }
 // ── PDF-ul ofertei de eveniment: o pagină A4 culcată, ca modelul din Excel (foaia OFERTA); fără diacritice; clientul vede doar totalul ──
-function ofEvHtml(o){
+function ofEvHtml(o){   // v8.91 (cerut de Ovidiu, 16.11): aspect nou — antet curat, cartela clientului, linia timpului (amplasare → eveniment → ridicare), produse + servisări, total pe fond închis
   const k = o.continut || {}, T = s => esc(faraDiac(s == null ? "" : String(s))), U = s => esc(faraDiac(s == null ? "" : String(s)).toUpperCase()), abs = p => esc(new URL(p, location.href).href);
-  const R = k.randuri || [], S = k.servisari || [], n = Math.max(R.length, S.length), fs = n > 14 ? 10 : n > 10 ? 11.5 : n > 7 ? 13 : 14.5;
+  const ZL = ["Duminica", "Luni", "Marti", "Miercuri", "Joi", "Vineri", "Sambata"], LL = ["ianuarie", "februarie", "martie", "aprilie", "mai", "iunie", "iulie", "august", "septembrie", "octombrie", "noiembrie", "decembrie"];
+  const zi = z => z ? ZL[dtz(z).getDay()] : "", dl = z => z ? +z.slice(8) + " " + LL[+z.slice(5, 7) - 1] + " " + z.slice(0, 4) : "—", ds = z => ZL[dtz(z).getDay()].slice(0, 3) + " " + (+z.slice(8)) + " " + LL[+z.slice(5, 7) - 1].slice(0, 3);
+  const R = k.randuri || [], S = k.servisari || [], zile = k.zile || ofEvNrZile(k.ev_de, k.ev_pana);
+  const fp = R.length > 12 ? 9 : R.length > 8 ? 10 : R.length > 5 ? 12 : 13.5, pp = R.length > 12 ? 1.5 : R.length > 8 ? 2.5 : 5.5, fcl = String(o.catre || "").length > 26 ? 15 : 20, col = S.length > 18 ? 5 : S.length > 8 ? 4 : 3, fc = S.length > 18 ? 9 : 10;
   const ment = (k.mentiuni || "").split("\n").map(x => x.trim()).filter(Boolean); if(k.cazare) ment.push(OF_EV_CAZARE);
-  return `<!doctype html><html lang="ro"><head><meta charset="utf-8"><style>*{box-sizing:border-box}html,body{margin:0;background:#fff}
-    body{font-family:"Times New Roman",Tinos,"Liberation Serif",serif;color:#111;font-size:12pt;line-height:1.25}
-    .pg{width:1123px;height:794px;background:#fff;padding:44px 60px 40px;display:flex;flex-direction:column;overflow:hidden}
-    .hd{display:flex;align-items:center;border-top:1pt solid #555;border-bottom:1pt solid #555;padding:8px 0}.hd img{height:54px}.hd .c{flex:1;text-align:center}.hd .c b{font-size:17pt;display:block}.hd .c span{font-size:10.5pt}
-    .hd .r{width:230px;text-align:center;font-size:10.5pt}.hd .r b{font-size:13pt;display:block;margin-top:3px}.hd .r small{font-size:8.5pt;color:#444}
-    .two{flex:1;display:flex;gap:26px;margin-top:10px;min-height:0}.L{flex:1.05}.R{flex:1}
-    table{border-collapse:collapse;width:100%}.cl td{padding:3px 6px;border-bottom:.6pt solid #999;font-size:12.5pt}.cl td.e{width:158px;text-align:right;font-size:8.5pt;font-weight:700;border-bottom:0;white-space:nowrap}.cl td.v b{font-size:14pt}
-    .mt{font-size:9.2pt;margin-top:5px;line-height:1.3;text-transform:uppercase}
-    .pr{margin-top:12px}.pr th{font-size:11pt;border-top:.8pt solid #555;border-bottom:.8pt solid #555;padding:3px 6px}.pr td{font-size:${fs}pt;padding:2px 6px}.pr td.n{text-align:center;text-decoration:underline}.pr td.q{text-align:right;width:70px}.pr td.u{width:70px}
-    .cap{text-align:center;font-weight:700;color:#7a2a8a;font-size:9pt;border-top:.8pt solid #555;padding-top:3px}.cap.g{font-size:13.5pt;margin-top:8px}
-    .pe td{text-align:center;padding:2px 4px;font-size:12.5pt}.pe tr.e td{font-size:11.5pt}.pe .am{color:#2e6b1f;font-weight:700;background:#eef6e6}.pe .ri{color:#d01818;font-weight:700;background:#fdeee4}.pe .nz{color:#2e6b1f;font-weight:700;background:#e3f3d7;border:.6pt solid #999}
-    .sv{margin-top:2px}.sv td{font-size:${fs}pt;padding:1.5px 6px;font-weight:700}.sv td.d{text-align:right;width:48%}.sv td.s{color:#e06a10;padding-left:44px}
-    .tot{display:flex;border-top:1pt solid #555;border-bottom:1pt solid #555;margin-top:8px;padding:5px 0;font-size:14.5pt;font-weight:700}.tot span{flex:1.05;text-align:right;padding-right:22px}.tot b{flex:1;padding-left:40px}
-    .ps{text-align:center;font-weight:700;font-size:13pt;margin-top:6px}
-    .ft{display:flex;align-items:flex-start;font-size:10.5pt;line-height:1.5;height:120px;margin-top:2px}.ft .f1{flex:1;padding-left:22px}.ft .f1 b{font-size:11.5pt}.ft .f2{width:260px;text-align:center}.ft .f2 img{height:118px;opacity:.9}.ft .f3{flex:1;text-align:right;padding-right:10px}
-    </style></head><body><div class="pg">
-    <div class="hd"><img src="${abs("icons/logo-ee-print.png")}" alt=""><div class="c"><b>SC EURO ECOLOGIC SRL</b><span>OFERTA DE PRODUSE PENTRU EVENIMENT</span></div>
-      <div class="r">${ofEvZi(o.data)}<b>${U(k.emitent || "HUNEDOARA")}</b><small>Nr. ${T(ofNr(o))}</small></div></div>
-    <div class="two"><div class="L">
-      <table class="cl"><tr><td class="e">NUME CLIENT</td><td class="v" colspan="2"><b>${U(o.catre)}</b></td></tr>
-        <tr><td class="e">LOCATIE EVENIMENT</td><td class="v" colspan="2">${U(k.locatia)}</td></tr>
-        <tr><td class="e">CONTACT</td><td class="v">${U(k.contact)}</td><td class="v">${T(k.tel)}</td></tr>
-        <tr><td class="e">ALTE INFORMATII</td><td class="v" colspan="2">${T(k.info) || "-"}</td></tr></table>
-      <div class="mt">${ment.map(m => "*" + T(m)).join("<br>")}</div>
-      <table class="pr"><tr><th>TIP PRODUSE</th><th colspan="2">CANT. [ Buc - ML ]</th></tr>
-        ${R.map(r => `<tr><td class="n">${U(r.nume)}</td><td class="q">${r.buc || ""}</td><td class="u">${/^ML$/i.test(r.um || "") ? "ML" : "BUC"}</td></tr>`).join("")}</table></div>
-    <div class="R">
-      <div class="cap">PERIOADA Amplasare-Ridicare</div>
-      <table class="pe"><tr class="e"><td>AMPLASARE</td><td>ORA</td><td>RIDICARE</td><td>ORA</td></tr>
-        <tr><td class="am">${ofEvZi(k.amp_data)}</td><td>${T(k.amp_ora)}</td><td class="ri">${ofEvZi(k.rid_data)}</td><td>${T(k.rid_ora)}</td></tr></table>
-      <div class="cap g">PERIOADA Eveniment</div>
-      <table class="pe"><tr class="e"><td>PRIMA ZI</td><td>ULTIMA ZI</td><td>NR ZILE</td></tr>
-        <tr><td class="am" style="background:none">${ofEvZi(k.ev_de)}</td><td class="ri" style="background:none">${ofEvZi(k.ev_pana)}</td><td class="nz">${k.zile || ofEvNrZile(k.ev_de, k.ev_pana)} ${(k.zile || 0) === 1 ? "Zi" : "Zile"}</td></tr></table>
-      <div class="cap" style="margin-top:10px">SERVISARI PROGRAMATE</div>
-      <table class="sv">${S.length ? S.map(z => `<tr><td class="d">${ofEvZi(z)}</td><td class="s">SERVISARE</td></tr>`).join("") : '<tr><td class="d" style="text-align:center;font-weight:400" colspan="2">-</td></tr>'}</table></div></div>
-    <div class="tot"><span>TOTAL EVENIMENT</span><b>${ofEvBani(k.total)} lei &nbsp; + TVA</b></div>
-    <div class="ps">PRESTATOR</div>
-    <div class="ft"><div class="f1"><b>SC EURO ECOLOGIC SRL</b><br>J 2007 000205 190<br>RO 21311085</div>
-      <div class="f2">${k.stampila !== false ? `<img src="${abs("pv/assets/docs/stampila_euro_ecologic.png")}" alt="">` : ""}</div>
-      <div class="f3"><b>0735 214 751 &nbsp;/&nbsp; 0735 214 762</b><br>e-mail : <b>hunedoara@eurowc.ro</b><br>web : <b>www.eurowc.ro</b></div></div>
+  const low = s => { const x = T(s).toLowerCase(); return x.charAt(0).toUpperCase() + x.slice(1); };
+  return `<!doctype html><html lang="ro"><head><meta charset="utf-8"><style>
+    @font-face{font-family:Roboto;font-style:normal;font-weight:100 900;src:url(${abs("fonts/roboto-latin.woff2")}) format("woff2")}
+    *{box-sizing:border-box}html,body{margin:0;background:#fff}
+    body{font-family:Roboto,Arial,Helvetica,sans-serif;color:#1a2233;font-size:11pt;line-height:1.3}
+    .pg{position:relative;width:1123px;height:794px;background:#fff;padding:34px 50px 26px 62px;display:flex;flex-direction:column;overflow:hidden}
+    .b1{position:absolute;left:0;top:0;width:14px;height:794px;background:#1b2550}.b2{position:absolute;left:0;top:0;width:14px;height:150px;background:#E3000F}
+    .lb{font-size:7.4pt;font-weight:700;letter-spacing:1.6px;text-transform:uppercase;color:#8a93a6}
+    .hd{display:flex;align-items:center;justify-content:space-between;padding-bottom:14px;border-bottom:1.5px solid #1b2550}.hd img{height:56px;display:block}
+    .hd .r{text-align:right}.hd .t{font-size:17pt;font-weight:800;letter-spacing:2.5px;color:#1b2550}.hd .t span{color:#E3000F}.hd .n{font-size:9.5pt;color:#5b6477;margin-top:4px}.hd .n b{color:#1a2233}
+    .hero{display:flex;margin-top:14px;background:#f3f5f9;border-radius:8px;padding:14px 20px}.hero>div{padding-right:22px}.hero .c{flex:1.7}.hero .x{flex:1;border-left:1px solid #d6dbe6;padding-left:22px}
+    .hero .cl{font-size:${fcl}pt;font-weight:800;color:#1b2550;line-height:1.15;margin-top:3px}.hero .v{font-size:12.5pt;font-weight:600;margin-top:4px}.hero .v2{font-size:11pt;color:#3d4659;margin-top:1px}
+    .tl{display:flex;align-items:stretch;margin-top:14px}.tl .k{flex:1;border:1.2px solid #d6dbe6;border-radius:8px;padding:10px 16px}.tl .k.e{flex:1.35;background:#1b2550;border-color:#1b2550;color:#fff;display:flex;align-items:center}
+    .tl .k.e .lb{color:#aab3cf}.tl .w{font-size:9.5pt;color:#5b6477;margin-top:5px}.tl .d{font-size:15pt;font-weight:700;color:#1b2550;line-height:1.15}.tl .o{font-size:10.5pt;margin-top:3px;color:#3d4659}.tl .o b{color:#1a2233}
+    .tl .k.e .d{color:#fff;font-size:14pt}.tl .k.e .m{flex:1}.tl .k.e .w{color:#c9d0e4}.tl .z{background:#E3000F;border-radius:8px;text-align:center;padding:7px 14px;margin-left:12px}.tl .z b{display:block;font-size:22pt;font-weight:800;line-height:1}.tl .z span{font-size:7.6pt;font-weight:700;letter-spacing:1.5px}
+    .tl .a{width:38px;display:flex;align-items:center;justify-content:center}.tl .a i{display:block;width:22px;height:2px;background:#b9c1d3}
+    .mid{flex:1;display:flex;margin-top:16px;min-height:0;overflow:hidden}.mid .p{flex:1.05;padding-right:28px}.mid .s{flex:1;padding-left:28px;border-left:1px solid #e2e6ee}
+    .st{display:flex;justify-content:space-between;align-items:flex-end;border-bottom:1.5px solid #1b2550;padding-bottom:5px}.st .lb{color:#1b2550;font-size:8.4pt}.st .lb2{font-size:7.4pt;font-weight:700;letter-spacing:1.2px;color:#8a93a6;text-transform:uppercase}
+    table{border-collapse:collapse;width:100%}.pt td{font-size:${fp}pt;padding:${pp}px 2px;border-bottom:1px solid #e2e6ee}.pt td.n{font-weight:600}.pt td.q{text-align:right;font-weight:800;color:#1b2550;white-space:nowrap;width:120px}.pt td.q span{font-weight:500;color:#5b6477;font-size:.78em;margin-left:5px}
+    .ch{display:flex;flex-wrap:wrap;margin:8px -4px 0}.ch div{width:${100 / col}%;padding:4px}.ch span{display:block;border:1.2px solid #c9d0e0;border-radius:6px;padding:5px 4px;text-align:center;font-size:${fc}pt;font-weight:600;color:#1b2550;white-space:nowrap}
+    .sn{font-size:9pt;color:#5b6477;margin-top:8px}
+    .bot{display:flex;align-items:stretch;margin-top:12px}.co{flex:1;padding-right:20px}.co ul{margin:5px 0 0;padding:0;list-style:none}.co li{font-size:9pt;color:#3d4659;padding-left:12px;position:relative;margin-top:2.5px;line-height:1.3}.co li i{position:absolute;left:0;top:5px;width:5px;height:5px;background:#E3000F;border-radius:3px}
+    .sg{width:176px;text-align:center}.sg img{height:104px;opacity:.92;display:block;margin:2px auto 0}
+    .to{width:372px;background:#1b2550;color:#fff;border-radius:8px;border-top:5px solid #E3000F;padding:13px 22px 12px}.to .lb{color:#aab3cf;font-size:8pt}.to .v{font-size:30pt;font-weight:800;line-height:1.08;margin-top:3px;white-space:nowrap}.to .v span{font-size:13pt;font-weight:500;margin-left:6px}.to .t{font-size:9.5pt;color:#c9d0e4;margin-top:3px}
+    .ft{display:flex;justify-content:space-between;margin-top:12px;padding-top:8px;border-top:1px solid #d6dbe6;font-size:8.6pt;color:#5b6477}.ft b{color:#1b2550}
+    </style></head><body><div class="pg"><div class="b1"></div><div class="b2"></div>
+    <div class="hd"><img src="${abs("icons/logo-ee-print.png")}" alt=""><div class="r"><div class="t">OFERTA <span>EVENIMENT</span></div>
+      <div class="n">Nr. <b>${T(ofNr(o))}</b> &nbsp;|&nbsp; ${dl(o.data)} &nbsp;|&nbsp; Punct de lucru <b>${U(k.emitent || "HUNEDOARA")}</b></div></div></div>
+    <div class="hero"><div class="c"><div class="lb">Client</div><div class="cl">${U(o.catre)}</div></div>
+      <div class="x"><div class="lb">Locatia evenimentului</div><div class="v">${U(k.locatia) || "—"}</div></div>
+      <div class="x"><div class="lb">Persoana de contact</div><div class="v">${U(k.contact) || "—"}</div>${k.tel ? `<div class="v2">${T(k.tel)}</div>` : ""}</div></div>
+    <div class="tl"><div class="k"><div class="lb">Amplasare</div><div class="w">${zi(k.amp_data)}</div><div class="d">${dl(k.amp_data)}</div>${k.amp_ora ? `<div class="o">ora <b>${T(k.amp_ora)}</b></div>` : ""}</div>
+      <div class="a"><i></i></div>
+      <div class="k e"><div class="m"><div class="lb">Perioada evenimentului</div><div class="w">${zi(k.ev_de)}${k.ev_pana !== k.ev_de ? " — " + zi(k.ev_pana) : ""}</div><div class="d">${k.ev_pana !== k.ev_de ? dl(k.ev_de).replace(k.ev_de.slice(0, 7) === (k.ev_pana || "").slice(0, 7) ? / \D+ \d{4}$/ : / \d{4}$/, "") + " – " : ""}${dl(k.ev_pana)}</div></div>
+        <div class="z"><b>${zile}</b><span>${zile === 1 ? "ZI" : "ZILE"}</span></div></div>
+      <div class="a"><i></i></div>
+      <div class="k"><div class="lb">Ridicare</div><div class="w">${zi(k.rid_data)}</div><div class="d">${dl(k.rid_data)}</div>${k.rid_ora ? `<div class="o">ora <b>${T(k.rid_ora)}</b></div>` : ""}</div></div>
+    <div class="mid"><div class="p"><div class="st"><div class="lb">Produse</div><div class="lb2">Cantitate</div></div>
+        <table class="pt">${R.map(r => `<tr><td class="n">${T(r.nume)}</td><td class="q">${r.buc || ""}<span>${/^ML$/i.test(r.um || "") ? "ML" : "buc."}</span></td></tr>`).join("")}</table></div>
+      <div class="s"><div class="st"><div class="lb">Servisari programate</div><div class="lb2">${S.length ? S.length + (S.length === 1 ? " zi" : " zile") : ""}</div></div>
+        ${S.length ? `<div class="ch">${S.map(z => `<div><span>${ds(z)}</span></div>`).join("")}</div><div class="sn">Servisare / intretinere: absorbtie, spalare, solutie biodegradabila, odorizare si hartie igienica.</div>` : '<div class="sn">Fara servisari programate in perioada evenimentului.</div>'}</div></div>
+    <div class="bot"><div class="co"><div class="lb">Conditii</div><ul>${(k.info ? [k.info] : []).concat(ment).map(m => `<li><i></i>${low(m)}</li>`).join("")}</ul></div>
+      <div class="sg"><div class="lb">Prestator</div>${k.stampila !== false ? `<img src="${abs("pv/assets/docs/stampila_euro_ecologic.png")}" alt="">` : ""}</div>
+      <div class="to"><div class="lb">Total eveniment</div><div class="v">${ofEvBani(k.total)} lei<span>+ TVA</span></div><div class="t">${ftBani((+k.total || 0) * (1 + OF_TVA))} lei cu TVA inclus</div></div></div>
+    <div class="ft"><div><b>SC EURO ECOLOGIC SRL</b> &nbsp;|&nbsp; Nr. Reg. Com. J 2007 000205 190 &nbsp;|&nbsp; CUI RO 21311085</div><div><b>0735 214 751</b> &nbsp;/&nbsp; <b>0735 214 762</b> &nbsp;|&nbsp; hunedoara@eurowc.ro &nbsp;|&nbsp; <b>www.eurowc.ro</b></div></div>
     </div></body></html>`;
 }
 async function ofEvPdfBlob(o){
