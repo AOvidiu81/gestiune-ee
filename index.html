@@ -1116,7 +1116,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
   <span id="rz-w"><button id="rz-reset" class="pictograma" title="Lățimi implicite — pune coloanele din tabelele acestei file înapoi cum erau">↺ Reset layout</button><i class="rz-sep">|</i></span>
   <span id="tz-w" title="Mărimea tabelului (doar tabelul, restul rămâne la fel), din 5 în 5%. Merge și cu Ctrl + rotița mausului, Ctrl + / Ctrl − / Ctrl 0. Dublu clic pe procent = scrii tu valoarea."><button class="pictograma" onclick="tzPas(-1)" aria-label="Micșorează tabelul">−</button><b id="tz-v" ondblclick="tzScrie()" title="Dublu clic = scrii mărimea (ex. 87), Enter">100%</b><input id="tz-in" type="number" min="30" max="300" step="5" style="display:none"><button class="pictograma" onclick="tzPas(1)" aria-label="Mărește tabelul">+</button></span>
-  <span class="ver">v8.99</span>
+  <span class="ver">v9.00</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -9566,7 +9566,7 @@ async function raportFacturare(){
   R_ROSU = r.map(x => { const st = stInfo(x); return stRid(st) ? "R" : /AMPLASARE|SUPLIMENTARE|EVENIMENT-A/i.test(st) ? "V" : ""; });   // v8.54 (cerut de Ovidiu, 12.11): ridicare = roșu, amplasare / suplimentare = verde
   R_RANDURI = r.map(x => {
     const cant = cantFact(x.a, x.cant), pret = +x.a.pret || 0;   // v7.62: gard cu preț pe ML → metri liniari
-    const st = x.acoperit ? "ACOPERIT DE AVANS" : x.locZero ? "INACTIV" : (FS[x.a.id] || (x.per && x.per.document) || (x.a.fact_avans ? "FACTURA AVANS" : "ACTIV"));   // v6.88: locația cu 0 = INACTIV; v7.02: anexa „Facturare în avans” pornește ca FACTURA AVANS
+    const st = x.acoperit ? "ACOPERIT DE AVANS" : x.locZero ? "INACTIV" : factPerZero(x) ? x.per.document : (FS[x.a.id] || (x.per && x.per.document) || (x.a.fact_avans ? "FACTURA AVANS" : "ACTIV"));   // v6.88: locația cu 0 = INACTIV; v7.02: anexa „Facturare în avans” pornește ca FACTURA AVANS
     const fara = FACT_VAL(st) ? Math.round(x.zile * pret * cant * 100) / 100 : 0;
     // v7.13: cod client pe factură — „În lucru”: codul + anexa + până la; „Gata de trimis” / Verificare: doar codul (f._cod), EMITERE = data codului sau „-”
     const cc = codClient(x.a, anF, lunaF);
@@ -9725,9 +9725,12 @@ const FV_NUME = { V: "CORECT", G: "GRESITA", N: "NEPRIMITA" }, FV_SIM = { V: "�
 const fvSt = k => (FVER[k] && FVER[k].stare) || "-";
 // ── v8.83 (cerut de Ovidiu, 15.11): valoarea lunii (fără TVA) se salvează pe anexă când luna devine FACTURAT / FACTURA AVANS —
 // din ea se urmărește consumul achiziției SICAP. Calculul = ca în raport: zile × preț × cantitate (+ servisările la cerere ale anexei).
+// v9.00 (Ovidiu, 16.11 — CASA DE CULTURA): STARE LUNA e pe anexă + lună, deci FACTURAT trecea și peste perioada „NU FACTURAM” din aceeași lună
+// (ziua amplasării 04.11 apărea ca al doilea rând facturat, +120 lei). Perioada pusă de mână NU FACTURAM / INACTIV rămâne așa, orice stare ar avea luna.
+const factPerZero = x => !!(x && x.per && /^(NU FACTURAM|INACTIV)$/.test(x.per.document || ""));
 function factValAnexa(aid){
   let t = 0, mon = "";
-  (R_FX || []).forEach(x => { if(!x || !x.a || x.a.id !== aid || x.acoperit || x.locZero) return; t += (x.zile || 0) * (+x.a.pret || 0) * cantFact(x.a, x.cant); mon = mon || x.a.moneda || "RON"; });
+  (R_FX || []).forEach(x => { if(!x || !x.a || x.a.id !== aid || x.acoperit || x.locZero || factPerZero(x)) return; t += (x.zile || 0) * (+x.a.pret || 0) * cantFact(x.a, x.cant); mon = mon || x.a.moneda || "RON"; });
   const a = ANX.find(y => y.id === aid), sc = (FACT_SC || {})[aid];
   if(a && a.serv_cerere && sc){ t += scZile(sc).reduce((s, z) => s + (+z.buc || 0), 0) * (+a.serv_pret || 0); }
   return { valoare: Math.round(t * 100) / 100, moneda: mon || (a && a.moneda) || "RON" };
