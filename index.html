@@ -1116,7 +1116,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
   <span id="rz-w"><button id="rz-reset" class="pictograma" title="Lățimi implicite — pune coloanele din tabelele acestei file înapoi cum erau">↺ Reset layout</button><i class="rz-sep">|</i></span>
   <span id="tz-w" title="Mărimea tabelului (doar tabelul, restul rămâne la fel), din 5 în 5%. Merge și cu Ctrl + rotița mausului, Ctrl + / Ctrl − / Ctrl 0. Dublu clic pe procent = scrii tu valoarea."><button class="pictograma" onclick="tzPas(-1)" aria-label="Micșorează tabelul">−</button><b id="tz-v" ondblclick="tzScrie()" title="Dublu clic = scrii mărimea (ex. 87), Enter">100%</b><input id="tz-in" type="number" min="30" max="300" step="5" style="display:none"><button class="pictograma" onclick="tzPas(1)" aria-label="Mărește tabelul">+</button></span>
-  <span class="ver">v8.87</span>
+  <span class="ver">v8.88</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -1293,6 +1293,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <div class="card noprint">
     <div class="row" style="align-items:center">
       <div style="flex:0"><button class="btn" onclick="ofForm()">📝 Ofertă nouă</button></div>
+      <div style="flex:0"><button class="btn" onclick="ofEvForm()" title="Ofertă pentru un eveniment de câteva zile: calcul intern de chirie + transport + servisare, clientul vede doar totalul">🎪 Ofertă eveniment</button></div>
       <div style="flex:0"><button class="btn sec" onclick="ofCatalog()">📚 Catalog de ofertă</button></div>
       <div style="flex:0"><button class="btn sec" onclick="ofLoad()">↻ Reîncarcă</button></div>
       <div style="flex:0;min-width:200px"><input id="of-q" placeholder="Caută client / produs / locație" oninput="ofRender()"></div>
@@ -6267,13 +6268,14 @@ const ofCat = k => OF.C.find(c => c.cheie === k);
 const ofNr = o => "OF " + String(o.nr).padStart(3, "0") + " / " + o.an;
 const ofTotalRand = (r, zile) => (r.pe === "zi" && +r.buc > 0 && +zile > 0 && r.pret != null) ? Math.round(r.buc * zile * r.pret * 100) / 100 : null;
 function ofValoare(k){   // valoarea ofertei = prima variantă a fiecărui produs (pe zile) + transportul
+  if(k.fel === "eveniment") return k.total != null ? k.total : null;   // v8.88: la eveniment valoarea = totalul ofertat
   const vazut = new Set(); let s = 0;
   (k.randuri || []).forEach(r => { const c = r.cat || r.nume; if(vazut.has(c)) return; vazut.add(c); s += ofTotalRand(r, k.zile) || 0; });
   s += +k.transport || 0; return s ? Math.round(s * 100) / 100 : null;
 }
 async function ofLoad(){
   const [a, c] = await Promise.all([db.from("oferte").select("*").order("an", { ascending: false }).order("nr", { ascending: false }).limit(400),
-    db.from("oferta_catalog").select("id,cheie,nume,produs,tip,um,pret,dotari,descriere,activ,ordine").order("ordine")]);
+    db.from("oferta_catalog").select("id,cheie,nume,produs,tip,um,pret,pret_ev,dotari,descriere,activ,ordine").order("ordine")]);
   const er = a.error || c.error; if(er){ $("of-card").innerHTML = '<p class="muted" style="margin:0">Ofertele nu s-au putut încărca: ' + esc(er.message || "") + "</p>"; return; }
   OF.L = a.data || []; OF.C = c.data || []; ofRender();
 }
@@ -6284,7 +6286,7 @@ function ofRender(){
   if(!OF.L.length){ el.innerHTML = '<p class="muted" style="margin:0">Nicio ofertă încă. Apasă <b>📝 Ofertă nouă</b>.</p>'; return; }
   el.innerHTML = '<div style="overflow:auto"><table><tr><th>Nr.</th><th>Data</th><th>Către</th><th>Produse</th><th style="text-align:right">Valoare (fără TVA)</th><th>Stare</th><th></th></tr>' + L.map(o => { const k = o.continut || {}, st = OF_ST[o.stare] || OF_ST.ciorna;
     const pr = (k.randuri || []).map(r => (r.buc ? r.buc + " × " : "") + r.nume + (r.pret != null ? " — " + ftBani(r.pret) + " lei" + (OF_PE[r.pe] ? " / " + OF_PE[r.pe] : "") : "") + (r.frecventa ? " (" + r.frecventa + ")" : "")).join("; ");
-    return `<tr><td style="white-space:nowrap"><b>${esc(ofNr(o))}</b></td><td style="white-space:nowrap">${fmtD(o.data)}</td><td><b>${esc(o.catre)}</b>${k.locatia ? `<br><span class="muted" style="font-size:12px">${esc(k.locatia)}</span>` : ""}</td>
+    return `<tr><td style="white-space:nowrap"><b>${esc(ofNr(o))}</b></td><td style="white-space:nowrap">${fmtD(o.data)}</td><td><b>${esc(o.catre)}</b>${k.fel === "eveniment" ? ' <span title="Ofertă de eveniment">🎪</span>' : ""}${k.locatia ? `<br><span class="muted" style="font-size:12px">${esc(k.locatia)}</span>` : ""}</td>
       <td style="font-size:12.5px;max-width:420px">${esc(pr)}</td><td style="text-align:right;white-space:nowrap">${o.valoare != null ? ftBani(o.valoare) + " lei" : "—"}</td>
       <td><select onchange="ofStare(${o.id}, this.value)" title="Schimbă starea ofertei" style="font-weight:700;color:${st[1]};min-width:118px">${Object.keys(OF_ST).map(s => `<option value="${s}" ${s === o.stare ? "selected" : ""}>${OF_ST[s][0]}</option>`).join("")}</select></td>
       <td style="white-space:nowrap"><button class="btn sm" onclick="ofPdf(${o.id})" title="Vezi oferta ca PDF — o tipărești sau o salvezi">📄 PDF</button> <button class="btn sm sec" onclick="ofForm(${o.id})" title="Deschide și modifică oferta">✏ Deschide</button>
@@ -6305,6 +6307,7 @@ async function ofSterge(id){
 }
 // ── formularul ofertei ──
 function ofForm(id, copie){
+  if(id && ((OF.L.find(x => x.id === id) || {}).continut || {}).fel === "eveniment") return ofEvForm(id, copie);   // v8.88
   const o0 = id ? OF.L.find(x => x.id === id) : null, k = o0 ? JSON.parse(JSON.stringify(o0.continut || {})) : {}, nou = !o0 || copie;
   const sm = k.semnatar || { nume: OF_SEMN[0][0], functie: OF_SEMN[0][1], tel: OF_SEMN[0][2] };
   document.getElementById("mod-of")?.remove();
@@ -6393,6 +6396,7 @@ async function ofSalveaza(siPdf){
 // ── oferta acceptată → fișa „Date contract” (secțiunea „Din oferta acceptată”); anexa se face apoi din fișă, cu prețurile de aici ──
 function ofLaFisa(id, alese){
   const o = OF.L.find(x => x.id === id); if(!o) return; const k = o.continut || {}, R = k.randuri || [];
+  if(k.fel === "eveniment") return ofEvLaFisa(o);   // v8.88
   // v8.86: oferta pe variante (același produs pe mai multe rânduri) → întâi alegi varianta acceptată de client; în fișă intră doar ea
   const grup = r => r.cat || r.nume, G = [...new Set(R.map(grup))];
   if(!alese && G.some(g => R.filter(r => grup(r) === g).length > 1)){
@@ -6468,6 +6472,7 @@ function ofHtml(o){
       0742-029 410, * Nr. Reg. Com. : J 2007 000205 190 * CUI: RO 21311085 &nbsp; Website * www.eurowc.ro<br><b>Punct de Lucru Hunedoara</b> : hunedoara@eurowc.ro / <b>0735 214 762</b></div><div class="pa"></div></div></template></body></html>`;
 }
 async function ofPdfBlob(o){
+  if((o.continut || {}).fel === "eveniment") return ofEvPdfBlob(o);   // v8.88: pagină culcată
   await cdLib(); await ofPozeIa(((o.continut || {}).randuri || []).map(r => r.cat));
   const f = document.createElement("iframe"); f.style.cssText = "position:fixed;left:-10000px;top:0;width:794px;height:1123px;border:0"; document.body.appendChild(f);
   try{
@@ -6491,7 +6496,7 @@ async function ofPdfBlob(o){
 }
 async function ofPdf(id){
   const o = OF.L.find(x => x.id === id); if(!o) return;
-  OF.fisier = ("Oferta - " + faraDiac(o.catre).replace(/[\\/:*?"<>|]+/g, " ").trim() + " - " + fmtD(o.data).replace(/-/g, ".") + ".pdf"); OF.blob = null; OF.id = id;
+  OF.fisier = ("Oferta " + ((o.continut || {}).fel === "eveniment" ? "eveniment " : "") + "- " + faraDiac(o.catre).replace(/[\\/:*?"<>|]+/g, " ").trim() + " - " + fmtD(o.data).replace(/-/g, ".") + ".pdf"); OF.blob = null; OF.id = id;
   document.getElementById("mod-ofp")?.remove();
   const w = document.createElement("div"); w.className = "modal on"; w.id = "mod-ofp";
   w.innerHTML = `<div class="box" style="max-width:900px;width:900px;padding:0"><h3 class="lux-cap cap-mut" style="margin:0">${esc(OF.fisier)}</h3>
@@ -6532,7 +6537,7 @@ function ofCatLista(){
   el.innerHTML = '<div style="overflow:auto"><table><tr><th></th><th>Cum apare în ofertă</th><th>Produs / Tip</th><th>U.M.</th><th style="text-align:right">Preț listă</th><th>Dotări</th><th></th></tr>' + OF.C.map(c =>
     `<tr style="${c.activ ? "" : "opacity:.5"}"><td>${OF.poze[c.cheie] ? `<img src="${OF.poze[c.cheie]}" alt="" style="height:54px;max-width:70px;object-fit:contain;display:block">` : '<span class="muted">fără poză</span>'}</td>
       <td><b>${esc(c.nume)}</b>${c.activ ? "" : " <span class=\"muted\">(ascuns)</span>"}</td><td>${esc([c.produs, c.tip].filter(Boolean).join(" / ") || "—")}</td><td>${esc(c.um)}</td>
-      <td style="text-align:right">${c.pret != null ? ftBani(c.pret) : "—"}</td><td>${c.dotari ? "✔" : "—"}${c.descriere ? " + text" : ""}</td><td><button class="btn sm sec" onclick="ofCatEd(${c.id})">✏ Modifică</button></td></tr>`).join("") + "</table></div>";
+      <td style="text-align:right;white-space:nowrap">${c.pret != null ? ftBani(c.pret) : "—"}${c.pret_ev != null ? `<br><span class="muted" style="font-size:12px">eveniment ${ftBani(c.pret_ev)} / zi</span>` : ""}</td><td>${c.dotari ? "✔" : "—"}${c.descriere ? " + text" : ""}</td><td><button class="btn sm sec" onclick="ofCatEd(${c.id})">✏ Modifică</button></td></tr>`).join("") + "</table></div>";
 }
 function ofCatEd(id){
   const c = OF.C.find(x => x.id === id) || { activ: true, um: "Bucata", ordine: (Math.max(0, ...OF.C.map(x => x.ordine || 0)) + 10) };
@@ -6546,6 +6551,7 @@ function ofCatEd(id){
       <div><label>Tip</label><select id="ofe-tip"></select></div>
       <div><label>U.M. în ofertă</label><input id="ofe-um" value="${esc(c.um || "Bucata")}" list="ofe-uml"><datalist id="ofe-uml"><option value="Bucata"><option value="ML"><option value="Cabina de paza"><option value="Container"></datalist></div>
       <div><label>Preț de listă (lei)</label><input id="ofe-pret" type="number" step="0.01" min="0" value="${c.pret ?? ""}"></div>
+      <div style="grid-column:span 2"><label>Preț eveniment (lei / zi / buc.) <span class="muted" style="text-transform:none">— pentru 🎪 Ofertă eveniment</span></label><input id="ofe-pev" type="number" step="0.01" min="0" value="${c.pret_ev ?? ""}"></div>
       <div style="grid-column:1/-1"><label>Dotări / date tehnice (câte una pe rând)</label><textarea id="ofe-dot" rows="7" style="width:100%">${esc(c.dotari || "")}</textarea></div>
       <div style="grid-column:1/-1"><label>Textul „Avantaje” (opțional)</label><textarea id="ofe-des" rows="5" style="width:100%">${esc(c.descriere || "")}</textarea></div>
       <div style="grid-column:span 2"><label>Poza</label><div style="display:flex;gap:10px;align-items:center"><img id="ofe-img" alt="" style="height:90px;max-width:120px;object-fit:contain;border:1px solid var(--bd);border-radius:6px;${w.dataset.poza ? "" : "display:none"}" src="${w.dataset.poza}">
@@ -6565,14 +6571,225 @@ function ofCatPoza(inp){   // poza se micșorează în browser (max 900 px) și 
 }
 async function ofCatSalv(){
   const m = $("mod-ofe"), id = +m.dataset.id || null, v = i => $(i).value.trim(), nume = v("ofe-nume"); if(!nume){ toast("Scrie cum apare produsul în ofertă", true); return; }
-  const rec = { nume, produs: v("ofe-prod") || null, tip: v("ofe-tip") || null, um: v("ofe-um") || "Bucata", pret: v("ofe-pret") === "" ? null : +v("ofe-pret"), dotari: faraDiac(v("ofe-dot")) || null, descriere: faraDiac(v("ofe-des")) || null,
+  const rec = { nume, produs: v("ofe-prod") || null, tip: v("ofe-tip") || null, um: v("ofe-um") || "Bucata", pret: v("ofe-pret") === "" ? null : +v("ofe-pret"), pret_ev: v("ofe-pev") === "" ? null : +v("ofe-pev"), dotari: faraDiac(v("ofe-dot")) || null, descriere: faraDiac(v("ofe-des")) || null,
     poza: m.dataset.poza || null, ordine: +v("ofe-ord") || 100, activ: $("ofe-act").checked };
   if(!id) rec.cheie = faraDiac(nume).toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 40) + "-" + Date.now().toString(36).slice(-4);
   const r = id ? await db.from("oferta_catalog").update(rec).eq("id", id).select("cheie").single() : await db.from("oferta_catalog").insert(rec).select("cheie").single();
   if(r.error){ toast(r.error.message, true); return; }
   OF.poze[r.data.cheie] = rec.poza || ""; m.remove();
-  const c = await db.from("oferta_catalog").select("id,cheie,nume,produs,tip,um,pret,dotari,descriere,activ,ordine").order("ordine"); if(!c.error) OF.C = c.data || [];
+  const c = await db.from("oferta_catalog").select("id,cheie,nume,produs,tip,um,pret,pret_ev,dotari,descriere,activ,ordine").order("ordine"); if(!c.error) OF.C = c.data || [];
   ofCatLista(); toast("Catalog salvat");
+}
+
+// ══════════════════════════════════════════════════════════════════════════════════════════════════════
+// v8.88 (cerut de Ovidiu, 15–16.11): OFERTA DE EVENIMENT — după Excelul lui „Calcul oferta eveniment” (foile CALCUL / PRETURI / OFERTA).
+// Calculul (chirie pe zile + transport + curse de servisare + macara + alte servicii) rămâne intern; clientul vede în PDF doar TOTAL EVENIMENT.
+// Oferta NU atinge nicio anexă: la ✔ acceptată → „📋 Fișă” deschide fișa „Date contract” cu „Eveniment” bifat (zile, servisări, amplasare / ridicare, produse).
+const OF_VEH = [["MASINA 3,5 T", 3], ["MASINA CU REMORCA", 3.5], ["CAMION", 7], ["CAMION CU REMORCA", 10]];
+const OF_EV_MENT = "ACCES AUTO OBLIGATORIU PENTRU MANIPULARI SI EXECUTARI DE SERVICII SI INTRETINERE\nPLATA SE VA EFECTUA ANTERIOR DATEI DE LIVRARE";
+const OF_EV_CAZARE = "CAZARE SI MASA PT 2 PERSOANE CARE RAMAN PE EVENIMENT";
+const ofEvZi = z => { if(!z) return ""; const d = dtz(z); return ["dum", "lun", "mar", "mie", "joi", "vin", "sam"][d.getDay()] + "," + z.slice(8) + "," + ["ian", "feb", "mar", "apr", "mai", "iun", "iul", "aug", "sep", "oct", "noi", "dec"][d.getMonth()] + "," + z.slice(0, 4); };
+const ofEvNrZile = (a, b) => (a && b && b >= a) ? Math.round((dtz(b) - dtz(a)) / 864e5) + 1 : 0;
+const ofEvBani = v => (+v || 0).toLocaleString("ro-RO", { minimumFractionDigits: Number.isInteger(+v || 0) ? 0 : 2, maximumFractionDigits: 2 });
+function ofEvCalc(k){   // ca foaia CALCUL: chirie = Σ(buc. × preț / zi) × zile; transport = curse × mașini × km × preț / km; servisare = 2 × zile cu servisare × km × preț / km
+  const r2 = x => Math.round(x * 100) / 100, c = k.calc || {}, zile = ofEvNrZile(k.ev_de, k.ev_pana);
+  const chirie_zi = (k.randuri || []).reduce((s, r) => s + (+r.buc || 0) * (+r.pret || 0), 0), chirie = r2(chirie_zi * zile);
+  const transport = r2((+c.curse || 0) * (+c.masini || 0) * (+c.km || 0) * (+c.pkm || 0));
+  const sv_curse = 2 * (k.servisari || []).length, servisare = r2(sv_curse * (+c.sv_km || 0) * (+c.sv_pkm || 0));
+  const macara = r2((+c.mac_nr || 0) * (+c.mac_pret || 0)), alte = r2(+c.alte || 0);
+  return { zile, chirie_zi: r2(chirie_zi), chirie, transport, sv_curse, servisare, macara, alte, calculat: r2(chirie + transport + servisare + macara + alte) };
+}
+function ofEvForm(id, copie){
+  const o0 = id ? OF.L.find(x => x.id === id) : null, k = o0 ? JSON.parse(JSON.stringify(o0.continut || {})) : {}, nou = !o0 || copie, c = k.calc || {};
+  if(copie){ ["ev_de", "ev_pana", "amp_data", "rid_data", "total_ofertat"].forEach(x => delete k[x]); k.servisari = []; }
+  const nv = (x, d) => x == null ? d : x, bifa = (i, on, t) => `<label style="display:flex;gap:6px;align-items:center;text-transform:none;font-size:13px;cursor:pointer"><input type="checkbox" id="${i}" ${on ? "checked" : ""} style="width:16px;height:16px;margin:0"> ${t}</label>`;
+  document.getElementById("mod-ofev")?.remove();
+  const w = document.createElement("div"); w.className = "modal on"; w.id = "mod-ofev"; w.dataset.id = nou ? "" : id;
+  w.innerHTML = `<div class="box" style="max-width:980px"><h3 class="lux-cap cap-mut">🎪 ${nou ? "Ofertă de eveniment nouă" : "Oferta de eveniment " + esc(ofNr(o0))}</h3>
+    <style>#mod-ofev h4{margin:14px 0 4px}#mod-ofev .ofg{display:grid;grid-template-columns:repeat(4,1fr);gap:8px 10px}#mod-ofev .ofg .d2{grid-column:span 2}#mod-ofev .ofg .tot{grid-column:1/-1}
+      #mod-ofev .evr{display:grid;grid-template-columns:1.5fr 1.7fr 70px 110px 30px;gap:6px;align-items:end;margin-bottom:6px}#mod-ofev label{font-size:11px;margin:0}#mod-ofev .evr input,#mod-ofev .evr select{min-width:0;width:100%}
+      #mod-ofev .cdsv{display:flex;flex-wrap:wrap;gap:5px}#mod-ofev .cdsv label{display:flex;align-items:center;gap:4px;border:1px solid var(--bd);border-radius:7px;padding:4px 8px;font-size:12px;cursor:pointer;text-transform:none}
+      #mod-ofev .cdsv label:has(input:checked){background:var(--gl,#e6f3ea);border-color:var(--g2,#2e7d4f)}#mod-ofev .cdsv input{width:auto;margin:0}
+      #mod-ofev .evc{border:1px dashed var(--bd);border-radius:10px;padding:10px}#mod-ofev .dt{display:flex;gap:6px}#mod-ofev .dt input{min-width:0}
+      @media(max-width:760px){#mod-ofev .ofg{grid-template-columns:1fr 1fr}#mod-ofev .evr{grid-template-columns:1fr 1fr}}</style>
+    <h4>1. Client și eveniment</h4>
+    <div class="ofg"><div class="d2"><label>Nume client (din listă sau scris de mână)</label><input id="ev-catre" list="ev-cli" value="${esc(copie ? "" : (o0 ? o0.catre : ""))}" placeholder="ex. ONCR - RM VALCEA"><datalist id="ev-cli">${CLI.map(x => `<option value="${esc(x.nume)}">`).join("")}</datalist></div>
+      <div><label>Categoria</label><select id="ev-categ">${Object.keys(CAT_ET).map(x => `<option value="${x}" ${(o0 ? o0.categorie : "SOCIETATE") === x ? "selected" : ""}>${CAT_ET[x]}</option>`).join("")}</select></div>
+      <div><label>Data ofertei</label><input id="ev-data" type="date" value="${nou ? today() : o0.data}"></div>
+      <div class="d2"><label>Locația evenimentului</label><input id="ev-loc" value="${esc(k.locatia || "")}" placeholder="ex. COSTESTI / VALCEA"></div>
+      <div><label>Contact — nume</label><input id="ev-cont" value="${esc(copie ? "" : k.contact || "")}"></div>
+      <div><label>Contact — telefon</label><input id="ev-tel" value="${esc(copie ? "" : k.tel || "")}"></div>
+      <div class="tot"><label>Alte informații <span class="muted" style="text-transform:none">(apar în ofertă)</span></label><input id="ev-info" value="${esc(k.info || "")}"></div></div>
+    <h4>2. Perioada</h4>
+    <div class="ofg"><div><label>Prima zi a evenimentului</label><input id="ev-de" type="date" value="${esc(k.ev_de || "")}" onchange="ofEvZile()"></div>
+      <div><label>Ultima zi</label><input id="ev-pana" type="date" value="${esc(k.ev_pana || "")}" onchange="ofEvZile()"></div>
+      <div><label>Amplasare — ziua / ora</label><div class="dt"><input id="ev-ad" type="date" value="${esc(k.amp_data || "")}"><input id="ev-ao" type="time" value="${esc(k.amp_ora || "12:00")}" style="max-width:104px"></div></div>
+      <div><label>Ridicare — ziua / ora</label><div class="dt"><input id="ev-rz" type="date" value="${esc(k.rid_data || "")}"><input id="ev-ro" type="time" value="${esc(k.rid_ora || "12:00")}" style="max-width:104px"></div></div>
+      <div class="tot"><label>Zilele cu servisare <span class="muted" style="text-transform:none">(apar în ofertă la „Servisări programate”; fiecare zi = 2 curse în calcul)</span></label><div id="ev-sv" class="cdsv"></div></div></div>
+    <h4>3. Produse <span class="muted" style="text-transform:none;font-weight:400">(prețul pe zi vine din catalog — „Preț eveniment”; clientul NU vede prețurile pe bucată)</span></h4>
+    <div id="ev-rd"></div><button type="button" class="btn sm sec" onclick="ofEvRand({});ofEvSuma()">+ Produs</button>
+    <h4>4. Calcul intern <span class="muted" style="text-transform:none;font-weight:400">(nu apare în ofertă)</span></h4>
+    <div class="evc"><div class="ofg">
+      <div><label>Livrat din (depozit)</label><input id="ev-dep" list="ev-depl" value="${esc(nv(k.depozit, depPrincipal() || "HUNEDOARA"))}"><datalist id="ev-depl">${DEP.map(d => `<option value="${esc(d.nume)}">`).join("")}</datalist></div>
+      <div><label>Vehicul transport</label><select id="ev-veh" onchange="$('ev-pkm').value=(OF_VEH.find(x=>x[0]===this.value)||[0,''])[1];ofEvSuma()">${OF_VEH.map(x => `<option ${x[0] === nv(c.veh, "MASINA CU REMORCA") ? "selected" : ""}>${x[0]}</option>`).join("")}</select></div>
+      <div><label>Preț / km (lei)</label><input id="ev-pkm" type="number" step="0.01" min="0" value="${nv(c.pkm, 3.5)}"></div>
+      <div><label>Distanța depozit → locație (km)</label><input id="ev-km" type="number" min="0" value="${nv(c.km, "")}" placeholder="ex. 300"></div>
+      <div><label>Curse transport <span class="muted" style="text-transform:none">(dus-întors × 2)</span></label><input id="ev-curse" type="number" min="0" value="${nv(c.curse, 4)}"></div>
+      <div><label>Nr. mașini</label><input id="ev-mas" type="number" min="0" value="${nv(c.masini, 1)}"></div>
+      <div><label>Servisare — km pe cursă</label><input id="ev-svkm" type="number" min="0" value="${nv(c.sv_km, "")}" placeholder="0 = rămân pe loc"></div>
+      <div><label>Servisare — preț / km (lei)</label><input id="ev-svpkm" type="number" step="0.01" min="0" value="${nv(c.sv_pkm, 4)}"></div>
+      <div><label>Macara — nr. manipulări</label><input id="ev-macn" type="number" min="0" value="${nv(c.mac_nr, "")}"></div>
+      <div><label>Macara — preț (lei)</label><input id="ev-macp" type="number" step="0.01" min="0" value="${nv(c.mac_pret, 100)}"></div>
+      <div><label>Alte servicii (lei)</label><input id="ev-alte" type="number" step="0.01" min="0" value="${nv(c.alte, "")}"></div>
+      <div><label>Alte servicii — ce anume</label><input id="ev-altet" value="${esc(c.alte_txt || "")}"></div></div>
+      <div id="ev-suma" style="margin-top:10px"></div>
+      <div class="ofg" style="margin-top:8px"><div class="d2"><label>TOTAL OFERTAT (lei, fără TVA) <span class="muted" style="text-transform:none">— gol = totalul calculat; scrie aici dacă rotunjești</span></label><input id="ev-total" type="number" step="0.01" min="0" value="${nv(k.total_ofertat, "")}" style="font-weight:700;font-size:16px"></div>
+        <div class="d2" id="ev-tva" style="align-self:end;font-size:13px"></div></div></div>
+    <h4>5. Mențiuni în ofertă</h4>
+    <div class="ofg"><div class="tot"><textarea id="ev-ment" rows="3" style="width:100%">${esc(k.mentiuni == null ? OF_EV_MENT : k.mentiuni)}</textarea></div>
+      <div class="d2">${bifa("ev-caz", k.cazare, "cazare și masă pentru 2 persoane care rămân la eveniment")}</div>
+      <div>${bifa("ev-stamp", k.stampila !== false, "ștampila")}</div></div>
+    <div class="row" style="margin-top:16px;justify-content:flex-end"><div style="flex:1"></div>
+      <div style="flex:0"><button class="btn sec" onclick="this.closest('.modal').remove()">Renunță</button></div>
+      <div style="flex:0"><button class="btn sec" onclick="ofEvSalveaza(false)">💾 Salvează</button></div>
+      <div style="flex:0"><button class="btn" onclick="ofEvSalveaza(true)">📄 Salvează și vezi PDF</button></div></div></div>`;
+  document.body.appendChild(w); feFereastra(w);
+  (k.randuri && k.randuri.length ? k.randuri : [{}]).forEach(ofEvRand);
+  w.addEventListener("input", ofEvSuma); ofEvZile(k.servisari || []);
+}
+function ofEvRand(r){
+  const d = document.createElement("div"); d.className = "evr";
+  const act = OF.C.filter(c => c.activ || c.cheie === r.cat);
+  d.innerHTML = `<div><label>Din catalog</label><select class="r-cat"><option value="">— alt produs (scris de mână) —</option>${act.map(c => `<option value="${esc(c.cheie)}" ${c.cheie === r.cat ? "selected" : ""}>${esc(c.nume)}</option>`).join("")}</select></div>
+    <div><label>Cum apare în ofertă</label><input class="r-nume" value="${esc(r.nume || "")}"></div>
+    <div><label>Buc. / ML</label><input class="r-buc" type="number" min="0" value="${esc(r.buc || "")}"></div>
+    <div><label>Preț / zi / buc. (lei)</label><input class="r-pret" type="number" step="0.01" min="0" value="${r.pret ?? ""}"></div>
+    <button type="button" class="btn sm sec" title="Scoate rândul">✕</button>`;
+  const cs = d.querySelector(".r-cat");
+  cs.onchange = () => { const c = ofCat(cs.value); if(!c) return; d.querySelector(".r-nume").value = c.nume; d.querySelector(".r-pret").value = c.pret_ev != null ? c.pret_ev : ""; ofEvSuma(); };
+  d.querySelector("button").onclick = () => { d.remove(); ofEvSuma(); }; $("ev-rd").appendChild(d);
+}
+function ofEvZile(init){   // bifele zilelor cu servisare; o zi nou apărută vine bifată (la eveniment se servisează de obicei zilnic)
+  const a = $("ev-de").value, b = $("ev-pana").value, box = $("ev-sv"), dinOferta = Array.isArray(init);
+  const vechi = new Set((box.dataset.zile || "").split(",").filter(Boolean)), bif = new Set(dinOferta ? init : [...box.querySelectorAll("input:checked")].map(i => i.value));
+  if(!a || !b || b < a){ box.innerHTML = '<span class="muted">alege prima și ultima zi</span>'; box.dataset.zile = ""; ofEvSuma(); return; }
+  const Z = [], d = dtz(a), e = dtz(b); while(d <= e && Z.length < 31){ Z.push(ziLocala(d)); d.setDate(d.getDate() + 1); }
+  box.innerHTML = Z.map(z => `<label><input type="checkbox" value="${z}" ${bif.has(z) || (!dinOferta && !vechi.has(z)) ? "checked" : ""}> ${ofEvZi(z).split(",").slice(0, 3).join(" ")}</label>`).join(""); box.dataset.zile = Z.join(",");
+  if(!$("ev-ad").value){ const x = dtz(a); x.setDate(x.getDate() - 1); $("ev-ad").value = ziLocala(x); }
+  if(!$("ev-rz").value){ const x = dtz(b); x.setDate(x.getDate() + 1); $("ev-rz").value = ziLocala(x); }
+  ofEvSuma();
+}
+function ofEvCiteste(){
+  const v = i => $(i).value.trim(), n = i => v(i) === "" ? null : +v(i);
+  const randuri = [...$("ev-rd").children].map(d => { const g = c => d.querySelector(c).value.trim(), cat = g(".r-cat"), c = ofCat(cat), p = g(".r-pret");
+    return { cat, nume: g(".r-nume") || (c ? c.nume : ""), um: c ? c.um : "Bucata", buc: +g(".r-buc") || null, pret: p === "" ? null : +p, pe: "zi" }; }).filter(r => r.nume);
+  const k = { fel: "eveniment", locatia: v("ev-loc"), contact: v("ev-cont"), tel: v("ev-tel"), info: v("ev-info"), depozit: v("ev-dep").toUpperCase(), emitent: depPrincipal() || "HUNEDOARA",
+    ev_de: v("ev-de"), ev_pana: v("ev-pana"), amp_data: v("ev-ad"), amp_ora: v("ev-ao"), rid_data: v("ev-rz"), rid_ora: v("ev-ro"),
+    servisari: [...$("ev-sv").querySelectorAll("input:checked")].map(i => i.value), randuri, mentiuni: v("ev-ment"), cazare: $("ev-caz").checked,
+    calc: { veh: v("ev-veh"), pkm: n("ev-pkm"), km: n("ev-km"), curse: n("ev-curse"), masini: n("ev-mas"), sv_km: n("ev-svkm"), sv_pkm: n("ev-svpkm"), mac_nr: n("ev-macn"), mac_pret: n("ev-macp"), alte: n("ev-alte"), alte_txt: v("ev-altet") },
+    total_ofertat: n("ev-total"), stampila: $("ev-stamp").checked };
+  Object.assign(k, ofEvCalc(k)); k.total = k.total_ofertat != null ? k.total_ofertat : k.calculat; return k;
+}
+function ofEvSuma(){
+  const el = $("ev-suma"); if(!el || !$("ev-rd")) return; const k = ofEvCiteste(), c = k.calc;
+  const L = (t, val, det) => `<tr><td style="white-space:nowrap">${t}</td><td class="muted" style="font-size:12px">${det}</td><td style="text-align:right;white-space:nowrap"><b>${ftBani(val)}</b> lei</td></tr>`;
+  el.innerHTML = '<table style="width:100%">' + L("Chirie produse", k.chirie, `${ftBani(k.chirie_zi)} lei / zi × ${k.zile} zile`) +
+    L("Transport", k.transport, `${c.curse || 0} curse × ${c.masini || 0} mașini × ${c.km || 0} km × ${c.pkm || 0} lei / km`) +
+    L("Curse de servisare", k.servisare, `${k.sv_curse} curse (2 × ${k.servisari.length} zile) × ${c.sv_km || 0} km × ${c.sv_pkm || 0} lei / km`) +
+    L("Macara / manipulări", k.macara, `${c.mac_nr || 0} × ${c.mac_pret || 0} lei`) + L("Alte servicii", k.alte, esc(c.alte_txt || "")) +
+    `<tr><td><b>TOTAL CALCULAT</b></td><td></td><td style="text-align:right;white-space:nowrap;font-size:15px"><b>${ftBani(k.calculat)} lei</b></td></tr></table>`;
+  $("ev-total").placeholder = ofEvBani(k.calculat);
+  $("ev-tva").innerHTML = k.total ? `În ofertă: <b>TOTAL EVENIMENT ${ofEvBani(k.total)} lei + TVA</b> (${ftBani(k.total * (1 + OF_TVA))} lei cu TVA)` + (k.total_ofertat != null && k.calculat ? `<br><span class="muted">${k.total >= k.calculat ? "+" : "−"}${ftBani(Math.abs(k.total - k.calculat))} lei față de calcul</span>` : "") : '<span class="muted">pune zilele, produsele și distanța</span>';
+}
+async function ofEvSalveaza(siPdf){
+  const catre = $("ev-catre").value.trim().toUpperCase(), k = ofEvCiteste(); if(!catre){ toast("Scrie numele clientului", true); return; }
+  if(!k.zile){ toast("Alege prima și ultima zi a evenimentului", true); return; }
+  if(!k.randuri.length || k.randuri.some(r => !r.buc)){ toast("Adaugă produsele și pune cantitatea la fiecare", true); return; }
+  if(!k.total){ toast("Totalul e zero — pune prețurile pe zi sau scrie totalul ofertat", true); return; }
+  const data = $("ev-data").value || today(), cl = CLI.find(c => (c.nume || "").toUpperCase() === catre), id = +$("mod-ofev").dataset.id || null;
+  const rec = { catre, client_id: cl ? cl.id : null, categorie: $("ev-categ").value, data, continut: k, valoare: k.total };
+  let r;
+  if(id) r = await db.from("oferte").update(rec).eq("id", id).select("*").single();
+  else { const an = +data.slice(0, 4), m = await db.from("oferte").select("nr").eq("an", an).order("nr", { ascending: false }).limit(1);
+    if(m.error){ toast(m.error.message, true); return; }
+    r = await db.from("oferte").insert({ ...rec, an, nr: ((m.data[0] || {}).nr || 0) + 1 }).select("*").single(); }
+  if(r.error){ toast(r.error.message, true); return; }
+  const i = OF.L.findIndex(x => x.id === r.data.id); if(i >= 0) OF.L[i] = r.data; else OF.L.unshift(r.data);
+  document.getElementById("mod-ofev")?.remove(); ofRender(); toast("Oferta de eveniment " + ofNr(r.data) + " salvată");
+  if(siPdf) ofPdf(r.data.id);
+}
+// ── PDF-ul ofertei de eveniment: o pagină A4 culcată, ca modelul din Excel (foaia OFERTA); fără diacritice; clientul vede doar totalul ──
+function ofEvHtml(o){
+  const k = o.continut || {}, T = s => esc(faraDiac(s == null ? "" : String(s))), U = s => esc(faraDiac(s == null ? "" : String(s)).toUpperCase()), abs = p => esc(new URL(p, location.href).href);
+  const R = k.randuri || [], S = k.servisari || [], n = Math.max(R.length, S.length), fs = n > 14 ? 10 : n > 10 ? 11.5 : n > 7 ? 13 : 14.5;
+  const ment = (k.mentiuni || "").split("\n").map(x => x.trim()).filter(Boolean); if(k.cazare) ment.push(OF_EV_CAZARE);
+  return `<!doctype html><html lang="ro"><head><meta charset="utf-8"><style>*{box-sizing:border-box}html,body{margin:0;background:#fff}
+    body{font-family:"Times New Roman",Tinos,"Liberation Serif",serif;color:#111;font-size:12pt;line-height:1.25}
+    .pg{width:1123px;height:794px;background:#fff;padding:44px 60px 40px;display:flex;flex-direction:column;overflow:hidden}
+    .hd{display:flex;align-items:center;border-top:1pt solid #555;border-bottom:1pt solid #555;padding:8px 0}.hd img{height:54px}.hd .c{flex:1;text-align:center}.hd .c b{font-size:17pt;display:block}.hd .c span{font-size:10.5pt}
+    .hd .r{width:230px;text-align:center;font-size:10.5pt}.hd .r b{font-size:13pt;display:block;margin-top:3px}.hd .r small{font-size:8.5pt;color:#444}
+    .two{flex:1;display:flex;gap:26px;margin-top:10px;min-height:0}.L{flex:1.05}.R{flex:1}
+    table{border-collapse:collapse;width:100%}.cl td{padding:3px 6px;border-bottom:.6pt solid #999;font-size:12.5pt}.cl td.e{width:158px;text-align:right;font-size:8.5pt;font-weight:700;border-bottom:0;white-space:nowrap}.cl td.v b{font-size:14pt}
+    .mt{font-size:9.2pt;margin-top:5px;line-height:1.3;text-transform:uppercase}
+    .pr{margin-top:12px}.pr th{font-size:11pt;border-top:.8pt solid #555;border-bottom:.8pt solid #555;padding:3px 6px}.pr td{font-size:${fs}pt;padding:2px 6px}.pr td.n{text-align:center;text-decoration:underline}.pr td.q{text-align:right;width:70px}.pr td.u{width:70px}
+    .cap{text-align:center;font-weight:700;color:#7a2a8a;font-size:9pt;border-top:.8pt solid #555;padding-top:3px}.cap.g{font-size:13.5pt;margin-top:8px}
+    .pe td{text-align:center;padding:2px 4px;font-size:12.5pt}.pe tr.e td{font-size:11.5pt}.pe .am{color:#2e6b1f;font-weight:700;background:#eef6e6}.pe .ri{color:#d01818;font-weight:700;background:#fdeee4}.pe .nz{color:#2e6b1f;font-weight:700;background:#e3f3d7;border:.6pt solid #999}
+    .sv{margin-top:2px}.sv td{font-size:${fs}pt;padding:1.5px 6px;font-weight:700}.sv td.d{text-align:right;width:48%}.sv td.s{color:#e06a10;padding-left:44px}
+    .tot{display:flex;border-top:1pt solid #555;border-bottom:1pt solid #555;margin-top:8px;padding:5px 0;font-size:14.5pt;font-weight:700}.tot span{flex:1.05;text-align:right;padding-right:22px}.tot b{flex:1;padding-left:40px}
+    .ps{text-align:center;font-weight:700;font-size:13pt;margin-top:6px}
+    .ft{display:flex;align-items:flex-start;font-size:10.5pt;line-height:1.5;height:120px;margin-top:2px}.ft .f1{flex:1;padding-left:22px}.ft .f1 b{font-size:11.5pt}.ft .f2{width:260px;text-align:center}.ft .f2 img{height:118px;opacity:.9}.ft .f3{flex:1;text-align:right;padding-right:10px}
+    </style></head><body><div class="pg">
+    <div class="hd"><img src="${abs("icons/logo-ee-print.png")}" alt=""><div class="c"><b>SC EURO ECOLOGIC SRL</b><span>OFERTA DE PRODUSE PENTRU EVENIMENT</span></div>
+      <div class="r">${ofEvZi(o.data)}<b>${U(k.emitent || "HUNEDOARA")}</b><small>Nr. ${T(ofNr(o))}</small></div></div>
+    <div class="two"><div class="L">
+      <table class="cl"><tr><td class="e">NUME CLIENT</td><td class="v" colspan="2"><b>${U(o.catre)}</b></td></tr>
+        <tr><td class="e">LOCATIE EVENIMENT</td><td class="v" colspan="2">${U(k.locatia)}</td></tr>
+        <tr><td class="e">CONTACT</td><td class="v">${U(k.contact)}</td><td class="v">${T(k.tel)}</td></tr>
+        <tr><td class="e">ALTE INFORMATII</td><td class="v" colspan="2">${T(k.info) || "-"}</td></tr></table>
+      <div class="mt">${ment.map(m => "*" + T(m)).join("<br>")}</div>
+      <table class="pr"><tr><th>TIP PRODUSE</th><th colspan="2">CANT. [ Buc - ML ]</th></tr>
+        ${R.map(r => `<tr><td class="n">${U(r.nume)}</td><td class="q">${r.buc || ""}</td><td class="u">${/^ML$/i.test(r.um || "") ? "ML" : "BUC"}</td></tr>`).join("")}</table></div>
+    <div class="R">
+      <div class="cap">PERIOADA Amplasare-Ridicare</div>
+      <table class="pe"><tr class="e"><td>AMPLASARE</td><td>ORA</td><td>RIDICARE</td><td>ORA</td></tr>
+        <tr><td class="am">${ofEvZi(k.amp_data)}</td><td>${T(k.amp_ora)}</td><td class="ri">${ofEvZi(k.rid_data)}</td><td>${T(k.rid_ora)}</td></tr></table>
+      <div class="cap g">PERIOADA Eveniment</div>
+      <table class="pe"><tr class="e"><td>PRIMA ZI</td><td>ULTIMA ZI</td><td>NR ZILE</td></tr>
+        <tr><td class="am" style="background:none">${ofEvZi(k.ev_de)}</td><td class="ri" style="background:none">${ofEvZi(k.ev_pana)}</td><td class="nz">${k.zile || ofEvNrZile(k.ev_de, k.ev_pana)} ${(k.zile || 0) === 1 ? "Zi" : "Zile"}</td></tr></table>
+      <div class="cap" style="margin-top:10px">SERVISARI PROGRAMATE</div>
+      <table class="sv">${S.length ? S.map(z => `<tr><td class="d">${ofEvZi(z)}</td><td class="s">SERVISARE</td></tr>`).join("") : '<tr><td class="d" style="text-align:center;font-weight:400" colspan="2">-</td></tr>'}</table></div></div>
+    <div class="tot"><span>TOTAL EVENIMENT</span><b>${ofEvBani(k.total)} lei &nbsp; + TVA</b></div>
+    <div class="ps">PRESTATOR</div>
+    <div class="ft"><div class="f1"><b>SC EURO ECOLOGIC SRL</b><br>J 2007 000205 190<br>RO 21311085</div>
+      <div class="f2">${k.stampila !== false ? `<img src="${abs("pv/assets/docs/stampila_euro_ecologic.png")}" alt="">` : ""}</div>
+      <div class="f3"><b>0735 214 751 &nbsp;/&nbsp; 0735 214 762</b><br>e-mail : <b>hunedoara@eurowc.ro</b><br>web : <b>www.eurowc.ro</b></div></div>
+    </div></body></html>`;
+}
+async function ofEvPdfBlob(o){
+  await cdLib();
+  const f = document.createElement("iframe"); f.style.cssText = "position:fixed;left:-10000px;top:0;width:1123px;height:794px;border:0"; document.body.appendChild(f);
+  try{
+    await new Promise(ok => { f.onload = ok; f.srcdoc = ofEvHtml(o); });
+    const dd = f.contentDocument; try{ await dd.fonts.ready; }catch(e){}
+    await Promise.all([...dd.images].map(i => i.complete ? 0 : new Promise(ok => { i.onload = i.onerror = ok; })));
+    const cv = await html2canvas(dd.querySelector(".pg"), { scale: 2.5, backgroundColor: "#ffffff", windowWidth: 1123, windowHeight: 794 });
+    const pdf = new window.jspdf.jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
+    pdf.addImage(cv.toDataURL("image/jpeg", 0.92), "JPEG", 0, 0, 297, 210);
+    return pdf.output("blob");
+  } finally { f.remove(); }
+}
+// ── oferta de eveniment acceptată → fișa „Date contract” cu „Eveniment” bifat; prețul pe bucată nu se trece (clientul a primit doar totalul) ──
+function ofEvLaFisa(o){
+  const k = o.continut || {}; cdNou();
+  const rc = document.querySelector(`input[name="cdn-cat"][value="${o.categorie}"]`); if(rc) rc.checked = true;
+  const rf = document.querySelector('input[name="cdn-fel"][value="eveniment"]'); if(rf) rf.checked = true; cdnCat();
+  $("cdn-nume").value = o.catre; const cl = CLI.find(c => c.id === o.client_id); if(cl){ if(cl.cui && $("cdn-cui")) $("cdn-cui").value = cl.cui; if(cl.telefon) $("cdn-tel").value = cl.telefon; if(cl.email) $("cdn-email").value = cl.email; }
+  if(k.tel && !$("cdn-tel").value) $("cdn-tel").value = k.tel;
+  [["cdn-ev-de", k.ev_de], ["cdn-ev-pana", k.ev_pana], ["cdn-ev-ad", k.amp_data], ["cdn-ev-ao", k.amp_ora], ["cdn-ev-rd", k.rid_data], ["cdn-ev-ro", k.rid_ora]].forEach(([i, v]) => { if($(i)) $(i).value = v || ""; });
+  cdnEvZile(); const sv = new Set(k.servisari || []); $("cdn-ev-sv").querySelectorAll("input").forEach(i => { i.checked = sv.has(i.value); });
+  let n = 0; (k.randuri || []).forEach(r => { const c = ofCat(r.cat); if(!c || !c.produs) return; n++; cdnProd({ produs: c.produs, tip: c.tip || "", buc: r.buc || 1, pret: null, pe: "eveniment" }); });
+  $("cdn-cond").value = "Total eveniment conform ofertei " + ofNr(o) + ": " + ofEvBani(k.total) + " lei + TVA. Plata se face în avans, înainte de data livrării.";
+  toast(n ? "Fișa de eveniment e completată din oferta " + ofNr(o) + " — verifică și apasă „🔗 Creează link”" : "Produsele din ofertă nu sunt legate de catalog — adaugă-le de mână în fișă");
 }
 
 // v8.13 (cerut de Ovidiu, 08.11): fereastră cu bife în loc de întrebări una după alta
@@ -15807,7 +16024,7 @@ const HOW = [
       { t: "<b>✕</b> pe rând = anulezi fișa (linkul nu mai merge)." } ],
     du: { s: "fisa-date", el: '#p-fise button[onclick="cdNou()"]' } },
   { id: "oferte", cat: "Urmărire și documente", t: "Ofertă pentru client — faci, trimiți, apoi fișa „Date contract”",
-    k: "oferta oferte pret client nou primarie institutie variante servisare catalog poze dotari pdf trimit oferta acceptata",
+    k: "oferta oferte eveniment festival concert calcul transport pret client nou primarie institutie variante servisare catalog poze dotari pdf trimit oferta acceptata",
     cand: "Un client (sau unul care încă nu e client) cere o ofertă de preț.",
     anexa: "Oferta <b>nu atinge nicio anexă</b>. Abia când e <b>✔ acceptată</b> și apeși <b>📋 Fișă</b>, produsele și prețurile trec în fișa „Date contract”, iar de acolo pe anexa făcută din fișă.",
     pasi: [
@@ -15818,7 +16035,10 @@ const HOW = [
       { t: "<b>📄 Salvează și vezi PDF</b> → citești oferta → <b>💾 Salvează PDF în calculator</b> și o trimiți clientului." },
       { t: "În listă schimbi <b>starea</b>: trimisă → ✔ acceptată / respinsă. <b>⧉ Copie</b> = ofertă nouă cu aceleași produse pentru alt client.", ar: { s: "oferte", el: "#of-card" } },
       { t: "La <b>✔ acceptată</b> apare <b>📋 Fișă</b>: fișa „Date contract” se deschide cu produsele și prețurile din ofertă → <b>🔗 Creează link</b>." },
-      { t: "<b>📚 Catalog de ofertă</b>: aici schimbi ce scrie despre fiecare produs — nume, dotări, textul „Avantaje”, poza, prețul de listă." } ],
+      { t: "<b>📚 Catalog de ofertă</b>: aici schimbi ce scrie despre fiecare produs — nume, dotări, textul „Avantaje”, poza, prețul de listă și <b>prețul de eveniment</b> (lei / zi)." },
+      { t: "<b>🎪 Ofertă eveniment</b> (eveniment de câteva zile): client, locație, contact → prima / ultima zi, amplasare și ridicare cu ore, bifele zilelor cu servisare → produsele (prețul pe zi vine din catalog).", ar: { s: "oferte", el: '#p-oferte button[onclick="ofEvForm()"]' } },
+      { t: "La <b>Calcul intern</b> pui vehiculul, distanța în km, cursele, macaraua, alte servicii → vezi totalul calculat; la <b>TOTAL OFERTAT</b> scrii suma rotundă (gol = cea calculată). În PDF (pagină culcată) clientul vede <b>doar totalul</b>." },
+      { t: "Oferta de eveniment <b>✔ acceptată</b> → <b>📋 Fișă</b>: fișa „Date contract” se deschide cu „Eveniment” bifat, zilele, servisările, orele și produsele; totalul și plata în avans apar la „Condiții”." } ],
     du: { s: "oferte", el: '#p-oferte button[onclick="ofForm()"]' } },
 
   { id: "angajati", cat: "Angajați, PV-uri și calendar", t: "Angajați — fișa, contul / PIN-ul și ordinea",
