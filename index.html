@@ -1116,7 +1116,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
   <span id="rz-w"><button id="rz-reset" class="pictograma" title="Lățimi implicite — pune coloanele din tabelele acestei file înapoi cum erau">↺ Reset layout</button><i class="rz-sep">|</i></span>
   <span id="tz-w" title="Mărimea tabelului (doar tabelul, restul rămâne la fel), din 5 în 5%. Merge și cu Ctrl + rotița mausului, Ctrl + / Ctrl − / Ctrl 0. Dublu clic pe procent = scrii tu valoarea."><button class="pictograma" onclick="tzPas(-1)" aria-label="Micșorează tabelul">−</button><b id="tz-v" ondblclick="tzScrie()" title="Dublu clic = scrii mărimea (ex. 87), Enter">100%</b><input id="tz-in" type="number" min="30" max="300" step="5" style="display:none"><button class="pictograma" onclick="tzPas(1)" aria-label="Mărește tabelul">+</button></span>
-  <span class="ver">v8.96</span>
+  <span class="ver">v8.97</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -6613,33 +6613,53 @@ function ofEvForm(id, copie){
   document.getElementById("mod-ofev")?.remove();
   const w = document.createElement("div"); w.className = "modal on"; w.id = "mod-ofev"; w.dataset.id = nou ? "" : id; w.dataset.categ = o0 ? (o0.categorie || "") : "";
   const cap = (n, t, s) => `<div class="evh"><i>${n}</i><b>${t}</b>${s ? `<span>${s}</span>` : ""}</div>`;
-  w.innerHTML = `<div class="box" style="max-width:1260px;background:var(--bg)"><h3 class="lux-cap cap-mut">🎪 ${nou ? "Ofertă de eveniment nouă" : "Oferta de eveniment " + esc(ofNr(o0))}</h3>
-    <style>#mod-ofev .evx{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:16px;align-items:start;margin-top:12px}
-      #mod-ofev .evc{background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:14px 16px 16px;margin-bottom:12px}
-      #mod-ofev .evh{display:flex;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap}#mod-ofev .evh i{width:26px;height:26px;border-radius:50%;background:#1b2550;color:#fff;font-style:normal;font-weight:700;font-size:13px;display:grid;place-items:center;flex:0 0 auto}
-      #mod-ofev .evh b{font-size:15px}#mod-ofev .evh span{color:var(--mut);font-size:12px}
-      #mod-ofev .g{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px 12px}#mod-ofev .s2{grid-column:span 2}#mod-ofev .s3{grid-column:span 3}#mod-ofev .s4{grid-column:1/-1}
-      #mod-ofev label{font-size:11px;margin:0 0 2px}#mod-ofev .g input,#mod-ofev .g select{width:100%;min-width:0}#mod-ofev .dt{display:flex;gap:6px}#mod-ofev .dt input{min-width:0}
-      #mod-ofev .sub{font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--mut);margin:14px 0 6px;padding-top:10px;border-top:1px dashed var(--bd)}#mod-ofev .sub.p{margin-top:0;padding-top:0;border-top:0}
-      #mod-ofev .cdsv{display:flex;flex-wrap:wrap;gap:6px}#mod-ofev .cdsv label,#mod-ofev .evp .ac label{display:inline-flex;align-items:center;gap:5px;border:1px solid var(--bd);border-radius:999px;padding:4px 11px;font-size:12px;cursor:pointer;text-transform:none;letter-spacing:0;font-weight:500;margin:0;color:var(--tx)}
-      #mod-ofev .cdsv label:has(input:checked),#mod-ofev .evp .ac label:has(input:checked){background:var(--gl,#e6f3ea);border-color:var(--g2,#2e7d4f)}#mod-ofev .cdsv input,#mod-ofev .evp .ac input[type=checkbox]{width:auto;margin:0}
-      #mod-ofev .evp{border:1px solid var(--bd);border-radius:10px;padding:10px 12px;margin-bottom:8px}#mod-ofev .evp .r1{display:grid;grid-template-columns:1.1fr 1.3fr 1.7fr 80px 110px 32px;gap:8px;align-items:end}#mod-ofev .evp .r1 input,#mod-ofev .evp .r1 select{width:100%;min-width:0}
-      #mod-ofev .evp .ac{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-top:8px;font-size:12px;color:var(--mut)}#mod-ofev .evp .ac:empty{display:none}#mod-ofev .evp .ac .a-n{width:54px;padding:1px 4px;height:22px;display:none}#mod-ofev .evp .ac label:has(input:checked) .a-n{display:inline-block}
-      #mod-ofev .evs{position:sticky;top:8px;background:#1b2550;color:#fff;border-radius:14px;border-top:5px solid #E3000F;padding:16px 18px}#mod-ofev .evs .t0{font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#aab3cf}
-      #mod-ofev .evs .sl{display:flex;justify-content:space-between;gap:10px;padding:7px 0;border-bottom:1px solid rgba(255,255,255,.13);font-size:13px}#mod-ofev .evs .sl small{display:block;color:#aab3cf;font-size:11px;line-height:1.3}#mod-ofev .evs .sl b{white-space:nowrap}
-      #mod-ofev .evs .tc{display:flex;justify-content:space-between;align-items:baseline;padding:10px 0 2px;font-size:13px}#mod-ofev .evs .tc b{font-size:20px}
-      #mod-ofev .evs label{color:#aab3cf;margin-top:12px;display:block}#mod-ofev .evs #ev-total{width:100%;font-weight:800;font-size:20px;background:#fff;color:#1b2550;border:0;border-radius:8px;padding:8px 10px}
-      #mod-ofev .evs .fin{background:rgba(255,255,255,.08);border-radius:10px;padding:10px 12px;margin-top:10px;font-size:13px;line-height:1.5}#mod-ofev .evs .fin b.m{font-size:22px;display:block;line-height:1.15}#mod-ofev .evs .fin span{color:#c9d0e4}
-      #mod-ofev .evs .bt{display:grid;gap:8px;margin-top:14px}#mod-ofev .evs .bt .btn{width:100%}#mod-ofev .evs .bt .r2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
-      #mod-ofev #ev-kmst a{color:var(--blue,#1d4ed8)}
-      @media(max-width:980px){#mod-ofev .evx{grid-template-columns:1fr}#mod-ofev .evs{position:static}#mod-ofev .g{grid-template-columns:1fr 1fr}#mod-ofev .s3{grid-column:1/-1}#mod-ofev .evp .r1{grid-template-columns:1fr 1fr}}</style>
-    <div class="evx"><div>
-    <div class="evc">${cap(1, "Clientul", "")}
+  w.innerHTML = `<div class="box"><h3 class="lux-cap cap-mut">🎪 ${nou ? "Ofertă de eveniment nouă" : "Oferta de eveniment " + esc(ofNr(o0))}</h3>
+    <style>#mod-ofev .box{max-width:1320px;background:linear-gradient(180deg,#e9edf5 0,#f4f6fa 260px);padding-bottom:22px}
+      :root[data-tema="inchis"] #mod-ofev .box{background:var(--bg)}
+      #mod-ofev .evx{display:grid;grid-template-columns:minmax(0,1fr) 360px;gap:20px;align-items:start;margin-top:2px}
+      #mod-ofev .evnav{position:sticky;top:-18px;z-index:6;display:flex;gap:6px;flex-wrap:wrap;padding:12px 0;margin:-6px 0 4px;background:rgba(236,240,247,.94);backdrop-filter:blur(6px)}
+      :root[data-tema="inchis"] #mod-ofev .evnav{background:var(--bg)}
+      #mod-ofev .evnav button{display:inline-flex;align-items:center;gap:7px;border:1px solid #d5dbe8;background:var(--card);color:var(--tx);border-radius:999px;padding:5px 13px 5px 5px;font-size:12.5px;font-weight:600;cursor:pointer;transition:all .15s}
+      #mod-ofev .evnav button:hover{border-color:#1b2550}#mod-ofev .evnav button i{width:22px;height:22px;border-radius:50%;background:#e4e8f1;color:#1b2550;font-style:normal;font-size:11px;font-weight:800;display:grid;place-items:center}
+      #mod-ofev .evnav button.ok i{background:#2E8B3C;color:#fff;font-size:0}#mod-ofev .evnav button.ok i::after{content:"✓";font-size:12px}
+      #mod-ofev .evc{background:var(--card);border:1px solid rgba(27,37,80,.08);border-radius:16px;padding:18px 20px 20px;margin-bottom:14px;box-shadow:0 1px 2px rgba(16,24,40,.04),0 6px 18px rgba(16,24,40,.05);scroll-margin-top:70px}
+      #mod-ofev .evh{display:flex;align-items:center;gap:12px;margin-bottom:16px;flex-wrap:wrap}#mod-ofev .evh i{width:32px;height:32px;border-radius:10px;background:linear-gradient(135deg,#1b2550,#34479a);color:#fff;font-style:normal;font-weight:800;font-size:14px;display:grid;place-items:center;flex:0 0 auto;box-shadow:0 3px 8px rgba(27,37,80,.25)}
+      #mod-ofev .evh b{font-size:16.5px;letter-spacing:-.01em}#mod-ofev .evh span{color:var(--mut);font-size:12.5px;flex-basis:100%;margin:-12px 0 0 44px}
+      #mod-ofev .g{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px 14px}#mod-ofev .s2{grid-column:span 2}#mod-ofev .s3{grid-column:span 3}#mod-ofev .s4{grid-column:1/-1}
+      #mod-ofev label{font-size:10.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#6b7591;margin:0 0 5px;display:block}
+      #mod-ofev .evc input:not([type=checkbox]),#mod-ofev .evc select,#mod-ofev .evc textarea{width:100%;min-width:0;height:40px;border:1px solid #d5dbe8;border-radius:10px;background:#fbfcfe;padding:8px 11px;font-size:14px;transition:border-color .15s,box-shadow .15s,background .15s}
+      :root[data-tema="inchis"] #mod-ofev .evc input:not([type=checkbox]),:root[data-tema="inchis"] #mod-ofev .evc select,:root[data-tema="inchis"] #mod-ofev .evc textarea{background:var(--card);border-color:var(--bd)}
+      #mod-ofev .evc textarea{height:auto;line-height:1.5}#mod-ofev .evc input:focus,#mod-ofev .evc select:focus,#mod-ofev .evc textarea:focus{outline:none;border-color:#1b2550;box-shadow:0 0 0 3px rgba(27,37,80,.13);background:var(--card)}
+      #mod-ofev .dt{display:flex;gap:8px}#mod-ofev .dt input{min-width:0}#mod-ofev .evc .btn{height:40px;border-radius:10px}
+      #mod-ofev .sub{display:flex;align-items:center;gap:10px;font-size:11px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:#1b2550;margin:18px 0 10px}#mod-ofev .sub::after{content:"";flex:1;height:1px;background:#e3e7ef}#mod-ofev .sub.p{margin-top:0}
+      #mod-ofev .sub em{font-style:normal;text-transform:none;letter-spacing:0;font-weight:500;color:var(--mut)}
+      #mod-ofev .cdsv{display:flex;flex-wrap:wrap;gap:7px}#mod-ofev .cdsv label,#mod-ofev .evp .ac label{display:inline-flex;align-items:center;gap:6px;border:1px solid #d5dbe8;border-radius:999px;padding:6px 13px;font-size:12.5px;cursor:pointer;text-transform:none;letter-spacing:0;font-weight:600;margin:0;color:var(--tx);background:var(--card);transition:all .15s}
+      #mod-ofev .cdsv label:has(input:checked),#mod-ofev .evp .ac label:has(input:checked){background:#1b2550;border-color:#1b2550;color:#fff}#mod-ofev .cdsv input,#mod-ofev .evp .ac input[type=checkbox]{width:auto;margin:0;accent-color:#E3000F}
+      #mod-ofev .evp{border:1px solid #e3e7ef;border-left:4px solid #1b2550;border-radius:12px;padding:14px 16px;margin-bottom:10px;background:linear-gradient(180deg,#fbfcfe,#f6f8fc)}
+      :root[data-tema="inchis"] #mod-ofev .evp{background:var(--card)}
+      #mod-ofev .evp .r1{display:grid;grid-template-columns:1.1fr 1.3fr 1.7fr 84px 116px 40px;gap:10px;align-items:end}#mod-ofev .evp .r1 > button{height:40px;width:40px;padding:0}
+      #mod-ofev .evp .r2{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-top:10px;flex-wrap:wrap}
+      #mod-ofev .evp .ac{display:flex;flex-wrap:wrap;gap:6px;align-items:center;font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#6b7591}#mod-ofev .evp .ac .a-n{width:58px;height:24px!important;padding:1px 5px!important;display:none;border-radius:6px!important;color:var(--tx)}#mod-ofev .evp .ac label:has(input:checked) .a-n{display:inline-block}
+      #mod-ofev .evp .r-tot{margin-left:auto;font-size:13px;color:#1b2550;white-space:nowrap}#mod-ofev .evp .r-tot b{font-size:15px}
+      #mod-ofev .evs{position:sticky;top:6px;background:linear-gradient(165deg,#1b2550 0,#26357a 100%);color:#fff;border-radius:18px;padding:20px 20px 18px;box-shadow:0 14px 34px rgba(27,37,80,.30);overflow:hidden}
+      #mod-ofev .evs::before{content:"";display:block;height:4px;background:#E3000F;margin:-20px -20px 16px}
+      #mod-ofev .evs .t0{font-size:11px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:#aab3cf;margin-bottom:4px}
+      #mod-ofev .evs .sl{display:flex;justify-content:space-between;gap:10px;padding:9px 0;border-bottom:1px solid rgba(255,255,255,.12);font-size:13.5px}#mod-ofev .evs .sl small{display:block;color:#aab3cf;font-size:11px;line-height:1.35;margin-top:1px}#mod-ofev .evs .sl b{white-space:nowrap}
+      #mod-ofev .evs .tc{display:flex;justify-content:space-between;align-items:baseline;padding:12px 0 4px;font-size:12px;font-weight:800;letter-spacing:.08em}#mod-ofev .evs .tc b{font-size:22px;letter-spacing:0}
+      #mod-ofev .evs label{color:#aab3cf;margin-top:14px}#mod-ofev .evs #ev-total{width:100%;height:48px;font-weight:800;font-size:22px;background:#fff;color:#1b2550;border:0;border-radius:12px;padding:8px 14px}#mod-ofev .evs #ev-total:focus{outline:none;box-shadow:0 0 0 3px rgba(227,0,15,.45)}
+      #mod-ofev .evs .fin{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.10);border-radius:12px;padding:12px 14px;margin-top:12px;font-size:13px;line-height:1.55}#mod-ofev .evs .fin b.m{font-size:24px;display:block;line-height:1.15;margin:2px 0}#mod-ofev .evs .fin span{color:#c9d0e4}
+      #mod-ofev .evs .bt{display:grid;gap:8px;margin-top:16px}#mod-ofev .evs .bt .btn{width:100%;height:44px;border-radius:12px;font-weight:700}#mod-ofev .evs .bt .r2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+      #mod-ofev .evs .bt .pr{background:#E3000F;border-color:#E3000F;color:#fff}#mod-ofev .evs .bt .pr:hover{filter:brightness(1.08)}
+      #mod-ofev .evs .bt .gh{background:transparent;border:1px solid rgba(255,255,255,.35);color:#fff}#mod-ofev .evs .bt .gh:hover{background:rgba(255,255,255,.1)}
+      #mod-ofev #ev-kmst{background:#f3f6fb;border-radius:10px;padding:9px 12px}#mod-ofev #ev-kmst:empty{display:none}:root[data-tema="inchis"] #mod-ofev #ev-kmst{background:var(--bg)}#mod-ofev #ev-kmst a{color:#1d4ed8}
+      @media(max-width:1060px){#mod-ofev .evx{grid-template-columns:1fr}#mod-ofev .evs{position:static}#mod-ofev .g{grid-template-columns:1fr 1fr}#mod-ofev .s3{grid-column:1/-1}#mod-ofev .evp .r1{grid-template-columns:1fr 1fr}#mod-ofev .evnav{top:-18px}}</style>
+    <div class="evx"><div><nav class="evnav" id="ev-nav">${["Clientul", "Unde", "Când", "Produse", "Costuri", "Mențiuni"].map((t, i) => `<button type="button" data-i="${i + 1}" onclick="document.getElementById('evs${i + 1}').scrollIntoView({ behavior: 'smooth', block: 'start' })"><i>${i + 1}</i>${t}</button>`).join("")}</nav>
+    <div class="evc" id="evs1">${cap(1, "Clientul", "")}
       <div class="g"><div class="s2"><label>Nume client (din listă sau scris de mână)</label><input id="ev-catre" list="ev-cli" value="${esc(copie ? "" : (o0 ? o0.catre : ""))}" placeholder="ex. ONCR - RM VALCEA"><datalist id="ev-cli">${CLI.map(x => `<option value="${esc(x.nume)}">`).join("")}</datalist></div>
         <div><label>Persoana de contact</label><input id="ev-cont" value="${esc(copie ? "" : k.contact || "")}"></div>
         <div><label>Telefon</label><input id="ev-tel" value="${esc(copie ? "" : k.tel || "")}"></div>
         <div><label>Data ofertei</label><input id="ev-data" type="date" value="${nou ? today() : o0.data}"></div></div></div>
-    <div class="evc">${cap(2, "Unde e evenimentul", "scrii adresa sau lipești coordonatele GPS — distanța se calculează de la depozit")}
+    <div class="evc" id="evs2">${cap(2, "Unde e evenimentul", "scrii adresa sau lipești coordonatele GPS — distanța se calculează de la depozit")}
       <div class="g"><div><label>Județ</label><input id="ev-jud" maxlength="3" value="${esc(k.jud || "")}" placeholder="ex. HD" style="text-transform:uppercase"></div>
         <div><label>Localitate / Comună</label><input id="ev-loc" value="${esc(k.loc != null ? k.loc : (k.locatia || ""))}" placeholder="ex. PETROSANI"></div>
         <div class="s2"><label>Sat / Stradă / Nr. / [ reper ]</label><input id="ev-sat" value="${esc(k.sat || "")}" placeholder="ex. SAT PIETRENI, STR PRINCIPALA NR 12"></div>
@@ -6647,24 +6667,24 @@ function ofEvForm(id, copie){
         <div><label>Plecare din (depozit)</label><input id="ev-dep" list="ev-depl" value="${esc(nv(k.depozit, depPrincipal() || "HUNEDOARA"))}"><datalist id="ev-depl">${DEP.map(d => `<option value="${esc(d.nume)}">`).join("")}</datalist></div>
         <div style="align-self:end"><button type="button" class="btn sec" id="ev-kmb" onclick="ofEvKm()" title="Distanța pe șosea de la depozit până la locație (OpenStreetMap)" style="width:100%">🧭 Calculează km</button></div>
         <div class="s4" id="ev-kmst" style="font-size:13px;line-height:1.45">${k.km_info ? esc(k.km_info) : '<span class="muted">Completează locația, apoi „🧭 Calculează km”. Kilometrii îi poți scrie și de mână, la pasul 5.</span>'}</div></div></div>
-    <div class="evc">${cap(3, "Când", "amplasarea și ridicarea se pun singure cu o zi înainte / după — le poți schimba")}
+    <div class="evc" id="evs3">${cap(3, "Când", "amplasarea și ridicarea se pun singure cu o zi înainte / după — le poți schimba")}
       <div class="g"><div><label>Prima zi a evenimentului</label><input id="ev-de" type="date" value="${esc(k.ev_de || "")}" onchange="ofEvZile()"></div>
         <div><label>Ultima zi</label><input id="ev-pana" type="date" value="${esc(k.ev_pana || "")}" onchange="ofEvZile()"></div>
         <div><label>Amplasare — ziua / ora</label><div class="dt"><input id="ev-ad" type="date" value="${esc(k.amp_data || "")}"><input id="ev-ao" type="time" value="${esc(k.amp_ora || "12:00")}" style="max-width:104px"></div></div>
         <div><label>Ridicare — ziua / ora</label><div class="dt"><input id="ev-rz" type="date" value="${esc(k.rid_data || "")}"><input id="ev-ro" type="time" value="${esc(k.rid_ora || "12:00")}" style="max-width:104px"></div></div>
         <div class="s4"><label>Zilele cu servisare <span class="muted" style="text-transform:none">(apar în ofertă; debifezi zilele fără servisare)</span></label><div id="ev-sv" class="cdsv"></div></div></div></div>
-    <div class="evc">${cap(4, "Ce produse", "prețul pe zi vine din Catalogul de ofertă; clientul NU vede prețurile pe bucată")}
+    <div class="evc" id="evs4">${cap(4, "Ce produse", "prețul pe zi vine din Catalogul de ofertă; clientul NU vede prețurile pe bucată")}
       <div id="ev-rd"></div><button type="button" class="btn sm sec" onclick="ofEvRand({});ofEvSuma()">+ Adaugă produs</button></div>
-    <div class="evc">${cap(5, "Transport și alte costuri", "calcul intern — nu apare în ofertă")}
+    <div class="evc" id="evs5">${cap(5, "Transport și alte costuri", "calcul intern — nu apare în ofertă")}
       <div class="sub p">Transport (amplasare + ridicare)</div>
       <div class="g"><div><label>Vehicul</label><select id="ev-veh" onchange="$('ev-pkm').value=(OF_VEH.find(x=>x[0]===this.value)||[0,''])[1];ofEvSuma()">${OF_VEH.map(x => `<option ${x[0] === nv(c.veh, "MASINA CU REMORCA") ? "selected" : ""}>${x[0]}</option>`).join("")}</select></div>
         <div><label>Distanța depozit → locație (km, un drum)</label><input id="ev-km" type="number" min="0" value="${nv(c.km, "")}" placeholder="🧭 sau de mână"></div>
         <div><label>Preț / km (lei)</label><input id="ev-pkm" type="number" step="0.01" min="0" value="${nv(c.pkm, 3.5)}"></div>
         <div class="dt"><div style="flex:1"><label title="dus + întors la amplasare, dus + întors la ridicare">Curse</label><input id="ev-curse" type="number" min="0" value="${nv(c.curse, 4)}"></div><div style="flex:1"><label>Nr. mașini</label><input id="ev-mas" type="number" min="0" value="${nv(c.masini, 1)}"></div></div></div>
-      <div class="sub">Curse de servisare <span style="text-transform:none;letter-spacing:0;font-weight:400">— 2 curse pentru fiecare zi bifată</span></div>
-      <div class="g"><div><label>Km pe cursă</label><input id="ev-svkm" type="number" min="0" value="${nv(c.sv_km, "")}" placeholder="0 = rămân pe loc"></div>
+      <div class="sub">Curse de servisare <em>— 2 curse pe fiecare zi bifată · km vin din distanță, îi poți schimba</em></div>
+      <div class="g"><div><label>Km pe cursă</label><input id="ev-svkm" type="number" min="0" value="${nv(c.sv_km, "")}" ${c.sv_km != null && c.sv_km !== c.km ? 'data-atins="1"' : ""} oninput="this.dataset.atins=1" placeholder="= distanța (0 = rămân pe loc)"></div>
         <div><label>Preț / km (lei)</label><input id="ev-svpkm" type="number" step="0.01" min="0" value="${nv(c.sv_pkm, 4)}"></div></div>
-      <div id="ev-mac-w"><div class="sub">Macara <span style="text-transform:none;letter-spacing:0;font-weight:400">— doar la camion</span></div>
+      <div id="ev-mac-w"><div class="sub">Macara <em>— doar la camion</em></div>
         <div class="g"><div><label>Nr. manipulări</label><input id="ev-macn" type="number" min="0" value="${nv(c.mac_nr, "")}"></div>
           <div><label>Preț / manipulare (lei)</label><input id="ev-macp" type="number" step="0.01" min="0" value="${nv(c.mac_pret, 100)}"></div></div></div>
       <div id="ev-ig-w"><div class="sub">Igienizare finală containere</div>
@@ -6673,15 +6693,15 @@ function ofEvForm(id, copie){
       <div class="sub">Alte servicii</div>
       <div class="g"><div><label>Valoare (lei)</label><input id="ev-alte" type="number" step="0.01" min="0" value="${nv(c.alte, "")}"></div>
         <div class="s3"><label>Ce anume (doar pentru tine)</label><input id="ev-altet" value="${esc(c.alte_txt || "")}"></div></div></div>
-    <div class="evc">${cap(6, "Mențiuni în ofertă", "câte una pe rând — apar în PDF la „Condiții”")}
+    <div class="evc" id="evs6">${cap(6, "Mențiuni în ofertă", "câte una pe rând — apar în PDF la „Condiții”")}
       <textarea id="ev-ment" rows="4" style="width:100%">${esc(ment)}</textarea>
       <label style="display:flex;gap:7px;align-items:center;text-transform:none;font-size:13px;cursor:pointer;margin-top:10px;letter-spacing:0"><input type="checkbox" id="ev-pezi" ${k.arata_zi ? "checked" : ""} style="width:16px;height:16px;margin:0"> scrie în ofertă și valoarea pe zi de eveniment (ex. „5 zile × 1.000 lei / zi”)</label></div>
     </div>
     <aside class="evs"><div class="t0">Calcul intern</div><div id="ev-suma"></div>
       <label>TOTAL OFERTAT (lei, fără TVA) <span style="text-transform:none;letter-spacing:0">— gol = cel calculat</span></label><input id="ev-total" type="number" step="0.01" min="0" value="${nv(k.total_ofertat, "")}">
       <div class="fin" id="ev-tva"></div>
-      <div class="bt"><button class="btn" onclick="ofEvSalveaza(true)">📄 Salvează și vezi PDF</button>
-        <div class="r2"><button class="btn sec" onclick="ofEvSalveaza(false)">💾 Salvează</button><button class="btn sec" onclick="this.closest('.modal').remove()">Renunță</button></div></div></aside></div></div>`;
+      <div class="bt"><button class="btn pr" onclick="ofEvSalveaza(true)">📄 Salvează și vezi PDF</button>
+        <div class="r2"><button class="btn gh" onclick="ofEvSalveaza(false)">💾 Salvează</button><button class="btn gh" onclick="this.closest('.modal').remove()">Renunță</button></div></div></aside></div></div>`;
   document.body.appendChild(w); feFereastra(w);
   (k.randuri && k.randuri.length ? k.randuri : [{}]).forEach(ofEvRand);
   w.addEventListener("input", ofEvSuma); w.addEventListener("change", ofEvSuma); ofEvZile(k.servisari || []);
@@ -6697,7 +6717,7 @@ function ofEvRand(r){
     <div><label>Cum apare în ofertă</label><input class="r-nume" value="${esc(r.nume || "")}"></div>
     <div><label class="r-uml">Buc.</label><input class="r-buc" type="number" min="0" value="${esc(r.buc || "")}"></div>
     <div><label>Preț / zi (lei)</label><input class="r-pret" type="number" step="0.01" min="0" value="${r.pret ?? ""}"></div>
-    <button type="button" class="btn sm sec" title="Scoate produsul">✕</button></div><div class="ac"></div>`;
+    <button type="button" class="btn sm sec" title="Scoate produsul">✕</button></div><div class="r2"><div class="ac"></div><div class="r-tot"></div></div>`;
   const pr = d.querySelector(".r-prod"), tp = d.querySelector(".r-tip"), q = s => d.querySelector(s);
   const cat = () => OF.C.find(x => x.produs && x.produs === pr.value && (x.tip || "") === tp.value) || (tp.value ? null : OF.C.find(x => x.produs && x.produs === pr.value));
   const tipuri = v => { const L = modeleDe(pr.value).filter(x => !/PROPRI|DAUNA|SECOND/i.test(x)); if(v && !L.includes(v)) L.push(v); tp.innerHTML = pr.value ? opt(L, v, "— alege tipul —") : '<option value="">—</option>'; tp.disabled = !pr.value; };
@@ -6735,11 +6755,16 @@ function ofEvCiteste(){
 function ofEvSuma(){
   const el = $("ev-suma"); if(!el || !$("ev-rd") || !$("ev-total")) return;
   // igienizarea finală: prețul standard vine din Catalog (la primul container), până scrii tu altul
+  const sk = $("ev-svkm"); if(sk && !sk.dataset.atins) sk.value = $("ev-km").value;   // v8.97: km pe cursa de servisare = distanța, până îi schimbi
   const ig = [...$("ev-rd").children].find(d => d.querySelector(".r-prod").value === "CONTAINER"), igp = $("ev-igp");
   if(ig && !igp.dataset.atins && igp.value === "" && ig.dataset.ig) igp.value = ig.dataset.ig;
   const k = ofEvCiteste(), c = k.calc, cam = /^CAMION/i.test(c.veh || "");
   $("ev-mac-w").style.display = cam ? "" : "none"; $("ev-ig-w").style.display = k.ig_nr ? "" : "none";
   $("ev-igt").textContent = k.ig_nr ? k.ig_nr + (k.ig_nr === 1 ? " container" : " containere") + " × " + ftBani(c.ig_pret || 0) + " lei = " + ftBani(k.igienizare) + " lei — se adună la total" + (c.ig_pret == null ? " (pune prețul standard; îl poți salva în 📚 Catalog, la container)" : "") : "";
+  [...$("ev-rd").children].forEach(d => { const q = +d.querySelector(".r-buc").value || 0, p = +d.querySelector(".r-pret").value || 0, t = d.querySelector(".r-tot");
+    if(t) t.innerHTML = q && p ? `${q} × ${ftBani(p)} = <b>${ftBani(q * p)} lei / zi</b>${k.zile ? ` · ${ftBani(q * p * k.zile)} lei pe ${k.zile} ${k.zile === 1 ? "zi" : "zile"}` : ""}` : ""; });
+  { const ok = [!!$("ev-catre").value.trim(), !!(k.locatia || k.gps) && +c.km > 0, k.zile > 0, k.randuri.length > 0 && k.randuri.every(r => r.buc && r.pret != null), +c.km > 0, !!k.mentiuni];
+    document.querySelectorAll("#ev-nav button").forEach((b, i) => b.classList.toggle("ok", !!ok[i])); }
   const L = (t, val, det) => `<div class="sl"><div>${t}<small>${det}</small></div><b>${ftBani(val)} lei</b></div>`;
   el.innerHTML = L("Chirie produse", k.chirie, `${ftBani(k.chirie_zi)} lei / zi × ${k.zile} ${k.zile === 1 ? "zi" : "zile"}`) +
     L("Transport", k.transport, `${c.curse || 0} curse × ${c.masini || 0} ${(c.masini || 0) === 1 ? "mașină" : "mașini"} × ${c.km || 0} km × ${c.pkm || 0} lei`) +
@@ -17424,6 +17449,8 @@ function tzScrie(){
 }
 tzPune(TZ);
 const tzAre = () => window.innerWidth >= 900 && !!document.querySelector("main .page.on .tw > table");
+// v8.97 (cerut de Ovidiu, 16.11): rotița mouse-ului nu mai schimbă valorile din căsuțele cu numere — se derulează pagina, valoarea rămâne
+document.addEventListener("wheel", e => { const t = e.target; if(t && t.tagName === "INPUT" && t.type === "number" && document.activeElement === t) t.blur(); }, { passive: true, capture: true });
 window.addEventListener("wheel", e => {
   if(!e.ctrlKey || !tzAre()) return;
   e.preventDefault(); tzPas(e.deltaY < 0 ? 1 : -1);
