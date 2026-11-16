@@ -1116,7 +1116,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
   <span id="rz-w"><button id="rz-reset" class="pictograma" title="Lățimi implicite — pune coloanele din tabelele acestei file înapoi cum erau">↺ Reset layout</button><i class="rz-sep">|</i></span>
   <span id="tz-w" title="Mărimea tabelului (doar tabelul, restul rămâne la fel), din 5 în 5%. Merge și cu Ctrl + rotița mausului, Ctrl + / Ctrl − / Ctrl 0. Dublu clic pe procent = scrii tu valoarea."><button class="pictograma" onclick="tzPas(-1)" aria-label="Micșorează tabelul">−</button><b id="tz-v" ondblclick="tzScrie()" title="Dublu clic = scrii mărimea (ex. 87), Enter">100%</b><input id="tz-in" type="number" min="30" max="300" step="5" style="display:none"><button class="pictograma" onclick="tzPas(1)" aria-label="Mărește tabelul">+</button></span>
-  <span class="ver">v9.00</span>
+  <span class="ver">v9.01</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -2068,6 +2068,13 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
     <div class="mk-g">
       <div><label>Data emitere</label><input type="date" id="mk-de" oninput="mkPer()" onchange="mkPer()"></div>
       <div><label>Data expirare <span class="muted">(din contract)</span></label><input type="date" id="mk-dx" oninput="mkPer()" onchange="mkPer()"><input type="hidden" id="mk-xt"></div>
+    </div>
+    <div class="mk-sec"><label>Felul contractului <span class="muted" style="text-transform:none;font-weight:400">(alege ce clauze intră la 📄 Contract; modulele produselor intră singure, după anexe)</span></label>
+      <div class="mk-g" style="margin:0"><div><select id="mk-fel" onchange="mkFel()"><option value="perioada">Închiriere pe perioadă</option><option value="eveniment">Eveniment</option><option value="servicii">Prestări servicii (servisare toalete proprii)</option></select></div><div></div></div>
+      <div id="mk-sv" class="mk-g" style="display:none;margin-top:8px">
+        <div><label>Preț / servisare / toaletă (fără TVA)</label><div style="display:flex;gap:6px"><input id="mk-sv-pret" type="number" step="0.01" min="0" placeholder="ex. 150"><select id="mk-sv-mon" style="max-width:90px"><option>RON</option><option>EUR</option></select></div></div>
+        <div><label>Zona de acoperire</label><input id="mk-sv-zona" placeholder="ex. HD, AB, AR, TM"></div>
+        <div><label>Persoana pentru comenzi</label><input id="mk-sv-pers"></div><div><label>Telefon</label><input id="mk-sv-tel"></div></div>
     </div>
     <div class="mk-sec"><label>Prelungire prin act adițional</label>
       <div id="mk-aa"></div>
@@ -4391,14 +4398,238 @@ function ctrDurata(k, a){   // „07 Luni” — din textul perioadei, altfel di
     if(luni >= 1) return actPad(luni) + " Luni"; return actPad(Math.round((d2 - d1) / 864e5)) + " Zile"; }
   return "perioada nedeterminata";
 }
+// ══════════════════════════════════════════════════════════════════════════════════════════════════════
+// v9.01 (cerut de Ovidiu, 16.11): CONTRACTELE PE MODULE — textul din documentul „Contracte Euro Ecologic — clauze pe module”.
+// Contractul = clauze generale + felul contractului (perioadă / eveniment / prestări servicii) + modulele produselor de pe anexe
+// (toalete, lavoare, containere și cabine, garduri și cordoane, fose și cuburi IBC). Articolele se numerotează singure, trimiterile
+// [[cheie]] devin „art. 3.3”. Modelele Word (modele/contract_pj.docx, contract_pf.docx) au doar buclele {#arts_a} / {#arts_b} / {#arts_c}.
+const CTR_FEL = { perioada: "Închiriere pe perioadă", eveniment: "Eveniment", servicii: "Prestări servicii (toalete proprii)" };
+const CTR_TITLU = { perioada: "CONTRACT DE INCHIRIERE SI PRESTARI SERVICII", eveniment: "CONTRACT DE INCHIRIERE PENTRU EVENIMENT",
+  servicii: "CONTRACT DE PRESTARI SERVICII - INTRETINERE TOALETE ECOLOGICE MOBILE" };
+const ctrFel = k => (k && CTR_FEL[k.fel]) ? k.fel : "perioada";
+function ctrFamilii(rows){   // familiile de produse de pe anexe → modulele contractului
+  const s = new Set(); (rows || []).forEach(r => { const u = faraDiac(r.produs || "").toUpperCase();
+    if(/TOALET/.test(u)) s.add("T"); if(/LAVOAR/.test(u)) s.add("L"); if(/CONTAINER/.test(u)) s.add("C"); if(/CABIN/.test(u)) s.add("CP");
+    if(/GARD|CORDON/.test(u)) s.add("D"); if(/FOSA/.test(u)) s.add("FS"); if(/IBC/.test(u)) s.add("IBC"); });
+  return s;
+}
+const ctrLista = L => L.length > 1 ? L.slice(0, -1).join(", ") + " si " + L[L.length - 1] : (L[0] || "");
+function ctrArticole(o){   // o: { fel, pf, P (Set), obiect, durata, data_start, contract_data, anexe_text, sicap_text, garantie_a }
+  const { fel, pf, P } = o, ev = fel === "eveniment", sv = fel === "servicii", A = [], B = [], C = [];
+  const art = (L, titlu, pars) => L.push({ titlu, pars: pars.filter(Boolean).map(p => typeof p === "string" ? { t: p } : p) });
+  const tot = (P.has("T") || P.has("L") || P.has("FS") || P.has("IBC")), mare = P.has("C") || P.has("CP") || P.has("FS");
+  if(!sv){
+    // ── A: obiect, durată, operațiuni, preț, obligații, folosire, răspundere (urmează Tabelul nr. 1) ──
+    art(A, "Obiectul contractului", [
+      ev ? "Prestatorul inchiriaza Beneficiarului " + o.obiect + " (\"produsele\") pe durata evenimentului din anexa si presteaza serviciile de transport, amplasare, igienizare si intretinere din programul anexei."
+         : "Prestatorul inchiriaza Beneficiarului " + o.obiect + " (\"produsele\") si presteaza serviciile de igienizare si intretinere aferente. Tipul, numarul, accesoriile, pretul, locul de amplasare si frecventa serviciilor sunt stabilite in anexe.",
+      "Anexele, actele aditionale si comenzile scrise transmise de Beneficiar pe e-mail si acceptate de Prestator fac parte integranta din contract.",
+      pf ? "Produsele raman proprietatea Prestatorului pe toata durata contractului. Ele nu devin parte a terenului sau a constructiei pe care sunt amplasate si nu pot fi vandute, gajate, subinchiriate, sechestrate sau retinute pentru datoriile Beneficiarului."
+         : "Produsele raman proprietatea Prestatorului pe toata durata contractului. Ele nu devin parte a terenului sau a constructiei pe care sunt amplasate si nu pot fi vandute, gajate, subinchiriate, aduse ca aport la capital, sechestrate sau retinute pentru datoriile Beneficiarului."]);
+    art(A, "Durata", ev ? [
+      "Contractul se incheie pentru evenimentul din anexa. Produsele se amplaseaza si se ridica la datele si orele din anexa; pretul acopera zilele evenimentului, conform anexei.",
+      { id: "prel", t: "Daca produsele nu pot fi ridicate la data din anexa din cauza Beneficiarului, contractul continua pana la ridicare, iar fiecare zi in plus se plateste la pretul pe zi din anexa." },
+      "Ultima zi de inchiriere este ziua in care produsele au fost ridicate de Prestator, pe baza de proces-verbal."
+    ] : [
+      "Contractul se incheie pe o perioada de " + o.durata + ", incepand cu data de " + o.data_start + ".",
+      { id: "minim", t: "Chiria minima este de 30 de zile de la amplasare, chiar daca produsele sunt returnate mai devreme." },
+      { id: "prel", t: "Daca la sfarsitul perioadei produsele nu au fost returnate, contractul se prelungeste tacit, pe durata nedeterminata, in aceleasi conditii, pana la returnarea lor." },
+      "Ultima zi de inchiriere este ziua in care produsele au ajuns in depozitul Prestatorului sau au fost preluate de reprezentantul lui, pe baza de proces-verbal. Fiecare zi calendaristica inceputa se plateste ca zi de inchiriere."]);
+    const mici = [P.has("T") && "toaletele", P.has("L") && "lavoarele", P.has("D") && "gardurile si cordoanele", P.has("IBC") && "cuburile IBC"].filter(Boolean);
+    const mari = [P.has("C") && "containerele", P.has("CP") && "cabinele de paza", P.has("FS") && "fosele septice"].filter(Boolean);
+    const veh = [mici.length && ctrLista(mici).replace(/^./, c => c.toUpperCase()) + " se transporta cu autovehicule de pana la 3,5 t (sau cu remorca) si se descarca manual.",
+      mari.length && ctrLista(mari).replace(/^./, c => c.toUpperCase()) + " se transporta cu autocamioane de mare tonaj; descarcarea si incarcarea se fac cu macara sau platforma, conform anexei sau comenzii.",
+      tot && "Servisarea se face cu vidanja de pana la 3,5 t."].filter(Boolean).join(" ") || "Produsele se transporta cu autovehiculul potrivit dimensiunilor lor, conform anexei.";
+    art(A, "Livrarea, accesul, servisarea si ridicarea", [
+      "Prestatorul livreaza produsele, cu accesoriile din anexa, la locul de amplasare din anexa, conform rutelor proprii. Livrarile sau ridicarile cerute de Beneficiar in afara rutei" + (ev ? " sau a programului din anexa" : "") + " se factureaza separat (transport).",
+      "Mijloacele de transport. " + veh,
+      { id: "acces", t: "Accesul. Beneficiarul asigura, la livrare, la fiecare servisare si la ridicare: (a) un drum de acces practicabil in orice anotimp pentru autovehiculul de la art. [[veh]], ca latime, inaltime libera, panta si capacitate portanta; (b) un loc de stationare in siguranta, fara a bloca drumul public; (c) o distanta de cel mult 5 m intre autovehicul si produs, pe teren plan, fara obstacole (garduri, santuri, gropi, sapaturi, materiale, utilaje)" + (mare ? ", iar la produsele descarcate cu macara, spatiu liber pentru manevra si fara linii electrice aeriene deasupra" : "") + "; (d) acces liber la usile si la gurile de golire ale produselor; (e) teren plan si stabil sau fundatie pentru amplasare, precum si avizele si acordurile necesare amplasarii" + (pf ? " (de exemplu, ale vecinilor sau ale asociatiei de proprietari, unde e cazul)" : "") + "." },
+      { id: "refuz", t: "Securitatea. Personalul Prestatorului aplica normele de securitate si sanatate in munca. Furtunul de vidanjare nu se trece peste garduri, santuri sau materiale. Cand conditiile de la art. [[acces]] nu sunt indeplinite sau operatiunea ar pune in pericol personalul, autovehiculul ori alte persoane, soferul poate refuza livrarea, servisarea sau ridicarea. Situatia se consemneaza (fotografie, nota de constatare) si se comunica Beneficiarului." },
+      { id: "neef", t: "In cazurile de la art. [[refuz]] si cand operatiunea nu se poate face din cauza Beneficiarului (acces blocat, produs mutat, poarta inchisa, lipsa persoanei de contact): (a) servisarea se considera efectuata si se factureaza; (b) deplasarea suplimentara se factureaza la tariful de transport" + (pf ? "." : "; (c) costurile de deblocare sau tractare a autovehiculului ramas blocat pe calea de acces indicata de Beneficiar sunt suportate de Beneficiar. Imposibilitatea operatiunii din aceste cauze nu este neexecutare din partea Prestatorului.") },
+      { id: "pv", t: pf ? "La livrare si la ridicare se intocmeste un proces-verbal de predare-primire. Daca Beneficiarul sau un reprezentant al lui nu este prezent, procesul-verbal intocmit de Prestator, insotit de fotografii, face dovada livrarii si a starii produselor."
+        : "La livrare si la ridicare se intocmeste un proces-verbal de predare-primire (produse, serii, accesorii, stare), semnat de reprezentantii Partilor. Daca Beneficiarul nu trimite un reprezentant, procesul-verbal intocmit si semnat doar de Prestator face dovada livrarii, a starii produselor si a eventualelor deteriorari." },
+      "Livrarea se considera facuta la descarcarea produselor la locul indicat. Din acel moment Beneficiarul raspunde de paza si integritatea produselor, pana la predarea lor catre Prestator.",
+      "Cand vremea nu permite (zapada, polei, inghet, inundatie), serviciile se fac imediat ce conditiile o permit, conform rutei." + (ev ? "" : " Chiria nu scade.")]);
+    art(A, "Pretul, facturarea si plata", [
+      "Chiria si serviciile se platesc la preturile din anexe. La pret se adauga TVA." + (o.sicap_text || ""),
+      { id: "plata", t: ev ? "Pretul total al evenimentului din anexa se plateste integral inainte de amplasare, pe baza facturii de avans sau a proformei. Fara plata confirmata, Prestatorul nu livreaza."
+        : pf ? "Plata se face in avans. Prima factura se emite la amplasare si cuprinde perioada pana la sfarsitul lunii. Apoi factura se emite la sfarsitul fiecarei luni, pentru luna urmatoare. Pentru inchirieri mai scurte de 90 de zile, plata se face integral, inainte de livrare."
+        : "Factura se emite la sfarsitul fiecarei luni si se transmite prin sistemul RO e-Factura. Pentru inchirieri mai scurte de 90 de zile, plata se face integral inainte de livrare, pe baza de factura de avans sau proforma." },
+      { id: "accfact", t: (pf ? "Factura se transmite pe e-mail, la adresa din art. [[notif]], si se plateste in cel mult 5 zile calendaristice de la emitere."
+        : (ev ? "Facturile pentru zilele sau serviciile suplimentare se platesc" : "Plata se face") + " in 15 zile calendaristice de la data la care factura e disponibila in RO e-Factura.")
+        + " Beneficiarul poate contesta in scris o factura pana la scadenta" + (pf ? "." : "; necontestata pana atunci, factura se considera acceptata.") },
+      { id: "pen", t: "Pentru intarziere, Beneficiarul datoreaza penalitati de 0,1% pe zi din suma neachitata, de la scadenta pana la plata" + (pf ? "; totalul penalitatilor nu poate depasi suma datorata." : ".") },
+      { id: "susp", t: "Daca o factura nu e platita in " + (pf ? 7 : 15) + " zile de la scadenta, Prestatorul poate suspenda serviciile, dupa o notificare scrisa, si poate rezilia contractul conform art. [[incet]]. Chiria continua sa curga pe durata suspendarii." },
+      ev ? null : "Serviciile care nu s-au putut face din motive care nu tin de Prestator (acces blocat, produs mutat, conditii meteo) nu scad chiria."]);
+    art(A, "Obligatiile Prestatorului", [
+      "Prestatorul: (a) livreaza produsele in stare buna de folosinta, cu accesoriile din anexa; (b) face serviciile de igienizare si intretinere la frecventa" + (ev ? " si in programul" : "") + " din anexa; (c) repara sau inlocuieste, pe cheltuiala lui, produsul defect din uzura normala, " + (ev ? "cat mai repede, pe durata evenimentului" : "in cel mult 14 zile de la anuntul scris al Beneficiarului") + "; (d) ridica produsele la incetarea contractului.",
+      pf ? null : "Prestatorul garanteaza Beneficiarul impotriva pretentiilor tertilor privind proprietatea produselor."]);
+    art(A, "Folosirea si mutarea produselor", pf ? [
+      "Beneficiarul foloseste produsele cu grija, numai pentru destinatia lor, nu le modifica si nu indeparteaza placutele sau seriile de identificare.",
+      "Produsele nu pot fi mutate din locul de amplasare din anexa fara acordul scris (inclusiv pe e-mail) al Prestatorului si nu pot fi subinchiriate, imprumutate sau date altor persoane.",
+      "Beneficiarul permite reprezentantilor Prestatorului accesul la produse pentru servicii, verificari si ridicare si il anunta imediat despre orice furt sau deteriorare."
+    ] : [
+      "Beneficiarul foloseste produsele cu grija unui bun proprietar, numai pentru destinatia lor si potrivit conditiilor din anexa.",
+      "Beneficiarul nu modifica produsele si nu indeparteaza placutele, seriile sau alte semne de identificare.",
+      "Produsele nu pot fi mutate din locul de amplasare din anexa decat cu acordul scris prealabil al Prestatorului. Mutarea poate schimba pretul transportului si al serviciilor, prin act aditional.",
+      "Beneficiarul permite reprezentantilor Prestatorului accesul la produse pentru servicii, verificari si ridicare. Deteriorarile constatate se consemneaza intr-o nota de constatare.",
+      "Beneficiarul anunta imediat Prestatorul despre orice furt, deteriorare, sechestru sau pretentie a unui tert privind produsele si ii pune la dispozitie documentele."]);
+    art(A, "Raspunderea pentru produse si daunele", [
+      { id: "rasp", t: pf ? "De la livrare pana la returnare, Beneficiarul raspunde pentru pierderea, furtul sau deteriorarea produselor, cu exceptia uzurii normale si a cazurilor de forta majora."
+        : "De la livrare pana la returnare, Beneficiarul raspunde pentru orice pierdere, furt sau deteriorare a produselor, cu exceptia uzurii normale, inclusiv cele produse de terti, de fenomene naturale sau de animale." },
+      "Deteriorarile se repara de Prestator, pe cheltuiala Beneficiarului, pe baza procesului-verbal sau a notei de constatare" + (pf ? ", insotite de fotografii." : "."),
+      "In caz de dauna totala sau furt, Beneficiarul plateste valoarea din Tabelul nr. 1 de mai jos, plus chiria pana la data anuntarii scrise a daunei sau a furtului."]);
+    // ── B: modulele produselor, evenimentul, returnarea, terții, declarațiile, încetarea, forța majoră, datele ──
+    const M = [];
+    if(P.has("T")) M.push(
+      "Toalete - servisarea cuprinde absorbtia (vidanjarea) continutului, spalarea cu apa sub presiune, solutia biodegradabila, odorizarea si completarea hartiei igienice, la frecventa din anexa. Servisarile cerute in plus se factureaza la pretul \"servisare la cerere\" din anexa" + (ev ? ", daca nu sunt in programul evenimentului." : "."),
+      "Toalete - numarul. Recomandarea Prestatorului este o toaleta la 10 persoane pe zi, cu servisare saptamanala; la evenimente, o toaleta la 50-100 de persoane pe zi, cu servisare zilnica. Beneficiarul raspunde daca alege mai putine toalete sau servisari decat necesarul.",
+      { id: "nuarunca", t: "Toalete - in toaleta nu se arunca deseuri solide, resturi de constructii, materiale textile, scutece, ambalaje, uleiuri, carburanti, chimicale, vopsele, ciment sau pamant. Costul curatarii, al desfundarii sau al reparatiei cuvei se factureaza Beneficiarului." },
+      "Toalete - pe vreme de inghet, servisarea se face cand conditiile o permit; continutul inghetat nu poate fi absorbit. In interiorul toaletei nu se folosesc foc, surse de caldura sau sare.",
+      "Toalete - accesoriile (lavoar interior, dozator de sapun, dispenser de prosoape, spalator, hartie) sunt cele din anexa si se consemneaza in procesul-verbal; cele lipsa la ridicare se factureaza. Pe vant puternic sau pe teren in panta, Beneficiarul asigura toaletele (ancorare sau sprijin), la indicatia Prestatorului.");
+    if(P.has("L")) M.push("Lavoare - rezervorul de apa curata se umple si cel de apa uzata se goleste la servisare, la frecventa din anexa; sapunul si prosoapele se completeaza tot atunci. Beneficiarul nu leaga lavoarul la alta sursa de apa fara acordul Prestatorului. Pe inghet, lavoarul se goleste si poate fi scos din uz pana la incalzirea vremii" + (ev ? "." : ", chiria curgand in continuare."));
+    if(P.has("C") || P.has("CP")){ const ce = P.has("C") && P.has("CP") ? "Containere si cabine" : P.has("C") ? "Containere" : "Cabine de paza";
+      M.push(ce + " - manipularile cu macara se factureaza la pretul din anexa. Beneficiarul asigura teren plan si compactat, care suporta greutatea produsului, sau fundatie (blocuri, placa).",
+        ce + " - racordarea la curent, apa si canalizare o face Beneficiarul, pe cheltuiala lui, prin electrician si instalator autorizati. Prestatorul nu raspunde de instalatiile Beneficiarului si de pagubele produse de racordarea gresita.",
+        ce + " - sunt interzise gaurile, sudura, vopsirea, lipirea de reclame si orice alta modificare a peretilor si a instalatiilor, depozitarea de substante inflamabile sau periculoase si focul deschis. Sarcina pe podea nu depaseste limita indicata de Prestator.",
+        ce + " - dotarile (instalatie electrica, aer conditionat, radiator, boiler, obiecte sanitare, mobilier) si cheile se consemneaza in procesul-verbal la livrare. Cheile se predau la ridicare; incuietorile schimbate sau cheile pierdute se factureaza. La containerele sanitare, Beneficiarul previne inghetul instalatiilor (incalzire sau golire); reparatiile instalatiilor inghetate se factureaza Beneficiarului.");
+      if(P.has("C")) M.push({ id: "igien", t: "Containere - la returnare, fiecare container se igienizeaza de Prestator. Costul igienizarii finale este cel din anexa (in prezent 150 EUR + TVA / container) si se factureaza la ridicare" + (ev ? " sau se include in pretul evenimentului" : "") + ". Murdaria deosebita (resturi de constructii, vopsea, mobilier distrus) se factureaza separat. Rezervoarele de apa uzata ale containerelor sanitare nelegate la canalizare se golesc la frecventa din anexa sau la cerere, contra cost." }); }
+    if(P.has("D")) M.push("Garduri - cantitatea se consemneaza in panouri, iar pretul se calculeaza pe metru liniar (panouri x lungimea panoului), conform anexei.",
+      "Garduri - accesoriile (cleme de prindere, talpi de sustinere, contravantuiri, plase sau prelate) se numara la livrare si la ridicare si se trec in procesul-verbal; cele lipsa sau rupte se factureaza.",
+      "Garduri - montajul se face de Prestator sau de Beneficiar, conform anexei. Cu plasa sau prelata, gardul prinde vant: Beneficiarul asigura balastarea sau ancorarea suplimentara. Prestatorul nu raspunde de gardul rasturnat de vant daca a fost mutat sau incarcat de Beneficiar. Panourile nu se taie, nu se sudeaza, nu se indoaie si nu se folosesc ca schela sau suport de greutati.");
+    if(P.has("FS") || P.has("IBC")) M.push((P.has("FS") && P.has("IBC") ? "Fose septice si cuburi IBC" : P.has("FS") ? "Fose septice" : "Cuburi IBC") + " - golirea se face cu vidanja, la frecventa din anexa sau la cerere, contra cost. In ele intra doar apa uzata menajera sau apa, conform anexei; substantele periculoase sunt interzise.");
+    if(M.length) art(B, "Dispozitii specifice produselor", M);
+    if(ev) art(B, "Clauze specifice evenimentului", [
+      "Pretul total al evenimentului din anexa cuprinde chiria pe zilele evenimentului, transportul la amplasare si la ridicare si servisarile din programul anexei. Servisarile cerute in afara programului si deplasarile suplimentare se factureaza separat. Taxele de intrare in localitate sau pe amplasament nu sunt incluse; daca apar, se adauga la factura.",
+      "Daca Beneficiarul cere mai multe sau mai putine produse decat in anexa, pretul se recalculeaza proportional, iar diferenta se factureaza sau se regularizeaza.",
+      "Cand anexa o prevede, Beneficiarul asigura: cazare si masa pentru personalul Prestatorului care ramane pe eveniment; apa pentru alimentarea vidanjei; un loc amenajat pentru deversare; paza produselor pe toata durata evenimentului, inclusiv noaptea.",
+      "Servisarile se fac la zilele si orele din programul anexei. Daca accesul este blocat de public, scena, garduri sau alte amenajari ale evenimentului, se aplica art. [[neef]]."]);
+    art(B, pf ? "Returnarea produselor" : "Returnarea si recuperarea produselor", [
+      "La incetarea contractului, Beneficiarul preda produsele in 48 de ore, curatate de bunurile lui si in starea in care le-a primit, cu exceptia uzurii normale.",
+      pf ? null : "Daca produsele nu pot fi ridicate de la locul de amplasare (acces blocat, teren impracticabil), Beneficiarul le duce, pe cheltuiala si riscul lui, intr-un loc de unde pot fi ridicate, stabilit in scris cu Prestatorul.",
+      { id: "intrare", t: "Beneficiarul isi da de acum acordul ca, dupa incetarea contractului, reprezentantii Prestatorului sa intre la locul de amplasare " + (pf ? "numai " : "") + "pentru ridicarea produselor. Costurile ridicarii facute din cauza Beneficiarului (transport, manipulare, curatenie, reparatii) sunt suportate de Beneficiar." },
+      "Cat timp produsele nu pot fi recuperate din cauza Beneficiarului, acesta plateste o despagubire egala cu chiria, calculata pe zi, pana la ridicarea lor.",
+      pf ? null : "Prestatorul poate inscrie contractul in Arhiva Electronica de Garantii Reale Mobiliare; costurile inscrierii si ale radierii sunt suportate de Beneficiar."]);
+  } else {
+    // ── PRESTĂRI SERVICII: servisarea toaletelor Beneficiarului ──
+    art(A, "Obiectul contractului", [
+      "Prestatorul presteaza pentru Beneficiar servicii de intretinere (vidanjare) a toaletelor ecologice mobile ale Beneficiarului, numite in contract si servisari, la locatiile si in numarul din comenzile Beneficiarului. Pretul, zona si conditiile sunt stabilite in anexa.",
+      "Anexele, actele aditionale si comenzile scrise transmise de Beneficiar pe e-mail si acceptate de Prestator fac parte integranta din contract."]);
+    art(A, "Durata", [
+      "Contractul se incheie pe o perioada de " + o.durata + ", incepand cu data de " + o.data_start + ", si se poate prelungi prin act aditional.",
+      "Contractul produce efecte numai pentru comenzile transmise in perioada contractata."]);
+    art(A, "Toaletele Beneficiarului si comenzile", [
+      "Serviciul se presteaza la toaletele ecologice mobile ale Beneficiarului, independente de reteaua de canalizare, cu cuva colectoare de pana la 250 de litri. Pentru alte modele, pretul si conditiile se stabilesc in anexa.",
+      "Comenzile se fac doar in scris, pe e-mail, si cuprind: numarul de toalete, locatia exacta (adresa sau coordonate GPS), persoana de contact de pe locatie si telefonul ei. Prestatorul confirma comanda si data servisarii, conform rutelor proprii.",
+      "Pretul din anexa este valabil pentru zona de acoperire a Prestatorului; pentru locatii in afara ei, pretul se stabileste la comanda.",
+      "Beneficiarul raspunde de amplasarea toaletelor si de avizele necesare locatiei."]);
+    art(A, "Efectuarea servisarii si accesul", [
+      "Servisarea cuprinde absorbtia (vidanjarea) continutului, spalarea, solutia biodegradabila, odorizarea si completarea hartiei igienice, daca anexa nu prevede altfel.",
+      { id: "acces", t: "Accesul. Beneficiarul asigura: (a) un drum practicabil pentru vidanja de pana la 3,5 t; (b) un loc de stationare in siguranta, fara a bloca drumul public; (c) o distanta de cel mult 5 m intre vidanja si toaleta, fara obstacole (garduri, santuri, materiale, utilaje); (d) acces liber la usa si la gura de golire a toaletei." },
+      { id: "refuz", t: "Cand conditiile de la art. [[acces]] nu sunt indeplinite sau operatiunea ar pune in pericol personalul ori autovehiculul, soferul poate refuza servisarea. Situatia se consemneaza (fotografie sau nota) si se comunica Beneficiarului." },
+      { id: "neef", t: "In cazurile de la art. [[refuz]] si cand servisarea nu se poate face din cauza Beneficiarului (acces blocat, toaleta mutata, lipsa persoanei de contact), servisarea se considera efectuata si se factureaza, iar deplasarea suplimentara se factureaza la tariful de transport." },
+      { id: "conf", t: "Fiecare servisare se confirma prin proces-verbal sau cartela de servisare. Daca reprezentantul Beneficiarului nu este prezent, servisarea consemnata de Prestator (cartela, fotografie) se considera efectuata." },
+      "Cand vremea nu permite (zapada, polei, inghet), servisarea se face imediat ce conditiile o permit, conform rutei.",
+      { id: "nuarunca", t: "In toaletele Beneficiarului nu se arunca deseuri solide, resturi de constructii, materiale textile, ambalaje, uleiuri, carburanti, chimicale, vopsele, ciment sau pamant. Costul desfundarii sau al curatarii suplimentare se factureaza Beneficiarului." },
+      { id: "stare", t: "Prestatorul nu raspunde de defectele, deteriorarile sau lipsurile existente ale toaletelor Beneficiarului si nici de cele produse de vandalism sau de folosirea gresita. Cand constata o defectiune, o consemneaza si anunta Beneficiarul." }]);
+    art(A, "Pretul, facturarea si plata", [
+      "Servisarile se platesc la pretul din anexa (pe servisare si toaleta). La pret se adauga TVA." + (o.sicap_text || ""),
+      { id: "plata", t: "Factura se emite dupa confirmarea servisarii, pentru locatiile servisate" + (pf ? ", si se transmite pe e-mail." : ", si se transmite prin RO e-Factura.") + " Locatiile la care servisarea nu s-a facut din cauza Prestatorului nu se factureaza." },
+      { id: "accfact", t: "Factura se plateste in cel mult 5 zile calendaristice de la emitere. Beneficiarul poate contesta in scris o factura pana la scadenta" + (pf ? "." : "; necontestata pana atunci, factura se considera acceptata.") },
+      { id: "pen", t: "Pentru intarziere, Beneficiarul datoreaza penalitati de 0,1% pe zi din suma neachitata, de la scadenta pana la plata" + (pf ? "; totalul penalitatilor nu poate depasi suma datorata." : ".") },
+      { id: "susp", t: "Daca o factura nu e platita la scadenta, Prestatorul poate suspenda servisarile, dupa o notificare scrisa, si poate rezilia contractul conform art. [[incet]]." }]);
+    art(A, "Obligatiile Prestatorului", [
+      "Prestatorul: (a) onoreaza comenzile cat mai repede, conform rutelor proprii, si anunta Beneficiarul daca o comanda nu poate fi facuta la data ceruta; (b) face servisarea conform art. [[acces]] si urmatoarele; (c) respecta normele de securitate si sanatate in munca si regulile locatiei comunicate de Beneficiar."]);
+  }
+  // ── comune: terți, declarații, retragere (PF), încetare, forță majoră, impreviziune, date ──
+  const L2 = sv ? A : B;
+  if(!pf) art(L2, "Tertii si cesiunea contractului", [
+    sv ? "Beneficiarul nu poate cesiona contractul fara acordul scris al Prestatorului." : "Beneficiarul nu poate subinchiria, imprumuta, ceda sau da in folosinta produsele altor persoane si nu poate cesiona contractul fara acordul scris al Prestatorului.",
+    { id: "cesiune", t: "Beneficiarul isi da de acum acordul ca Prestatorul sa cesioneze contractul sau creantele din contract unui tert, prin simpla notificare." }]);
+  if(!pf) art(L2, "Declaratii", [
+    "Fiecare Parte declara ca este legal constituita, ca semnatarul are dreptul sa o angajeze si ca incheierea contractului nu incalca actul ei constitutiv sau alte contracte.",
+    o.garantie_a, "Persoana care semneaza fara a avea dreptul sa reprezinte Partea raspunde personal pentru obligatiile din contract."]);
+  if(pf) art(L2, "Dreptul de retragere", ev ? [
+    "Contractul priveste servicii legate de un eveniment, cu o data de executare stabilita in anexa; potrivit art. 16 lit. l) din O.U.G. nr. 34/2014, dreptul de retragere de 14 zile nu se aplica. Anularea evenimentului este reglementata la art. [[anulare]]."
+  ] : [
+    "Daca contractul se incheie la distanta (pe e-mail, telefon sau prin formularul online), Beneficiarul se poate retrage din contract, fara sa-si motiveze decizia, in 14 zile de la incheierea lui, printr-o notificare scrisa trimisa la adresele din art. [[notif]] (O.U.G. nr. 34/2014).",
+    "Prin semnarea contractului sau prin plata primei facturi, Beneficiarul cere expres ca " + (sv ? "serviciile" : "livrarea si serviciile") + " sa inceapa inainte de expirarea termenului de retragere. Daca se retrage, Beneficiarul plateste " + (sv ? "servisarile facute" : "chiria si serviciile pentru zilele") + " pana la notificare" + (sv ? ", iar Prestatorul ii restituie restul sumei platite in cel mult 14 zile." : ", iar Prestatorul ridica produsele si ii restituie restul sumei platite in cel mult 14 zile.")]);
+  const ANUL = { id: "anulare", t: "Anularea evenimentului. Dupa semnare, evenimentul nu poate fi anulat de Beneficiar, cu exceptia fortei majore dovedite si notificate conform art. [[fm]]. In caz de forta majora: daca produsele nu au fost livrate, Beneficiarul nu datoreaza nimic in plus; daca livrarea s-a facut, Beneficiarul plateste transportul (livrarea si ridicarea). Anularea fara forta majora nu da dreptul la restituirea sumelor platite." };
+  if(pf) art(L2, "Incetarea contractului", [
+    "Contractul inceteaza: (a) la sfarsitul duratei" + (sv || ev ? "" : ", daca produsele au fost returnate (altfel se aplica art. [[prel]])") + "; (b) prin acordul Partilor; (c) prin denuntare" + (ev ? " (doar in conditiile art. [[anulare]])" : "") + "; (d) prin reziliere.",
+    ev ? ANUL : { id: "den", t: sv ? "Denuntarea. Oricare Parte poate inceta contractul printr-o notificare scrisa (inclusiv pe e-mail) trimisa cu cel putin 7 zile inainte; servisarile comandate pana atunci se fac si se platesc."
+      : "Denuntarea. Beneficiarul poate inceta contractul oricand, printr-o notificare scrisa (inclusiv pe e-mail) trimisa cu cel putin 7 zile inainte, cu respectarea chiriei minime de la art. [[minim]]. Prestatorul poate denunta contractul cu o notificare de 14 zile. Ultima factura se calculeaza pe zilele pana la returnare; suma platita in avans pentru zilele ramase se restituie sau se compenseaza." },
+    { id: "incet", t: "Rezilierea. Daca Beneficiarul nu plateste o factura in 7 zile de la scadenta" + (sv ? "" : ", muta sau da altcuiva produsele fara acordul Prestatorului ori le foloseste in alt scop") + ", Prestatorul ii trimite o notificare scrisa cu un termen de 5 zile pentru remediere; daca situatia nu e remediata, contractul este reziliat la data indicata in notificare" + (sv ? "." : ", iar Prestatorul ridica produsele.") },
+    "La orice incetare, " + (sv ? "" : "Beneficiarul returneaza produsele conform art. [[intrare]] si ") + "sumele datorate se platesc in cel mult 15 zile."]);
+  else art(L2, "Incetarea contractului", [
+    "Contractul inceteaza: (a) la sfarsitul duratei" + (sv || ev ? "" : ", daca produsele au fost returnate (altfel se aplica art. [[prel]])") + "; (b) prin acordul scris al Partilor; (c) prin denuntare unilaterala" + (ev ? " (doar in conditiile art. [[anulare]])" : "") + "; (d) prin reziliere" + (sv ? "." : "; (e) prin pieirea produselor."),
+    ev ? ANUL : { id: "den", t: "Denuntarea. Oricare Parte poate denunta contractul printr-o notificare scrisa trimisa cu cel putin " + (sv ? "7" : "14") + " zile inainte." + (sv ? " Servisarile comandate pana atunci se fac si se platesc." : " Termenul se scurteaza daca Beneficiarul aduce produsele la depozitul Prestatorului. Ultima factura se calculeaza pe zilele pana la returnare, cu respectarea chiriei minime de la art. [[minim]].") },
+    { id: "incet", t: "Rezilierea de drept (pact comisoriu). Contractul este reziliat de drept, fara punere in intarziere si fara interventia instantei, printr-o simpla notificare a Prestatorului, daca Beneficiarul: (a) nu plateste o factura in 15 zile de la scadenta" + (sv ? "; (b) intra in insolventa, dizolvare sau lichidare." : "; (b) muta produsele fara acordul scris al Prestatorului sau nu spune unde le-a mutat; (c) subinchiriaza, cedeaza sau instraineaza produsele; (d) foloseste produsele in alt scop sau le modifica; (e) intra in insolventa, dizolvare sau lichidare; (f) abandoneaza produsele sau isi inceteaza activitatea in locul amplasarii.") },
+    { id: "rez10", t: "Rezilierea pentru alte incalcari. Pentru orice alta incalcare, Partea afectata notifica in scris cealalta Parte si ii da 10 zile pentru remediere. Daca incalcarea nu e remediata, contractul poate fi reziliat printr-o declaratie unilaterala de reziliere." },
+    "Efectele incetarii. La orice incetare: " + (sv ? "(a) servisarile facute se platesc; (b) sumele datorate se platesc in cel mult 30 de zile." : "(a) Beneficiarul returneaza produsele conform art. [[intrare]]; (b) chiria curge pana la returnare; (c) sumele datorate se platesc in cel mult 30 de zile. La rezilierea din culpa Beneficiarului, acesta plateste, cu titlu de daune-interese, si echivalentul unei chirii lunare" + (ev ? " (la eveniment, al pretului pe o zi)." : "."))]);
+  art(L2, "Forta majora", pf ? [
+    { id: "fm", t: "Nicio Parte nu raspunde pentru neexecutarea cauzata de forta majora (eveniment extern, imprevizibil, absolut invincibil si inevitabil). Partea care o invoca anunta cealalta Parte in 5 zile. Daca evenimentul dureaza mai mult de 30 de zile, oricare Parte poate inceta contractul prin notificare, fara daune-interese." }
+  ] : [
+    { id: "fm", t: "Nicio Parte nu raspunde pentru neexecutarea cauzata de forta majora, adica un eveniment extern, imprevizibil, absolut invincibil si inevitabil." },
+    "Partea care invoca forta majora o anunta celeilalte in 5 zile si ia masuri pentru limitarea efectelor. Daca evenimentul dureaza mai mult de 30 de zile, oricare Parte poate inceta contractul prin notificare, fara daune-interese.",
+    sv ? "Forta majora nu scuteste de plata servisarilor facute inainte de eveniment." : "Forta majora nu scuteste de plata chiriei pentru perioada in care produsele raman la Beneficiar si nici de obligatiile scadente inainte de eveniment."]);
+  if(!pf) art(L2, "Impreviziunea", [{ id: "impr", t: "Partile isi asuma riscul schimbarii imprejurarilor in care s-a incheiat contractul si renunta la dreptul de a cere instantei adaptarea sau incetarea lui pe acest temei (art. 1271 alin. (3) lit. c) Cod civil)." }]);
+  art(L2, pf ? "Datele personale" : "Confidentialitatea si datele personale", pf ? [
+    "Prestatorul prelucreaza datele personale ale Beneficiarului (nume, CNP, datele si copia actului de identitate, domiciliul, telefonul, e-mailul) numai pentru identificarea lui, incheierea si executarea contractului, facturare, evidenta contabila si recuperarea sumelor datorate, conform Regulamentului (UE) 2016/679 (GDPR).",
+    "Datele se pastreaza pe durata contractului si apoi cat cere legea pentru documentele contabile; copia actului de identitate se pastreaza doar ca anexa la contract. Beneficiarul are dreptul de acces, rectificare, stergere, restrictionare si opozitie, in limitele legii, si se poate adresa Autoritatii Nationale de Supraveghere a Prelucrarii Datelor cu Caracter Personal."
+  ] : [
+    "Informatiile primite in legatura cu contractul sunt confidentiale. Ele pot fi comunicate doar angajatilor si colaboratorilor care au nevoie de ele pentru executarea contractului, autoritatilor, auditorilor si consultantilor, in limitele legii.",
+    "Datele personale ale reprezentantilor si persoanelor de contact se prelucreaza numai pentru executarea contractului, facturare, evidenta contabila si recuperarea creantelor, conform Regulamentului (UE) 2016/679. Ele se pastreaza pe durata contractului si apoi cat cere legea pentru documentele contabile."]);
+  if(pf){   // la PF, litigiile și dispozițiile finale stau înaintea notificărilor (ca în modelul v8.84)
+    const decl = [!ev && !sv && "prelungirea tacita (art. [[prel]])", !ev && !sv && "chiria minima (art. [[minim]])", "plata" + (ev ? " integrala inainte de amplasare" : sv ? "" : " in avans") + " (art. [[plata]])", "penalitatile (art. [[pen]])",
+      !sv && "raspunderea pentru produse (art. [[rasp]])", ev && "anularea evenimentului (art. [[anulare]])", sv && "servisarile considerate efectuate (art. [[neef]] si [[conf]])"].filter(Boolean);
+    art(L2, "Litigii si dispozitii finale", [
+      "Neintelegerile se rezolva mai intai pe cale amiabila. Beneficiarul se poate adresa si Autoritatii Nationale pentru Protectia Consumatorilor (ANPC) sau unei entitati de solutionare alternativa a litigiilor (SAL). Daca neintelegerile nu se rezolva, sunt de competenta instantelor stabilite potrivit legii. Se aplica legea romana.",
+      "Contractul se modifica doar in scris, prin act aditional sau anexa. Daca o clauza este nula, celelalte raman valabile.",
+      "Contractul se considera valabil si in lipsa semnaturii olografe a Beneficiarului, daca la contract este anexata copia actului sau de identitate (Anexa CI). Contractul produce efecte de la data achitarii primei facturi emise in baza lui si ramane in vigoare pana la incetarea lui si plata integrala a sumelor datorate.",
+      "Beneficiarul declara ca a primit contractul si anexele inainte de incheiere, ca a citit si a inteles toate clauzele, inclusiv cele privind " + ctrLista(decl) + ", si ca le accepta.",
+      "Contractul s-a incheiat la data de " + o.contract_data + ", in 2 exemplare, cate unul pentru fiecare Parte.",
+      o.anexe_text, "Anexa CI face parte din contract (datele din contract sunt verificate si corelate cu actul de identitate al Beneficiarului)."]);
+  } else {
+    const acc = [!ev && !sv && "art. [[prel]] (prelungirea tacita)", "art. [[refuz]] si [[neef]] (refuzul operatiunilor nesigure si facturarea lor)", sv && "art. [[conf]] (servisarea consemnata doar de Prestator)", !sv && "art. [[pv]] (procesul-verbal intocmit doar de Prestator)",
+      "art. [[accfact]] (acceptarea facturii necontestate)", "art. [[pen]] (penalitatile)", "art. [[susp]] (suspendarea serviciilor)", !sv && "art. [[rasp]] (raspunderea Beneficiarului, inclusiv pentru caz fortuit)",
+      !sv && "art. [[intrare]] (accesul pentru ridicare)", ev && "art. [[anulare]] (anularea evenimentului)", "art. [[cesiune]] (cesiunea de catre Prestator)", "art. [[incet]]" + (sv ? "" : " si [[rez10]]") + " (rezilierea fara instanta)",
+      "art. [[impr]] (impreviziunea)", "art. [[inst]] (instanta competenta)"].filter(Boolean);
+    art(C, "Clauze acceptate expres", ["Beneficiarul declara ca a citit si accepta in mod expres, in sensul art. 1203 Cod civil, urmatoarele clauze: " + acc.join(", ") + ". Acceptarea expresa a acestor clauze se face prin semnatura si stampila Beneficiarului din chenarul de semnaturi de la finalul contractului."]);
+    art(C, "Litigii si dispozitii finale", [
+      { id: "inst", t: "Neintelegerile se rezolva mai intai pe cale amiabila. Daca nu se rezolva in 30 de zile, sunt de competenta instantelor de la sediul Prestatorului (judetul Harghita). Se aplica legea romana." },
+      "Costurile recuperarii creantelor" + (sv ? "" : " si produselor") + " (taxe, onorarii, executare) sunt suportate de Beneficiar, in limitele legii.",
+      "Contractul se modifica doar in scris, prin act aditional sau anexa. El inlocuieste orice intelegere anterioara privind acelasi obiect.",
+      "Daca o clauza este nula, celelalte raman valabile, iar Partile o inlocuiesc cu o clauza valabila cat mai apropiata de intentia lor.",
+      "Drepturile si obligatiile din contract trec asupra succesorilor Partilor.",
+      "Contractul s-a incheiat la data de " + o.contract_data + ", in 2 exemplare originale, cate unul pentru fiecare Parte.",
+      o.anexe_text]);
+  }
+  // numerotarea și trimiterile
+  let n = 2; const ref = {};
+  const num = L => L.forEach(a => { a.nr = n++; a.pars.forEach((p, i) => { p.nr = a.nr + "." + (i + 1) + "."; if(p.id) ref[p.id] = a.nr + "." + (i + 1); }); });
+  num(A); num(B); const n_notif = n++; ref.notif = String(n_notif); num(C);
+  const vehP = A.flatMap(a => a.pars).find(p => /^Mijloacele de transport/.test(p.t || "")); if(vehP) ref.veh = vehP.nr.replace(/\.$/, "");
+  const R = t => String(t || "").replace(/\[\[(\w+)\]\]/g, (m, k) => ref[k] || "-");
+  [A, B, C].forEach(L => L.forEach(a => a.pars.forEach(p => { p.t = R(p.t); delete p.id; })));
+  return { arts_a: A, arts_b: B, arts_c: C, n_notif: String(n_notif) };
+}
+// datele clientului din antetul anexei / PV-ului (aceleași ca în actDateAnexa) — folosite la contractul de servicii, care n-are anexă în aplicație
+function ctrDateClient(c){
+  return { client: c.nume || "", client_sediu: actMajCuv(c.sediu), client_id_et: ["CNP", "CIF"].includes(c.id_tip) ? c.id_tip : "CUI",
+    client_cui: c.cui ? ((c.atr || "") + " " + c.cui).trim() : "", client_j: c.nr_reg_com || "", reprezentant: actMajCuv(c.pers_resp), reprezentant_functie: actMajCuv(c.reprezentant_functie),
+    reprezentant_functie_mic: String(c.reprezentant_functie || "administrator").toLowerCase(), client_email: c.email || "", client_tel: c.telefon || "", client_banca: actMajCuv(c.banca),
+    client_iban: String(c.iban || "").replace(/\s+/g, "").toUpperCase().replace(/(.{4})(?=.)/g, "$1 ") };
+}
 async function ctrGenereaza(kid){
   const k = CTR.find(x => x.id === kid); if(!k) return;
   const c = CLI.find(x => x.id === k.client_id) || {};
   if(c.emite_contract){ toast("La " + (c.nume || "acest client") + " contractul îl emite clientul — din aplicație faci doar Anexa + PV (📄 din comandă)", true); return; }
   const PF = c.categorie === "PF" || c.id_tip === "CNP";   // v8.84: persoanele fizice au modelul lor (modele/contract_pf.docx), cu Anexa CI
   const baze = ANX.filter(a => a.contract_id === k.id && !a.tip_anexa && !a.linie_id).sort((x, y) => (x.data_emitere || "").localeCompare(y.data_emitere || "") || x.id - y.id);
-  if(!baze.length){ toast("Contractul nu are încă anexă — fă întâi Anexa 1 (din comandă sau „+ Anexă”)", true); return; }
-  const a = baze[0], anr = String(a.anexa || "").trim();
+  const FEL = ctrFel(k), SV = FEL === "servicii";   // v9.01: felul contractului (perioadă / eveniment / servicii)
+  if(!baze.length && !SV){ toast("Contractul nu are încă anexă — fă întâi Anexa 1 (din comandă sau „+ Anexă”)", true); return; }
+  const a = baze[0] || null, anr = String((a && a.anexa) || "").trim();
   // v8.35 (cerut de Ovidiu, 09.11): Nr. Reg. Com. = ultima variantă înregistrată la ANAF (ex. J2007000205190 în loc de J19/205/2007)
   if(c.cui && c.id_tip !== "CNP"){
     try{ toast("Verific datele la ANAF…"); const { data: d } = await db.functions.invoke("anaf", { body: { cui: c.cui } });
@@ -4420,9 +4651,23 @@ async function ctrGenereaza(kid){
   // v8.37 (cerut de Ovidiu, 09.11): contractul cuprinde TOATE anexele existente la crearea lui (emise în aceeași zi cu Anexa 1) — câte o secțiune de anexă
   // pe fiecare, iar PV-ul de la final cu produsele tuturor; anexele făcute mai târziu rămân acte separate (📄 din comandă)
   const vaz = new Set(), lista = baze.filter(x => { const kk = x.doc_id ? x.doc_id + "|" + String(x.anexa || "").trim() : "i" + x.id; if(vaz.has(kk)) return false; vaz.add(kk); return true; })
-    .filter(x => (x.data_emitere || "") === (a.data_emitere || ""));
+    .filter(x => !SV && (x.data_emitere || "") === ((a && a.data_emitere) || ""));
   const tarzii = vaz.size - lista.length;
   const D = lista.map(x => actDateAnexa(x, { tip: "AMPLASARE", pers: x.pers_contact, tel: x.telefon, data: x.data_livrarii || x.data_emitere, frecv: x.frecv_servisare, dep: x.depozit, zi: x.zi_servisare || "" }).date);
+  if(SV){   // v9.01: prestări servicii — anexa cu prețul pe servisare, din fișa contractului (felul contractului)
+    const fd = k.fel_date || {}, dur = ctrDurata(k, null), d0 = actD(k.data_emitere) || "______";
+    D.push(Object.assign(ctrDateClient(c), { anexa_nr: "01", anexa_data: d0, info: "LA CONTRACTUL DE PRESTARI SERVICII - Intretinere toalete ecologice mobile",
+      titlu_tabel: "REFERITOR LA SERVICII SI PRET", produse: [], tot: false, randuri: [
+        { et: "Denumire Serviciu", val: "Intretinere Toalete Ecologice Mobile" }, { et: "Locatia / Amplasament", val: "Conform comenzilor (adresa sau coordonate GPS)" },
+        { et: "Pret / 1 Servisare", val: fd.pret != null && fd.pret !== "" ? "*" + ftBani(+fd.pret) + " " + actMon(fd.moneda || "RON") + " + TVA / 1 Toaleta" : "______" },
+        { et: "Perioada contractata", val: dur + ", incepand cu data " + d0 }, { et: "Nr. servisari", val: "Conform comenzilor" },
+        { et: "Zi servisare", val: "Conform rutei logistice a Prestatorului" }, { et: "Zona de acoperire", val: fd.zona || "______" },
+        { et: "Persoana contact comenzi", val: actMajCuv(fd.pers || c.pers_resp) || "______" }, { et: "Nr Telefon", val: fd.tel || c.telefon || "______" }],
+      titlu_cond: "*Conditii :", conditii: ["*Se pot face modificari de pret daca locatia comandata nu este in zona de acoperire a Prestatorului.",
+        "*Acces auto obligatoriu pentru vidanja de pana la 3,5 t; distanta maxima de lucru fata de toaleta este de 5 m, fara obstacole. In caz contrar, serviciul se considera efectuat si se factureaza.",
+        "*Comenzile se fac doar in scris, pe e-mail, cu numarul de toalete, locatia exacta, persoana de contact si telefonul.",
+        "*Beneficiarul semneaza procesul-verbal sau cartela de servisare."] }));
+  }
   const date = Object.assign({}, D[0]), unic = v => [...new Set(v.filter(Boolean))], nrA = d => String(/^\d+$/.test(d.anexa_nr) ? +d.anexa_nr : d.anexa_nr || "______");
   date.anexe = D.map((d, i) => ({ pag: i > 0, anexa_nr: d.anexa_nr, anexa_data: d.anexa_data, info: d.info, titlu_tabel: d.titlu_tabel, randuri: d.randuri, titlu_cond: d.titlu_cond, conditii: d.conditii }));
   if(D.length > 1){   // PV-ul comun: „Anexa Nr: 01, 02”, toate produsele
@@ -4431,21 +4676,25 @@ async function ctrGenereaza(kid){
   }
   // Tabel nr. 1: câte un rând pe fiecare produs de pe anexele contractului (fără dubluri)
   const vazut = new Set(), daune = [];
-  ANX.filter(x => x.contract_id === k.id && !x.linie_id).forEach(r => { const den = [prodN(r.produs || "", 1), r.model, r.model_fizic].filter(Boolean).join(" ");
+  if(!SV) ANX.filter(x => x.contract_id === k.id && !x.linie_id).forEach(r => { const den = [prodN(r.produs || "", 1), r.model, r.model_fizic].filter(Boolean).join(" ");
     if(!den || vazut.has(den)) return; vazut.add(den); daune.push({ den, val: actValDauna(r) || "______" }); });
   Object.assign(date, PF ? ctrBenefPF(c) : ctrBenef(c), { obiect: ctrObiect(ANX.filter(x => x.contract_id === k.id && !x.linie_id)),
     contract_nr: k.nr_ctr || "______", contract_data: actD(k.data_emitere) || "______",
-    durata: ctrDurata(k, a), data_start: actD(a.data_livrarii || k.data_emitere) || "______",
+    durata: ctrDurata(k, a), data_start: actD((a && a.data_livrarii) || k.data_emitere) || "______",
     daune: daune.length ? daune : [{ den: "______", val: "______" }],
     notif_adresa: actMajCuv(nAdr), notif_tel: c.telefon || "", notif_email: nEm, notif_atentie: actMajCuv(nAt),
     // v8.38 (cerut de Ovidiu, 09.11): „Anexa Nr. 1 si Anexa Nr. 2 fac parte integranta din prezentul contract:” + câte un rând pe anexă, Fiecare Cuvânt cu Majusculă
-    anexe_text: (D.length < 2 ? "Anexa Nr. " + nrA(D[0]) + " face" : D.slice(0, -1).map(d => "Anexa Nr. " + nrA(d)).join(", ") + " si Anexa Nr. " + nrA(D[D.length - 1]) + " fac")
+    anexe_text: SV ? "Anexa Nr. 1 face parte integranta din prezentul contract:\n- Anexa Nr. 1: Pretul Servisarii Toaletelor Ecologice Mobile, Zona De Acoperire Si Conditiile De Comanda;" : (D.length < 2 ? "Anexa Nr. " + nrA(D[0]) + " face" : D.slice(0, -1).map(d => "Anexa Nr. " + nrA(d)).join(", ") + " si Anexa Nr. " + nrA(D[D.length - 1]) + " fac")
       + " parte integranta din prezentul contract:" + D.map((d, i) => "\n" + actMajCuv("- Anexa Nr. " + nrA(d) + ": " + d.produse.map(p => (+p.bucati || p.bucati) + " " + p.den).join(", ")
         + (d.amplasament ? "; Amplasament: " + d.amplasament : "") + "; Data Livrarii: " + (actD(lista[i].data_livrarii || lista[i].data_emitere) || "______")) + ";").join(""),
     semnatari: Array.isArray(c.semnatari) ? c.semnatari.filter(x => x && (x.nume || x.functie)).map(x => ({ nume: actMajCuv(x.nume) || "______", functie: actMajCuv(x.functie) || "______" })) : [] });
   // v8.83 (cerut de Ovidiu, 15.11): instituția cu achiziție SICAP → la art. 5.1 nr. achiziției + valoarea fără TVA, TVA-ul și totalul cu TVA
   { const sc = Array.isArray(k.sicap) ? (k.sicap.find(x => x && !x.act) || k.sicap[0]) : null, v = sc && sicapVal(sc);
     Object.assign(date, sc && v.fara ? { sicap: true, sicap_nr: sc.nr || "______", sicap_fara: ftBani(v.fara), sicap_cota: String(v.cota), sicap_tva: ftBani(v.tva), sicap_total: ftBani(v.total) } : { sicap: false }); }
+  // v9.01: articolele contractului (clauze generale + felul + modulele produselor), numerotate în aplicație
+  { const st = date.sicap ? " Valoarea totala a contractului, conform achizitiei directe nr. " + date.sicap_nr + ", este de " + date.sicap_fara + " lei fara TVA, la care se adauga TVA (" + date.sicap_cota + "%) in valoare de " + date.sicap_tva + " lei, respectiv " + date.sicap_total + " lei cu TVA. Valoarea totala facturata pe durata contractului nu poate depasi aceasta valoare." : "";
+    Object.assign(date, ctrArticole({ fel: FEL, pf: PF, P: ctrFamilii(ANX.filter(x => x.contract_id === k.id && !x.linie_id)), obiect: date.obiect, durata: date.durata, data_start: date.data_start,
+      contract_data: date.contract_data, anexe_text: date.anexe_text, sicap_text: st, garantie_a: date.garantie_a }), { titlu_ctr: CTR_TITLU[FEL], are_daune: !SV, are_pv: !SV }); }
   try{
     toast("Se pregătește contractul…");
     await actScript("lib/pizzip.min.js"); await actScript("lib/docxtemplater.min.js");
@@ -7763,6 +8012,8 @@ function openContract(id,clientId){
   const k=id?CTR.find(x=>x.id===id):null; $("mk-title").textContent=k?"Editare contract":"Contract nou"; $("mk-id").value=k?k.id:""; $("mk-client").value=k?k.client_id:clientId;
   $("mk-nr").value=k?k.nr_ctr:""; $("mk-de").value=k?(k.data_emitere||""):today(); $("mk-dx").value=k?(k.data_expirare||""):""; $("mk-xt").value=k?(k.expirare_text||""):""; $("mk-stare").value=k?k.stare:"ACTIV";
   $("mk-intern").checked = !!(k && k.intern);   // v6.71
+  { const fd = (k && k.fel_date) || {}; $("mk-fel").value = ctrFel(k); $("mk-sv-pret").value = fd.pret ?? ""; $("mk-sv-mon").value = fd.moneda || "RON";   // v9.01
+    $("mk-sv-zona").value = fd.zona || ""; $("mk-sv-pers").value = fd.pers || ""; $("mk-sv-tel").value = fd.tel || ""; mkFel(); }
   MK_SC = k && Array.isArray(k.sicap) ? k.sicap.map(x => ({ ...x })) : []; mkScDeseneaza(k);   // v8.83
   MK_AA = k ? ctrAA(k).map(x => ({ ...x })) : []; $("mk-tacit").checked = !!(k && k.prelungire_tacita); $("mk-tdin").value = k ? (k.prelungire_tacita_din || "") : ""; mkAADeseneaza();
   const cl = CLI.find(x => x.id === +$("mk-client").value); $("mk-cl").textContent = cl ? "Client: " + cl.nume : "";
@@ -7974,11 +8225,14 @@ function mkVerifica(){
 }
 // v6.71: contract intern = clientul lucrează doar pe comenzi; numărul propus CMD-<id client> (unic, ca Registrul să nu-l confunde)
 function mkIntern(){ if($("mk-intern").checked && !$("mk-nr").value.trim()) $("mk-nr").value = "CMD-" + ($("mk-client").value || ""); }
+function mkFel(){ $("mk-sv").style.display = $("mk-fel").value === "servicii" ? "" : "none"; }   // v9.01
 async function saveContract(dupa){
   const rec={client_id:+$("mk-client").value,nr_ctr:$("mk-nr").value.trim(),data_emitere:$("mk-de").value||null,data_expirare:$("mk-dx").value||null,stare:$("mk-stare").value,intern:$("mk-intern").checked};
   const dk = mkDate(); rec.acte_aditionale = dk.acte_aditionale; rec.prelungire_tacita = dk.prelungire_tacita; rec.prelungire_tacita_din = dk.prelungire_tacita_din || null;
   rec.expirare_text = dk.prelungire_tacita ? "Nedeterminat" : null;
   rec.sicap = dk.sicap.length ? dk.sicap : null;   // v8.83
+  rec.fel = $("mk-fel").value || "perioada";   // v9.01
+  rec.fel_date = rec.fel === "servicii" ? { pret: $("mk-sv-pret").value === "" ? null : +$("mk-sv-pret").value, moneda: $("mk-sv-mon").value, zona: $("mk-sv-zona").value.trim(), pers: $("mk-sv-pers").value.trim(), tel: $("mk-sv-tel").value.trim() } : null;
   if(!rec.nr_ctr){toast("Nr. contract obligatoriu",true);return;}
   $("mk-conf").classList.remove("on");
   const id=$("mk-id").value; let noulId = id ? +id : null;
