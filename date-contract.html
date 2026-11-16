@@ -229,9 +229,9 @@ function adCont(n, t){
   d.innerHTML = `<input placeholder="Nume și prenume" value="${esc(n)}"><input type="tel" placeholder="Telefon" value="${esc(t)}"><button type="button" class="btn sec" title="Scoate">✕</button>`;
   d.querySelector("button").onclick = () => d.remove(); $("contacte").appendChild(d);
 }
-// v8.81 (cerut de Ovidiu, 15.11): fără igienizare (frecvența o stabilim noi, din ofertă); la toaletă doar tipurile SIMPLA și CU LAVOAR INTERIOR
+// v8.81 (cerut de Ovidiu, 15.11): fără igienizare (frecvența o stabilim noi, din ofertă); la toaletă doar tipurile CLASIC (simplă) și CU LAVOAR INTERIOR (v8.89: în nomenclator tipul se numește CLASIC, nu SIMPLA)
 const CAT_P = () => (C.catalog && C.catalog.produse) || [];
-const tipuriOk = p => { const t = (p && p.tipuri) || []; return /TOALET/i.test(p && p.nume || "") ? t.filter(x => /^(SIMPLA|CU LAVOAR INTERIOR)$/i.test(x)) : t; };
+const tipuriOk = p => { const t = (p && p.tipuri) || []; return /TOALET/i.test(p && p.nume || "") ? t.filter(x => /^(CLASIC|SIMPLA|CU LAVOAR INTERIOR)$/i.test(x)) : t; };
 function adProd(o){
   const d = document.createElement("div"); d.className = "prod";
   const opt = (l, v, gol) => (gol ? `<option value="">${gol}</option>` : "") + l.map(x => `<option ${x === v ? "selected" : ""}>${esc(x)}</option>`).join("");
