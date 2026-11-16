@@ -149,7 +149,7 @@ function deseneaza(){
     + `<div class="tot"><div id="contacte"></div><button type="button" class="btn sec" id="b_cont">+ Adaugă încă o persoană de contact</button></div>`;
   const FIX = !!(P.produse_fixe && Array.isArray(P.produse_lista) && P.produse_lista.length);
   h += (FIX ? `</div></div><div class="card"><h2>Comanda — din oferta acceptată</h2><p class="n">Produsele și prețurile stabilite cu Euro Ecologic. Dacă doriți altceva, scrieți mai jos, la „Alte detalii”.</p>
-      <table class="tprod"><tr><th>Produs</th><th>Buc.</th><th>Preț (lei, fără TVA)</th>${P.produse_lista.some(x => x.frecventa) ? "<th>Servisare</th>" : ""}</tr>${P.produse_lista.map(x => `<tr><td>${esc(x.produs + (x.tip ? " " + x.tip : ""))}</td><td>${esc(x.buc)}</td><td>${x.pret != null ? esc(lei(x.pret)) + " / " + (PE[x.pe] || "zi") + " / buc." : "—"}</td>${P.produse_lista.some(y => y.frecventa) ? `<td>${esc(frTxt(x.frecventa || ""))}</td>` : ""}</tr>`).join("")}</table><div class="rand" style="margin-top:12px">`
+      <table class="tprod"><tr><th>Produs</th><th>Buc.</th><th>Preț (lei, fără TVA)</th>${P.produse_lista.some(x => x.frecventa) ? "<th>Servisare</th>" : ""}</tr>${P.produse_lista.map(x => `<tr><td>${esc(x.produs + (x.tip ? " " + tipEt(x.produs, x.tip) : ""))}</td><td>${esc(x.buc)}</td><td>${x.pret != null ? esc(lei(x.pret)) + " / " + (PE[x.pe] || "zi") + " / buc." : "—"}</td>${P.produse_lista.some(y => y.frecventa) ? `<td>${esc(frTxt(x.frecventa || ""))}</td>` : ""}</tr>`).join("")}</table><div class="rand" style="margin-top:12px">`
       + camp("produse_obs", "Alte detalii despre comandă (opțional)", { tot: 1, ta: 1 })
     : `</div></div><div class="card"><h2>Comanda</h2><p class="n">Alegeți produsele. Pentru mai multe produse apăsați „+ Adaugă produs”.</p><div id="prod"></div>
     <button type="button" class="btn sec" id="b_prod" style="margin-bottom:12px">+ Adaugă produs</button><div class="rand">`
@@ -231,7 +231,9 @@ function adCont(n, t){
 }
 // v8.81 (cerut de Ovidiu, 15.11): fără igienizare (frecvența o stabilim noi, din ofertă); la toaletă doar tipurile CLASIC (simplă) și CU LAVOAR INTERIOR (v8.89: în nomenclator tipul se numește CLASIC, nu SIMPLA)
 const CAT_P = () => (C.catalog && C.catalog.produse) || [];
-const tipuriOk = p => { const t = (p && p.tipuri) || []; return /TOALET/i.test(p && p.nume || "") ? t.filter(x => /^(CLASIC|SIMPLA|CU LAVOAR INTERIOR)$/i.test(x)) : t; };
+const tipuriOk = p => { const t = (p && p.tipuri) || []; return /TOALET/i.test(p && p.nume || "") ? t.filter(x => /^(CLASIC|SIMPLA|CU LAVOAR INTERIOR|HANDY)$/i.test(x)) : t; };
+// v8.90 (Ovidiu, 16.11): clientul vede „SIMPLĂ” în loc de CLASIC (în aplicație tipul rămâne CLASIC) și poate alege și HANDY
+const tipEt = (prod, tip) => (/TOALET/i.test(prod || "") && /^CLASIC$/i.test(tip || "")) ? "SIMPLĂ" : tip;
 function adProd(o){
   const d = document.createElement("div"); d.className = "prod";
   const opt = (l, v, gol) => (gol ? `<option value="">${gol}</option>` : "") + l.map(x => `<option ${x === v ? "selected" : ""}>${esc(x)}</option>`).join("");
@@ -241,7 +243,7 @@ function adProd(o){
     <button type="button" class="btn sec x" title="Scoate produsul">✕</button>`;
   const pr = d.querySelector(".p-prod"), tp = d.querySelector(".p-tip");
   const actual = () => { const t = tipuriOk(CAT_P().find(x => x.nume === pr.value));
-    tp.innerHTML = opt(t, o.tip, t.length > 1 ? "— oricare —" : ""); d.querySelector(".p-tip-w").style.visibility = t.length ? "" : "hidden"; };
+    tp.innerHTML = (t.length > 1 ? `<option value="">— oricare —</option>` : "") + t.map(x => `<option value="${esc(x)}" ${x === o.tip ? "selected" : ""}>${esc(tipEt(pr.value, x))}</option>`).join(""); d.querySelector(".p-tip-w").style.visibility = t.length ? "" : "hidden"; };
   pr.onchange = () => { o.tip = ""; actual(); }; actual();
   d.querySelector(".x").onclick = () => d.remove(); $("prod").appendChild(d);
 }
