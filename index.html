@@ -4151,7 +4151,7 @@ function actDateAnexa(a, o){
       : tip === "SUPLIMENTARE" ? "Suplimentare produse la locatia existenta" : "",
     titlu_tabel: rid ? "REFERITOR LA PRODUSELE RIDICATE" : "REFERITOR LA CANTITATEA SI COSTUL PRODUSELOR",
     randuri, titlu_cond: rid ? "*Conditii pentru ridicare :" : "*Conditii minime de acceptare pentru livrare :", conditii: rid ? ACT_COND_RIDICARE : actCondLivrare(rows),
-    client: c.nume || "", client_sediu: actMajCuv(c.sediu), client_id_et: ["CNP", "CIF"].includes(c.id_tip) ? c.id_tip : "CUI",   // v8.78: și CIF (instituții)
+    client: c.nume || "", client_sediu: actSediu(c.sediu), client_id_et: ["CNP", "CIF"].includes(c.id_tip) ? c.id_tip : "CUI",   // v8.78: și CIF (instituții)
     client_cui: c.cui ? ((c.atr || "") + " " + c.cui).trim() : "",
     client_j: c.nr_reg_com || "", reprezentant: actMajCuv(c.pers_resp), reprezentant_functie: actMajCuv(c.reprezentant_functie),
     // v8.09 (cerut de Ovidiu, 08.11): părțile contractante în formatul nou (ca în contractul PJ 2026) — prestatorul cu datele actuale, beneficiarul complet
@@ -4325,9 +4325,9 @@ function ctrBenef(c){
   const cui = c.cui ? ((c.atr || "") + " " + c.cui).trim() : "", iban = String(c.iban || "").replace(/\s+/g, "").toUpperCase().replace(/(.{4})(?=.)/g, "$1 ");
   const func = String(c.reprezentant_functie || (cat === "PFA" ? "titular" : cat === "ONG" ? "presedinte" : "administrator")).toLowerCase();
   b(c.nume);
-  if(cat === "ONG"){ n(", organizatie neguvernamentala inscrisa in "); b(c.inregistrare); n(", avand Codul de Inregistrare Fiscala "); b(cui); n(", cu sediul in "); b(actMajCuv(c.sediu)); }
+  if(cat === "ONG"){ n(", organizatie neguvernamentala inscrisa in "); b(c.inregistrare); n(", avand Codul de Inregistrare Fiscala "); b(cui); n(", cu sediul in "); b(actSediu(c.sediu)); }
   else {
-    n(cat === "PFA" ? ", cu sediul profesional in " : ", cu sediul in "); b(actMajCuv(c.sediu));
+    n(cat === "PFA" ? ", cu sediul profesional in " : ", cu sediul in "); b(actSediu(c.sediu));
     if(cat === "SOCIETATE" || cat === "PFA"){ n(", inregistrata la Registrul Comertului sub "); b(c.nr_reg_com); n(" , CUI "); b(cui); }
     else if(cat === "INSTITUTIE"){ n(" , CIF "); b(cui); }
     else { if(c.inregistrare){ n(", inregistrata la / in baza "); b(c.inregistrare); } n(" , cod fiscal "); b(cui); }
@@ -4347,7 +4347,7 @@ function ctrBenef(c){
 function ctrBenefPF(c){
   const S = [], n = t => S.push({ t, b: false }), b = t => S.push({ t: t || "______", b: true }), cnp = String(c.cui || "").trim(), sx = /^[1357]/.test(cnp) ? "M" : /^[2468]/.test(cnp) ? "F" : "";
   const titlu = sx === "M" ? "Dl." : sx === "F" ? "Dna" : "Dl./Dna", dom = sx === "F" ? "domiciliata" : sx === "M" ? "domiciliat" : "domiciliat(a)";
-  n(titlu + " "); b(c.nume); n(", " + dom + " in "); b(actMajCuv(c.sediu)); n(", CNP "); b(cnp); n(", identificat" + (sx === "F" ? "a" : sx === "M" ? "" : "(a)") + " cu CI seria "); b(String(c.ci_serie || "").toUpperCase()); n(" nr. "); b(c.ci_numar);
+  n(titlu + " "); b(c.nume); n(", " + dom + " in "); b(actSediu(c.sediu)); n(", CNP "); b(cnp); n(", identificat" + (sx === "F" ? "a" : sx === "M" ? "" : "(a)") + " cu CI seria "); b(String(c.ci_serie || "").toUpperCase()); n(" nr. "); b(c.ci_numar);
   if(c.ci_eliberat_de){ n(", eliberata de "); b(actMajCuv(c.ci_eliberat_de)); }
   if(c.ci_expira){ n(", valabila pana la "); b(actD(c.ci_expira)); }
   if(c.telefon){ n(", Tel: "); b(c.telefon); }
@@ -4618,8 +4618,19 @@ function ctrArticole(o){   // o: { fel, pf, P (Set), obiect, durata, data_start,
   return { arts_a: A, arts_b: B, arts_c: C, n_notif: String(n_notif) };
 }
 // datele clientului din antetul anexei / PV-ului (aceleași ca în actDateAnexa) — folosite la contractul de servicii, care n-are anexă în aplicație
+// v9.02 (cerut de Ovidiu, 16.11): în acte, județul sediului / domiciliului la final, prescurtat: „Ors. Hateg, Str. Progresului Nr. 57A, Jud. HD”
+function actSediu(x){
+  let t = String(x || "").trim(), cod = "";
+  const m = t.match(/(^|,\s*)(jud(?:e[tțţ]ul|\.)?|jude[tțţ])\s*\.?\s*([a-zăâîșşțţ\- ]+?)\s*(?=,|$)/i);
+  if(m){
+    const v = faraDiac(m[3]).toUpperCase().trim().replace(/\s+/g, " ");
+    cod = ACT_JUD.has(v) ? v : (Object.keys(JUD_NUME).find(k => JUD_NUME[k] === v || JUD_NUME[k].replace(/-/g, " ") === v.replace(/-/g, " ")) || "");
+    if(cod) t = (t.slice(0, m.index) + t.slice(m.index + m[0].length)).replace(/^\s*,\s*/, "").replace(/\s*,\s*$/, "").trim();
+  }
+  return actMajCuv(t) + (cod ? (t ? ", " : "") + "Jud. " + cod : "");
+}
 function ctrDateClient(c){
-  return { client: c.nume || "", client_sediu: actMajCuv(c.sediu), client_id_et: ["CNP", "CIF"].includes(c.id_tip) ? c.id_tip : "CUI",
+  return { client: c.nume || "", client_sediu: actSediu(c.sediu), client_id_et: ["CNP", "CIF"].includes(c.id_tip) ? c.id_tip : "CUI",
     client_cui: c.cui ? ((c.atr || "") + " " + c.cui).trim() : "", client_j: c.nr_reg_com || "", reprezentant: actMajCuv(c.pers_resp), reprezentant_functie: actMajCuv(c.reprezentant_functie),
     reprezentant_functie_mic: String(c.reprezentant_functie || "administrator").toLowerCase(), client_email: c.email || "", client_tel: c.telefon || "", client_banca: actMajCuv(c.banca),
     client_iban: String(c.iban || "").replace(/\s+/g, "").toUpperCase().replace(/(.{4})(?=.)/g, "$1 ") };
