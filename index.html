@@ -1116,7 +1116,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
   <span id="rz-w"><button id="rz-reset" class="pictograma" title="Lățimi implicite — pune coloanele din tabelele acestei file înapoi cum erau">↺ Reset layout</button><i class="rz-sep">|</i></span>
   <span id="tz-w" title="Mărimea tabelului (doar tabelul, restul rămâne la fel), din 5 în 5%. Merge și cu Ctrl + rotița mausului, Ctrl + / Ctrl − / Ctrl 0. Dublu clic pe procent = scrii tu valoarea."><button class="pictograma" onclick="tzPas(-1)" aria-label="Micșorează tabelul">−</button><b id="tz-v" ondblclick="tzScrie()" title="Dublu clic = scrii mărimea (ex. 87), Enter">100%</b><input id="tz-in" type="number" min="30" max="300" step="5" style="display:none"><button class="pictograma" onclick="tzPas(1)" aria-label="Mărește tabelul">+</button></span>
-  <span class="ver">v8.93</span>
+  <span class="ver">v8.94</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -6807,7 +6807,7 @@ async function ofEvDest(){   // unde e evenimentul: coordonatele scrise → stra
 async function ofEvPlecare(){   // depozitul de plecare: coordonatele din Setări → Depozite; fără ele, îl caut după adresă / nume
   const n = $("ev-dep").value.trim().toUpperCase(), d = DEP.find(x => (x.nume || "").toUpperCase() === n);
   if(d && d.lat != null && d.lon != null) return { lat: +d.lat, lon: +d.lon, ce: n, exact: true };
-  if(!n) return null; const R = await ofEvNomi({ q: ((d && d.adresa) || n) + ", Romania" }); if(!R.length) return null;
+  if(!n) return null; let R = await ofEvNomi({ city: n }); if(!R.length && d && d.adresa) R = await ofEvNomi({ q: d.adresa + ", Romania" }); if(!R.length) R = await ofEvNomi({ q: n + ", Romania" }); if(!R.length) return null;   // v8.94: întâi după numele depozitului (SIBIU, ARAD…)
   return { lat: +R[0].lat, lon: +R[0].lon, ce: n + " (fără coordonate salvate — luat centrul localității)", exact: false };
 }
 async function ofEvKm(){
