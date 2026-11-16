@@ -1116,7 +1116,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
   <span id="rz-w"><button id="rz-reset" class="pictograma" title="Lățimi implicite — pune coloanele din tabelele acestei file înapoi cum erau">↺ Reset layout</button><i class="rz-sep">|</i></span>
   <span id="tz-w" title="Mărimea tabelului (doar tabelul, restul rămâne la fel), din 5 în 5%. Merge și cu Ctrl + rotița mausului, Ctrl + / Ctrl − / Ctrl 0. Dublu clic pe procent = scrii tu valoarea."><button class="pictograma" onclick="tzPas(-1)" aria-label="Micșorează tabelul">−</button><b id="tz-v" ondblclick="tzScrie()" title="Dublu clic = scrii mărimea (ex. 87), Enter">100%</b><input id="tz-in" type="number" min="30" max="300" step="5" style="display:none"><button class="pictograma" onclick="tzPas(1)" aria-label="Mărește tabelul">+</button></span>
-  <span class="ver">v8.91</span>
+  <span class="ver">v8.92</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -6616,24 +6616,30 @@ function ofEvForm(id, copie){
     <div class="ofg"><div class="d2"><label>Nume client (din listă sau scris de mână)</label><input id="ev-catre" list="ev-cli" value="${esc(copie ? "" : (o0 ? o0.catre : ""))}" placeholder="ex. ONCR - RM VALCEA"><datalist id="ev-cli">${CLI.map(x => `<option value="${esc(x.nume)}">`).join("")}</datalist></div>
       <div><label>Categoria</label><select id="ev-categ">${Object.keys(CAT_ET).map(x => `<option value="${x}" ${(o0 ? o0.categorie : "SOCIETATE") === x ? "selected" : ""}>${CAT_ET[x]}</option>`).join("")}</select></div>
       <div><label>Data ofertei</label><input id="ev-data" type="date" value="${nou ? today() : o0.data}"></div>
-      <div class="d2"><label>Locația evenimentului</label><input id="ev-loc" value="${esc(k.locatia || "")}" placeholder="ex. COSTESTI / VALCEA"></div>
       <div><label>Contact — nume</label><input id="ev-cont" value="${esc(copie ? "" : k.contact || "")}"></div>
       <div><label>Contact — telefon</label><input id="ev-tel" value="${esc(copie ? "" : k.tel || "")}"></div>
-      <div class="tot"><label>Alte informații <span class="muted" style="text-transform:none">(apar în ofertă)</span></label><input id="ev-info" value="${esc(k.info || "")}"></div></div>
-    <h4>2. Perioada</h4>
+      <div class="d2"><label>Alte informații <span class="muted" style="text-transform:none">(apar în ofertă)</span></label><input id="ev-info" value="${esc(k.info || "")}"></div></div>
+    <h4>2. Locația evenimentului și distanța <span class="muted" style="text-transform:none;font-weight:400">(scrii adresa SAU lipești coordonatele GPS)</span></h4>
+    <div class="ofg"><div><label>Județ</label><input id="ev-jud" maxlength="3" value="${esc(k.jud || "")}" placeholder="ex. HD" style="text-transform:uppercase"></div>
+      <div><label>Localitate / Comună</label><input id="ev-loc" value="${esc(k.loc != null ? k.loc : (k.locatia || ""))}" placeholder="ex. PETROSANI / COM COSTESTI"></div>
+      <div class="d2"><label>Sat / Stradă / Nr. / [ reper ]</label><input id="ev-sat" value="${esc(k.sat || "")}" placeholder="ex. SAT PIETRENI, STR PRINCIPALA NR 12"></div>
+      <div class="d2"><label>Coordonate GPS <span class="muted" style="text-transform:none">(din Google Maps: clic dreapta pe loc → copiezi cifrele)</span></label><div class="dt"><input id="ev-gps" value="${esc(k.gps || "")}" placeholder="ex. 45.4183, 23.3706" style="flex:1" onkeydown="if(event.key==='Enter'){event.preventDefault();ofEvGps()}"><button type="button" class="btn sm sec" onclick="ofEvGps()" title="Scoate județul, localitatea și strada din coordonate și calculează distanța" style="white-space:nowrap">📍 Adresa din GPS</button></div></div>
+      <div><label>Plecare din (depozit)</label><input id="ev-dep" list="ev-depl" value="${esc(nv(k.depozit, depPrincipal() || "HUNEDOARA"))}"><datalist id="ev-depl">${DEP.map(d => `<option value="${esc(d.nume)}">`).join("")}</datalist></div>
+      <div style="align-self:end"><button type="button" class="btn sec" id="ev-kmb" onclick="ofEvKm()" title="Distanța pe șosea de la depozit până la locație (OpenStreetMap) — o pune la „Distanța” din calcul" style="width:100%">🧭 Calculează km</button></div>
+      <div class="tot" id="ev-kmst" style="font-size:13px;line-height:1.45">${k.km_info ? esc(k.km_info) : '<span class="muted">Completează locația, apoi „🧭 Calculează km”. Kilometrii îi poți scrie și de mână, la „Calcul intern”.</span>'}</div></div>
+    <h4>3. Perioada</h4>
     <div class="ofg"><div><label>Prima zi a evenimentului</label><input id="ev-de" type="date" value="${esc(k.ev_de || "")}" onchange="ofEvZile()"></div>
       <div><label>Ultima zi</label><input id="ev-pana" type="date" value="${esc(k.ev_pana || "")}" onchange="ofEvZile()"></div>
       <div><label>Amplasare — ziua / ora</label><div class="dt"><input id="ev-ad" type="date" value="${esc(k.amp_data || "")}"><input id="ev-ao" type="time" value="${esc(k.amp_ora || "12:00")}" style="max-width:104px"></div></div>
       <div><label>Ridicare — ziua / ora</label><div class="dt"><input id="ev-rz" type="date" value="${esc(k.rid_data || "")}"><input id="ev-ro" type="time" value="${esc(k.rid_ora || "12:00")}" style="max-width:104px"></div></div>
       <div class="tot"><label>Zilele cu servisare <span class="muted" style="text-transform:none">(apar în ofertă la „Servisări programate”; fiecare zi = 2 curse în calcul)</span></label><div id="ev-sv" class="cdsv"></div></div></div>
-    <h4>3. Produse <span class="muted" style="text-transform:none;font-weight:400">(prețul pe zi vine din catalog — „Preț eveniment”; clientul NU vede prețurile pe bucată)</span></h4>
+    <h4>4. Produse <span class="muted" style="text-transform:none;font-weight:400">(prețul pe zi vine din catalog — „Preț eveniment”; clientul NU vede prețurile pe bucată)</span></h4>
     <div id="ev-rd"></div><button type="button" class="btn sm sec" onclick="ofEvRand({});ofEvSuma()">+ Produs</button>
-    <h4>4. Calcul intern <span class="muted" style="text-transform:none;font-weight:400">(nu apare în ofertă)</span></h4>
+    <h4>5. Calcul intern <span class="muted" style="text-transform:none;font-weight:400">(nu apare în ofertă)</span></h4>
     <div class="evc"><div class="ofg">
-      <div><label>Livrat din (depozit)</label><input id="ev-dep" list="ev-depl" value="${esc(nv(k.depozit, depPrincipal() || "HUNEDOARA"))}"><datalist id="ev-depl">${DEP.map(d => `<option value="${esc(d.nume)}">`).join("")}</datalist></div>
       <div><label>Vehicul transport</label><select id="ev-veh" onchange="$('ev-pkm').value=(OF_VEH.find(x=>x[0]===this.value)||[0,''])[1];ofEvSuma()">${OF_VEH.map(x => `<option ${x[0] === nv(c.veh, "MASINA CU REMORCA") ? "selected" : ""}>${x[0]}</option>`).join("")}</select></div>
       <div><label>Preț / km (lei)</label><input id="ev-pkm" type="number" step="0.01" min="0" value="${nv(c.pkm, 3.5)}"></div>
-      <div><label>Distanța depozit → locație (km)</label><input id="ev-km" type="number" min="0" value="${nv(c.km, "")}" placeholder="ex. 300"></div>
+      <div><label>Distanța depozit → locație (km) <span class="muted" style="text-transform:none">— un drum</span></label><input id="ev-km" type="number" min="0" value="${nv(c.km, "")}" placeholder="🧭 sau scrii de mână"></div>
       <div><label>Curse transport <span class="muted" style="text-transform:none">(dus-întors × 2)</span></label><input id="ev-curse" type="number" min="0" value="${nv(c.curse, 4)}"></div>
       <div><label>Nr. mașini</label><input id="ev-mas" type="number" min="0" value="${nv(c.masini, 1)}"></div>
       <div><label>Servisare — km pe cursă</label><input id="ev-svkm" type="number" min="0" value="${nv(c.sv_km, "")}" placeholder="0 = rămân pe loc"></div>
@@ -6645,7 +6651,7 @@ function ofEvForm(id, copie){
       <div id="ev-suma" style="margin-top:10px"></div>
       <div class="ofg" style="margin-top:8px"><div class="d2"><label>TOTAL OFERTAT (lei, fără TVA) <span class="muted" style="text-transform:none">— gol = totalul calculat; scrie aici dacă rotunjești</span></label><input id="ev-total" type="number" step="0.01" min="0" value="${nv(k.total_ofertat, "")}" style="font-weight:700;font-size:16px"></div>
         <div class="d2" id="ev-tva" style="align-self:end;font-size:13px"></div></div></div>
-    <h4>5. Mențiuni în ofertă</h4>
+    <h4>6. Mențiuni în ofertă</h4>
     <div class="ofg"><div class="tot"><textarea id="ev-ment" rows="3" style="width:100%">${esc(k.mentiuni == null ? OF_EV_MENT : k.mentiuni)}</textarea></div>
       <div class="d2">${bifa("ev-caz", k.cazare, "cazare și masă pentru 2 persoane care rămân la eveniment")}</div>
       <div>${bifa("ev-stamp", k.stampila !== false, "ștampila")}</div></div>
@@ -6656,6 +6662,7 @@ function ofEvForm(id, copie){
   document.body.appendChild(w); feFereastra(w);
   (k.randuri && k.randuri.length ? k.randuri : [{}]).forEach(ofEvRand);
   w.addEventListener("input", ofEvSuma); ofEvZile(k.servisari || []);
+  locAuto("ev-jud", "ev-loc", "ev-sat"); satAuto("ev-jud", "ev-loc", "ev-sat");   // v8.92: aceleași propuneri ca la Comandă nouă
 }
 function ofEvRand(r){
   const d = document.createElement("div"); d.className = "evr";
@@ -6683,7 +6690,8 @@ function ofEvCiteste(){
   const v = i => $(i).value.trim(), n = i => v(i) === "" ? null : +v(i);
   const randuri = [...$("ev-rd").children].map(d => { const g = c => d.querySelector(c).value.trim(), cat = g(".r-cat"), c = ofCat(cat), p = g(".r-pret");
     return { cat, nume: g(".r-nume") || (c ? c.nume : ""), um: c ? c.um : "Bucata", buc: +g(".r-buc") || null, pret: p === "" ? null : +p, pe: "zi" }; }).filter(r => r.nume);
-  const k = { fel: "eveniment", locatia: v("ev-loc"), contact: v("ev-cont"), tel: v("ev-tel"), info: v("ev-info"), depozit: v("ev-dep").toUpperCase(), emitent: depPrincipal() || "HUNEDOARA",
+  const adr = { jud: locMare(v("ev-jud")), loc: locMare(v("ev-loc")), sat: locMare(v("ev-sat")) };
+  const k = { fel: "eveniment", ...adr, locatia: ofEvLoc(adr), gps: v("ev-gps"), km_info: ($("ev-kmst").querySelector("b") ? $("ev-kmst").innerText.split("\n")[0].replace(/\s*·\s*vezi drumul.*$/, "") : ""), contact: v("ev-cont"), tel: v("ev-tel"), info: v("ev-info"), depozit: v("ev-dep").toUpperCase(), emitent: depPrincipal() || "HUNEDOARA",
     ev_de: v("ev-de"), ev_pana: v("ev-pana"), amp_data: v("ev-ad"), amp_ora: v("ev-ao"), rid_data: v("ev-rz"), rid_ora: v("ev-ro"),
     servisari: [...$("ev-sv").querySelectorAll("input:checked")].map(i => i.value), randuri, mentiuni: v("ev-ment"), cazare: $("ev-caz").checked,
     calc: { veh: v("ev-veh"), pkm: n("ev-pkm"), km: n("ev-km"), curse: n("ev-curse"), masini: n("ev-mas"), sv_km: n("ev-svkm"), sv_pkm: n("ev-svpkm"), mac_nr: n("ev-macn"), mac_pret: n("ev-macp"), alte: n("ev-alte"), alte_txt: v("ev-altet") },
@@ -6717,6 +6725,86 @@ async function ofEvSalveaza(siPdf){
   const i = OF.L.findIndex(x => x.id === r.data.id); if(i >= 0) OF.L[i] = r.data; else OF.L.unshift(r.data);
   document.getElementById("mod-ofev")?.remove(); ofRender(); toast("Oferta de eveniment " + ofNr(r.data) + " salvată");
   if(siPdf) ofPdf(r.data.id);
+}
+// ── v8.92 (cerut de Ovidiu, 16.11): locația evenimentului pe Județ / Localitate / Sat-Stradă (aceleași liste ca la Comandă nouă), adresa scoasă din
+// coordonate GPS și distanța pe șosea de la depozitul de plecare — OpenStreetMap (Nominatim pentru adrese, OSRM pentru drum). Dacă serviciul de drum
+// nu răspunde: linie dreaptă × 1,3, marcată „aproximativ”. Câmpul de km rămâne al lui Ovidiu: se schimbă doar la apăsarea butonului.
+const OF_OSRM = ["https://router.project-osrm.org/route/v1/driving/", "https://routing.openstreetmap.de/routed-car/route/v1/driving/"];
+const OF_NOMI = "https://nominatim.openstreetmap.org/";
+const ofEvLoc = k => { const s = String(k.sat || "").trim().replace(/,+$/, "").trim(); return [s, k.loc].filter(Boolean).join(", ") + (k.jud ? " / " + k.jud : ""); };
+const ofEvHav = (a, b) => { const R = 6371, q = x => x * Math.PI / 180, h = Math.sin(q(b.lat - a.lat) / 2) ** 2 + Math.cos(q(a.lat)) * Math.cos(q(b.lat)) * Math.sin(q(b.lon - a.lon) / 2) ** 2; return 2 * R * Math.asin(Math.sqrt(h)); };
+async function ofEvJson(url, ms){ const c = new AbortController(), t = setTimeout(() => c.abort(), ms || 9000); try{ const r = await fetch(url, { signal: c.signal }); if(!r.ok) throw new Error("http " + r.status); return await r.json(); } finally { clearTimeout(t); } }
+function ofEvGpsCit(t){   // „45.8064, 22.9255”, „45.8064 N 22.9255 E” sau un link Google Maps (@lat,lon / q=lat,lon / !3dlat!4dlon)
+  const s = String(t || ""); let m = /!3d(-?\d+\.\d+)!4d(-?\d+\.\d+)/.exec(s) || /[@=](-?\d{1,2}\.\d+),\s*(-?\d{1,3}\.\d+)/.exec(s) || /(-?\d{1,2}\.\d+)\s*°?\s*[NS]?\s*[,;\s]\s*(-?\d{1,3}\.\d+)/i.exec(s);
+  if(!m && /^\s*\d{1,2},\d+\s*[;\s]\s*\d{1,2},\d+\s*$/.test(s)) m = /(\d{1,2},\d+)\s*[;\s]\s*(\d{1,2},\d+)/.exec(s);   // zecimale cu virgulă
+  if(!m) return null; let lat = +m[1].replace(",", "."), lon = +m[2].replace(",", ".");
+  if(lat > 19 && lat < 31 && lon > 43 && lon < 49) [lat, lon] = [lon, lat];
+  return (lat > 43 && lat < 49 && lon > 19 && lon < 31) ? { lat, lon } : null;
+}
+const ofEvMed = L => { const m = a => { const s = a.slice().sort((x, y) => x - y); return s[Math.floor(s.length / 2)]; }; return { lat: m(L.map(r => r.y)), lon: m(L.map(r => r.x)) }; };
+async function ofEvNomi(par){ const q = new URLSearchParams({ format: "jsonv2", countrycodes: "ro", limit: "5", addressdetails: "1", "accept-language": "ro", ...par });
+  try{ const r = await ofEvJson(OF_NOMI + "search?" + q, 9000); return Array.isArray(r) ? r : []; }catch(e){ return []; } }
+async function ofEvDest(){   // unde e evenimentul: coordonatele scrise → strada din hartă → căutare OpenStreetMap → centrul satului / localității
+  const g = ofEvGpsCit($("ev-gps").value); if(g) return { ...g, ce: "coordonatele GPS" };
+  const jud = locMare($("ev-jud").value).trim(), locV = $("ev-loc").value.trim(), satV = $("ev-sat").value.trim();
+  if(!locV && !satV) return null;
+  await Promise.all([locIncarca(), strIncarca(jud)]);
+  const u = satUAT(locV, jud), ci = satV.indexOf(","), cap = ci >= 0 ? satV.slice(0, ci) : satV;
+  let si = strSatDin(cap, u), strT = (ci >= 0 ? satV.slice(satV.lastIndexOf(",") + 1) : (si >= 0 ? "" : satV)).replace(/\[.*$/, "").replace(/\b(NR|NUMARUL)\b\.?\s*\S*.*$/i, "").replace(/\s+\d+\s*[A-Z]?\s*$/i, "").trim();
+  const d = STR_C[jud], L = (d && u != null && d.u[String(u)]) || [];
+  if(strT && L.length){ const c = strCore(strT), x = L.find(r => r.c === c && r.x != null && (si < 0 || r.sat === si)) || L.find(r => r.c === c && r.x != null); if(x) return { lat: x.y, lon: x.x, ce: "strada din hartă (" + x.nume + ")" }; }
+  const numeSat = si >= 0 && LOCX ? LOCX.L[si][0] : "", numeLoc = locFara(locV), judN = JUD_NUME[jud] || "";
+  const alege = R => R.find(r => /^(village|hamlet|town|city|suburb|road|residential)/.test(r.addresstype || "")) || R[0];
+  const base = judN && jud !== "B" ? { county: judN } : {};
+  if(strT){ const R = await ofEvNomi({ ...base, city: numeSat || numeLoc, street: strT }), r = R.find(x => (x.address || {}).road); if(r) return { lat: +r.lat, lon: +r.lon, ce: "strada găsită în OpenStreetMap" }; }
+  if(numeSat || numeLoc){ const r = alege(await ofEvNomi({ ...base, city: numeSat || numeLoc })); if(r) return { lat: +r.lat, lon: +r.lon, ce: "centrul " + (numeSat ? "satului " + locTitlu(numeSat) : "localității " + locTitlu(numeLoc)) }; }
+  const S = L.filter(r => r.x != null && (si < 0 || r.sat === si)); if(S.length) return { ...ofEvMed(S), ce: "mijlocul străzilor din " + (si >= 0 ? "sat" : "localitate") + " (aproximativ)" };
+  return null;
+}
+async function ofEvPlecare(){   // depozitul de plecare: coordonatele din Setări → Depozite; fără ele, îl caut după adresă / nume
+  const n = $("ev-dep").value.trim().toUpperCase(), d = DEP.find(x => (x.nume || "").toUpperCase() === n);
+  if(d && d.lat != null && d.lon != null) return { lat: +d.lat, lon: +d.lon, ce: n, exact: true };
+  if(!n) return null; const R = await ofEvNomi({ q: ((d && d.adresa) || n) + ", Romania" }); if(!R.length) return null;
+  return { lat: +R[0].lat, lon: +R[0].lon, ce: n + " (fără coordonate salvate — luat centrul localității)", exact: false };
+}
+async function ofEvKm(){
+  const st = $("ev-kmst"), b = $("ev-kmb"); if(!st) return; const zi = t => { st.innerHTML = t; };
+  b.disabled = true; zi("Caut locația și drumul…");
+  try{
+    const A = await ofEvPlecare(); if(!A){ zi("⚠ Nu găsesc depozitul de plecare — alege unul din listă."); return; }
+    const B = await ofEvDest(); if(!B){ zi("⚠ Nu găsesc locația — completează județul și localitatea (sau coordonatele GPS)."); return; }
+    let r = null; const p = `${A.lon},${A.lat};${B.lon},${B.lat}?overview=false`;
+    for(const u of OF_OSRM){ try{ const j = await ofEvJson(u + p, 9000); if(j && j.code === "Ok" && j.routes && j.routes[0]){ r = j.routes[0]; break; } }catch(e){} }
+    if(!$("ev-km")) return;
+    const km = Math.round(r ? r.distance / 1000 : ofEvHav(A, B) * 1.3), min = r ? Math.round(r.duration / 60) : 0;
+    $("ev-km").value = km; ofEvSuma();
+    zi((r ? `🧭 <b>${km} km</b> pe șosea, un drum (cam ${Math.floor(min / 60)} h ${String(min % 60).padStart(2, "0")} min cu autoturismul)` : `⚠ <b>≈ ${km} km</b> — APROXIMATIV: serviciul de drumuri nu răspunde, am luat linia dreaptă (${Math.round(ofEvHav(A, B))} km) × 1,3`) +
+      ` · de la ${esc(A.ce)} până la ${esc(B.ce)} · <a href="https://www.google.com/maps/dir/${A.lat},${A.lon}/${B.lat},${B.lon}" target="_blank" rel="noopener">vezi drumul în Google Maps</a>` +
+      `<br><span class="muted">Am pus ${km} la „Distanța depozit → locație” din calcul; o poți schimba de mână. Sursa: OpenStreetMap.</span>`);
+  } finally { if(b) b.disabled = false; }
+}
+async function ofEvGps(){   // coordonate → adresă în formatul aplicației (județ, „COM X”, „SAT Y, STR Z NR 5”), apoi distanța
+  const st = $("ev-kmst"), g = ofEvGpsCit($("ev-gps").value);
+  if(!g){ st.innerHTML = "⚠ Nu înțeleg coordonatele — scrie-le ca în Google Maps: <b>45.8064, 22.9255</b> (sau lipește linkul locului)."; return; }
+  $("ev-gps").value = g.lat.toFixed(6) + ", " + g.lon.toFixed(6); st.textContent = "Caut adresa…";
+  let r = null; try{ r = await ofEvJson(OF_NOMI + "reverse?" + new URLSearchParams({ format: "jsonv2", lat: g.lat, lon: g.lon, zoom: "18", addressdetails: "1", "accept-language": "ro" }), 9000); }catch(e){}
+  const a = r && r.address;
+  if(!a){ st.innerHTML = "⚠ Adresa n-a putut fi scoasă acum (serviciul nu răspunde) — scrie-o de mână; distanța o calculez din coordonate."; return ofEvKm(); }
+  await locIncarca();
+  const jud = (a["ISO3166-2-lvl4"] || "").replace(/^RO-/, "") || (Object.entries(JUD_NUME).find(([c, n]) => locNorm(n) === locNorm(a.county || "")) || [""])[0];
+  await strIncarca(jud);
+  const sat = a.village || a.hamlet || a.isolated_dwelling || "", ors = a.city || a.town || "", com = String(a.municipality || "").replace(/^(Comuna|Orașul|Municipiul)\s+/i, "");
+  const E = LOCX ? LOCX.E.filter(e => e.j === jud) : [];
+  let e = null;
+  if(sat) e = E.find(x => x.up && x.n === locNorm(sat) && (!com || locNorm(x.up[0]) === locNorm(com))) || E.find(x => x.up && x.n === locNorm(sat));
+  if(!e && (ors || com || sat)) e = E.find(x => !x.up && x.n === locNorm(ors || com || sat)) || E.find(x => x.n === locNorm(ors || com || sat));
+  const w = e ? locScrie(e) : { jud, loc: locMare(ors || com || sat), sat: "" };
+  let str = "";
+  if(a.road){ const u = e ? e.uat : null, L = (STR_C[jud] && u != null && STR_C[jud].u[String(u)]) || [], c = strCore(a.road), x = L.find(q => q.c === c);
+    str = x ? x.nume : locMare(a.road).replace(/^STRADA\s+/, "STR ").replace(/^BULEVARDUL\s+/, "BLV ").replace(/^SOSEAUA\s+/, "SOS "); }
+  const nr = a.house_number ? " NR " + locMare(a.house_number) : "", rep = r.name && ![a.road, sat, ors, com].some(x => x && locNorm(x) === locNorm(r.name)) ? " [ " + locMare(r.name) + " ]" : "";
+  $("ev-jud").value = w.jud || jud; $("ev-loc").value = w.loc || ""; $("ev-sat").value = ((w.sat || "") + str + nr + rep).trim().replace(/,$/, "");
+  ofEvSuma(); return ofEvKm();
 }
 // ── PDF-ul ofertei de eveniment: o pagină A4 culcată, ca modelul din Excel (foaia OFERTA); fără diacritice; clientul vede doar totalul ──
 function ofEvHtml(o){   // v8.91 (cerut de Ovidiu, 16.11): aspect nou — antet curat, cartela clientului, linia timpului (amplasare → eveniment → ridicare), produse + servisări, total pe fond închis
@@ -6755,7 +6843,7 @@ function ofEvHtml(o){   // v8.91 (cerut de Ovidiu, 16.11): aspect nou — antet 
     <div class="hd"><img src="${abs("icons/logo-ee-print.png")}" alt=""><div class="r"><div class="t">OFERTA <span>EVENIMENT</span></div>
       <div class="n">Nr. <b>${T(ofNr(o))}</b> &nbsp;|&nbsp; ${dl(o.data)} &nbsp;|&nbsp; Punct de lucru <b>${U(k.emitent || "HUNEDOARA")}</b></div></div></div>
     <div class="hero"><div class="c"><div class="lb">Client</div><div class="cl">${U(o.catre)}</div></div>
-      <div class="x"><div class="lb">Locatia evenimentului</div><div class="v">${U(k.locatia) || "—"}</div></div>
+      <div class="x" style="flex:1.45"><div class="lb">Locatia evenimentului</div><div class="v"${String(k.locatia || "").length > 34 ? ' style="font-size:10.5pt;line-height:1.25"' : ""}>${U(k.locatia) || "—"}</div></div>
       <div class="x"><div class="lb">Persoana de contact</div><div class="v">${U(k.contact) || "—"}</div>${k.tel ? `<div class="v2">${T(k.tel)}</div>` : ""}</div></div>
     <div class="tl"><div class="k"><div class="lb">Amplasare</div><div class="w">${zi(k.amp_data)}</div><div class="d">${dl(k.amp_data)}</div>${k.amp_ora ? `<div class="o">ora <b>${T(k.amp_ora)}</b></div>` : ""}</div>
       <div class="a"><i></i></div>
@@ -16045,6 +16133,7 @@ const HOW = [
       { t: "La <b>✔ acceptată</b> apare <b>📋 Fișă</b>: fișa „Date contract” se deschide cu produsele și prețurile din ofertă → <b>🔗 Creează link</b>." },
       { t: "<b>📚 Catalog de ofertă</b>: aici schimbi ce scrie despre fiecare produs — nume, dotări, textul „Avantaje”, poza, prețul de listă și <b>prețul de eveniment</b> (lei / zi)." },
       { t: "<b>🎪 Ofertă eveniment</b> (eveniment de câteva zile): client, locație, contact → prima / ultima zi, amplasare și ridicare cu ore, bifele zilelor cu servisare → produsele (prețul pe zi vine din catalog).", ar: { s: "oferte", el: '#p-oferte button[onclick="ofEvForm()"]' } },
+      { t: "<b>Locația și distanța</b>: scrii județul, localitatea și satul / strada (cu propuneri, ca la Comandă nouă) <b>sau</b> lipești coordonatele din Google Maps → <b>📍 Adresa din GPS</b>. <b>🧭 Calculează km</b> pune distanța pe șosea de la depozitul de plecare (OpenStreetMap); o poți schimba de mână." },
       { t: "La <b>Calcul intern</b> pui vehiculul, distanța în km, cursele, macaraua, alte servicii → vezi totalul calculat; la <b>TOTAL OFERTAT</b> scrii suma rotundă (gol = cea calculată). În PDF (pagină culcată) clientul vede <b>doar totalul</b>." },
       { t: "Oferta de eveniment <b>✔ acceptată</b> → <b>📋 Fișă</b>: fișa „Date contract” se deschide cu „Eveniment” bifat, zilele, servisările, orele și produsele; totalul și plata în avans apar la „Condiții”." } ],
     du: { s: "oferte", el: '#p-oferte button[onclick="ofForm()"]' } },
