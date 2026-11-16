@@ -3893,11 +3893,13 @@ function mmCarduri(){
     const loc = [[a.jud, a.loc].filter(Boolean).join(" "), a.sat].filter(Boolean).join(" – ");
     const prod = [minus + cantUmT(a), prodN(a.produs, a.cant), modelAcc(a)].filter(Boolean).join(" ");
     const cont = [a.pers_contact, a.telefon].filter(Boolean).join(" · ");
+    const mon = String(a.moneda || "RON").toUpperCase() === "EUR" ? "EUR" : "Lei";   // v9.02 (cerut de Ovidiu, 16.11): prețul sub produs, ca referință
+    const pret = +a.pret ? "Preț: " + (+a.pret).toFixed(2).replace(".", ",") + " " + mon + " + TVA / zi / buc" + (+a.transport ? " · transport " + (+a.transport).toFixed(2).replace(".", ",") + " " + mon : "") : "";
     const zileP = [...new Set(pct.map(x => x.ziua).filter(Boolean))].join(", ");
     const serv = pct.length ? "Pe rută: " + [zileP, trasee].filter(Boolean).join(" · ") : "";   // v5.91: din Puncte de rută
     return grupH + `<div class="mm-card${rid ? " rid" : ""}" data-id="${a.id}" onclick="mmCardAlege(${a.id})" title="Alege această anexă">` +
       `<div><span class="an">${esc(a.anexa || "(fără număr)")}</span><span class="ct">${esc(fmtD(d(a)))}${rid ? " · ridicată" : ""}</span>${cap && lista.filter(x => baza(x).id === b0.id).length > 1 ? '<span class="nou">ULTIMA</span>' : ""}</div>` +
-      `<div>${esc(loc)}</div><div>${esc(prod)}</div>` +
+      `<div>${esc(loc)}</div><div>${esc(prod)}${pret ? `<div class="mu">${esc(pret)}</div>` : ""}</div>` +
       `<div class="mu">${esc(cont)}</div>` + (anxServText(a.id) ? `<div class="mu" title="${esc("Frecvența pe anexă (istoric):\n" + anxServIstoric(a.id))}">${esc(anxServText(a.id))}</div>` : "") + `<div class="mu">${esc(serv)}</div></div>`;   // v8.00
   }).join("");
   mmCarduriSel();
