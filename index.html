@@ -1116,7 +1116,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
   <span id="rz-w"><button id="rz-reset" class="pictograma" title="Lățimi implicite — pune coloanele din tabelele acestei file înapoi cum erau">↺ Reset layout</button><i class="rz-sep">|</i></span>
   <span id="tz-w" title="Mărimea tabelului (doar tabelul, restul rămâne la fel), din 5 în 5%. Merge și cu Ctrl + rotița mausului, Ctrl + / Ctrl − / Ctrl 0. Dublu clic pe procent = scrii tu valoarea."><button class="pictograma" onclick="tzPas(-1)" aria-label="Micșorează tabelul">−</button><b id="tz-v" ondblclick="tzScrie()" title="Dublu clic = scrii mărimea (ex. 87), Enter">100%</b><input id="tz-in" type="number" min="30" max="300" step="5" style="display:none"><button class="pictograma" onclick="tzPas(1)" aria-label="Mărește tabelul">+</button></span>
-  <span class="ver">v8.98</span>
+  <span class="ver">v8.99</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -6896,25 +6896,26 @@ function ofEvPdfDoc(jsPDF, o, F){
   const bani2 = v => (+v || 0).toLocaleString("ro-RO", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
   // ── banda din stânga ──
-  const SW = 84; d.setFillColor(...NAV); d.rect(0, 0, SW, H, "F"); d.setFillColor(...RED); d.rect(0, 0, SW, 3, "F");
-  d.setFillColor(255, 255, 255); d.roundedRect(10, 13, SW - 20, 26, 3, 3, "F");
-  if(F.logo){ const lw = 48, lh = lw * 300 / 1036; d.addImage(F.logo, "PNG", (SW - lw) / 2, 13 + (26 - lh) / 2, lw, lh); }
-  f("R8", 27, [255, 255, 255]); d.text("OFERTA", 12, 58);
-  f("R8", 17, [255, 92, 102]); d.setCharSpace(0.6); d.text("EVENIMENT", 12.4, 66.5); d.setCharSpace(0);
+  // v8.98: banda din stânga pe alb (cerut de Ovidiu), despărțită de conținut printr-o linie; doar o dungă roșie sus
+  const SW = 84; d.setFillColor(...RED); d.rect(0, 0, W, 2.2, "F");
+  d.setDrawColor(...LIN); d.setLineWidth(0.45); d.line(SW, 14, SW, H - 14);
+  if(F.logo){ const lw = 56, lh = lw * 300 / 1036; d.addImage(F.logo, "PNG", 12, 16, lw, lh); }
+  f("R8", 27, NAV); d.text("OFERTA", 12, 58);
+  f("R8", 17, RED); d.setCharSpace(0.6); d.text("EVENIMENT", 12.4, 66.5); d.setCharSpace(0);
   let y = 82; [["Numarul ofertei", T(ofNr(o))], ["Data", dl(o.data)], ["Punct de lucru", U(k.emitent || "HUNEDOARA")]].forEach(([a, b]) => {
-    lab(a, 12, y, [170, 179, 207]); f("R7", 11.5, [255, 255, 255]); d.text(b, 12, y + 5.6); y += 15; });
+    lab(a, 12, y); f("R7", 11.5, TX); d.text(b, 12, y + 5.6); y += 15; });
   // totalul
   const peZi = k.arata_zi && zile > 1 && k.total ? Math.round(k.total / zile * 100) / 100 : 0;
-  let ty = peZi ? 140 : 146; d.setDrawColor(255, 255, 255); d.setLineWidth(0.15); d.setDrawColor(70, 84, 140); d.line(12, ty - 10, SW - 12, ty - 10);
-  lab("Total eveniment", 12, ty, [170, 179, 207]);
-  const tv = bani(k.total) + " lei", tsz = fit(tv, "R8", 27, SW - 24, 16); f("R8", tsz, [255, 255, 255]); d.text(tv, 12, ty + 11);
-  f("R5", 11, [255, 255, 255]); d.text("+ TVA", 12, ty + 18);
-  ty += 26; if(peZi){ f("R4", 9.5, [201, 208, 228]); d.text(zile + " zile  x  ", 12, ty); const w0 = d.getTextWidth(zile + " zile  x  "); f("R7", 9.5, [255, 255, 255]); d.text(bani(peZi) + " lei / zi + TVA", 12 + w0, ty); ty += 6; }
-  f("R4", 9, [201, 208, 228]); d.text(bani2((+k.total || 0) * (1 + OF_TVA)) + " lei cu TVA inclus", 12, ty);
+  let ty = peZi ? 140 : 146; d.setDrawColor(...LIN); d.setLineWidth(0.3); d.line(12, ty - 10, SW - 12, ty - 10);
+  d.setFillColor(...RED); d.rect(12, ty - 3.2, 1.2, 3.6, "F"); lab("Total eveniment", 15, ty);
+  const tv = bani(k.total) + " lei", tsz = fit(tv, "R8", 27, SW - 24, 16); f("R8", tsz, NAV); d.text(tv, 12, ty + 11);
+  f("R5", 11, TX); d.text("+ TVA", 12, ty + 18);
+  ty += 26; if(peZi){ f("R4", 9.5, MUT); d.text(zile + " zile  x  ", 12, ty); const w0 = d.getTextWidth(zile + " zile  x  "); f("R7", 9.5, TX); d.text(bani(peZi) + " lei / zi + TVA", 12 + w0, ty); ty += 6; }
+  f("R4", 9, MUT); d.text(bani2((+k.total || 0) * (1 + OF_TVA)) + " lei cu TVA inclus", 12, ty);
   // contact în bandă
-  d.setDrawColor(70, 84, 140); d.line(12, 184, SW - 12, 184);
-  f("R7", 8.5, [255, 255, 255]); d.text("0735 214 751  /  0735 214 762", 12, 190.5);
-  f("R4", 8.5, [201, 208, 228]); d.text("hunedoara@eurowc.ro", 12, 195.5); d.text("www.eurowc.ro", 12, 200.5);
+  d.setDrawColor(...LIN); d.line(12, 184, SW - 12, 184);
+  f("R7", 8.5, TX); d.text("0735 214 751  /  0735 214 762", 12, 190.5);
+  f("R4", 8.5, MUT); d.text("hunedoara@eurowc.ro", 12, 195.5); d.text("www.eurowc.ro", 12, 200.5);
 
   // ── conținutul ──
   const X = SW + 14, XR = W - 14, CW = XR - X;
