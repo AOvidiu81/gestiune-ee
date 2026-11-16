@@ -1116,7 +1116,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
   <span id="rz-w"><button id="rz-reset" class="pictograma" title="Lățimi implicite — pune coloanele din tabelele acestei file înapoi cum erau">↺ Reset layout</button><i class="rz-sep">|</i></span>
   <span id="tz-w" title="Mărimea tabelului (doar tabelul, restul rămâne la fel), din 5 în 5%. Merge și cu Ctrl + rotița mausului, Ctrl + / Ctrl − / Ctrl 0. Dublu clic pe procent = scrii tu valoarea."><button class="pictograma" onclick="tzPas(-1)" aria-label="Micșorează tabelul">−</button><b id="tz-v" ondblclick="tzScrie()" title="Dublu clic = scrii mărimea (ex. 87), Enter">100%</b><input id="tz-in" type="number" min="30" max="300" step="5" style="display:none"><button class="pictograma" onclick="tzPas(1)" aria-label="Mărește tabelul">+</button></span>
-  <span class="ver">v8.97</span>
+  <span class="ver">v8.98</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -6874,76 +6874,111 @@ async function ofEvGps(){   // coordonate → adresă în formatul aplicației (
   $("ev-jud").value = w.jud || jud; $("ev-loc").value = w.loc || ""; $("ev-sat").value = ((w.sat || "") + str + nr + rep).trim().replace(/,$/, "");
   ofEvSuma(); return ofEvKm();
 }
-// ── PDF-ul ofertei de eveniment: o pagină A4 culcată, ca modelul din Excel (foaia OFERTA); fără diacritice; clientul vede doar totalul ──
-function ofEvHtml(o){   // v8.91 (cerut de Ovidiu, 16.11): aspect nou — antet curat, cartela clientului, linia timpului (amplasare → eveniment → ridicare), produse + servisări, total pe fond închis
-  const k = o.continut || {}, T = s => esc(faraDiac(s == null ? "" : String(s))), U = s => esc(faraDiac(s == null ? "" : String(s)).toUpperCase()), abs = p => esc(new URL(p, location.href).href);
+// v8.98 (cerut de Ovidiu, 16.11): PDF-ul ofertei de eveniment desenat direct (nu poză): text real cu fonturile Roboto incluse în fișier —
+// se poate selecta, copia și edita în orice editor de PDF. Design nou: bandă bleumarin în stânga (număr, dată, TOTAL), conținutul în dreapta,
+// cu linia timpului amplasare → eveniment → ridicare. Fără diacritice (ca restul actelor). Ștampila o pune Ovidiu.
+function ofEvPdfDoc(jsPDF, o, F){
+  const k = o.continut || {}, d = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4", compress: true });
+  [["R4", "Regular"], ["R5", "Medium"], ["R7", "Bold"], ["R8", "ExtraBold"]].forEach(([n, f]) => { d.addFileToVFS("Roboto-" + f + ".ttf", F.fonts[n]); d.addFont("Roboto-" + f + ".ttf", n, "normal"); });
+  const NAV = [27, 37, 80], RED = [227, 0, 15], TX = [26, 34, 51], MUT = [107, 117, 145], LIN = [222, 227, 236], PAL = [243, 245, 249], W = 297, H = 210;
+  const T = s => faraDiac(s == null ? "" : String(s)), U = s => T(s).toUpperCase();
+  const f = (n, sz, col) => { d.setFont(n, "normal"); d.setFontSize(sz); d.setTextColor(...(col || TX)); };
+  const lab = (t, x, y, col, al) => { f("R7", 7, col || MUT); d.setCharSpace(0.45); d.text(U(t), x, y, al ? { align: al } : undefined); d.setCharSpace(0); };
+  const fit = (t, n, sz, max, min) => { let s = sz; f(n, s); while(s > (min || 7) && d.getTextWidth(t) > max){ s -= 0.5; d.setFontSize(s); } return s; };
   const ZL = ["Duminica", "Luni", "Marti", "Miercuri", "Joi", "Vineri", "Sambata"], LL = ["ianuarie", "februarie", "martie", "aprilie", "mai", "iunie", "iulie", "august", "septembrie", "octombrie", "noiembrie", "decembrie"];
-  const zi = z => z ? ZL[dtz(z).getDay()] : "", dl = z => z ? +z.slice(8) + " " + LL[+z.slice(5, 7) - 1] + " " + z.slice(0, 4) : "—", ds = z => ZL[dtz(z).getDay()].slice(0, 3) + " " + (+z.slice(8)) + " " + LL[+z.slice(5, 7) - 1].slice(0, 3);
-  const R = k.randuri || [], S = k.servisari || [], zile = k.zile || ofEvNrZile(k.ev_de, k.ev_pana);
-  const fp = R.length > 12 ? 9 : R.length > 8 ? 10 : R.length > 5 ? 12 : 13.5, pp = R.length > 12 ? 1.5 : R.length > 8 ? 2.5 : 5.5, fcl = String(o.catre || "").length > 26 ? 15 : 20, col = S.length > 18 ? 5 : S.length > 8 ? 4 : 3, fc = S.length > 18 ? 9 : 10;
-  const ment = (k.mentiuni || "").split("\n").map(x => x.trim()).filter(Boolean); if(k.cazare) ment.push(OF_EV_CAZARE);
+  const dz = z => new Date(z + "T00:00:00"), zi = z => z ? ZL[dz(z).getDay()] : "", dl = z => z ? +z.slice(8) + " " + LL[+z.slice(5, 7) - 1] + " " + z.slice(0, 4) : "-";
+  const ds = z => ZL[dz(z).getDay()].slice(0, 3) + " " + (+z.slice(8)) + " " + LL[+z.slice(5, 7) - 1].slice(0, 3);
+  const R = k.randuri || [], S = k.servisari || [], zile = k.zile || 0;
+  const ment = (k.mentiuni || "").split("\n").map(x => x.trim()).filter(Boolean); if(k.cazare) ment.push("CAZARE SI MASA PT 2 PERSOANE CARE RAMAN PE EVENIMENT");
   if(k.igienizare > 0 && !ment.some(m => /igienizare/i.test(m))) ment.push("Pretul include igienizarea finala a containerelor");
+  const cap = s => { const x = T(s).toLowerCase(); return x.charAt(0).toUpperCase() + x.slice(1); };
+  const bani = v => (+v || 0).toLocaleString("ro-RO", { minimumFractionDigits: Number.isInteger(+v || 0) ? 0 : 2, maximumFractionDigits: 2 });
+  const bani2 = v => (+v || 0).toLocaleString("ro-RO", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+  // ── banda din stânga ──
+  const SW = 84; d.setFillColor(...NAV); d.rect(0, 0, SW, H, "F"); d.setFillColor(...RED); d.rect(0, 0, SW, 3, "F");
+  d.setFillColor(255, 255, 255); d.roundedRect(10, 13, SW - 20, 26, 3, 3, "F");
+  if(F.logo){ const lw = 48, lh = lw * 300 / 1036; d.addImage(F.logo, "PNG", (SW - lw) / 2, 13 + (26 - lh) / 2, lw, lh); }
+  f("R8", 27, [255, 255, 255]); d.text("OFERTA", 12, 58);
+  f("R8", 17, [255, 92, 102]); d.setCharSpace(0.6); d.text("EVENIMENT", 12.4, 66.5); d.setCharSpace(0);
+  let y = 82; [["Numarul ofertei", T(ofNr(o))], ["Data", dl(o.data)], ["Punct de lucru", U(k.emitent || "HUNEDOARA")]].forEach(([a, b]) => {
+    lab(a, 12, y, [170, 179, 207]); f("R7", 11.5, [255, 255, 255]); d.text(b, 12, y + 5.6); y += 15; });
+  // totalul
   const peZi = k.arata_zi && zile > 1 && k.total ? Math.round(k.total / zile * 100) / 100 : 0;
-  const low = s => { const x = T(s).toLowerCase(); return x.charAt(0).toUpperCase() + x.slice(1); };
-  return `<!doctype html><html lang="ro"><head><meta charset="utf-8"><style>
-    @font-face{font-family:Roboto;font-style:normal;font-weight:100 900;src:url(${abs("fonts/roboto-latin.woff2")}) format("woff2")}
-    *{box-sizing:border-box}html,body{margin:0;background:#fff}
-    body{font-family:Roboto,Arial,Helvetica,sans-serif;color:#1a2233;font-size:11pt;line-height:1.3}
-    .pg{position:relative;width:1123px;height:794px;background:#fff;padding:34px 50px 26px 62px;display:flex;flex-direction:column;overflow:hidden}
-    .b1{position:absolute;left:0;top:0;width:14px;height:794px;background:#1b2550}.b2{position:absolute;left:0;top:0;width:14px;height:150px;background:#E3000F}
-    .lb{font-size:7.4pt;font-weight:700;letter-spacing:1.6px;text-transform:uppercase;color:#8a93a6}
-    .hd{display:flex;align-items:center;justify-content:space-between;padding-bottom:14px;border-bottom:1.5px solid #1b2550}.hd img{height:56px;display:block}
-    .hd .r{text-align:right}.hd .t{font-size:17pt;font-weight:800;letter-spacing:2.5px;color:#1b2550}.hd .t span{color:#E3000F}.hd .n{font-size:9.5pt;color:#5b6477;margin-top:4px}.hd .n b{color:#1a2233}
-    .hero{display:flex;margin-top:14px;background:#f3f5f9;border-radius:8px;padding:14px 20px}.hero>div{padding-right:22px}.hero .c{flex:1.7}.hero .x{flex:1;border-left:1px solid #d6dbe6;padding-left:22px}
-    .hero .cl{font-size:${fcl}pt;font-weight:800;color:#1b2550;line-height:1.15;margin-top:3px}.hero .v{font-size:12.5pt;font-weight:600;margin-top:4px}.hero .v2{font-size:11pt;color:#3d4659;margin-top:1px}
-    .tl{display:flex;align-items:stretch;margin-top:14px}.tl .k{flex:1;border:1.2px solid #d6dbe6;border-radius:8px;padding:10px 16px}.tl .k.e{flex:1.35;background:#1b2550;border-color:#1b2550;color:#fff;display:flex;align-items:center}
-    .tl .k.e .lb{color:#aab3cf}.tl .w{font-size:9.5pt;color:#5b6477;margin-top:5px}.tl .d{font-size:15pt;font-weight:700;color:#1b2550;line-height:1.15}.tl .o{font-size:10.5pt;margin-top:3px;color:#3d4659}.tl .o b{color:#1a2233}
-    .tl .k.e .d{color:#fff;font-size:14pt}.tl .k.e .m{flex:1}.tl .k.e .w{color:#c9d0e4}.tl .z{background:#E3000F;border-radius:8px;text-align:center;padding:7px 14px;margin-left:12px}.tl .z b{display:block;font-size:22pt;font-weight:800;line-height:1}.tl .z span{font-size:7.6pt;font-weight:700;letter-spacing:1.5px}
-    .tl .a{width:38px;display:flex;align-items:center;justify-content:center}.tl .a i{display:block;width:22px;height:2px;background:#b9c1d3}
-    .mid{flex:1;display:flex;margin-top:16px;min-height:0;overflow:hidden}.mid .p{flex:1.05;padding-right:28px}.mid .s{flex:1;padding-left:28px;border-left:1px solid #e2e6ee}
-    .st{display:flex;justify-content:space-between;align-items:flex-end;border-bottom:1.5px solid #1b2550;padding-bottom:5px}.st .lb{color:#1b2550;font-size:8.4pt}.st .lb2{font-size:7.4pt;font-weight:700;letter-spacing:1.2px;color:#8a93a6;text-transform:uppercase}
-    table{border-collapse:collapse;width:100%}.pt td{font-size:${fp}pt;padding:${pp}px 2px;border-bottom:1px solid #e2e6ee}.pt td.n{font-weight:600}.pt .ac{font-weight:400;font-size:.72em;color:#5b6477;margin-top:1px}.pt td.q{text-align:right;font-weight:800;color:#1b2550;white-space:nowrap;width:120px}.pt td.q span{font-weight:500;color:#5b6477;font-size:.78em;margin-left:5px}
-    .ch{display:flex;flex-wrap:wrap;margin:8px -4px 0}.ch div{width:${100 / col}%;padding:4px}.ch span{display:block;border:1.2px solid #c9d0e0;border-radius:6px;padding:5px 4px;text-align:center;font-size:${fc}pt;font-weight:600;color:#1b2550;white-space:nowrap}
-    .sn{font-size:9pt;color:#5b6477;margin-top:8px}
-    .bot{display:flex;align-items:stretch;margin-top:12px}.co{flex:1;padding-right:20px}.co ul{margin:5px 0 0;padding:0;list-style:none}.co li{font-size:9pt;color:#3d4659;padding-left:12px;position:relative;margin-top:2.5px;line-height:1.3}.co li i{position:absolute;left:0;top:5px;width:5px;height:5px;background:#E3000F;border-radius:3px}
-    .sg{width:176px;text-align:center}.sg .pn{font-size:8.6pt;font-weight:700;color:#1b2550;margin-top:4px}.sg img{height:104px;opacity:.92;display:block;margin:2px auto 0}
-    .to{width:372px;background:#1b2550;color:#fff;border-radius:8px;border-top:5px solid #E3000F;padding:${peZi ? 9 : 13}px 22px ${peZi ? 9 : 12}px}.to .lb{color:#aab3cf;font-size:8pt}.to .v{font-size:30pt;font-weight:800;line-height:1.08;margin-top:3px;white-space:nowrap}.to .v span{font-size:13pt;font-weight:500;margin-left:6px}.to .z2{font-size:11pt;margin-top:2px}.to .t{font-size:9.5pt;color:#c9d0e4;margin-top:3px}
-    .ft{display:flex;justify-content:space-between;margin-top:12px;padding-top:8px;border-top:1px solid #d6dbe6;font-size:8.6pt;color:#5b6477}.ft b{color:#1b2550}
-    </style></head><body><div class="pg"><div class="b1"></div><div class="b2"></div>
-    <div class="hd"><img src="${abs("icons/logo-ee-print.png")}" alt=""><div class="r"><div class="t">OFERTA <span>EVENIMENT</span></div>
-      <div class="n">Nr. <b>${T(ofNr(o))}</b> &nbsp;|&nbsp; ${dl(o.data)} &nbsp;|&nbsp; Punct de lucru <b>${U(k.emitent || "HUNEDOARA")}</b></div></div></div>
-    <div class="hero"><div class="c"><div class="lb">Client</div><div class="cl">${U(o.catre)}</div></div>
-      <div class="x" style="flex:1.45"><div class="lb">Locatia evenimentului</div><div class="v"${String(k.locatia || "").length > 34 ? ' style="font-size:10.5pt;line-height:1.25"' : ""}>${U(k.locatia) || "—"}</div></div>
-      <div class="x"><div class="lb">Persoana de contact</div><div class="v">${U(k.contact) || "—"}</div>${k.tel ? `<div class="v2">${T(k.tel)}</div>` : ""}</div></div>
-    <div class="tl"><div class="k"><div class="lb">Amplasare</div><div class="w">${zi(k.amp_data)}</div><div class="d">${dl(k.amp_data)}</div>${k.amp_ora ? `<div class="o">ora <b>${T(k.amp_ora)}</b></div>` : ""}</div>
-      <div class="a"><i></i></div>
-      <div class="k e"><div class="m"><div class="lb">Perioada evenimentului</div><div class="w">${zi(k.ev_de)}${k.ev_pana !== k.ev_de ? " — " + zi(k.ev_pana) : ""}</div><div class="d">${k.ev_pana !== k.ev_de ? dl(k.ev_de).replace(k.ev_de.slice(0, 7) === (k.ev_pana || "").slice(0, 7) ? / \D+ \d{4}$/ : / \d{4}$/, "") + " – " : ""}${dl(k.ev_pana)}</div></div>
-        <div class="z"><b>${zile}</b><span>${zile === 1 ? "ZI" : "ZILE"}</span></div></div>
-      <div class="a"><i></i></div>
-      <div class="k"><div class="lb">Ridicare</div><div class="w">${zi(k.rid_data)}</div><div class="d">${dl(k.rid_data)}</div>${k.rid_ora ? `<div class="o">ora <b>${T(k.rid_ora)}</b></div>` : ""}</div></div>
-    <div class="mid"><div class="p"><div class="st"><div class="lb">Produse</div><div class="lb2">Cantitate</div></div>
-        <table class="pt">${R.map(r => `<tr><td class="n">${T(r.nume)}${r.acc ? `<div class="ac">cu ${T(String(r.acc).toLowerCase())}</div>` : ""}</td><td class="q">${r.buc || ""}<span>${/^ML$/i.test(r.um || "") ? "ML" : "buc."}</span></td></tr>`).join("")}</table></div>
-      <div class="s"><div class="st"><div class="lb">Servisari programate</div><div class="lb2">${S.length ? S.length + (S.length === 1 ? " zi" : " zile") : ""}</div></div>
-        ${S.length ? `<div class="ch">${S.map(z => `<div><span>${ds(z)}</span></div>`).join("")}</div><div class="sn">Servisare / intretinere: absorbtie, spalare, solutie biodegradabila, odorizare si hartie igienica.</div>` : '<div class="sn">Fara servisari programate in perioada evenimentului.</div>'}</div></div>
-    <div class="bot"><div class="co"><div class="lb">Conditii</div><ul>${(k.info ? [k.info] : []).concat(ment).map(m => `<li><i></i>${low(m)}</li>`).join("")}</ul></div>
-      <div class="sg"><div class="lb">Prestator</div><div class="pn">SC EURO ECOLOGIC SRL</div></div>
-      <div class="to"><div class="lb">Total eveniment</div><div class="v">${ofEvBani(k.total)} lei<span>+ TVA</span></div>${peZi ? `<div class="z2">${zile} zile × <b>${ofEvBani(peZi)} lei</b> / zi + TVA</div>` : ""}<div class="t">${ftBani((+k.total || 0) * (1 + OF_TVA))} lei cu TVA inclus</div></div></div>
-    <div class="ft"><div><b>SC EURO ECOLOGIC SRL</b> &nbsp;|&nbsp; Nr. Reg. Com. J 2007 000205 190 &nbsp;|&nbsp; CUI RO 21311085</div><div><b>0735 214 751</b> &nbsp;/&nbsp; <b>0735 214 762</b> &nbsp;|&nbsp; hunedoara@eurowc.ro &nbsp;|&nbsp; <b>www.eurowc.ro</b></div></div>
-    </div></body></html>`;
+  let ty = peZi ? 140 : 146; d.setDrawColor(255, 255, 255); d.setLineWidth(0.15); d.setDrawColor(70, 84, 140); d.line(12, ty - 10, SW - 12, ty - 10);
+  lab("Total eveniment", 12, ty, [170, 179, 207]);
+  const tv = bani(k.total) + " lei", tsz = fit(tv, "R8", 27, SW - 24, 16); f("R8", tsz, [255, 255, 255]); d.text(tv, 12, ty + 11);
+  f("R5", 11, [255, 255, 255]); d.text("+ TVA", 12, ty + 18);
+  ty += 26; if(peZi){ f("R4", 9.5, [201, 208, 228]); d.text(zile + " zile  x  ", 12, ty); const w0 = d.getTextWidth(zile + " zile  x  "); f("R7", 9.5, [255, 255, 255]); d.text(bani(peZi) + " lei / zi + TVA", 12 + w0, ty); ty += 6; }
+  f("R4", 9, [201, 208, 228]); d.text(bani2((+k.total || 0) * (1 + OF_TVA)) + " lei cu TVA inclus", 12, ty);
+  // contact în bandă
+  d.setDrawColor(70, 84, 140); d.line(12, 184, SW - 12, 184);
+  f("R7", 8.5, [255, 255, 255]); d.text("0735 214 751  /  0735 214 762", 12, 190.5);
+  f("R4", 8.5, [201, 208, 228]); d.text("hunedoara@eurowc.ro", 12, 195.5); d.text("www.eurowc.ro", 12, 200.5);
+
+  // ── conținutul ──
+  const X = SW + 14, XR = W - 14, CW = XR - X;
+  lab("Client", X, 20);
+  const cl = U(o.catre), csz = fit(cl, "R8", 24, CW, 14); f("R8", csz, NAV); d.text(cl, X, 30);
+  const c2 = X + CW * 0.56;
+  lab("Locatia evenimentului", X, 41); const lc = U(k.locatia) || "-"; f("R5", 12.5, TX); d.text(d.splitTextToSize(lc, c2 - X - 8).slice(0, 2), X, 47.2);
+  lab("Persoana de contact", c2, 41); f("R5", 12.5, TX); d.text(d.splitTextToSize(U(k.contact) || "-", XR - c2)[0], c2, 47.2); if(k.tel){ f("R4", 11, MUT); d.text(T(k.tel), c2, 52.6); }
+  d.setDrawColor(...LIN); d.setLineWidth(0.3); d.line(X, 57, XR, 57);
+  // linia timpului
+  const ly = 67, cx = [X + CW * 0.13, X + CW * 0.5, X + CW * 0.87];
+  d.setDrawColor(...LIN); d.setLineWidth(0.8); d.line(cx[0], ly, cx[2], ly);
+  d.setFillColor(255, 255, 255); d.setDrawColor(...NAV); d.setLineWidth(0.8); [cx[0], cx[2]].forEach(x => d.circle(x, ly, 1.8, "FD"));
+  d.setFillColor(...RED); d.setDrawColor(...RED); d.circle(cx[1], ly, 2.3, "F");
+  const col = (x, l, z, ora) => { lab(l, x, ly + 9, MUT, "center"); f("R4", 9.5, MUT); d.text(zi(z), x, ly + 15, { align: "center" }); f("R8", 14.5, NAV); d.text(dl(z), x, ly + 22, { align: "center" });
+    if(ora){ f("R4", 10, MUT); const t1 = "ora ", w1 = d.getTextWidth(t1); f("R7", 10, TX); const w2 = d.getTextWidth(ora); f("R4", 10, MUT); d.text(t1, x - (w1 + w2) / 2, ly + 28); f("R7", 10, TX); d.text(ora, x - (w1 + w2) / 2 + w1, ly + 28); } };
+  col(cx[0], "Amplasare", k.amp_data, T(k.amp_ora)); col(cx[2], "Ridicare", k.rid_data, T(k.rid_ora));
+  // evenimentul, în chenar
+  const ew = CW * 0.40, ex = cx[1] - ew / 2; d.setFillColor(...NAV); d.roundedRect(ex, ly + 4, ew, 27, 3, 3, "F");
+  lab("Perioada evenimentului", ex + 6, ly + 10.5, [170, 179, 207]);
+  f("R4", 9.5, [201, 208, 228]); d.text(zi(k.ev_de) + (k.ev_pana !== k.ev_de ? " - " + zi(k.ev_pana) : ""), ex + 6, ly + 16.5);
+  const per = k.ev_pana && k.ev_pana !== k.ev_de ? (k.ev_de.slice(0, 7) === k.ev_pana.slice(0, 7) ? +k.ev_de.slice(8) : dl(k.ev_de).replace(/ \d{4}$/, "")) + " - " + dl(k.ev_pana) : dl(k.ev_de);
+  const psz = fit(per, "R8", 14.5, ew - 12, 9); f("R8", psz, [255, 255, 255]); d.text(per, ex + 6, ly + 25.5);
+  const bw = 15, bx = ex + ew - bw - 4; d.setFillColor(...RED); d.roundedRect(bx, ly + 7, bw, 12.5, 2, 2, "F");
+  f("R8", 13.5, [255, 255, 255]); d.text(String(zile || ""), bx + bw / 2, ly + 13.6, { align: "center" }); lab(zile === 1 ? "zi" : "zile", bx + bw / 2, ly + 17.6, [255, 255, 255], "center");
+  // produse și servisări
+  const py = 112, pw = CW * 0.54, sx = X + pw + 10, sw = XR - sx;
+  lab("Produse", X, py); lab("Cantitate", X + pw, py, MUT, "right"); d.setDrawColor(...NAV); d.setLineWidth(0.5); d.line(X, py + 2.5, X + pw, py + 2.5);
+  const yMax = 166, rh = Math.max(5.2, Math.min(9.5, (yMax - py - 4) / Math.max(1, R.length))), fs = rh >= 8.5 ? 12.5 : rh >= 7 ? 11 : 9.5;
+  let ry = py + 4; d.setLineWidth(0.2); d.setDrawColor(...LIN);
+  R.forEach(r => { const ac = r.acc ? "cu " + T(r.acc).toLowerCase() : "", hasA = ac && rh >= 7.5;
+    f("R5", fs, TX); d.text(d.splitTextToSize(T(r.nume), pw - 26)[0], X, ry + (hasA ? rh * 0.45 : rh * 0.62));
+    if(hasA){ f("R4", fs - 3.5, MUT); d.text(d.splitTextToSize(ac, pw - 26)[0], X, ry + rh * 0.82); }
+    const um = /^ML$/i.test(r.um || "") ? "ML" : "buc."; f("R4", fs - 2.5, MUT); const wu = d.getTextWidth(um); d.text(um, X + pw, ry + rh * 0.62, { align: "right" });
+    f("R8", fs + 0.5, NAV); d.text(String(r.buc || ""), X + pw - wu - 1.5, ry + rh * 0.62, { align: "right" });
+    ry += rh; d.line(X, ry, X + pw, ry); });
+  lab("Servisari programate", sx, py); if(S.length) lab(S.length + (S.length === 1 ? " zi" : " zile"), XR, py, MUT, "right");
+  d.setDrawColor(...NAV); d.setLineWidth(0.5); d.line(sx, py + 2.5, XR, py + 2.5);
+  if(S.length){ const nc = S.length > 12 ? 4 : 3, gap = 1.8, cw = (sw - gap * (nc - 1)) / nc, nr = Math.ceil(S.length / nc), ch = Math.max(4.6, Math.min(7.5, (160 - py - 6 - gap * (nr - 1)) / nr)); let i = 0;
+    S.forEach(z => { const c = i % nc, rr = Math.floor(i / nc), x = sx + c * (cw + gap), yy = py + 6 + rr * (ch + gap);
+      d.setFillColor(...PAL); d.setDrawColor(...LIN); d.setLineWidth(0.25); d.roundedRect(x, yy, cw, ch, 1.6, 1.6, "FD");
+      f("R5", ch < 6 ? 8.3 : 9.8, NAV); d.text(ds(z), x + cw / 2, yy + ch * 0.66, { align: "center" }); i++; });
+    const ny = py + 6 + nr * (ch + gap) + 3; f("R4", 8.5, MUT);
+    if(ny < 162) d.text(d.splitTextToSize("Servisare / intretinere: absorbtie, spalare, solutie biodegradabila, odorizare si hartie igienica.", sw), sx, ny);
+  } else { f("R4", 9.5, MUT); d.text("Fara servisari programate in perioada evenimentului.", sx, py + 9); }
+  // condiții + prestator
+  const cy = 172; d.setDrawColor(...LIN); d.setLineWidth(0.3); d.line(X, cy - 3, XR, cy - 3);
+  lab("Conditii", X, cy + 1.5); let my = cy + 7.5; const mw = CW * 0.62;
+  ment.slice(0, 5).forEach(m => { const L = d.splitTextToSize(cap(m), mw - 5); d.setFillColor(...RED); d.rect(X, my - 2.1, 1.6, 1.6, "F"); f("R4", 9.5, TX); d.text(L.slice(0, 2), X + 4.5, my); my += 4.6 * Math.min(2, L.length); });
+  lab("Prestator", XR, cy + 1.5, MUT, "right"); f("R7", 10, NAV); d.text("SC EURO ECOLOGIC SRL", XR, cy + 7.5, { align: "right" });
+  f("R4", 7.5, MUT); d.text("J 2007 000205 190  |  CUI RO 21311085  |  Sediu: Vlahita, jud. Harghita", XR, H - 7, { align: "right" });
+  d.setProperties({ title: "Oferta eveniment " + ofNr(o) + " - " + T(o.catre), author: "SC EURO ECOLOGIC SRL", subject: "Oferta de produse pentru eveniment", creator: "GestiuneEE" });
+  return d;
 }
-async function ofEvPdfBlob(o){
-  await cdLib();
-  const f = document.createElement("iframe"); f.style.cssText = "position:fixed;left:-10000px;top:0;width:1123px;height:794px;border:0"; document.body.appendChild(f);
-  try{
-    await new Promise(ok => { f.onload = ok; f.srcdoc = ofEvHtml(o); });
-    const dd = f.contentDocument; try{ await dd.fonts.ready; }catch(e){}
-    await Promise.all([...dd.images].map(i => i.complete ? 0 : new Promise(ok => { i.onload = i.onerror = ok; })));
-    const cv = await html2canvas(dd.querySelector(".pg"), { scale: 2.5, backgroundColor: "#ffffff", windowWidth: 1123, windowHeight: 794 });
-    const pdf = new window.jspdf.jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
-    pdf.addImage(cv.toDataURL("image/jpeg", 0.92), "JPEG", 0, 0, 297, 210);
-    return pdf.output("blob");
-  } finally { f.remove(); }
+// fonturile (Roboto din fonts/, făcute din roboto-latin.woff2 — licența OFL e în fonts/OFL.txt) și logo-ul, citite o dată și ținute în memorie
+async function ofEvRes(){
+  if(OF.evRes) return OF.evRes;
+  const b64 = buf => { let s = ""; const u = new Uint8Array(buf); for(let i = 0; i < u.length; i += 0x8000) s += String.fromCharCode.apply(null, u.subarray(i, i + 0x8000)); return btoa(s); };
+  const ia = async p => { const r = await fetch(p); if(!r.ok) throw new Error(p + " (" + r.status + ")"); return r.arrayBuffer(); };
+  const fonts = {}; await Promise.all([["R4", "Regular"], ["R5", "Medium"], ["R7", "Bold"], ["R8", "ExtraBold"]].map(async ([n, f]) => { fonts[n] = b64(await ia("fonts/Roboto-" + f + ".ttf")); }));
+  let logo = null; try{ logo = "data:image/png;base64," + b64(await ia("icons/logo-ee-print.png")); }catch(e){ console.warn("logo:", e); }
+  return (OF.evRes = { fonts, logo });
 }
+async function ofEvPdfBlob(o){ await cdLib(); return ofEvPdfDoc(window.jspdf.jsPDF, o, await ofEvRes()).output("blob"); }
 // ── oferta de eveniment acceptată → fișa „Date contract” cu „Eveniment” bifat; prețul pe bucată nu se trece (clientul a primit doar totalul) ──
 function ofEvLaFisa(o){
   const k = o.continut || {}; cdNou();
