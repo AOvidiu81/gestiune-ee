@@ -1116,7 +1116,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
   <span id="rz-w"><button id="rz-reset" class="pictograma" title="Lățimi implicite — pune coloanele din tabelele acestei file înapoi cum erau">↺ Reset layout</button><i class="rz-sep">|</i></span>
   <span id="tz-w" title="Mărimea tabelului (doar tabelul, restul rămâne la fel), din 5 în 5%. Merge și cu Ctrl + rotița mausului, Ctrl + / Ctrl − / Ctrl 0. Dublu clic pe procent = scrii tu valoarea."><button class="pictograma" onclick="tzPas(-1)" aria-label="Micșorează tabelul">−</button><b id="tz-v" ondblclick="tzScrie()" title="Dublu clic = scrii mărimea (ex. 87), Enter">100%</b><input id="tz-in" type="number" min="30" max="300" step="5" style="display:none"><button class="pictograma" onclick="tzPas(1)" aria-label="Mărește tabelul">+</button></span>
-  <span class="ver">v9.19</span>
+  <span class="ver">v9.20</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -5690,6 +5690,10 @@ function mmSeriiDeschide(){
 }
 function mmSeriiLista(){
   const an=+$("mm-anexa").value||null, id=+$("mm-id").value||null;
+  // v9.20 (cerut de Ovidiu, 17.11): comanda din exterior (fără anexă, ex. gestiunea BUCURESTI) — seriile se iau după punctul ales
+  // la „Pe ce locație din șantier?” (C195…), unde le-a pus amplasarea
+  if(!an && typeof mmExterior === "function" && mmExterior() && SER_RID.test($("mm-tip").value) && MM_LS && MM_LS.cod)
+    return SER.filter(x=>!x.anexa_id && x.punct===MM_LS.cod && (x.stare==="LA CLIENT" || (id && x.miscare_ridicare_id===id)));
   if(!an || !SER_RID.test($("mm-tip").value)) return null;
   const ids=serLocIds(an); if(!ids.length) ids.push(an);   // v4.98: seriile locației
   return SER.filter(x=>ids.includes(x.anexa_id) && (x.stare==="LA CLIENT" || (id && x.miscare_ridicare_id===id)));
@@ -5752,7 +5756,10 @@ function mmPvHtml(l){
     (dif?` ${P}· diferă de bife</span>`:"")+
     (nec.length?` ${P}· serie necunoscută: <b>${esc(nec.join(", "))}</b> — adaug-o din butonul 🔢, apoi redeschide comanda</span>`:"")+`</div>`;
 }
-function mmSeriiBifa(id,on){ if(on) MM_SER.add(id); else MM_SER.delete(id); mmSerii(false); }
+function mmSeriiBifa(id,on){ if(on) MM_SER.add(id); else MM_SER.delete(id); mmSerii(false);
+  // v9.20: modelul comenzii din seriile bifate, dacă e unul singur și câmpul Model e gol
+  const mf=$("mm-mf"), mo=[...new Set(SER.filter(x=>MM_SER.has(x.id)).map(x=>x.model).filter(Boolean))];
+  if(mf && !mf.value && mo.length===1 && [...mf.options].some(o=>o.value===mo[0])){ mf.value=mo[0]; mf.dispatchEvent(new Event("change")); } }
 async function reloadSerii(){ const {data,error}=await db.from("serii").select("*").order("id"); if(error){toast(error.message,true);return;} SER=data||[]; renderClienti(); }
 async function mmSeriiSalveaza(miscareId){
   const l=mmSeriiLista()||[];
@@ -6195,11 +6202,12 @@ function mmLsArata(){
     (MM_LS && MM_LS.nou ? `<div class="ls-h">Locație nouă${mmLsAnexa() ? " (" + esc(mmLaNouCod()) + ")" : ""}: corectează la Sat / Str. / Locație ce e diferit. La „→ Rute” se ${mmLsAnexa() ? "deschide tabelul pe locații cu rândul nou completat" : "face punctul nou"} (pui acolo GPS-ul din poza PV-ului).</div>`
       : !MM_LS ? `<div class="ls-h" style="color:var(--t-warn)">${mmLsAnexa() ? "Alege locația — altfel „→ Rute” pune cantitatea pe toate locațiile anexei." : "Alege locația — altfel „→ Rute” caută după adresa scrisă."}</div>` : "")) +
     (mmLsAnexa() ? `<div class="ls-h muted">Anexa nu se schimbă — locația contează doar pentru punctele de rută.</div>` : "");
+  if(MM_LS && MM_LS.cod && mmExterior() && typeof mmSerii === "function") mmSerii(!MM_SER.size);   // v9.20: seriile punctului la comanda din exterior
 }
 function mmLsAlege(cod){
   const r = mmLsL().find(x => x.cod === cod); if(!r) return;
   MM_LS = { cod }; $("mm-jud").value = r.jud; $("mm-loc").value = r.localitate; $("mm-sat").value = r.locatie;
-  mmLsArata(); mmSchimbat();
+  mmLsArata(); mmSchimbat(); if(typeof mmSerii === "function") mmSerii(true);   // v9.20: seriile punctului ales
 }
 function mmLsNou(){
   const L = mmLsL(), r = L[0]; MM_LS = { nou: true };
