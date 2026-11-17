@@ -1116,7 +1116,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
   <span id="rz-w"><button id="rz-reset" class="pictograma" title="Lățimi implicite — pune coloanele din tabelele acestei file înapoi cum erau">↺ Reset layout</button><i class="rz-sep">|</i></span>
   <span id="tz-w" title="Mărimea tabelului (doar tabelul, restul rămâne la fel), din 5 în 5%. Merge și cu Ctrl + rotița mausului, Ctrl + / Ctrl − / Ctrl 0. Dublu clic pe procent = scrii tu valoarea."><button class="pictograma" onclick="tzPas(-1)" aria-label="Micșorează tabelul">−</button><b id="tz-v" ondblclick="tzScrie()" title="Dublu clic = scrii mărimea (ex. 87), Enter">100%</b><input id="tz-in" type="number" min="30" max="300" step="5" style="display:none"><button class="pictograma" onclick="tzPas(1)" aria-label="Mărește tabelul">+</button></span>
-  <span class="ver">v9.02</span>
+  <span class="ver">v9.03</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -15601,13 +15601,20 @@ function pntPropune(x, luna, rows, S){
   S.pd.filter(s => eu(s.angajat)).forEach(s => pune(s.zi, s.ora_sosire, s.ora_plecare, 0, "", "dep"));
   const sch = [];
   rows.forEach(r => { const d = r.zi; if(d > azi) return;
-    if((r.sursa === "manual" || r.sursa === "excel") && pntPlin(r)) return;
+    const man = (r.sursa === "manual" || r.sursa === "excel") && pntPlin(r);
     const o = Z[d], w = dtz(d).getDay(), we = w === 0 || w === 6, s = sb.has(d); let n;
+    if(man && !(o && o.a)) return;
     if(o && o.a){ const lm = t => { const q = new Date(t); return q.getHours() * 60 + q.getMinutes(); }, a = Math.floor(lm(o.a) / rot) * rot, b = o.b ? Math.min(1439, Math.ceil(lm(o.b) / rot) * rot) : null;
       n = { cod: s ? "S" : we ? "W" : (o.ruta || o.zi ? "P" : "D"), masina: [...o.mas].join(" + "), ora_start: pntHM(a), ora_stop: b != null && b > a ? pntHM(b) : "", km: o.km || null, rsI: o.a, reI: o.b || null }; }
     else if(x.program_start && x.program_stop && !we && !s) n = { cod: "P", masina: "", ora_start: afOra(x.program_start), ora_stop: afOra(x.program_stop), km: null, rsI: null, reI: null };
     else if(we || s) n = { cod: "L", masina: "", ora_start: "", ora_stop: "", km: null, rsI: null, reI: null };
     else return;
+    // v9.03 (cerut de Ovidiu, 17.11): rândul corectat de mână își păstrează ce ai scris, dar câmpurile rămase goale
+    // (ora de final, km, mașina) se completează în continuare din rută, când aceasta se finalizează
+    if(man){ let ch = false;
+      ["masina", "ora_start", "ora_stop", "km", "rsI", "reI"].forEach(k => { const v = r[k] == null ? "" : String(r[k]).trim(), nv = n[k] == null ? "" : String(n[k]);
+        if(!v && nv){ r[k] = n[k]; ch = true; } });
+      if(ch) sch.push(r); return; }
     const dif = ["cod", "masina", "ora_start", "ora_stop", "km", "rsI", "reI"].some(k => String(r[k] == null ? "" : r[k]) !== String(n[k] == null ? "" : n[k])) || r.sursa !== "auto";
     if(dif){ Object.assign(r, n, { sursa: "auto" }); sch.push(r); } });
   return sch;
