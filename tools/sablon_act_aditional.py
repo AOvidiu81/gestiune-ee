@@ -9,17 +9,17 @@ def run(t, b=False, sz=18): return '<w:r>' + RPR % ('<w:b/><w:bCs/>' if b else '
 def para(runs, jc="both", after=0, before=0, keep=False):
     x = '<w:p xmlns:w="%s"><w:pPr><w:pStyle w:val="Frspaiere"/><w:spacing w:before="%d" w:after="%d" w:line="240" w:lineRule="auto"/>%s<w:jc w:val="%s"/></w:pPr>%s</w:p>' % (W, before, after, '<w:keepNext/>' if keep else '', jc, "".join(runs))
     return etree.fromstring(x)
-def cell(wd, runs, jc="left", shade=False):
-    return ('<w:tc><w:tcPr><w:tcW w:w="%d" w:type="dxa"/>%s<w:vAlign w:val="center"/></w:tcPr><w:p><w:pPr><w:pStyle w:val="Frspaiere"/><w:spacing w:before="0" w:after="0" w:line="240" w:lineRule="auto"/><w:jc w:val="%s"/></w:pPr>%s</w:p></w:tc>'
+def cell(wd, runs, jc="left", shade=False, wrap=False):   # v9.09: lățimea după text (autofit), fără rupere pe 2 rânduri (doar locația se poate rupe, dacă nu încape)
+    return (('<w:tc><w:tcPr><w:tcW w:w="%d" w:type="dxa"/>%s' + ('' if wrap else '<w:noWrap/>') + '<w:vAlign w:val="center"/></w:tcPr><w:p><w:pPr><w:pStyle w:val="Frspaiere"/><w:spacing w:before="0" w:after="0" w:line="240" w:lineRule="auto"/><w:jc w:val="%s"/></w:pPr>%s</w:p></w:tc>')
             % (wd, '<w:shd w:val="clear" w:color="auto" w:fill="E7EEF7"/>' if shade else '', jc, "".join(runs)))
 def tabel():
-    L = [500, 1500, 3200, 2600, 1800]
+    L = [1111, 2222, 3333, 4444, 5555]   # v9.09: lățimi-semn; aplicația le înlocuiește după lungimea textelor (o singură linie de text pe rând)
     cap = ["Nr.", "Anexa", "Locatia / amplasamentul", "Produse active (buc)", "Pret / zi / buc"]
-    hdr = '<w:tr><w:trPr><w:tblHeader/><w:cantSplit/></w:trPr>' + "".join(cell(L[i], [run(c, True, 16)], "center", True) for i, c in enumerate(cap)) + '</w:tr>'
+    hdr = '<w:tr><w:trPr><w:tblHeader/><w:cantSplit/></w:trPr>' + "".join(cell(L[i], [run(c, True, 16)], "center", True, i == 2) for i, c in enumerate(cap)) + '</w:tr>'
     val = ["{#loc}{nr}", "{anexa}", "{locatie}", "{produse}", "{pret}{/loc}"]
-    rnd = '<w:tr><w:trPr><w:cantSplit/></w:trPr>' + "".join(cell(L[i], [run(v, i == 3, 16)], "center" if i in (0, 1) else "left") for i, v in enumerate(val)) + '</w:tr>'
+    rnd = '<w:tr><w:trPr><w:cantSplit/></w:trPr>' + "".join(cell(L[i], [run(v, i == 3, 16)], "center" if i in (0, 1) else "left", False, i == 2) for i, v in enumerate(val)) + '</w:tr>'
     b = "".join('<w:%s w:val="single" w:sz="4" w:space="0" w:color="000000"/>' % s for s in ["top", "left", "bottom", "right", "insideH", "insideV"])
-    x = ('<w:tbl xmlns:w="%s"><w:tblPr><w:tblW w:w="9600" w:type="dxa"/><w:jc w:val="center"/><w:tblBorders>%s</w:tblBorders><w:tblLayout w:type="fixed"/>'
+    x = ('<w:tbl xmlns:w="%s"><w:tblPr><w:tblW w:w="0" w:type="auto"/><w:jc w:val="center"/><w:tblBorders>%s</w:tblBorders><w:tblLayout w:type="fixed"/>'
          '<w:tblCellMar><w:top w:w="30" w:type="dxa"/><w:left w:w="80" w:type="dxa"/><w:bottom w:w="30" w:type="dxa"/><w:right w:w="80" w:type="dxa"/></w:tblCellMar></w:tblPr>'
          '<w:tblGrid>%s</w:tblGrid>%s%s</w:tbl>') % (W, b, "".join('<w:gridCol w:w="%d"/>' % v for v in L), hdr, rnd)
     return etree.fromstring(x)

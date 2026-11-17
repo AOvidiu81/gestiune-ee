@@ -1116,7 +1116,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
   <span id="rz-w"><button id="rz-reset" class="pictograma" title="Lățimi implicite — pune coloanele din tabelele acestei file înapoi cum erau">↺ Reset layout</button><i class="rz-sep">|</i></span>
   <span id="tz-w" title="Mărimea tabelului (doar tabelul, restul rămâne la fel), din 5 în 5%. Merge și cu Ctrl + rotița mausului, Ctrl + / Ctrl − / Ctrl 0. Dublu clic pe procent = scrii tu valoarea."><button class="pictograma" onclick="tzPas(-1)" aria-label="Micșorează tabelul">−</button><b id="tz-v" ondblclick="tzScrie()" title="Dublu clic = scrii mărimea (ex. 87), Enter">100%</b><input id="tz-in" type="number" min="30" max="300" step="5" style="display:none"><button class="pictograma" onclick="tzPas(1)" aria-label="Mărește tabelul">+</button></span>
-  <span class="ver">v9.08</span>
+  <span class="ver">v9.09</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -4814,7 +4814,7 @@ function aaDeschide(kid){
     ${inst ? `<div class="row" style="gap:10px;margin-top:8px"><div style="flex:0 0 180px"><label>Achiziție nouă (SICAP) nr.</label><input id="aa-sc-nr" placeholder="ex: DA123446"></div>
       <div style="flex:0 0 180px"><label>Valoare fără TVA (lei)</label><input type="number" step="0.01" min="0" id="aa-sc-fara"></div><div style="flex:1" class="muted"><br>opțional — intră în act (art. 4.2) și se trece și pe contract</div></div>` : ""}
     <div style="margin-top:10px"><b>Anexele active la data actului</b> <span class="muted">(intră în act ca identificare)</span><div id="aa-loc" class="tw" style="max-height:34vh;overflow:auto;margin-top:4px"></div></div>
-    <label style="display:flex;gap:8px;align-items:center;font-weight:normal;margin-top:8px"><input type="checkbox" id="aa-trece" checked style="width:auto"> Trec actul adițional pe contract (Acte adiționale) — nu mai apare la „Contracte expirate”</label>
+    <label style="display:flex;gap:8px;align-items:flex-start;font-weight:normal;margin-top:8px"><input type="checkbox" id="aa-trece" style="width:auto;margin-top:3px"> <span>Actul e <b>deja semnat</b> — îl trec acum pe contract (Acte adiționale) <span class="muted">· nebifat: doar se descarcă, nu se schimbă nimic în bază; după descărcare îl treci în Registru documente (TRIMIS / IN ASTEPTARE), iar când îl primești semnat apeși „Primit azi” și aplicația îl trece pe contract</span></span></label>
     <div class="row" style="justify-content:flex-end;margin-top:12px"><div style="flex:0"><button class="btn sec" onclick="aaInchide()">Renunță</button></div>
       <div style="flex:0"><button class="btn" onclick="aaGenereaza()">📝 Generează actul adițional</button></div></div></div>`;
   document.body.appendChild(w); feFereastra(w, aaInchide); calendarActiveaza(w); aaCalc();
@@ -4874,18 +4874,66 @@ async function aaGenereaza(){
     const doc = new window.docxtemplater(new PizZip(await rsp.arrayBuffer()), { paragraphLoop: true, linebreaks: true, nullGetter: () => "______" });
     Object.keys(date).forEach(x => { if(date[x] === "" && !["client_email", "client_tel", "client_iban", "client_banca"].includes(x)) date[x] = "______"; });
     doc.render(actFaraDiac(date));
+    aaLatimiTabel(doc.getZip(), actFaraDiac(date).loc);   // v9.09: coloanele după text, câte o linie pe rând
     const blob = doc.getZip().generate({ type: "blob", mimeType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document" });
     const nume = ((k.nr_ctr || "CTR") + "_ AA " + nr + " " + (c.nume || "")).replace(/[\\/:*?"<>|]+/g, " ").replace(/\s+/g, " ").trim() + ".docx";
     const ur = URL.createObjectURL(blob), l = document.createElement("a"); l.href = ur; l.download = nume; document.body.appendChild(l); l.click(); l.remove(); setTimeout(() => URL.revokeObjectURL(ur), 5000);
     let txt = "Act adițional descărcat: " + nume;
-    if($("aa-trece").checked){
-      const upd = nedet ? { prelungire_tacita: true, prelungire_tacita_din: st, expirare_text: "Nedeterminat" } : { acte_aditionale: [...ctrAA(k), { nr, data: dAct, pana_la: end }] };
-      if(scNr && scFara) upd.sicap = [...(Array.isArray(k.sicap) ? k.sicap : []), { nr: scNr, fara: scFara, cota: 21, de: st, pana: end, act: "AA " + nr }];
-      const { error } = await db.from("contracte").update(upd).eq("id", k.id);
-      if(error) txt += " — dar NU s-a putut trece pe contract: " + error.message; else { Object.assign(k, upd); txt += " · trecut pe contract" + (nedet ? " (nedeterminat din " + fmtD(st) + ")" : " (până la " + fmtD(end) + ")"); }
-    }
+    const P = { nr, data: dAct, st, end, nedet, scNr, scFara };
+    if($("aa-trece").checked){ const e = await aaAplica(k, P); txt += e ? " — dar NU s-a putut trece pe contract: " + e : " · trecut pe contract" + (nedet ? " (nedeterminat din " + fmtD(st) + ")" : " (până la " + fmtD(end) + ")"); }
+    else { aaInchide(); toast(txt + " · nimic nu s-a schimbat în bază"); await aaSpreRegistru(k, c, P); return; }
     toast(txt); aaInchide(); if(typeof loadAtentie === "function") loadAtentie();
   }catch(e){ toast("Actul adițional nu s-a putut genera: " + (e.message || e), true); }
+}
+// v9.08 (cerut de Ovidiu, 17.11): actul generat nu schimbă nimic în bază. Fluxul: generezi → verifici → îl trimiți clientului →
+// Registru documente (ACT ADITIONAL, TRIMIS / IN ASTEPTARE, observațiile „AA 1 · prelungire 30-10-2026 → 29-04-2027”) →
+// când îl primești semnat, „Primit azi” (sau starea PRIMIT la editare) → întrebare → actul se trece pe contract.
+const aaObs = P => "AA " + P.nr + " · prelungire " + (P.nedet ? "nedeterminata din " + fmtD(P.st) : fmtD(P.st) + " → " + fmtD(P.end)) + (P.scNr && P.scFara ? " · SICAP " + P.scNr + " / " + P.scFara : "");
+function aaDinObs(o){
+  const m = /^\s*AA\s*([^\s·]+)\s*·\s*prelungire\s+(?:nedeterminata\s+din\s+(\d\d-\d\d-\d{4})|(\d\d-\d\d-\d{4})\s*→\s*(\d\d-\d\d-\d{4}))(?:\s*·\s*SICAP\s+(\S+)\s*\/\s*([\d.]+))?/i.exec(String(o || ""));
+  if(!m) return null; const iso = d => d ? d.split("-").reverse().join("-") : "";
+  return { nr: m[1], nedet: !!m[2], st: iso(m[2] || m[3]), end: iso(m[4]), scNr: m[5] || "", scFara: +m[6] || 0 };
+}
+async function aaAplica(k, P){
+  const upd = P.nedet ? { prelungire_tacita: true, prelungire_tacita_din: P.st, expirare_text: "Nedeterminat" }
+    : { acte_aditionale: [...ctrAA(k).filter(x => String(x.nr) !== String(P.nr)), { nr: P.nr, data: P.data || today(), pana_la: P.end }] };
+  if(P.scNr && P.scFara) upd.sicap = [...(Array.isArray(k.sicap) ? k.sicap : []).filter(x => x.act !== "AA " + P.nr), { nr: P.scNr, fara: P.scFara, cota: 21, de: P.st, pana: P.end, act: "AA " + P.nr }];
+  const { error } = await db.from("contracte").update(upd).eq("id", k.id);
+  if(error) return error.message; Object.assign(k, upd); return "";
+}
+async function aaSpreRegistru(k, c, P){
+  if(typeof loadDoc === "function") await loadDoc();
+  DOC_COADA = [];
+  docDeschide(null, { data: today(), ref: (k.nr_ctr || "").toUpperCase(), den: c.nume || "", strim: "TRIMIS", sprim: "IN ASTEPTARE", tip: "ACT ADITIONAL",
+    obs: aaObs(P), nota: `Actul adițional <b>AA ${esc(P.nr)}</b> la contractul <b>${esc(k.nr_ctr || "")}</b> s-a descărcat. <b>Nimic nu s-a schimbat în bază</b> — contractul rămâne cu expirarea de acum.<br>` +
+      `Dacă îl trimiți acum clientului, apasă <b>Salvează</b> (intră în Registru ca TRIMIS / IN ASTEPTARE). Când îl primești semnat, apeși <b>„Primit azi”</b> pe rândul lui și aplicația îl trece pe contract (prelungit ${P.nedet ? "pe durată nedeterminată din " + esc(fmtD(P.st)) : "până la " + esc(fmtD(P.end))}).<br>` +
+      `<span class="muted">Nu modifica începutul observațiilor („${esc(aaObs(P).split(" · SICAP")[0])}”) — de acolo citește aplicația perioada.</span>` });
+}
+// apelată când un rând ACT ADITIONAL din registru devine PRIMIT
+async function aaLaPrimire(d){
+  if(!d || String(d.tip_document || "").toUpperCase() !== "ACT ADITIONAL") return;
+  const P = aaDinObs(d.observatii); if(!P) return;
+  const k = CTR.find(x => x.id === d.contract_id) || CTR.find(x => (x.nr_ctr || "").toUpperCase() === String(d.referinta || "").toUpperCase()); if(!k) return;
+  const deja = P.nedet ? (k.prelungire_tacita && k.prelungire_tacita_din === P.st) : ctrAA(k).some(x => String(x.nr) === String(P.nr) && x.pana_la === P.end);
+  if(deja) return;
+  if(!confirm("Actul adițional AA " + P.nr + " la contractul " + (k.nr_ctr || "") + " e PRIMIT semnat.\n\nÎl trec acum pe contract?\n" +
+    (P.nedet ? "→ prelungire pe durată nedeterminată din " + fmtD(P.st) : "→ prelungit de la " + fmtD(P.st) + " până la " + fmtD(P.end)) +
+    "\n\nOK = da (contractul nu mai apare la „Contracte expirate”) · Anulează = nu acum (îl poți trece și din Edit contract)")) return;
+  const e = await aaAplica(k, Object.assign(P, { data: d.data_trimitere || today() }));
+  toast(e ? "Actul adițional NU s-a putut trece pe contract: " + e : "AA " + P.nr + " trecut pe contractul " + (k.nr_ctr || "") + (P.nedet ? " (nedeterminat)" : " — prelungit până la " + fmtD(P.end)), !!e);
+}
+// v9.09 (cerut de Ovidiu, 17.11): tabelul anexelor din actul adițional — fiecare coloană cât textul cel mai lung (Times 8 pt),
+// ca să nu se rupă pe 2 rânduri; dacă nu încape pe lățimea paginii (10400 twips), se îngustează doar coloana „Locația”.
+function aaLatimiTabel(zip, loc){
+  const CAP = ["Nr.", "Anexa", "Locatia / amplasamentul", "Produse active (buc)", "Pret / zi / buc"], K = ["nr", "anexa", "locatie", "produse", "pret"];
+  const lat = (t, b) => Math.ceil(String(t || "").length * (b ? 80 : 72)) + 200;
+  const W = K.map((c, i) => Math.max(lat(CAP[i], true), ...(loc || []).map(r => lat(r[c], i === 3))));
+  const MAX = 10400, rest = W.reduce((s, v, i) => s + (i === 2 ? 0 : v), 0);
+  if(rest + W[2] > MAX) W[2] = Math.max(1800, MAX - rest);
+  const tot = W.reduce((s, v) => s + v, 0); if(tot > MAX) for(let i = 0; i < 5; i++) W[i] = Math.floor(W[i] * MAX / tot);
+  const f = zip.file("word/document.xml"); let x = f.asText();
+  ["1111", "2222", "3333", "4444", "5555"].forEach((s, i) => { x = x.split('w:w="' + s + '"').join('w:w="' + W[i] + '"'); });
+  zip.file("word/document.xml", x);
 }
 function ctrLipsuri(c, daune, nume, salvat, tarzii, ciOk){
   const cat = c.categorie || "SOCIETATE";
