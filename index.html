@@ -1116,7 +1116,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
   <span id="rz-w"><button id="rz-reset" class="pictograma" title="Lățimi implicite — pune coloanele din tabelele acestei file înapoi cum erau">↺ Reset layout</button><i class="rz-sep">|</i></span>
   <span id="tz-w" title="Mărimea tabelului (doar tabelul, restul rămâne la fel), din 5 în 5%. Merge și cu Ctrl + rotița mausului, Ctrl + / Ctrl − / Ctrl 0. Dublu clic pe procent = scrii tu valoarea."><button class="pictograma" onclick="tzPas(-1)" aria-label="Micșorează tabelul">−</button><b id="tz-v" ondblclick="tzScrie()" title="Dublu clic = scrii mărimea (ex. 87), Enter">100%</b><input id="tz-in" type="number" min="30" max="300" step="5" style="display:none"><button class="pictograma" onclick="tzPas(1)" aria-label="Mărește tabelul">+</button></span>
-  <span class="ver">v9.05</span>
+  <span class="ver">v9.06</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -4724,6 +4724,168 @@ async function ctrGenereaza(kid){
     const u = URL.createObjectURL(blob), l = document.createElement("a"); l.href = u; l.download = nume; document.body.appendChild(l); l.click(); l.remove(); setTimeout(() => URL.revokeObjectURL(u), 5000);
     ctrLipsuri(c, daune, nume, false, tarzii, ciOk);
   }catch(e){ toast("Contractul nu s-a putut genera: " + (e.message || e), true); }
+}
+// ══════════════════════════════════════════════════════════════════════════════════════════════════════
+// v9.06 (cerut de Ovidiu, 17.11): ACT ADIȚIONAL DE PRELUNGIRE — din „De urmărit” (contracte expirate / care expiră în curând).
+// Fereastra arată istoria contractului (emis, durata inițială, actele adiționale de dinainte, expirarea, clauza de prelungire tacită),
+// iar tu alegi perioada nouă (luni / până la o dată / nedeterminată) și data de la care începe. Actul are tabelul anexelor ACTIVE la
+// data actului (locație, produse cu bucățile de atunci, preț) — ca identificare. „Generează” descarcă actul (modele/act_aditional_pj|pf.docx)
+// și, bifat, trece actul pe contract (Acte adiționale), ca să nu mai apară la expirate.
+const AA_TACIT_DIN = "2026-11-08";   // contractele generate din aplicație de atunci au art. 3.3 (prelungire tacită)
+function aaAdaugaLuni(iso, n){ const d = new Date(iso + "T12:00:00"), z = d.getDate(); d.setDate(1); d.setMonth(d.getMonth() + n);
+  const ult = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate(); d.setDate(Math.min(z, ult)); d.setDate(d.getDate() - 1);
+  return d.getFullYear() + "-" + zi2(d.getMonth() + 1) + "-" + zi2(d.getDate()); }
+// anexele active ale contractului la o dată: o linie pe fiecare anexă de bază, cu bucățile de atunci (inițiala + suplimentări − reduceri)
+function aaLocatii(k, dIso){
+  const baze = ANX.filter(a => a.contract_id === k.id && !a.linie_id).sort((x, y) => String(x.anexa || "").localeCompare(String(y.anexa || ""), "ro", { numeric: true }) || x.id - y.id);
+  const L = [];
+  baze.forEach(b => { const lin = anexeLinie(b.id), dd = x => x.data_livrarii || x.data_emitere || "";
+    if(!lin.some(anexaActiva)) return;
+    const pana = lin.filter(x => !dd(x) || dd(x) <= dIso);
+    const q = pana.reduce((t, x) => { const n = anexaNr(x), c = Math.abs(+x.cant || 0); return t + (n && n.tip === "R" ? -c : c); }, 0);
+    if(q <= 0) return;
+    const cuPret = pana.filter(x => { const n = anexaNr(x); return !(n && n.tip === "R") && +x.pret; }).sort((x, y) => dd(x).localeCompare(dd(y)) || x.id - y.id);
+    const ult = cuPret[cuPret.length - 1] || b;
+    L.push({ b, q, anexa: String(b.anexa || "").replace(/^\s*ANEXA\s*(NR\.?)?\s*/i, "Anexa nr. ") + (b.data_emitere || b.data_livrarii ? " din " + actD(b.data_emitere || b.data_livrarii) : ""),
+      locatie: actMajCuv([b.sat, b.loc].filter(Boolean).join(", ") + (b.jud ? " / " + b.jud : "")) || "______",
+      produse: q + " " + actMajCuv([prodN(b.produs || "", q), modelAcc(b)].filter(Boolean).join(" ")),
+      pret: +ult.pret ? (+ult.pret).toFixed(2) + " " + actMon(ult.moneda) + " + TVA" : "______" });
+  });
+  return L;
+}
+function aaArticole(o){
+  const A = [], B = [], art = (L, titlu, pars) => L.push({ titlu, pars: pars.filter(Boolean).map(t => ({ t })) });
+  const intarz = o.data_act_iso > o.exp_iso;
+  art(A, "Prelungirea contractului", [
+    "Partile prelungesc durata Contractului nr. " + o.contract_nr + " din " + o.contract_data + (o.aa_ant ? ", modificat prin " + o.aa_ant : "") +
+      (o.nedet ? ", pe durata nedeterminata, incepand cu data de " + o.start + "." : ", pe o perioada de " + o.durata + ", incepand cu data de " + o.start + " pana la data de " + o.end + " inclusiv."),
+    o.tacit ? "Partile constata ca, la expirarea duratei de pana acum (data de " + o.exp + "), produsele au ramas la Beneficiar, iar contractul s-a prelungit tacit, in aceleasi conditii, potrivit clauzei de prelungire tacita din contract. Prin prezentul act aditional, Partile stabilesc durata contractului incepand cu data de " + o.start + "."
+      : intarz ? "Partile constata ca, dupa data de " + o.exp + ", la care a expirat durata de pana acum a contractului, au continuat sa il execute in aceleasi conditii: produsele au ramas la Beneficiar, iar serviciile au fost prestate si facturate. Partile confirma ca, in aceasta perioada, contractul s-a aplicat fara intrerupere, in aceleasi conditii, si ca nu au pretentii una fata de cealalta pentru simplul fapt al expirarii."
+      : "Prelungirea continua durata de pana acum a contractului (care expira la data de " + o.exp + "), fara intrerupere.",
+    o.nedet ? "Pe durata nedeterminata, oricare Parte poate denunta contractul in conditiile prevazute in contract pentru denuntare, cu respectarea termenului de notificare."
+      : o.tacit ? "La sfarsitul noii durate se aplica in continuare clauza de prelungire tacita din contract, daca produsele nu au fost returnate."
+      : "La sfarsitul noii durate, contractul se poate prelungi prin act aditional. Daca produsele nu au fost returnate pana atunci, contractul continua in aceleasi conditii pana la returnarea lor, iar Beneficiarul datoreaza chiria si serviciile la preturile in vigoare.",
+    "Clauza din contract privind durata se modifica in mod corespunzator."]);
+  art(A, "Anexele si produsele la data actului", [
+    "La data prezentului act aditional (" + o.data_act + "), in baza contractului se afla la Beneficiar produsele din tabelul de mai jos, pe locatiile si la preturile din anexele indicate. Tabelul are rol de identificare a anexelor in vigoare si a produselor la aceasta data.",
+    "Anexele din tabel raman in vigoare si se prelungesc odata cu contractul, cu aceleasi produse, locatii, preturi si frecvente de servisare, daca Partile nu convin altfel in scris. Suplimentarile, reducerile si locatiile noi se fac in continuare prin anexe, conform contractului.",
+    "Daca Beneficiarul constata diferente intre tabel si produsele aflate efectiv la el, le comunica in scris Prestatorului in 10 zile de la semnare; altfel, situatia din tabel se considera acceptata."]);
+  art(B, "Pretul", [
+    o.pret_nou ? "Incepand cu data de " + o.start + ", preturile se modifica astfel: " + o.pret_nou.replace(/[.\s]+$/, "") + ". La preturi se adauga TVA." : "Pentru perioada prelungita se aplica preturile din anexele in vigoare (tabelul de la art. 3), la care se adauga TVA.",
+    o.sicap_text || "",
+    "Facturarea si plata se fac in continuare conform contractului."]);
+  art(B, "Dispozitii finale", [
+    "Celelalte clauze ale contractului si ale anexelor lui raman neschimbate si se aplica in continuare. In caz de contradictie, prevaleaza prezentul act aditional.",
+    "Prezentul act aditional face parte integranta din contract.",
+    o.pf ? "Beneficiarul declara ca datele lui de identificare din art. 1 sunt actuale." : "Partile declara ca datele de identificare din art. 1 sunt actuale si ca semnatarii au dreptul sa le reprezinte.",
+    "Prezentul act aditional s-a incheiat la data de " + o.data_act + ", in 2 exemplare originale, cate unul pentru fiecare Parte. Intra in vigoare la data semnarii de ambele Parti si produce efecte de la data de " + o.start + "."]);
+  let n = 2; [...A, ...B].forEach(a => { a.nr = n; a.pars.forEach((p, i) => { p.nr = n + "." + (i + 1) + "."; }); n++; });
+  return { arts_a: A, arts_b: B };
+}
+function aaDeschide(kid){
+  const k = CTR.find(x => x.id === kid); if(!k) return;
+  const c = CLI.find(x => x.id === k.client_id) || {};
+  const aa = ctrAA(k).filter(x => x && x.pana_la).slice().sort((a, b) => a.pana_la.localeCompare(b.pana_la));
+  const u = ctrUltimaData(k), azi = today(), exp = u && u < azi;
+  const nr = String(aa.reduce((m, x) => Math.max(m, parseInt(x.nr, 10) || 0), 0) + 1);
+  const tacit = (k.data_emitere || "") >= AA_TACIT_DIN, inst = c.categorie === "INSTITUTIE" || c.id_tip === "CIF";
+  const istoric = [`<b>CTR ${esc(k.nr_ctr || "")}</b> · ${esc(c.nume || "")}`,
+    `Încheiat la <b>${esc(fmtD(k.data_emitere) || "—")}</b>, durata inițială până la <b>${esc(fmtD(k.data_expirare) || k.expirare_text || "—")}</b>${k.data_emitere && k.data_expirare ? " (" + esc(ctrDurata(k, null)) + ")" : ""}`,
+    aa.length ? "Acte adiționale de prelungire: " + aa.map(x => `AA ${esc(x.nr || "?")}${x.data ? " din " + esc(fmtD(x.data)) : ""} → până la <b>${esc(fmtD(x.pana_la))}</b>`).join(" · ") : "Fără acte adiționale de prelungire până acum.",
+    u ? (exp ? `<span style="color:var(--red)">A expirat la <b>${esc(fmtD(u))}</b> — de ${ziDiff(azi, u)} zile</span>` : `Expiră la <b>${esc(fmtD(u))}</b> — peste ${ziDiff(u, azi)} zile`) : "Fără dată de expirare."].map(t => `<div>${t}</div>`).join("");
+  const w = document.createElement("div"); w.className = "modal on"; w.id = "mod-aa"; w.dataset.id = kid;
+  w.innerHTML = `<div class="box" style="max-width:860px;width:96vw"><h3 class="lux-cap cap-mut">📝 Act adițional de prelungire — CTR ${esc(k.nr_ctr || "")}</h3>
+    <div style="line-height:1.65;padding:8px 10px;border-left:3px solid var(--gl);background:var(--bg);border-radius:6px;margin-bottom:10px">${istoric}
+      <label style="display:flex;gap:8px;align-items:flex-start;margin-top:6px;font-weight:normal"><input type="checkbox" id="aa-tacit"${tacit ? " checked" : ""} onchange="aaCalc()" style="width:auto;margin-top:3px">
+        <span>Contractul semnat are clauza de <b>prelungire tacită</b> <span class="muted">(${tacit ? "contract generat din aplicație — art. 3.3" : "contract dinainte de modelul aplicației — bifează doar dacă exemplarul semnat o are"})</span></span></label></div>
+    <div class="row" style="flex-wrap:wrap;gap:10px">
+      <div style="flex:0 0 90px"><label>AA nr.</label><input id="aa-nr" value="${esc(nr)}"></div>
+      <div style="flex:0 0 150px"><label>Data actului</label><input type="date" id="aa-data" value="${azi}" onchange="aaCalc()"></div>
+      <div style="flex:0 0 200px"><label>Prelungire</label><select id="aa-fel" onchange="aaCalc()">
+        <option value="12">12 luni</option><option value="6">6 luni</option><option value="24">24 luni</option><option value="3">3 luni</option><option value="1">1 lună</option>
+        <option value="n">alt număr de luni…</option><option value="d">până la o dată…</option><option value="nedet">durată nedeterminată</option></select></div>
+      <div style="flex:0 0 90px;display:none" id="aa-n-w"><label>Luni</label><input type="number" id="aa-n" min="1" max="120" value="18" oninput="aaCalc()"></div>
+      <div style="flex:0 0 150px"><label>Începând cu data</label><input type="date" id="aa-start" value="${u ? ziUrm(u) : azi}" onchange="aaCalc()"></div>
+      <div style="flex:0 0 150px" id="aa-end-w"><label>Până la data</label><input type="date" id="aa-end" onchange="aaCalc(true)"></div>
+    </div>
+    <div id="aa-rez" style="margin:8px 0;font-size:13px"></div>
+    <label style="display:flex;gap:8px;align-items:center;font-weight:normal"><input type="checkbox" id="aa-pret-ok" checked onchange="aaCalc()" style="width:auto"> Prețurile din anexe rămân neschimbate</label>
+    <div id="aa-pret-w" style="display:none;margin-top:6px"><label>Prețurile noi (textul intră în act, art. 4.1)</label><input id="aa-pret" placeholder="ex: toaleta ecologica 16,00 lei / zi / buc; containerul 20,00 lei / zi / buc"></div>
+    ${inst ? `<div class="row" style="gap:10px;margin-top:8px"><div style="flex:0 0 180px"><label>Achiziție nouă (SICAP) nr.</label><input id="aa-sc-nr" placeholder="ex: DA123446"></div>
+      <div style="flex:0 0 180px"><label>Valoare fără TVA (lei)</label><input type="number" step="0.01" min="0" id="aa-sc-fara"></div><div style="flex:1" class="muted"><br>opțional — intră în act (art. 4.2) și se trece și pe contract</div></div>` : ""}
+    <div style="margin-top:10px"><b>Anexele active la data actului</b> <span class="muted">(intră în act ca identificare)</span><div id="aa-loc" class="tw" style="max-height:34vh;overflow:auto;margin-top:4px"></div></div>
+    <label style="display:flex;gap:8px;align-items:center;font-weight:normal;margin-top:8px"><input type="checkbox" id="aa-trece" checked style="width:auto"> Trec actul adițional pe contract (Acte adiționale) — nu mai apare la „Contracte expirate”</label>
+    <div class="row" style="justify-content:flex-end;margin-top:12px"><div style="flex:0"><button class="btn sec" onclick="aaInchide()">Renunță</button></div>
+      <div style="flex:0"><button class="btn" onclick="aaGenereaza()">📝 Generează actul adițional</button></div></div></div>`;
+  document.body.appendChild(w); feFereastra(w, aaInchide); calendarActiveaza(w); aaCalc();
+}
+function aaInchide(){ const m = $("mod-aa"); if(m) m.remove(); }
+function aaCalc(endManual){
+  const fel = $("aa-fel").value, st = $("aa-start").value;
+  $("aa-n-w").style.display = fel === "n" ? "" : "none"; $("aa-end-w").style.display = fel === "nedet" ? "none" : "";
+  $("aa-end").readOnly = fel !== "d"; $("aa-pret-w").style.display = $("aa-pret-ok").checked ? "none" : "";
+  const luni = fel === "n" ? Math.max(1, +$("aa-n").value || 0) : +fel;
+  if(st && luni && fel !== "d" && fel !== "nedet") $("aa-end").value = aaAdaugaLuni(st, luni);
+  const end = $("aa-end").value, azi = today();
+  const k = CTR.find(x => x.id === +$("mod-aa").dataset.id), u = k && ctrUltimaData(k);
+  const msg = [];
+  if(fel === "nedet") msg.push(`Se prelungește pe <b>durată nedeterminată</b>, începând cu <b>${esc(fmtD(st))}</b>.`);
+  else if(st && end) msg.push(`Se prelungește ${fel === "d" ? "" : "pe <b>" + luni + (luni === 1 ? " lună" : " luni") + "</b>, "}de la <b>${esc(fmtD(st))}</b> până la <b>${esc(fmtD(end))}</b> inclusiv.`);
+  if(u && st && st !== ziUrm(u)) msg.push(`<span style="color:#b45309">Atenție: contractul a expirat la ${esc(fmtD(u))}; prelungirea începe la ${esc(fmtD(st))}, nu a doua zi (${esc(fmtD(ziUrm(u)))}). Perioada dintre ele e acoperită de art. 2.2 (executare continuă).</span>`);
+  if(end && fel !== "nedet" && end < azi) msg.push(`<span style="color:var(--red)">Noua perioadă se termină înainte de azi — contractul ar fi tot expirat. Alege o perioadă mai lungă sau altă dată de început.</span>`);
+  if(end && st && end < st) msg.push(`<span style="color:var(--red)">Data de final e înaintea datei de început.</span>`);
+  $("aa-rez").innerHTML = msg.join("<br>");
+  const L = k ? aaLocatii(k, $("aa-data").value || azi) : [];
+  $("aa-loc").innerHTML = L.length ? `<table><tr><th>Anexa</th><th>Locația</th><th>Produse</th><th>Preț / zi / buc</th></tr>` +
+    L.map(r => `<tr><td>${esc(r.anexa)}</td><td>${esc(r.locatie)}</td><td><b>${esc(r.produse)}</b></td><td>${esc(r.pret)}</td></tr>`).join("") + "</table>"
+    : '<div class="muted" style="padding:6px">Nicio anexă activă pe contract la această dată — actul va avea tabelul gol.</div>';
+}
+async function aaGenereaza(){
+  const k = CTR.find(x => x.id === +$("mod-aa").dataset.id); if(!k) return;
+  const c = CLI.find(x => x.id === k.client_id) || {}, PF = c.categorie === "PF" || c.id_tip === "CNP";
+  const fel = $("aa-fel").value, nedet = fel === "nedet", st = $("aa-start").value, end = nedet ? "" : $("aa-end").value, dAct = $("aa-data").value || today(), nr = $("aa-nr").value.trim();
+  if(!nr){ toast("Scrie numărul actului adițional", true); $("aa-nr").focus(); return; }
+  if(!st){ toast("Alege data de la care începe prelungirea", true); return; }
+  if(!nedet && (!end || end < st)){ toast("Alege data de final a prelungirii (după data de început)", true); return; }
+  if(!$("aa-pret-ok").checked && !$("aa-pret").value.trim()){ toast("Scrie prețurile noi sau bifează „Prețurile rămân neschimbate”", true); $("aa-pret").focus(); return; }
+  const u = ctrUltimaData(k) || k.data_expirare || st, aaAnt = ctrAA(k).filter(x => x && x.pana_la).sort((a, b) => a.pana_la.localeCompare(b.pana_la));
+  const luni = fel === "n" ? Math.max(1, +$("aa-n").value || 0) : +fel;
+  const durata = fel === "d" ? ctrDurata({ data_emitere: st, data_expirare: end }, null) : actPad(luni) + (luni === 1 ? " Luna" : " Luni");
+  const scNr = $("aa-sc-nr") ? $("aa-sc-nr").value.trim().toUpperCase().replace(/\s+/g, "") : "", scFara = $("aa-sc-fara") ? +String($("aa-sc-fara").value).replace(",", ".") || 0 : 0;
+  let sicap_text = "";
+  if(scNr && scFara){ const v = sicapVal({ fara: scFara, cota: 21 });
+    sicap_text = "Valoarea pentru perioada prelungita, conform achizitiei directe nr. " + scNr + ", este de " + ftBani(v.fara) + " lei fara TVA, la care se adauga TVA (" + v.cota + "%) in valoare de " + ftBani(v.tva) + " lei, respectiv " + ftBani(v.total) + " lei cu TVA."; }
+  const L = aaLocatii(k, dAct);
+  const date = Object.assign({}, PF ? ctrBenefPF(c) : ctrBenef(c), {
+    aa_nr: nr, aa_data: actD(dAct), contract_nr: k.nr_ctr || "______", contract_data: actD(k.data_emitere) || "______",
+    tabel_titlu: "Tabel - Anexele in vigoare si produsele la data de " + actD(dAct),
+    tabel_nota: "Preturile sunt fara TVA. Bucatile tin cont de suplimentarile si reducerile facute pana la data actului.",
+    loc: L.length ? L.map((r, i) => ({ nr: String(i + 1), anexa: r.anexa, locatie: r.locatie, produse: r.produse, pret: r.pret })) : [{ nr: "-", anexa: "-", locatie: "Nicio anexa activa la data actului", produse: "-", pret: "-" }],
+    semnatari: Array.isArray(c.semnatari) ? c.semnatari.filter(x => x && (x.nume || x.functie)).map(x => ({ nume: actMajCuv(x.nume) || "______", functie: actMajCuv(x.functie) || "______" })) : [] },
+    aaArticole({ pf: PF, contract_nr: k.nr_ctr || "______", contract_data: actD(k.data_emitere) || "______",
+      aa_ant: aaAnt.length ? (aaAnt.length > 1 ? "actele aditionale nr. " : "actul aditional nr. ") + aaAnt.map(x => (x.nr || "?") + (x.data ? " din " + actD(x.data) : "")).join(", ") : "",
+      nedet, durata, start: actD(st), end: actD(end), exp: actD(u), exp_iso: u, data_act: actD(dAct), data_act_iso: dAct, tacit: $("aa-tacit").checked,
+      pret_nou: $("aa-pret-ok").checked ? "" : $("aa-pret").value.trim(), sicap_text }));
+  try{
+    toast("Se pregătește actul adițional…");
+    await actScript("lib/pizzip.min.js"); await actScript("lib/docxtemplater.min.js");
+    const MOD = PF ? "modele/act_aditional_pf.docx" : "modele/act_aditional_pj.docx";
+    const rsp = await fetch(MOD, { cache: "no-cache" }); if(!rsp.ok) throw new Error("modelul nu s-a găsit (" + MOD + ")");
+    const doc = new window.docxtemplater(new PizZip(await rsp.arrayBuffer()), { paragraphLoop: true, linebreaks: true, nullGetter: () => "______" });
+    Object.keys(date).forEach(x => { if(date[x] === "" && !["client_email", "client_tel", "client_iban", "client_banca"].includes(x)) date[x] = "______"; });
+    doc.render(actFaraDiac(date));
+    const blob = doc.getZip().generate({ type: "blob", mimeType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document" });
+    const nume = ((k.nr_ctr || "CTR") + "_ AA " + nr + " " + (c.nume || "")).replace(/[\\/:*?"<>|]+/g, " ").replace(/\s+/g, " ").trim() + ".docx";
+    const ur = URL.createObjectURL(blob), l = document.createElement("a"); l.href = ur; l.download = nume; document.body.appendChild(l); l.click(); l.remove(); setTimeout(() => URL.revokeObjectURL(ur), 5000);
+    let txt = "Act adițional descărcat: " + nume;
+    if($("aa-trece").checked){
+      const upd = nedet ? { prelungire_tacita: true, prelungire_tacita_din: st, expirare_text: "Nedeterminat" } : { acte_aditionale: [...ctrAA(k), { nr, data: dAct, pana_la: end }] };
+      if(scNr && scFara) upd.sicap = [...(Array.isArray(k.sicap) ? k.sicap : []), { nr: scNr, fara: scFara, cota: 21, de: st, pana: end, act: "AA " + nr }];
+      const { error } = await db.from("contracte").update(upd).eq("id", k.id);
+      if(error) txt += " — dar NU s-a putut trece pe contract: " + error.message; else { Object.assign(k, upd); txt += " · trecut pe contract" + (nedet ? " (nedeterminat din " + fmtD(st) + ")" : " (până la " + fmtD(end) + ")"); }
+    }
+    toast(txt); aaInchide(); if(typeof loadAtentie === "function") loadAtentie();
+  }catch(e){ toast("Actul adițional nu s-a putut genera: " + (e.message || e), true); }
 }
 function ctrLipsuri(c, daune, nume, salvat, tarzii, ciOk){
   const cat = c.categorie || "SOCIETATE";
@@ -11161,7 +11323,7 @@ async function loadAtentie(){
       ["Nr. contract", "Client", "A expirat la", "De câte zile"],
       CTR.filter(c => ctrExp(c) && ctrExp(c) < azi && (c.stare || "") === "ACTIV")
          .sort((a, b) => ctrExp(a).localeCompare(ctrExp(b)))
-         .map(c => ({ id: "c" + c.id, ctx: ctrExp(c) + "/" + (c.stare || ""),
+         .map(c => ({ id: "c" + c.id, aa: c.id, ctx: ctrExp(c) + "/" + (c.stare || ""),
                       v: [c.nr_ctr || "", numeClient(c), fmtD(ctrExp(c)), ziDiff(azi, ctrExp(c))] })));
 
   add("ctr_curand", "Contracte care expiră în curând",
@@ -11169,7 +11331,7 @@ async function loadAtentie(){
       ["Nr. contract", "Client", "Expiră la", "Peste câte zile"],
       CTR.filter(c => ctrExp(c) && ctrExp(c) >= azi && ctrExp(c) <= orizont)
          .sort((a, b) => ctrExp(a).localeCompare(ctrExp(b)))
-         .map(c => ({ id: "c" + c.id, ctx: ctrExp(c),
+         .map(c => ({ id: "c" + c.id, aa: c.id, ctx: ctrExp(c),
                       v: [c.nr_ctr || "", numeClient(c), fmtD(ctrExp(c)), ziDiff(ctrExp(c), azi)] })));
 
   add("ctr_fara_data", "Contracte fără dată de expirare",
@@ -11403,7 +11565,7 @@ function renderAtentie(){
   $("t-nota").textContent = x.nota;
   const rnd = atVizibile(x);
   $("t-tbl").innerHTML =
-    "<thead><tr>" + x.cap.map(h => `<th>${esc(h)}</th>`).join("") + (x.randuri.some(r => r.mid) ? '<th class="noprint"></th>' : "") +
+    "<thead><tr>" + x.cap.map(h => `<th>${esc(h)}</th>`).join("") + (x.randuri.some(r => r.mid) ? '<th class="noprint"></th>' : "") + (x.randuri.some(r => r.aa) ? '<th class="noprint"></th>' : "") +
     `<th class="noprint">Rezolvat</th><th class="noprint">Amână până la</th><th class="noprint">Notă</th></tr></thead><tbody>` +
     rnd.map(r => {
       const n = AT_NOTE[atK(x.cheie, r.id)], pot = atPotrivit(n, r);
@@ -11412,6 +11574,7 @@ function renderAtentie(){
       const nt   = pot ? (n.nota || "") : "";
       return "<tr>" + r.v.map(v => `<td>${esc(v === null || v === undefined ? "" : v)}</td>`).join("") +
         (x.randuri.some(q => q.mid) ? `<td class="noprint">${r.mid ? `<button class="btn sm" onclick="atDeschideCmd(${r.mid})">Deschide</button>` : ""}</td>` : "") +
+        (x.randuri.some(q => q.aa) ? `<td class="noprint">${r.aa ? `<button class="btn sm" onclick="aaDeschide(${r.aa})" title="Act adițional de prelungire: perioada nouă + anexele active la data actului">📝 Act adițional</button>` : ""}</td>` : "") +   // v9.06
         `<td class="noprint" style="text-align:center"><input type="checkbox"${bif} onchange="atSalveaza(${r.i},'rezolvat',this.checked)"></td>` +
         `<td class="noprint"><input type="date" value="${esc(pana)}" onchange="atSalveaza(${r.i},'pana_la',this.value)"></td>` +
         `<td class="noprint"><input value="${esc(nt)}" placeholder="scrie ceva…" onchange="atSalveaza(${r.i},'nota',this.value)" style="min-width:170px"></td></tr>`;
