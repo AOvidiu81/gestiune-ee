@@ -1116,7 +1116,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
   <span id="rz-w"><button id="rz-reset" class="pictograma" title="Lățimi implicite — pune coloanele din tabelele acestei file înapoi cum erau">↺ Reset layout</button><i class="rz-sep">|</i></span>
   <span id="tz-w" title="Mărimea tabelului (doar tabelul, restul rămâne la fel), din 5 în 5%. Merge și cu Ctrl + rotița mausului, Ctrl + / Ctrl − / Ctrl 0. Dublu clic pe procent = scrii tu valoarea."><button class="pictograma" onclick="tzPas(-1)" aria-label="Micșorează tabelul">−</button><b id="tz-v" ondblclick="tzScrie()" title="Dublu clic = scrii mărimea (ex. 87), Enter">100%</b><input id="tz-in" type="number" min="30" max="300" step="5" style="display:none"><button class="pictograma" onclick="tzPas(1)" aria-label="Mărește tabelul">+</button></span>
-  <span class="ver">v9.11</span>
+  <span class="ver">v9.12</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -15893,6 +15893,11 @@ function pntDeseneaza(){
     <datalist id="pnt-dl">${(ANG.mas || []).map(m => `<option value="${esc(m.nr)}">`).join("")}</datalist>
     <div class="tw" style="margin-top:8px;max-height:none"><table><thead><tr><th>Nr</th><th>Data</th><th>Ziua</th><th>Cod</th><th>Mașina</th><th>Pornire</th><th>Sosire</th><th style="text-align:right">Ore</th><th>Km</th><th>Observații</th><th></th></tr></thead><tbody>${PNT.rows.map((r, i) => pntRand(r, i, sb, azi)).join("")}</tbody></table></div>
     <div id="pnt-stat">${pntStatHtml()}</div></div>`;
+  // v9.12 (cerut de Ovidiu, 17.11): statistica de jos ține lățimea tabelului de pontaj (și când îngustezi / lărgești coloanele din „|”)
+  try{ if(PNT.ro) PNT.ro.disconnect();
+    const tb = el.querySelector(".tw > table"), st = $("pnt-stat");
+    if(tb && st && window.ResizeObserver){ PNT.ro = new ResizeObserver(() => { const w = tb.getBoundingClientRect().width, cont = st.parentElement.clientWidth;
+      st.style.maxWidth = w && w < cont - 4 ? Math.round(w) + "px" : ""; }); PNT.ro.observe(tb); } }catch(e){}
 }
 function pntRand(r, i, sb, azi){
   const w = dtz(r.zi).getDay(), s = sb.get(r.zi), o = pntOre(r), f = pntFond(r), we = w === 0 || w === 6, tc = PNT_TXT[r.cod] || (pntDep(r) ? PNT_TXT.DEP : "");
