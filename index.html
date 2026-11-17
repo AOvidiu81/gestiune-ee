@@ -1116,7 +1116,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
   <span id="rz-w"><button id="rz-reset" class="pictograma" title="Lățimi implicite — pune coloanele din tabelele acestei file înapoi cum erau">↺ Reset layout</button><i class="rz-sep">|</i></span>
   <span id="tz-w" title="Mărimea tabelului (doar tabelul, restul rămâne la fel), din 5 în 5%. Merge și cu Ctrl + rotița mausului, Ctrl + / Ctrl − / Ctrl 0. Dublu clic pe procent = scrii tu valoarea."><button class="pictograma" onclick="tzPas(-1)" aria-label="Micșorează tabelul">−</button><b id="tz-v" ondblclick="tzScrie()" title="Dublu clic = scrii mărimea (ex. 87), Enter">100%</b><input id="tz-in" type="number" min="30" max="300" step="5" style="display:none"><button class="pictograma" onclick="tzPas(1)" aria-label="Mărește tabelul">+</button></span>
-  <span class="ver">v9.14</span>
+  <span class="ver">v9.15</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -2838,7 +2838,7 @@ async function init(){
     DEP=d.data||[]; puneTitlul(); SOF=s.data||[]; MAS=m.data||[]; CLI=c.data||[]; CTR=k.data||[]; ANX=a.data||[]; SI=si.data||[];
     SER=sr.data||[];   // lipsea de la pornire: până la prima salvare butonul scria „Serii” și fereastra apărea goală
     $("conn").textContent="● online"; $("conn").style.color="#9fe0b8";
-    fillAll(); await loadStoc(); loadVerif(); loadAtentie();
+    fillAll(); await loadStoc(); loadVerif(); loadAtentie().then(atPopup).catch(e => console.warn("alerte:", e));   // v9.15: fereastra cu alertele la pornire
     // v5.06: fila din adresă (#raport-luna …) se deschide abia după ce s-au încărcat datele — la F5 rămânea goală
     INIT_GATA = true; deschideSectiune((location.hash || "").replace("#", "") || (matchMedia("(min-width:900px)").matches ? "miscari" : ""));   // v6.74: pe PC pornește pe Comenzi
     mobDupaInit();   // v5.27: varianta de telefon
@@ -11522,6 +11522,42 @@ function renderPlaci(){
 }
 
 function alegeAtentie(cheie){ AT_SEL = cheie; renderPlaci(); }
+// ══════════════════════════════════════════════════════════════════════════════════════════════════════
+// v9.15 (cerut de Ovidiu, 17.11): la fiecare deschidere a aplicației (pe PC), peste Comenzi, apare fereastra „Alertele zilei” —
+// ce a expirat / expiră (acte flotă: RCA, ITP, rovinietă…, medicina muncii, contracte, anexe, avansuri, sponsorizări, documente neprimite,
+// ridicări fără anexă finală). Ce ai bifat „Rezolvat” sau „Amână până la” în De urmărit nu mai apare. Restul (verificări de date: GPS,
+// frecvențe, prețuri…) apare doar ca număr, jos. Se închide cu ✕ / „Am citit”; la următoarea deschidere a aplicației apare din nou.
+const AT_URG = ["flota_acte", "ctr_expirate", "anx_expirate", "ctr_curand", "anx_curand", "fact_avans", "spons", "doc_neprimite", "rid_fara_final"];
+function atPopup(){
+  if(document.documentElement.classList.contains("mob") || !window.matchMedia("(min-width:900px)").matches) return;
+  if(document.getElementById("mod-atp")) return;
+  const viz = x => x.randuri.filter(r => !atAscuns(x.cheie, r.id, r.ctx));
+  const urg = AT_URG.map(k => AT.find(x => x.cheie === k)).filter(x => x && viz(x).length);
+  const alte = AT.filter(x => !AT_URG.includes(x.cheie) && viz(x).length);
+  if(!urg.length && !alte.length) return;
+  const rosu = r => r.v.some(v => /EXPIRAT|expiră AZI/i.test(String(v)));
+  const grup = x => { const L = viz(x), N = 8, exp = x.cheie === "ctr_expirate" || x.cheie === "anx_expirate";
+    return `<div class="atp-g"><div class="atp-h"><b>${esc(x.titlu)}</b><span class="atp-n${exp || L.some(rosu) ? " r" : ""}">${L.length}</span>
+      <button class="btn sm sec" onclick="atPopupMergi('${x.cheie}')">Deschide în De urmărit →</button></div>
+      <div class="tw" style="max-height:none"><table><thead><tr>${x.cap.map(h => `<th>${esc(h)}</th>`).join("")}</tr></thead><tbody>` +
+      L.slice(0, N).map(r => `<tr${exp || rosu(r) ? ' class="atp-r"' : ""}>${r.v.map(v => `<td>${esc(v == null ? "" : v)}</td>`).join("")}</tr>`).join("") +
+      `</tbody></table></div>${L.length > N ? `<div class="muted" style="font-size:12px;margin-top:3px">… și încă ${L.length - N} — toate în De urmărit</div>` : ""}</div>`; };
+  const nr = urg.reduce((t, x) => t + viz(x).length, 0);
+  const azi = new Date().toLocaleDateString("ro-RO", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
+  const w = document.createElement("div"); w.className = "modal on"; w.id = "mod-atp";
+  w.innerHTML = `<div class="box" style="max-width:1100px;width:96vw"><h3 class="lux-cap cap-mut">🔔 Alertele zilei — ${esc(azi)}</h3>
+    <style>#mod-atp .atp-g{margin:0 0 14px}#mod-atp .atp-h{display:flex;align-items:center;gap:10px;margin-bottom:5px}#mod-atp .atp-h b{font-size:14px}
+      #mod-atp .atp-h .btn{margin-left:auto}#mod-atp .atp-n{min-width:24px;text-align:center;padding:1px 8px;border-radius:999px;background:#b45309;color:#fff;font-weight:700;font-size:12px}
+      #mod-atp .atp-n.r{background:#C0392B}#mod-atp tr.atp-r td{color:#C0392B;font-weight:600}#mod-atp td,#mod-atp th{font-size:12.5px}</style>
+    <div class="muted" style="margin-bottom:10px">${urg.length ? `<b style="color:var(--tx)">${nr}</b> ${nr === 1 ? "lucru" : "lucruri"} care au expirat sau expiră în următoarele <b style="color:var(--tx)">${esc($("t-zile").value || "90")}</b> de zile. ` : ""}Ce marchezi „Rezolvat” sau amâni în De urmărit nu mai apare aici.</div>
+    <div style="max-height:62vh;overflow:auto;padding-right:4px">${urg.map(grup).join("") || '<div class="muted">Nimic expirat sau care expiră în curând. ✓</div>'}</div>
+    ${alte.length ? `<div style="margin-top:6px;padding-top:8px;border-top:1px solid var(--bd);font-size:12.5px"><b>De verificat (date incomplete):</b> ${alte.map(x => `<a href="#" onclick="atPopupMergi('${x.cheie}');return false">${esc(x.titlu)} (${viz(x).length})</a>`).join(" · ")}</div>` : ""}
+    <div class="row" style="justify-content:flex-end;margin-top:12px"><div style="flex:0"><button class="btn sec" onclick="atPopupMergi('')">Deschide De urmărit</button></div>
+      <div style="flex:0"><button class="btn" onclick="atPopupInchide()">✓ Am citit</button></div></div></div>`;
+  document.body.appendChild(w); feFereastra(w, atPopupInchide);
+}
+function atPopupInchide(){ const m = $("mod-atp"); if(m) m.remove(); }
+function atPopupMergi(cheie){ atPopupInchide(); deschideSectiune("atentie"); if(cheie) setTimeout(() => alegeAtentie(cheie), 50); }
 // v6.68: deschide comanda din De urmărit (o aduce în listă dacă filtrele din Comenzi n-o au)
 async function atDeschideCmd(id){
   if(!MISC.some(x => x.id === id)){
