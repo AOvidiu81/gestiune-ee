@@ -1116,7 +1116,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
   <span id="rz-w"><button id="rz-reset" class="pictograma" title="Lățimi implicite — pune coloanele din tabelele acestei file înapoi cum erau">↺ Reset layout</button><i class="rz-sep">|</i></span>
   <span id="tz-w" title="Mărimea tabelului (doar tabelul, restul rămâne la fel), din 5 în 5%. Merge și cu Ctrl + rotița mausului, Ctrl + / Ctrl − / Ctrl 0. Dublu clic pe procent = scrii tu valoarea."><button class="pictograma" onclick="tzPas(-1)" aria-label="Micșorează tabelul">−</button><b id="tz-v" ondblclick="tzScrie()" title="Dublu clic = scrii mărimea (ex. 87), Enter">100%</b><input id="tz-in" type="number" min="30" max="300" step="5" style="display:none"><button class="pictograma" onclick="tzPas(1)" aria-label="Mărește tabelul">+</button></span>
-  <span class="ver">v9.22</span>
+  <span class="ver">v9.26</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -6780,7 +6780,7 @@ function ofRender(){
   // valoarea și butoanele în dreapta (nu mai sunt acoperite de textul lung al produselor). Prețurile pe bucată doar la mouse.
   const CSS = `<style>
     .ofl{display:flex;flex-direction:column;gap:10px}
-    .ofl .of-i{display:grid;grid-template-columns:150px minmax(0,1fr) 230px;gap:18px;align-items:center;background:var(--card);border:1px solid var(--bd);border-left:4px solid var(--ofc,#6b7280);border-radius:14px;padding:14px 18px;transition:box-shadow .15s,transform .15s}
+    .ofl .of-i{display:grid;grid-template-columns:150px minmax(0,1fr) auto;gap:18px;align-items:center;background:var(--card);border:1px solid var(--bd);border-left:4px solid var(--ofc,#6b7280);border-radius:14px;padding:14px 18px;transition:box-shadow .15s,transform .15s}
     .ofl .of-i:hover{box-shadow:0 6px 20px rgba(16,24,40,.08);transform:translateY(-1px)}
     .ofl .of-nr{font-weight:800;font-size:15px;letter-spacing:.2px;color:#1b2550}:root[data-tema="inchis"] .ofl .of-nr{color:var(--tx)}
     .ofl .of-dt{font-size:12px;color:var(--mut);margin:2px 0 8px}
@@ -6794,7 +6794,13 @@ function ofRender(){
     .ofl .of-pr .of-mai{background:transparent;border-style:dashed;color:var(--mut)}
     .ofl .of-v{text-align:right}.ofl .of-v b{display:block;font-size:20px;font-weight:800;color:#1b2550;white-space:nowrap}:root[data-tema="inchis"] .ofl .of-v b{color:var(--tx)}
     .ofl .of-v small{color:var(--mut);font-size:11.5px}
-    .ofl .of-b{display:flex;gap:6px;justify-content:flex-end;flex-wrap:wrap;margin-top:10px}.ofl .of-b .btn{white-space:nowrap}
+    .ofl .of-b{display:inline-flex;align-items:stretch;margin-top:10px;border:1px solid var(--bd);border-radius:10px;overflow:hidden;background:var(--card)}
+    .ofl .of-b button{display:inline-flex;align-items:center;gap:6px;border:0;border-right:1px solid var(--bd);border-radius:0;background:transparent;color:#1b2550;font-size:12.5px;font-weight:700;padding:8px 13px;cursor:pointer;white-space:nowrap;transition:background .15s,color .15s}
+    :root[data-tema="inchis"] .ofl .of-b button{color:var(--tx)}
+    .ofl .of-b button:last-child{border-right:0}.ofl .of-b button:hover{background:var(--bg)}
+    .ofl .of-b .of-pdf{background:#1b2550;color:#fff!important}.ofl .of-b .of-pdf:hover{background:#26346e}
+    .ofl .of-b .of-fisa{background:#2E8B3C;color:#fff!important}.ofl .of-b .of-fisa:hover{background:#277a33}
+    .ofl .of-b .of-del{color:#9aa3b8;padding:8px 11px}.ofl .of-b .of-del:hover{background:#fdecee;color:#C0392B}
     @media(max-width:900px){.ofl .of-i{grid-template-columns:1fr}.ofl .of-v{text-align:left}.ofl .of-b{justify-content:flex-start}}
   </style>`;
   el.innerHTML = CSS + '<div class="ofl">' + L.map(o => { const k = o.continut || {}, st = OF_ST[o.stare] || OF_ST.ciorna, R = k.randuri || [], N = 4;
@@ -6807,7 +6813,7 @@ function ofRender(){
         ${k.locatia ? `<div class="of-loc" title="${esc(k.locatia)}">${esc(k.locatia)}</div>` : '<div style="height:8px"></div>'}
         <div class="of-pr">${R.slice(0, N).map(chip).join("")}${R.length > N ? `<span class="of-mai" title="${esc(R.slice(N).map(r => (r.buc ? r.buc + " × " : "") + r.nume).join("\n"))}">+ ${R.length - N} produse</span>` : ""}</div></div>
       <div class="of-v"><b>${o.valoare != null ? ftBani(o.valoare) + " lei" : "—"}</b><small>fără TVA</small>
-        <div class="of-b"><button class="btn sm" onclick="ofPdf(${o.id})" title="Vezi oferta ca PDF — o tipărești sau o salvezi">📄 PDF</button><button class="btn sm sec" onclick="ofForm(${o.id})" title="Deschide și modifică oferta">✏ Deschide</button><button class="btn sm sec" onclick="ofForm(${o.id}, true)" title="Ofertă nouă pornind de la aceasta (alt client, aceleași produse)">⧉ Copie</button>${o.stare === "acceptata" ? `<button class="btn sm" onclick="ofLaFisa(${o.id})" title="Deschide fișa „Date contract” cu produsele și prețurile din ofertă">📋 Fișă</button>` : ""}<button class="btn sm sec" onclick="ofSterge(${o.id})" title="Șterge oferta">✕</button></div></div></div>`; }).join("") +
+        <div class="of-b"><button class="of-pdf" onclick="ofPdf(${o.id})" title="Vezi oferta ca PDF — o tipărești sau o salvezi">📄 PDF</button><button onclick="ofForm(${o.id})" title="Deschide și modifică oferta">✏️ Deschide</button><button onclick="ofForm(${o.id}, true)" title="Ofertă nouă pornind de la aceasta (alt client, aceleași produse)">⧉ Copie</button>${o.stare === "acceptata" ? `<button class="of-fisa" onclick="ofLaFisa(${o.id})" title="Deschide fișa „Date contract” cu produsele și prețurile din ofertă">📋 Fișă</button>` : ""}<button class="of-del" onclick="ofSterge(${o.id})" title="Șterge oferta" aria-label="Șterge oferta">🗑</button></div></div></div>`; }).join("") +
     (L.length ? "" : '<div class="muted">Nicio ofertă pentru filtrul ales.</div>') + "</div>";
 }
 async function ofStare(id, st){
@@ -7430,12 +7436,22 @@ function ofEvPdfDoc(jsPDF, o, F){
     lab(a, 12, y); f("R7", 11.5, TX); d.text(b, 12, y + 5.6); y += 15; });
   // totalul
   const peZi = k.arata_zi && zile > 1 && k.total ? Math.round(k.total / zile * 100) / 100 : 0;
-  let ty = peZi ? 140 : 146; d.setDrawColor(...LIN); d.setLineWidth(0.3); d.line(12, ty - 10, SW - 12, ty - 10);
+  let ty = peZi ? 132 : 138; d.setDrawColor(...LIN); d.setLineWidth(0.3); d.line(12, ty - 10, SW - 12, ty - 10);
   d.setFillColor(...RED); d.rect(12, ty - 3.2, 1.2, 3.6, "F"); lab("Total eveniment", 15, ty);
-  const tv = bani(k.total) + " lei", tsz = fit(tv, "R8", 27, SW - 24, 16); f("R8", tsz, NAV); d.text(tv, 12, ty + 11);
-  f("R5", 11, TX); d.text("+ TVA", 12, ty + 18);
-  ty += 26; if(peZi){ f("R4", 9.5, MUT); d.text(zile + " zile  x  ", 12, ty); const w0 = d.getTextWidth(zile + " zile  x  "); f("R7", 9.5, TX); d.text(bani(peZi) + " lei / zi + TVA", 12 + w0, ty); ty += 6; }
-  f("R4", 9, MUT); d.text(bani2((+k.total || 0) * (1 + OF_TVA)) + " lei cu TVA inclus", 12, ty);
+  // v9.23 (cerut de Ovidiu, 17.11): totalul și în a doua monedă — prima e moneda prețurilor din ofertă (EUR dacă are prețuri în EUR, altfel lei)
+  const curs = +k.curs || 0, eurP = curs > 0 && (k.randuri || []).some(r => r.mon === "EUR"), tot = +k.total || 0;
+  const M1 = eurP ? { v: tot / curs, m: "EUR" } : { v: tot, m: "lei" }, M2 = curs > 0 ? (eurP ? { v: tot, m: "lei" } : { v: tot / curs, m: "EUR" }) : null;
+  // v9.24: „+ TVA” pe același rând cu suma (suma se micșorează cât să încapă amândouă)
+  const tv = bani2(M1.v) + " " + M1.m; f("R5", 11); const wT = d.getTextWidth("+ TVA"); let tsz = 27; f("R8", tsz);
+  while(tsz > 14 && d.getTextWidth(tv) + 2.5 + wT > SW - 24){ tsz -= 0.5; d.setFontSize(tsz); }
+  f("R8", tsz, NAV); d.text(tv, 12, ty + 11); const wv = d.getTextWidth(tv); f("R5", 11, TX); d.text("+ TVA", 12 + wv + 2.5, ty + 11);
+  // v9.25 (cerut de Ovidiu, 17.11): ordinea — suma principală + TVA · cursul · principala cu TVA · a doua monedă + TVA · a doua cu TVA; sumele fără TVA mai mari
+  let yy = ty + 11;
+  yy += 5.5; f("R4", 9, MUT); d.text(bani2(M1.v * (1 + OF_TVA)) + " " + M1.m + " cu TVA inclus", 12, yy);
+  if(M2){ yy += 4.8; f("R4", 7.5, MUT); d.text("curs " + String(curs).replace(".", ",") + " lei / EUR la data " + (o.data ? o.data.split("-").reverse().join(".") : ""), 12, yy);
+    yy += 8.5; f("R8", 14, TX); d.text(bani2(M2.v) + " " + M2.m, 12, yy); const w2 = d.getTextWidth(bani2(M2.v) + " " + M2.m); f("R5", 9.5, TX); d.text("+ TVA", 12 + w2 + 2, yy);
+    yy += 5; f("R4", 9, MUT); d.text(bani2(M2.v * (1 + OF_TVA)) + " " + M2.m + " cu TVA inclus", 12, yy); }
+  if(peZi){ yy += 6; f("R4", 9.5, MUT); d.text(zile + " zile  x  ", 12, yy); const w0 = d.getTextWidth(zile + " zile  x  "); f("R7", 9.5, TX); d.text(bani2(peZi / (eurP ? curs : 1)) + " " + M1.m + " / zi + TVA", 12 + w0, yy); }
   // contact în bandă
   d.setDrawColor(...LIN); d.line(12, 184, SW - 12, 184);
   f("R7", 8.5, TX); d.text("0735 214 751  /  0735 214 762", 12, 190.5);
@@ -7465,10 +7481,17 @@ function ofEvPdfDoc(jsPDF, o, F){
   const psz = fit(per, "R8", 14.5, ew - 30, 9); f("R8", psz, NAV); d.text(per, ex + 6, ly + 25.5);
   const bw = 15, bx = ex + ew - bw - 4; d.setFillColor(...RED); d.roundedRect(bx, ly + 7, bw, 12.5, 2, 2, "F");
   f("R8", 13.5, [255, 255, 255]); d.text(String(zile || ""), bx + bw / 2, ly + 13.6, { align: "center" }); lab(zile === 1 ? "zi" : "zile", bx + bw / 2, ly + 17.6, [255, 255, 255], "center");
+  const bot = H - 11, gap = 8, w1 = CW - 52, w2 = (CW - gap) / 2;
+  const h1 = (L, s0) => L.length * s0 * 0.47 + s0 * 0.12;
+  const masoara = (s0, nc) => { f("R4", s0); const Ls = ment.map(m => d.splitTextToSize(cap(m), (nc === 1 ? w1 : w2) - 5));
+    let col = [Ls], hh = [Ls.reduce((t, L) => t + h1(L, s0), 0)];
+    if(nc === 2){ const tot = hh[0]; let a = 0, i = 0; while(i < Ls.length && a + h1(Ls[i], s0) <= tot / 2 + 0.01) a += h1(Ls[i++], s0); if(!i) i = 1; col = [Ls.slice(0, i), Ls.slice(i)]; hh = col.map(c => c.reduce((t, L) => t + h1(L, s0), 0)); }
+    return { s0, nc, col, need: 7.5 + Math.max(...hh) }; };
+  const yCond = Math.max(150, bot - masoara(9, 2).need - 7);   // v9.23: produsele lasă loc condițiilor (litera de 9 pt)
   // produse și servisări
   const py = 112, pw = CW * 0.54, sx = X + pw + 10, sw = XR - sx;
   lab("Produse", X, py); lab("Cantitate", X + pw, py, MUT, "right"); d.setDrawColor(...NAV); d.setLineWidth(0.5); d.line(X, py + 2.5, X + pw, py + 2.5);
-  const yMax = 166, rh = Math.max(5.2, Math.min(9.5, (yMax - py - 4) / Math.max(1, R.length))), fs = rh >= 8.5 ? 12.5 : rh >= 7 ? 11 : 9.5;
+  const yMax = Math.min(166, yCond), rh = Math.max(5.2, Math.min(9.5, (yMax - py - 4) / Math.max(1, R.length))), fs = rh >= 8.5 ? 12.5 : rh >= 7 ? 11 : 9.5;
   let ry = py + 4; d.setLineWidth(0.2); d.setDrawColor(...LIN);
   R.forEach(r => { const ac = r.acc ? "cu " + T(r.acc).toLowerCase() : "", hasA = ac && rh >= 7.5;
     f("R5", fs, TX); d.text(d.splitTextToSize(T(r.nume), pw - 26)[0], X, ry + (hasA ? rh * 0.45 : rh * 0.62));
@@ -7488,14 +7511,16 @@ function ofEvPdfDoc(jsPDF, o, F){
   } else { f("R4", 9.5, MUT); d.text("Fara servisari programate in perioada evenimentului.", sx, py + 9); }
   // condiții + prestator
   // v9.18 (ONCR Pitesti, 17.11): TOATE condițiile, fără să iasă din pagină — încep mai sus dacă produsele lasă loc, iar textul se micșorează (9,5 → 7 pt)
-  const mw = CW - 52, top0 = Math.max(ry, sEnd) + 7, bot = H - 11; let fsz = 9.5, Ls = [], need = 0;
-  const masoara = s0 => { f("R4", s0); Ls = ment.map(m => d.splitTextToSize(cap(m), mw - 5)); return 7.5 + Ls.reduce((t, L) => t + L.length * s0 * 0.47 + s0 * 0.08, 0); };
-  for(;; fsz -= 0.5){ need = masoara(fsz); if(Math.min(172, bot - need) >= top0 || fsz <= 7) break; }
-  const cy = Math.max(top0, Math.min(172, bot - need)); d.setDrawColor(...LIN); d.setLineWidth(0.3); d.line(X, cy - 3, XR, cy - 3);
-  lab("Conditii", X, cy + 1.5); let my = cy + 7.5;
-  Ls.forEach(L => { d.setFillColor(...RED); d.rect(X, my - fsz * 0.22, fsz * 0.17, fsz * 0.17, "F"); f("R4", fsz, TX); d.text(L, X + 4.5, my, { lineHeightFactor: 1.33 }); my += L.length * fsz * 0.47 + fsz * 0.08; });
-  lab("Prestator", XR, cy + 1.5, MUT, "right"); f("R7", 10, NAV); d.text("SC EURO ECOLOGIC SRL", XR, cy + 7.5, { align: "right" });
-  f("R4", 7.5, MUT); d.text("J 2007 000205 190  |  CUI RO 21311085  |  Sediu: Vlahita, jud. Harghita", XR, H - 7, { align: "right" });
+  // v9.23 (cerut de Ovidiu, 17.11): condițiile lizibile la print — întâi o coloană (lângă „Prestator”), apoi pe două coloane pe toată lățimea; litera rămâne de cel puțin 8 pt
+  const top0 = Math.max(ry, sEnd) + 7;
+  let C = null;
+  for(const [nc, s0] of [[1, 10], [1, 9.5], [1, 9], [2, 10], [2, 9.5], [2, 9], [2, 8.5], [2, 8], [2, 7.5], [2, 7]]){ C = masoara(s0, nc); if(Math.min(170, bot - C.need) >= top0) break; }
+  const fsz = C.s0, cy = Math.max(top0, Math.min(170, bot - C.need)); d.setDrawColor(...LIN); d.setLineWidth(0.3); d.line(X, cy - 3, XR, cy - 3);
+  lab("Conditii", X, cy + 1.5);
+  C.col.forEach((col, ci) => { const x0 = X + ci * (w2 + gap); let my = cy + 7.5;
+    col.forEach(L => { d.setFillColor(...RED); d.rect(x0, my - fsz * 0.24, fsz * 0.18, fsz * 0.18, "F"); f("R4", fsz, TX); d.text(L, x0 + 4.5, my, { lineHeightFactor: 1.33 }); my += h1(L, fsz); }); });
+  if(C.nc === 1){ lab("Prestator", XR, cy + 1.5, MUT, "right"); f("R7", 10, NAV); d.text("SC EURO ECOLOGIC SRL", XR, cy + 7.5, { align: "right" }); }
+  f("R4", 7.5, MUT); d.text((C.nc === 1 ? "" : "Prestator: SC EURO ECOLOGIC SRL  |  ") + "J 2007 000205 190  |  CUI RO 21311085  |  Sediu: Vlahita, jud. Harghita", XR, H - 7, { align: "right" });
   d.setProperties({ title: "Oferta eveniment " + ofNr(o) + " - " + T(o.catre), author: "SC EURO ECOLOGIC SRL", subject: "Oferta de produse pentru eveniment", creator: "GestiuneEE" });
   return d;
 }
