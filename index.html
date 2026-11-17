@@ -1116,7 +1116,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
   <span id="rz-w"><button id="rz-reset" class="pictograma" title="Lățimi implicite — pune coloanele din tabelele acestei file înapoi cum erau">↺ Reset layout</button><i class="rz-sep">|</i></span>
   <span id="tz-w" title="Mărimea tabelului (doar tabelul, restul rămâne la fel), din 5 în 5%. Merge și cu Ctrl + rotița mausului, Ctrl + / Ctrl − / Ctrl 0. Dublu clic pe procent = scrii tu valoarea."><button class="pictograma" onclick="tzPas(-1)" aria-label="Micșorează tabelul">−</button><b id="tz-v" ondblclick="tzScrie()" title="Dublu clic = scrii mărimea (ex. 87), Enter">100%</b><input id="tz-in" type="number" min="30" max="300" step="5" style="display:none"><button class="pictograma" onclick="tzPas(1)" aria-label="Mărește tabelul">+</button></span>
-  <span class="ver">v9.21</span>
+  <span class="ver">v9.22</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -6776,15 +6776,39 @@ function ofRender(){
   const q = faraDiac(($("of-q") || {}).value || "").toLowerCase().trim(), fs = ($("of-fs") || {}).value || "";
   const L = OF.L.filter(o => (!fs || o.stare === fs) && (!q || faraDiac(o.catre + " " + ((o.continut || {}).randuri || []).map(r => r.nume).join(" ") + " " + ((o.continut || {}).locatia || "")).toLowerCase().includes(q)));
   if(!OF.L.length){ el.innerHTML = '<p class="muted" style="margin:0">Nicio ofertă încă. Apasă <b>📝 Ofertă nouă</b>.</p>'; return; }
-  el.innerHTML = '<div style="overflow:auto"><table><tr><th>Nr.</th><th>Data</th><th>Către</th><th>Produse</th><th style="text-align:right">Valoare (fără TVA)</th><th>Stare</th><th></th></tr>' + L.map(o => { const k = o.continut || {}, st = OF_ST[o.stare] || OF_ST.ciorna;
-    const pr = (k.randuri || []).map(r => (r.buc ? r.buc + " × " : "") + r.nume + (r.pret != null ? " — " + ftBani(r.pret) + (r.mon === "EUR" ? " EUR" : " lei") + (OF_PE[r.pe] ? " / " + OF_PE[r.pe] : "") : "") + (r.frecventa ? " (" + r.frecventa + ")" : "")).join("; ");
-    return `<tr><td style="white-space:nowrap"><b>${esc(ofNr(o))}</b></td><td style="white-space:nowrap">${fmtD(o.data)}</td><td><b>${esc(o.catre)}</b>${k.fel === "eveniment" ? ' <span title="Ofertă de eveniment">🎪</span>' : ""}${k.locatia ? `<br><span class="muted" style="font-size:12px">${esc(k.locatia)}</span>` : ""}</td>
-      <td style="font-size:12.5px;max-width:420px">${esc(pr)}</td><td style="text-align:right;white-space:nowrap">${o.valoare != null ? ftBani(o.valoare) + " lei" : "—"}</td>
-      <td><select onchange="ofStare(${o.id}, this.value)" title="Schimbă starea ofertei" style="font-weight:700;color:${st[1]};min-width:118px">${Object.keys(OF_ST).map(s => `<option value="${s}" ${s === o.stare ? "selected" : ""}>${OF_ST[s][0]}</option>`).join("")}</select></td>
-      <td style="white-space:nowrap"><button class="btn sm" onclick="ofPdf(${o.id})" title="Vezi oferta ca PDF — o tipărești sau o salvezi">📄 PDF</button> <button class="btn sm sec" onclick="ofForm(${o.id})" title="Deschide și modifică oferta">✏ Deschide</button>
-        <button class="btn sm sec" onclick="ofForm(${o.id}, true)" title="Ofertă nouă pornind de la aceasta (alt client, aceleași produse)">⧉ Copie</button>
-        ${o.stare === "acceptata" ? `<button class="btn sm" onclick="ofLaFisa(${o.id})" title="Deschide fișa „Date contract” cu produsele și prețurile din ofertă">📋 Fișă</button> ` : ""}<button class="btn sm sec" onclick="ofSterge(${o.id})" title="Șterge oferta">✕</button></td></tr>`; }).join("") +
-    (L.length ? "" : '<tr><td colspan="7" class="muted">Nicio ofertă pentru filtrul ales.</td></tr>') + "</table></div>";
+  // v9.22 (cerut de Ovidiu, 17.11): lista ca fișe — numărul și starea în stânga, clientul + produsele ca etichete scurte la mijloc,
+  // valoarea și butoanele în dreapta (nu mai sunt acoperite de textul lung al produselor). Prețurile pe bucată doar la mouse.
+  const CSS = `<style>
+    .ofl{display:flex;flex-direction:column;gap:10px}
+    .ofl .of-i{display:grid;grid-template-columns:150px minmax(0,1fr) 230px;gap:18px;align-items:center;background:var(--card);border:1px solid var(--bd);border-left:4px solid var(--ofc,#6b7280);border-radius:14px;padding:14px 18px;transition:box-shadow .15s,transform .15s}
+    .ofl .of-i:hover{box-shadow:0 6px 20px rgba(16,24,40,.08);transform:translateY(-1px)}
+    .ofl .of-nr{font-weight:800;font-size:15px;letter-spacing:.2px;color:#1b2550}:root[data-tema="inchis"] .ofl .of-nr{color:var(--tx)}
+    .ofl .of-dt{font-size:12px;color:var(--mut);margin:2px 0 8px}
+    .ofl .of-st{font-weight:700;font-size:12px;border-radius:999px;padding:3px 8px;height:auto;width:100%;border:1px solid currentColor;background:transparent}
+    .ofl .of-cl{font-weight:800;font-size:15px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+    .ofl .of-ev{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;background:#fdecee;color:#b3261e;border-radius:999px;padding:2px 9px}
+    .ofl .of-loc{font-size:12.5px;color:var(--mut);margin:2px 0 8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .ofl .of-pr{display:flex;flex-wrap:wrap;gap:6px}
+    .ofl .of-pr span{font-size:12px;background:var(--bg);border:1px solid var(--bd);border-radius:8px;padding:3px 9px;max-width:300px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:default}
+    .ofl .of-pr span b{color:#1b2550}:root[data-tema="inchis"] .ofl .of-pr span b{color:var(--tx)}
+    .ofl .of-pr .of-mai{background:transparent;border-style:dashed;color:var(--mut)}
+    .ofl .of-v{text-align:right}.ofl .of-v b{display:block;font-size:20px;font-weight:800;color:#1b2550;white-space:nowrap}:root[data-tema="inchis"] .ofl .of-v b{color:var(--tx)}
+    .ofl .of-v small{color:var(--mut);font-size:11.5px}
+    .ofl .of-b{display:flex;gap:6px;justify-content:flex-end;flex-wrap:wrap;margin-top:10px}.ofl .of-b .btn{white-space:nowrap}
+    @media(max-width:900px){.ofl .of-i{grid-template-columns:1fr}.ofl .of-v{text-align:left}.ofl .of-b{justify-content:flex-start}}
+  </style>`;
+  el.innerHTML = CSS + '<div class="ofl">' + L.map(o => { const k = o.continut || {}, st = OF_ST[o.stare] || OF_ST.ciorna, R = k.randuri || [], N = 4;
+    const chip = r => { const t = (r.buc ? r.buc + " × " : "") + (r.nume || ""), p = r.pret != null ? ftBani(r.pret) + (r.mon === "EUR" ? " EUR" : " lei") + (OF_PE[r.pe] ? " / " + OF_PE[r.pe] : "") + (r.frecventa ? " · " + r.frecventa : "") : "";
+      return `<span title="${esc(t + (p ? " — " + p : ""))}">${r.buc ? `<b>${esc(String(r.buc))} ×</b> ` : ""}${esc(r.nume || "")}</span>`; };
+    return `<div class="of-i" style="--ofc:${st[1]}">
+      <div><div class="of-nr">${esc(ofNr(o))}</div><div class="of-dt">${fmtD(o.data)}</div>
+        <select class="of-st" onchange="ofStare(${o.id}, this.value)" title="Schimbă starea ofertei" style="color:${st[1]}">${Object.keys(OF_ST).map(s => `<option value="${s}" ${s === o.stare ? "selected" : ""}>${OF_ST[s][0]}</option>`).join("")}</select></div>
+      <div style="min-width:0"><div class="of-cl">${esc(o.catre)}${k.fel === "eveniment" ? '<span class="of-ev" title="Ofertă de eveniment">🎪 eveniment</span>' : ""}</div>
+        ${k.locatia ? `<div class="of-loc" title="${esc(k.locatia)}">${esc(k.locatia)}</div>` : '<div style="height:8px"></div>'}
+        <div class="of-pr">${R.slice(0, N).map(chip).join("")}${R.length > N ? `<span class="of-mai" title="${esc(R.slice(N).map(r => (r.buc ? r.buc + " × " : "") + r.nume).join("\n"))}">+ ${R.length - N} produse</span>` : ""}</div></div>
+      <div class="of-v"><b>${o.valoare != null ? ftBani(o.valoare) + " lei" : "—"}</b><small>fără TVA</small>
+        <div class="of-b"><button class="btn sm" onclick="ofPdf(${o.id})" title="Vezi oferta ca PDF — o tipărești sau o salvezi">📄 PDF</button><button class="btn sm sec" onclick="ofForm(${o.id})" title="Deschide și modifică oferta">✏ Deschide</button><button class="btn sm sec" onclick="ofForm(${o.id}, true)" title="Ofertă nouă pornind de la aceasta (alt client, aceleași produse)">⧉ Copie</button>${o.stare === "acceptata" ? `<button class="btn sm" onclick="ofLaFisa(${o.id})" title="Deschide fișa „Date contract” cu produsele și prețurile din ofertă">📋 Fișă</button>` : ""}<button class="btn sm sec" onclick="ofSterge(${o.id})" title="Șterge oferta">✕</button></div></div></div>`; }).join("") +
+    (L.length ? "" : '<div class="muted">Nicio ofertă pentru filtrul ales.</div>') + "</div>";
 }
 async function ofStare(id, st){
   const o = OF.L.find(x => x.id === id); if(!o) return;
