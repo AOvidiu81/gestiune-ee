@@ -1050,11 +1050,15 @@ let currentStatus = 'ACTIV';
 let routeMode = 'depot'; // null | 'depot' | 'history'
 let historyWeekNum = null;
 const visitLog = {}; // key -> {arrive: Date|null, obs: 'LA'|'O'|null}
+// v41 (cerut de Ovidiu, 17.11): doi șoferi pe același traseu, fiecare cu mașina lui — fiecare vede ce a făcut celălalt.
+// vizColeg[key] = {de, plate, arrive, leave, obs}: vizitele de azi din rutele ALTOR șoferi la punctele din lista mea (după codul punctului).
+// Doar afișare: nu intră în visitLog și nu se scriu în sesiunea mea.
+const vizColeg = {};
 let dayStart = {}; // {brand, plate, kmStart, driver1, driver2, startTime}
 let lastRouteRows = [];
 
 // --- Șofer EE: aplicatia ruleaza in fila „Rută” (../sofer/), care trimite datele zilei ---
-const EE_RUTA_VERSION = 'v38'; // aceeasi cu VERSIUNE din sw.js; Șofer EE o arata langa rotita
+const EE_RUTA_VERSION = 'v41'; // aceeasi cu VERSIUNE din sw.js; Șofer EE o arata langa rotita
 const SOFER_MODE = new URLSearchParams(location.search).get('sofer') === '1';
 let multiZile = null;   // mai multe zile bifate (ruta complementara), altfel null
 let multiTrasee = null; // mai multe trasee bifate, altfel null
@@ -1875,21 +1879,24 @@ listEl.addEventListener('click', (e)=>{
 function showFinishPage(){
   const total = lastRouteRows.length;
   let visited = 0, normal = 0, la = 0, omis = 0;
+  let coleg = 0;
   lastRouteRows.forEach(r=>{
     const v = visitLog[visitKey(r)];
+    if((!v || (!v.arrive && !v.obs)) && vizColeg[visitKey(r)]){ coleg++; return; }   // v39
     if(!v || (!v.arrive && !v.obs)) return;
     visited++;
     if(v.obs === 'LA') la++;
     else if(v.obs === 'O') omis++;
     else normal++;
   });
-  const notVisited = total - visited;
+  const notVisited = total - visited - coleg;
 
   finishSummary.innerHTML = `${visited} din ${total}<span>clienți vizitați</span>`;
   finishBreakdown.innerHTML = `
     <div class="item"><b>${normal}</b>Normal</div>
     <div class="item"><b>${la}</b>Lipsă acces</div>
     <div class="item"><b>${omis}</b>Omis</div>
+    ${coleg ? `<div class="item"><b>${coleg}</b>Făcuți de coleg</div>` : ''}
     <div class="item"><b>${notVisited}</b>Nevizitați</div>
   `;
   pageApp.style.display = 'none';
@@ -3188,6 +3195,15 @@ function visitRowHtml(r){
     </div>`;
   }
 
+  const cg = vizColeg[key];
+  if((!v || (!v.arrive && !v.obs)) && cg){
+    const hm = d => d ? pad2(d.getHours()) + ':' + pad2(d.getMinutes()) : '';
+    const ce = cg.obs === 'O' ? '🚫 Omis' : cg.obs === 'LA' ? '⚠️ Lipsă acces' : cg.leave ? '✅ Făcut' : '⏳ În lucru';
+    return `<div class="visit-row">
+      <div class="visit-info" style="background:rgba(46,139,60,.15);border-radius:8px;padding:6px 8px">👥 ${ce} de <b>${escapeHtml(cg.de)}</b>${cg.plate ? ' · ' + escapeHtml(cg.plate) : ''}${cg.arrive ? ' · ' + hm(cg.arrive) + (cg.leave ? '–' + hm(cg.leave) : '') : ''}</div>
+      <div class="visit-btn arrive" data-key="${escapeHtml(key)}" style="flex:0 0 auto;font-size:.85em">${gpsCaut.has(key) ? '📡' : '✅ Și eu'}</div>
+    </div>`;
+  }
   if(!v || (!v.arrive && !v.obs)){
     return `<div class="visit-row">
       <div class="visit-btn arrive" data-key="${escapeHtml(key)}">${gpsCaut.has(key) ? '📡 Caut GPS…' : '✅ Am ajuns'}</div>
@@ -3243,7 +3259,7 @@ function cardHtml(r, orderNum, historyInfo){
   if(v){
     if(v.leave || v.obs){ visitClass = 'visit-done'; }
     else if(v.arrive){ visitClass = 'visit-progress'; }
-  }
+  } else if(vizColeg[visitKey(r)]){ const c = vizColeg[visitKey(r)]; visitClass = (c.leave || c.obs) ? 'visit-done' : 'visit-progress'; }   // v39: făcut de coleg
 
   const key = String(r._id);
   const open = isCardOpen(r);
@@ -3514,6 +3530,31 @@ function eeArataRuta(){
 }
 
 // Punctele vizitate azi raman bifate si dupa schimbarea masinii (sesiune noua, aceeasi ruta)
+async function eeVizColegi(){
+  if(!sb || !currentSessionId || !dayStart.driver1) return;
+  const todayStr = new Date().toISOString().slice(0,10);
+  const { data: ses, error } = await sb.from('route_sessions').select('id,driver1,driver2,vehicle_plate')
+    .eq('session_date', todayStr).neq('driver1', dayStart.driver1);
+  if(error) throw error;
+  const S = {}; (ses||[]).forEach(x => { S[x.id] = x; });
+  const ids = Object.keys(S); Object.keys(vizColeg).forEach(k => delete vizColeg[k]);
+  if(!ids.length) return;
+  const { data: vz, error: e2 } = await sb.from('visit_logs').select('session_id,client_id,client_key,arrive_time,leave_time,obs').in('session_id', ids);
+  if(e2) throw e2;
+  const byCod = {}; DATA.forEach(r => { if(r.clientKey) byCod[r.clientKey] = r; });
+  const scurt = n => { const p = String(n || '').trim().split(/\s+/); return p[0] || ''; };
+  (vz||[]).forEach(v => {
+    if(!v.arrive_time && !v.obs) return;
+    const r = v.client_key ? byCod[v.client_key] : null; if(!r) return;
+    const k = visitKey(r), s0 = S[v.session_id] || {}, nou = { de: scurt(s0.driver1) + (s0.driver2 ? ' + ' + scurt(s0.driver2) : ''), plate: s0.vehicle_plate || '',
+      arrive: v.arrive_time ? new Date(v.arrive_time) : null, leave: v.leave_time ? new Date(v.leave_time) : null, obs: v.obs || null };
+    const vechi = vizColeg[k]; if(!vechi || (nou.arrive && (!vechi.arrive || nou.arrive > vechi.arrive))) vizColeg[k] = nou;
+  });
+}
+async function eeVizColegiRender(){ try{ const inainte = JSON.stringify(vizColeg); await eeVizColegi(); if(JSON.stringify(vizColeg) !== inainte) render(); }catch(e){ console.warn('vizite colegi:', e); } }
+setInterval(() => { if(document.visibilityState === 'visible') eeVizColegiRender(); }, 60000);
+document.addEventListener('visibilitychange', () => { if(document.visibilityState === 'visible') eeVizColegiRender(); });
+
 async function eeVizitePeToataZiua(){
   if(!sb || !currentSessionId) return;
   const todayStr = new Date().toISOString().slice(0,10);
@@ -3566,6 +3607,7 @@ async function eeSoferAplica(z){
           updated_at: new Date().toISOString(),
         }).eq('id', currentSessionId);
         await eeVizitePeToataZiua();
+        eeVizColegiRender();
       }catch(err){ console.error('Șofer EE: actualizarea rutei a eșuat:', err); }
     }
     eeArataRuta();
