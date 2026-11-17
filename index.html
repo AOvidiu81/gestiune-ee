@@ -1116,7 +1116,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
   <span id="rz-w"><button id="rz-reset" class="pictograma" title="Lățimi implicite — pune coloanele din tabelele acestei file înapoi cum erau">↺ Reset layout</button><i class="rz-sep">|</i></span>
   <span id="tz-w" title="Mărimea tabelului (doar tabelul, restul rămâne la fel), din 5 în 5%. Merge și cu Ctrl + rotița mausului, Ctrl + / Ctrl − / Ctrl 0. Dublu clic pe procent = scrii tu valoarea."><button class="pictograma" onclick="tzPas(-1)" aria-label="Micșorează tabelul">−</button><b id="tz-v" ondblclick="tzScrie()" title="Dublu clic = scrii mărimea (ex. 87), Enter">100%</b><input id="tz-in" type="number" min="30" max="300" step="5" style="display:none"><button class="pictograma" onclick="tzPas(1)" aria-label="Mărește tabelul">+</button></span>
-  <span class="ver">v9.03</span>
+  <span class="ver">v9.04</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -15651,7 +15651,7 @@ async function pntAuto(){
   PNT.nAuto = sch.length; pntDeseneaza();
   toast(sch.length ? sch.length + (sch.length === 1 ? " zi actualizată" : " zile actualizate") + " din rute / program" : "Nimic nou în rute — pontajul era la zi");
 }
-const pntSemn = r => r.sursa === "auto" ? `<span class="muted" style="cursor:help" title="Completat automat${r.rsI ? " · ora reală: " + pntOraLoc(r.rsI) + (r.reI ? " – " + pntOraLoc(r.reI) : " (rută nefinalizată)") : ""}">⚙${r.rsI ? " " + pntOraLoc(r.rsI) + (r.reI ? "–" + pntOraLoc(r.reI) : "") : ""}</span>` : r.sursa === "excel" ? '<span class="muted" title="Adus din Excel">xls</span>' : r.sursa === "manual" && pntPlin(r) ? '<span class="muted" title="Scris / corectat de mână — nu se mai schimbă automat">✎</span>' : "";
+const pntSemn = r => r.sursa === "auto" ? `<span class="muted" style="cursor:help" title="Completat automat${r.rsI ? " · ora reală: " + pntOraLoc(r.rsI) + (r.reI ? " – " + pntOraLoc(r.reI) : " (rută nefinalizată)") : ""}">⚙${r.rsI ? " " + pntOraLoc(r.rsI) + (r.reI ? "–" + pntOraLoc(r.reI) : "") : ""}</span>` : r.sursa === "excel" ? '<span class="muted" title="Adus din Excel">xls</span>' : r.sursa === "manual" && pntPlin(r) ? `<span class="muted" style="cursor:help" title="Scris / corectat de mână — ce ai scris nu se mai schimbă automat${r.rsI ? " · ora reală din rută: " + pntOraLoc(r.rsI) + (r.reI ? " – " + pntOraLoc(r.reI) : " (rută nefinalizată)") : ""}">✎${r.rsI ? " " + pntOraLoc(r.rsI) + (r.reI ? "–" + pntOraLoc(r.reI) : "") : ""}</span>` : "";   // v9.04: și ora reală la rândurile corectate
 function pntStatHtml(){
   const x = ANG.L.find(a => a.id === PNT.sid) || {}, c = pntCalc(PNT.rows, PNT.luna, ANG.priv[x.id], ANG.set), dif = c.oreMin - c.normMin, vir = +PNT.vir || 0;
   const t = (L) => `<table style="width:100%">${L.map(([a, b, bold]) => `<tr${bold ? ' style="font-weight:700"' : ""}><td>${a}</td><td style="text-align:right;white-space:nowrap">${b}</td></tr>`).join("")}</table>`;
