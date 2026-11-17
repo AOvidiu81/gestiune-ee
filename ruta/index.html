@@ -129,6 +129,20 @@
     box-shadow:0 4px 14px rgba(255,138,61,0.35);
   }
   .finish-route-btn:active{ transform:scale(0.98); }
+  .extra-add-btn{ margin-top:14px; padding:14px 12px; text-align:center; border-radius:14px; border:2px dashed var(--accent); color:var(--accent); font-weight:800; cursor:pointer; user-select:none; }
+  .extra-badge{ display:inline-block; margin:4px 0 2px; padding:2px 8px; border-radius:8px; background:#1d4ed8; color:#fff; font-size:.78rem; font-weight:700; }
+  .extra-nota{ margin:4px 0 2px; padding:4px 8px; border-radius:8px; background:#fef3c7; color:#78350f; font-size:.8rem; font-weight:600; }
+  .extra-scoate{ margin-left:6px; font-size:.78rem; text-decoration:underline; cursor:pointer; opacity:.85; }
+  #extraFer{ position:fixed; inset:0; z-index:9999; background:rgba(0,0,0,.55); display:flex; align-items:flex-end; justify-content:center; }
+  #extraFer .ef-box{ background:var(--card, #fff); color:var(--text, #111); width:100%; max-width:560px; max-height:88vh; border-radius:18px 18px 0 0; padding:14px; display:flex; flex-direction:column; gap:8px; }
+  #extraFer input{ width:100%; padding:10px 12px; border-radius:10px; border:1px solid #9ca3af; font-size:1rem; }
+  #extraFer .ef-tg{ display:flex; gap:6px; } #extraFer .ef-tg button, #extraFer .ef-mot button{ flex:1; padding:9px; border-radius:10px; border:1px solid #9ca3af; background:transparent; color:inherit; font-weight:700; }
+  #extraFer .ef-tg button.on, #extraFer .ef-mot button.on{ background:#1d4ed8; color:#fff; border-color:#1d4ed8; }
+  #extraFer .ef-list{ overflow:auto; flex:1; min-height:120px; display:flex; flex-direction:column; gap:6px; }
+  #extraFer .ef-it{ border:1px solid #9ca3af; border-radius:10px; padding:8px 10px; cursor:pointer; } #extraFer .ef-it.on{ border:2px solid #1d4ed8; }
+  #extraFer .ef-it small{ display:block; opacity:.75; } #extraFer .ef-mot{ display:flex; gap:6px; }
+  #extraFer .ef-ok{ padding:12px; border-radius:12px; border:0; background:#1d4ed8; color:#fff; font-weight:800; font-size:1rem; }
+  #extraFer .ef-x{ padding:10px; border-radius:12px; border:1px solid #9ca3af; background:transparent; color:inherit; font-weight:700; }
 
   .finish-card{
     background:var(--panel); border:1px solid var(--border); border-radius:14px; padding:20px;
@@ -1054,11 +1068,21 @@ const visitLog = {}; // key -> {arrive: Date|null, obs: 'LA'|'O'|null}
 // vizColeg[key] = {de, plate, arrive, leave, obs}: vizitele de azi din rutele ALTOR șoferi la punctele din lista mea (după codul punctului).
 // Doar afișare: nu intră în visitLog și nu se scriu în sesiunea mea.
 const vizColeg = {};
+// v42 (cerut de Ovidiu, 17.11): PUNCT EXTRA în ruta de azi — șoferul alege orice client ACTIV (din orice traseu / zi), cu motivul
+// RECUPERARE (servisarea lui normală, făcută în altă zi) sau LA CERERE (în plus, fără facturare). Punctul apare pe ruta de azi cu
+// Am ajuns / Am plecat, vizita se scrie pe sesiunea de azi (visit_logs.extra = motivul). Ziua / traseul punctului NU se schimbă.
+// Pe ruta lui obișnuită, în următoarele 7 zile, cartonașul arată „Făcut luni 17.11 de ROȘU · recuperare” și rămâne activ.
+let EXTRA = {};                 // clientKey -> 'RECUPERARE' | 'LA CERERE' (ziua de azi)
+const extraNote = {};           // clientKey -> {zi, de, extra} — vizitele extra din ultimele 7 zile (altă zi decât azi)
+const eeAziIso = () => { const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0'); };
+const extraCheie = () => 'ee-extra-' + eeAziIso() + '-' + String(dayStart.driver1 || '');
+function extraCiteste(){ try{ EXTRA = JSON.parse(localStorage.getItem(extraCheie()) || '{}') || {}; }catch(e){ EXTRA = {}; } }
+function extraScrie(){ try{ localStorage.setItem(extraCheie(), JSON.stringify(EXTRA)); }catch(e){} }
 let dayStart = {}; // {brand, plate, kmStart, driver1, driver2, startTime}
 let lastRouteRows = [];
 
 // --- Șofer EE: aplicatia ruleaza in fila „Rută” (../sofer/), care trimite datele zilei ---
-const EE_RUTA_VERSION = 'v41'; // aceeasi cu VERSIUNE din sw.js; Șofer EE o arata langa rotita
+const EE_RUTA_VERSION = 'v42'; // aceeasi cu VERSIUNE din sw.js; Șofer EE o arata langa rotita
 const SOFER_MODE = new URLSearchParams(location.search).get('sofer') === '1';
 let multiZile = null;   // mai multe zile bifate (ruta complementara), altfel null
 let multiTrasee = null; // mai multe trasee bifate, altfel null
@@ -1267,6 +1291,7 @@ async function runQueueItem(item){
       client_id: item.clientId,
       client_key: item.clientKey || null,
       client_name: item.clientName,
+      ...(item.extra ? { extra: item.extra } : {}),
       localitate: item.localitate,
       arrive_time: item.arrive,
       leave_time: item.leave,
@@ -1547,7 +1572,7 @@ async function resumeSession(session){
     pageConfig.style.display = 'none';
     pageApp.style.display = 'block';
     renderRouteConfigSummary();
-    render();
+    render();   extraCiteste(); extraIncarca();   // v42: punctele extra de azi
     startGeoWatch();
   } else {
     dsZonaConfig.value = dayStart.zona || '';
@@ -1599,6 +1624,7 @@ async function syncVisit(clientId, r, patch){
     type: 'visit',
     sessionId: currentSessionId,
     clientId,
+    extra: r && r.clientKey && EXTRA[r.clientKey] ? EXTRA[r.clientKey] : null,   // v42
     clientKey: r && r.clientKey ? r.clientKey : null,   // v20: codul punctului (A181-02-VI) — istoricul nu se rupe la schimbarea zilei / locației
     clientName: r ? r.client : null,
     localitate: r ? [r.localitate, r.locatie].filter(Boolean).join(', ') : null,
@@ -1873,6 +1899,10 @@ listEl.addEventListener('click', (e)=>{
     render();
   } else if(e.target.closest('#btnFinishRoute')){
     showFinishPage();
+  } else if(e.target.closest('#btnExtraAdd')){
+    extraDeschide();
+  } else if(e.target.closest('.extra-scoate')){
+    const k = e.target.closest('.extra-scoate').dataset.cod; delete EXTRA[k]; extraScrie(); render();
   }
 });
 
@@ -3270,9 +3300,12 @@ function cardHtml(r, orderNum, historyInfo){
       <div class="client card-name-toggle${r.cartela ? ' cartela-name' : ''}">${escapeHtml(r.client)}${r.cartela ? ' <span class="cartela-badge" data-detail="NECESITĂ CARTELĂ">📇</span>' : ''} <span class="collapse-arrow">${open ? '▲' : '▼'}</span></div>
       <a class="nav-icon-btn ${hasCoords?'':'disabled'}" href="${hasCoords? mapsUrl(r.lat,r.lon):'#'}" target="_blank" rel="noopener" aria-label="Navigare"><svg viewBox="0 0 24 24" width="18" height="18" fill="#1a0f04"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg></a>
     </div>`;
+  const ex = r.clientKey && EXTRA[r.clientKey], nt = r.clientKey && !ex && extraNote[r.clientKey];   // v42
+  const exHtml = ex ? `<div class="extra-badge">EXTRA · ${ex === 'RECUPERARE' ? 'recuperare' : 'la cerere'}${r.ziua ? ' (' + escapeHtml(r.ziua) + (r.masina ? ', ' + escapeHtml(r.masina) : '') + ')' : ''}</div>${!v ? `<span class="extra-scoate" data-cod="${escapeHtml(r.clientKey)}">scoate din ruta de azi</span>` : ''}`
+    : nt ? `<div class="extra-nota">ℹ Făcut ${escapeHtml(nt.zi)} de ${escapeHtml(nt.de)} · ${nt.extra === 'RECUPERARE' ? 'recuperare' : 'la cerere'}</div>` : '';
   return `
   <div class="card ${statusClass} ${visitClass} ${noVisit?'no-visit':''} ${open?'':'collapsed'}" data-client-key="${escapeHtml(key)}">
-    ${orderNum ? `<div class="card-top-with-order"><div class="order-badge">${orderNum}</div>${top}</div>` : top}
+    ${orderNum ? `<div class="card-top-with-order"><div class="order-badge">${orderNum}</div>${top}</div>` : top}${exHtml}
     <div class="card-collapsible-body">
       <div class="loc"><b>${escapeHtml(r.localitate)}</b>${r.jud ? ' · '+r.jud:''}${r.locatie ? ' — '+escapeHtml(r.locatie):''}</div>
       <div class="meta-row">${qtyLabel(r)}</div>
@@ -3300,8 +3333,9 @@ function depotCardHtml(sub){
 }
 
 function finishBtnHtml(rows){
-  if(!rows || rows.length === 0) return '';
-  return `<div class="finish-route-btn" id="btnFinishRoute">🏁 Finalizează ruta</div>`;
+  const extra = currentSessionId ? `<div class="extra-add-btn" id="btnExtraAdd">➕ Adaug punct extra</div>` : '';
+  if(!rows || rows.length === 0) return extra;
+  return extra + `<div class="finish-route-btn" id="btnFinishRoute">🏁 Finalizează ruta</div>`;
 }
 
 function isVisitDone(r){
@@ -3335,6 +3369,7 @@ function render(){
   const q = searchInput.value.trim().toLowerCase();
 
   let rows = DATA.filter(r=>{
+    if(r.clientKey && EXTRA[r.clientKey] && !q) return true;   // v42: punct extra de azi
     if(currentStatus !== 'TOATE' && r.status !== currentStatus) return false;
     if(multiZile ? !multiZile.includes(r.ziua) : (ziua !== 'TOATE' && r.ziua !== ziua)) return false;
     if(multiTrasee ? !multiTrasee.includes(r.masina) : (masina !== 'TOATE' && r.masina !== masina)) return false;
@@ -3360,7 +3395,7 @@ function render(){
   if(rows.length === 0){
     // ruta fara niciun punct trebuie sa poata fi finalizata (km final), nu doar din GestiuneEE
     listEl.innerHTML = '<div class="empty">Niciun rezultat pentru filtrele selectate.</div>'
-      + ((!q && currentSessionId) ? '<div class="finish-route-btn" id="btnFinishRoute">🏁 Finalizează ruta</div>' : '');
+      + ((!q && currentSessionId) ? '<div class="extra-add-btn" id="btnExtraAdd">➕ Adaug punct extra</div><div class="finish-route-btn" id="btnFinishRoute">🏁 Finalizează ruta</div>' : '');
     routeSummary.style.display = 'none';
     return;
   }
@@ -3530,6 +3565,73 @@ function eeArataRuta(){
 }
 
 // Punctele vizitate azi raman bifate si dupa schimbarea masinii (sesiune noua, aceeasi ruta)
+function extraDeschide(){
+  document.getElementById('extraFer')?.remove();
+  const mele = new Set(multiTrasee || (masinaSel.value && masinaSel.value !== 'TOATE' ? [masinaSel.value] : []));
+  const inLista = new Set(lastRouteRows.map(r => r.clientKey).filter(Boolean));
+  const st = { tot: true, q: '', sel: null, mot: 'RECUPERARE' };
+  const w = document.createElement('div'); w.id = 'extraFer';
+  w.innerHTML = `<div class="ef-box"><b style="font-size:1.05rem">➕ Punct extra în ruta de azi</b>
+    <input id="efQ" placeholder="Caută client / localitate" autocomplete="off">
+    <div class="ef-tg"><button data-t="0">Traseul meu</button><button data-t="1" class="on">Toți clienții activi</button></div>
+    <div class="ef-list" id="efL"></div>
+    <div style="font-weight:700">Motiv</div>
+    <div class="ef-mot"><button data-m="RECUPERARE" class="on">Recuperare</button><button data-m="LA CERERE">La cerere</button></div>
+    <button class="ef-ok" id="efOk">Adaugă în ruta de azi</button><button class="ef-x" id="efX">Renunță</button></div>`;
+  document.body.appendChild(w);
+  const L = w.querySelector('#efL'), poz = lastKnownPosition;
+  const dist = r => poz && r.lat && r.lon ? haversine(poz.lat, poz.lon, r.lat, r.lon) : null;
+  const fd = d => d == null ? '' : d < 1 ? Math.round(d * 1000) + ' m' : (Math.round(d * 10) / 10).toLocaleString('ro-RO') + ' km';
+  const deseneaza = () => {
+    const q = st.q.toLowerCase();
+    const c = DATA.filter(r => r.status === 'ACTIV' && r.clientKey && !inLista.has(r.clientKey) && !EXTRA[r.clientKey]
+      && (st.tot || !mele.size || mele.has(r.masina)) && (!q || (r.client + ' ' + r.localitate + ' ' + r.locatie + ' ' + r.jud).toLowerCase().includes(q)))
+      .map(r => ({ r, d: dist(r) })).sort((a, b) => (a.d == null ? 1e9 : a.d) - (b.d == null ? 1e9 : b.d) || a.r.client.localeCompare(b.r.client)).slice(0, 60);
+    L.innerHTML = c.length ? c.map(({ r, d }) => `<div class="ef-it${st.sel === r.clientKey ? ' on' : ''}" data-cod="${escapeHtml(r.clientKey)}"><b>${escapeHtml(r.client)}</b>
+      <small>${escapeHtml([r.localitate, r.locatie].filter(Boolean).join(', '))}</small><small>${escapeHtml([r.masina, r.ziua, fd(d)].filter(Boolean).join(' · '))}</small></div>`).join('')
+      : '<div style="opacity:.7;padding:8px">Niciun client găsit.</div>';
+  };
+  deseneaza();
+  w.querySelector('#efQ').addEventListener('input', e => { st.q = e.target.value.trim(); deseneaza(); });
+  w.querySelectorAll('.ef-tg button').forEach(b => b.addEventListener('click', () => { st.tot = b.dataset.t === '1'; w.querySelectorAll('.ef-tg button').forEach(x => x.classList.toggle('on', x === b)); deseneaza(); }));
+  w.querySelectorAll('.ef-mot button').forEach(b => b.addEventListener('click', () => { st.mot = b.dataset.m; w.querySelectorAll('.ef-mot button').forEach(x => x.classList.toggle('on', x === b)); }));
+  L.addEventListener('click', e => { const it = e.target.closest('.ef-it'); if(!it) return; st.sel = it.dataset.cod; deseneaza(); });
+  w.querySelector('#efX').addEventListener('click', () => w.remove());
+  w.addEventListener('click', e => { if(e.target === w) w.remove(); });
+  w.querySelector('#efOk').addEventListener('click', () => {
+    if(!st.sel){ alert('Alege clientul din listă.'); return; }
+    EXTRA[st.sel] = st.mot; extraScrie(); w.remove(); render();
+    const r = DATA.find(x => x.clientKey === st.sel), el = r && document.querySelector('.card[data-client-key="' + CSS.escape(String(r._id)) + '"]');
+    if(el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  });
+}
+// vizitele extra: cele de azi ale mele (refac EXTRA după reinstalare / alt telefon) și cele din ultimele 7 zile (nota de pe ruta obișnuită)
+async function extraIncarca(){
+  if(!sb || !dayStart.driver1) return;
+  try{
+    const azi = eeAziIso(), d7 = new Date(); d7.setDate(d7.getDate() - 7);
+    const de = d7.getFullYear() + '-' + String(d7.getMonth()+1).padStart(2,'0') + '-' + String(d7.getDate()).padStart(2,'0');
+    const { data: ses, error } = await sb.from('route_sessions').select('id,session_date,driver1,driver2').gte('session_date', de).lte('session_date', azi);
+    if(error) throw error;
+    const S = {}; (ses || []).forEach(x => { S[x.id] = x; }); const ids = Object.keys(S); if(!ids.length) return;
+    const vz = [];
+    for(let i = 0; i < ids.length; i += 100){
+      const { data, error: e2 } = await sb.from('visit_logs').select('session_id,client_key,extra,arrive_time').in('session_id', ids.slice(i, i + 100)).not('extra', 'is', null);
+      if(e2) throw e2; vz.push(...(data || []));
+    }
+    const ZI = ['duminică','luni','marți','miercuri','joi','vineri','sâmbătă'], scurt = n => String(n || '').trim().split(/\s+/)[0] || '';
+    Object.keys(extraNote).forEach(k => delete extraNote[k]);
+    let schimb = false;
+    vz.forEach(v => { const s0 = S[v.session_id]; if(!s0 || !v.client_key) return;
+      if(s0.session_date === azi){ if(s0.driver1 === dayStart.driver1 && !EXTRA[v.client_key]){ EXTRA[v.client_key] = v.extra; schimb = true; } return; }
+      const n = extraNote[v.client_key]; if(n && n.iso >= s0.session_date) return;
+      const d = new Date(s0.session_date + 'T12:00:00');
+      extraNote[v.client_key] = { iso: s0.session_date, zi: ZI[d.getDay()] + ' ' + String(d.getDate()).padStart(2,'0') + '.' + String(d.getMonth()+1).padStart(2,'0'),
+        de: scurt(s0.driver1) + (s0.driver2 ? ' + ' + scurt(s0.driver2) : ''), extra: v.extra }; });
+    if(schimb) extraScrie();
+    render();
+  }catch(err){ console.warn('Puncte extra:', err); }
+}
 async function eeVizColegi(){
   if(!sb || !currentSessionId || !dayStart.driver1) return;
   const todayStr = new Date().toISOString().slice(0,10);
@@ -3608,6 +3710,7 @@ async function eeSoferAplica(z){
         }).eq('id', currentSessionId);
         await eeVizitePeToataZiua();
         eeVizColegiRender();
+        extraCiteste(); extraIncarca();   // v42
       }catch(err){ console.error('Șofer EE: actualizarea rutei a eșuat:', err); }
     }
     eeArataRuta();
