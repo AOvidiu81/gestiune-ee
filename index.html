@@ -1116,7 +1116,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
   <span id="rz-w"><button id="rz-reset" class="pictograma" title="Lățimi implicite — pune coloanele din tabelele acestei file înapoi cum erau">↺ Reset layout</button><i class="rz-sep">|</i></span>
   <span id="tz-w" title="Mărimea tabelului (doar tabelul, restul rămâne la fel), din 5 în 5%. Merge și cu Ctrl + rotița mausului, Ctrl + / Ctrl − / Ctrl 0. Dublu clic pe procent = scrii tu valoarea."><button class="pictograma" onclick="tzPas(-1)" aria-label="Micșorează tabelul">−</button><b id="tz-v" ondblclick="tzScrie()" title="Dublu clic = scrii mărimea (ex. 87), Enter">100%</b><input id="tz-in" type="number" min="30" max="300" step="5" style="display:none"><button class="pictograma" onclick="tzPas(1)" aria-label="Mărește tabelul">+</button></span>
-  <span class="ver">v9.10</span>
+  <span class="ver">v9.11</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -4876,7 +4876,7 @@ async function aaGenereaza(){
     doc.render(actFaraDiac(date));
     aaLatimiTabel(doc.getZip(), actFaraDiac(date).loc);   // v9.09: coloanele după text, câte o linie pe rând
     const blob = doc.getZip().generate({ type: "blob", mimeType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document" });
-    const nume = ((k.nr_ctr || "CTR") + "_ AA " + nr + " " + (c.nume || "")).replace(/[\\/:*?"<>|]+/g, " ").replace(/\s+/g, " ").trim() + ".docx";
+    const nume = ((k.nr_ctr || "CTR") + "_ AA " + nr + " " + (c.nume || "")).replace(/[\\/:*?"<>|]+/g, " ").replace(/\s+/g, " ").trim() + "-prelungire din " + actD(st) + ".docx";   // v9.11: „… S.R.L.-prelungire din 30.10.2026.docx”
     const ur = URL.createObjectURL(blob), l = document.createElement("a"); l.href = ur; l.download = nume; document.body.appendChild(l); l.click(); l.remove(); setTimeout(() => URL.revokeObjectURL(ur), 5000);
     let txt = "Act adițional descărcat: " + nume;
     const P = { nr, data: dAct, st, end, nedet, scNr, scFara };
@@ -18016,9 +18016,15 @@ porneste();
 // v6.93 (cerut de Ovidiu, 24.10): „|” între coloane în antetul fiecărui tabel — tragi = altă lățime, dublu clic = lățimea implicită.
 // Ținut minte pe calculator (localStorage „lat:<tabel>”), pe numele coloanei. „↔” din bara de sus (v6.96) le pune pe toate la loc. Doar afișare.
 (function(){
-  const SEL = "main section.page .tw > table[id]";
+  // v9.11 (cerut de Ovidiu, 17.11): toate tabelele din aplicație (.tw > table) — și cele fără id și cele făcute din cod
+  // (Pontaj, De urmărit, ferestrele…). Tabelul fără id primește o cheie din cel mai apropiat element cu id + numele coloanelor.
+  const SEL = ".tw > table";
   let trag = null;
-  const cheie = t => "lat:" + t.id + "|" + (t.id === "a-tbl" ? A_TBL : "") + "|" + [...t.classList].filter(c => !c.startsWith("rz")).sort().join(".");
+  const tid = t => { if(t.id) return t.id; if(t.dataset.rzId) return t.dataset.rzId;
+    const tr = [...t.rows].find(r => r.querySelector("th")), cap = tr ? [...tr.cells].map(c => String(c.textContent || "").replace(/[^\p{L}\p{N}]/gu, "").toUpperCase().slice(0, 6)).join("") : "";
+    let hs = 0; for(const ch of cap) hs = (hs * 31 + ch.charCodeAt(0)) >>> 0;
+    const p = t.closest("[id]"); return (t.dataset.rzId = "auto-" + (p ? p.id : "x") + "-" + hs.toString(36)); };
+  const cheie = t => "lat:" + tid(t) + "|" + (t.id === "a-tbl" ? A_TBL : "") + "|" + [...t.classList].filter(c => !c.startsWith("rz")).sort().join(".");
   const citeste = k => { try { return JSON.parse(localStorage.getItem(k) || "{}") || {}; } catch(e){ return {}; } };
   const scrie = (k, m) => { try { Object.keys(m).length ? localStorage.setItem(k, JSON.stringify(m)) : localStorage.removeItem(k); } catch(e){} };
   const antet = t => [...t.rows].find(r => r.querySelector("th"));
@@ -18079,8 +18085,8 @@ porneste();
     total(t, cols);
   }
   // v6.96 (cerut de Ovidiu, 25.10): un singur buton „↔” în bara de sus (lângă zoom), vizibil doar când fila deschisă are lățimi salvate
-  const tabeleFila = () => { const pg = document.querySelector("main section.page.on"); return pg ? [...pg.querySelectorAll(".tw > table[id]")] : []; };
-  const areSalvat = tb => tb.some(t => { try { return Object.keys(localStorage).some(k => k.startsWith("lat:" + t.id + "|")); } catch(e){ return false; } });
+  const tabeleFila = () => { const pg = document.querySelector("main section.page.on"); return pg ? [...pg.querySelectorAll(".tw > table")] : []; };
+  const areSalvat = tb => tb.some(t => { try { return Object.keys(localStorage).some(k => k.startsWith("lat:" + tid(t) + "|")); } catch(e){ return false; } });
   function butoane(){
     const b = document.getElementById("rz-w"); if(!b) return;   // v6.97: butonul + „|” împreună
     b.style.display = window.innerWidth >= 900 && areSalvat(tabeleFila()) ? "inline-flex" : "none";
@@ -18088,7 +18094,7 @@ porneste();
   document.getElementById("rz-reset").onclick = () => {
     const tb = tabeleFila(); if(!tb.length) return;
     if(!confirm("Pun lățimile coloanelor din această filă înapoi la cele implicite?")) return;
-    try { tb.forEach(t => Object.keys(localStorage).filter(k => k.startsWith("lat:" + t.id + "|")).forEach(k => localStorage.removeItem(k))); } catch(e){}
+    try { tb.forEach(t => Object.keys(localStorage).filter(k => k.startsWith("lat:" + tid(t) + "|")).forEach(k => localStorage.removeItem(k))); } catch(e){}
     tb.forEach(aplica); butoane();
   };
   document.addEventListener("mousedown", e => {
@@ -18137,14 +18143,19 @@ porneste();
     const td = e.target.closest && e.target.closest("table.rz-fix td"); if(!td || td.title) return;
     if(td.scrollWidth > td.clientWidth + 1 && !td.querySelector("button,select,input")) td.title = td.textContent.trim();
   });
-  const tabele = [...document.querySelectorAll(SEL)];
-  tabele.forEach(t => {
+  const tabele = new Set();
+  const leaga = t => { if(tabele.has(t)) return; tabele.add(t);
     let p = false;
-    new MutationObserver(() => { if(p) return; p = true; requestAnimationFrame(() => { p = false; aplica(t); }); }).observe(t, { childList: true });
-    aplica(t);
-  });
+    new MutationObserver(() => { if(p) return; p = true; requestAnimationFrame(() => { p = false; aplica(t); }); }).observe(t, { childList: true, subtree: true });
+    aplica(t); };
+  document.querySelectorAll(SEL).forEach(leaga);
+  // tabelele care apar mai târziu (desenate din cod, ferestre noi) — un singur observator pe pagină, cu pauză de un cadru
+  let pNou = false;
+  new MutationObserver(() => { if(pNou) return; pNou = true; requestAnimationFrame(() => { pNou = false;
+    document.querySelectorAll(SEL).forEach(t => { if(!tabele.has(t)) leaga(t); else if(t.dataset.rzPend || !t.querySelector(".rz-h")) aplica(t); });
+    tabele.forEach(t => { if(!t.isConnected) tabele.delete(t); }); }); }).observe(document.body, { childList: true, subtree: true });
   document.querySelectorAll("main section.page").forEach(pg => new MutationObserver(() => {
-    if(pg.classList.contains("on")) pg.querySelectorAll(".tw > table[id]").forEach(t => { if(t.dataset.rzPend || !t.querySelector(".rz-h")) aplica(t); });
+    if(pg.classList.contains("on")) pg.querySelectorAll(".tw > table").forEach(t => { if(t.dataset.rzPend || !t.querySelector(".rz-h")) aplica(t); });
     butoane();
   }).observe(pg, { attributes: true, attributeFilter: ["class"] }));
   window.addEventListener("resize", () => { tabele.forEach(t => { if(!t.querySelector(".rz-h")) aplica(t); }); butoane(); });
