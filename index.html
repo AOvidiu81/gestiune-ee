@@ -1116,7 +1116,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
   <span id="rz-w"><button id="rz-reset" class="pictograma" title="Lățimi implicite — pune coloanele din tabelele acestei file înapoi cum erau">↺ Reset layout</button><i class="rz-sep">|</i></span>
   <span id="tz-w" title="Mărimea tabelului (doar tabelul, restul rămâne la fel), din 5 în 5%. Merge și cu Ctrl + rotița mausului, Ctrl + / Ctrl − / Ctrl 0. Dublu clic pe procent = scrii tu valoarea."><button class="pictograma" onclick="tzPas(-1)" aria-label="Micșorează tabelul">−</button><b id="tz-v" ondblclick="tzScrie()" title="Dublu clic = scrii mărimea (ex. 87), Enter">100%</b><input id="tz-in" type="number" min="30" max="300" step="5" style="display:none"><button class="pictograma" onclick="tzPas(1)" aria-label="Mărește tabelul">+</button></span>
-  <span class="ver">v9.04</span>
+  <span class="ver">v9.05</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -9728,7 +9728,7 @@ function ftArata(t, nota){
   let m = document.getElementById("mod-ft");
   if(!m){
     m = document.createElement("div"); m.id = "mod-ft"; m.className = "modal";
-    m.innerHTML = `<div class="box" style="max-width:600px"><h3>✉ Text pentru facturare</h3>
+    m.innerHTML = `<div class="box" style="max-width:600px"><h3 class="lux-cap cap-mut">✉ Text pentru facturare</h3>
       <div class="muted" id="ft-nota" style="font-size:12px;margin-bottom:6px"></div>
       <div style="display:flex;gap:8px;margin-bottom:6px"><label style="flex:1">Către<input id="ft-dest"></label><label style="flex:1">Subiect<input id="ft-sub"></label></div>
       <textarea id="ft-t" rows="18" style="width:100%;font-family:inherit;font-size:13px"></textarea>
@@ -9738,7 +9738,7 @@ function ftArata(t, nota){
         <button class="btn sec" onclick="ftWa()">WhatsApp</button>
         <button class="btn" onclick="ftEmail()">E-mail</button></div></div>`;
     m.addEventListener("mousedown", e => { if(e.target === m) closeModal("mod-ft"); });
-    document.body.appendChild(m);
+    document.body.appendChild(m); feFereastra(m, () => closeModal("mod-ft"));   // v9.05: și aici ‒ ☐ ✕
     $("ft-dest").addEventListener("change", e => { try{ localStorage.setItem("ft_dest", e.target.value.trim()); }catch(_){} });
   }
   let d = FT_DEST; try{ d = localStorage.getItem("ft_dest") || FT_DEST; }catch(_){}
@@ -17262,6 +17262,11 @@ function ptMeniu(ev, id){
     "mod-inch": () => closeModal("mod-inch"), "mod-s": () => closeModal("mod-s"), "mod-doc": () => docRenunta(),
     "mod-cmd": () => cmdInchide(), "mod-pl": () => closeModal("mod-pl"), "mod-mu": () => closeModal("mod-mu"), "mod-sz": () => closeModal("mod-sz"), "mod-act": () => closeModal("mod-act"), "mod-admin": () => { closeModal("mod-admin"); rUrmator(); }
   };
+  // v9.05 (cerut de Ovidiu, 17.11): toate ferestrele fixe au butoanele (Raport zilnic, Facturare pe locații, Servisări la cerere,
+  // Raport vizite, Arhivă, Perioada de facturare, Verificare GPS, Prezență la depozit, Închide ridicarea…); ✕ = Închide / Renunță al ferestrei
+  document.querySelectorAll(".modal[id]").forEach(m => { const id = m.id;
+    if(INCHIDE[id] || id === "mod-how" || !m.querySelector(".box .lux-cap")) return;
+    INCHIDE[id] = () => closeModal(id); });
   let bara = null;
   const baraJos = () => { if(!bara){ bara = document.createElement("div"); bara.id = "fe-bara"; document.body.appendChild(bara); } return bara; };
   Object.keys(INCHIDE).forEach(id => {
