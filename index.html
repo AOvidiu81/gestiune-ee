@@ -1116,7 +1116,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
   <span id="rz-w"><button id="rz-reset" class="pictograma" title="Lățimi implicite — pune coloanele din tabelele acestei file înapoi cum erau">↺ Reset layout</button><i class="rz-sep">|</i></span>
   <span id="tz-w" title="Mărimea tabelului (doar tabelul, restul rămâne la fel), din 5 în 5%. Merge și cu Ctrl + rotița mausului, Ctrl + / Ctrl − / Ctrl 0. Dublu clic pe procent = scrii tu valoarea."><button class="pictograma" onclick="tzPas(-1)" aria-label="Micșorează tabelul">−</button><b id="tz-v" ondblclick="tzScrie()" title="Dublu clic = scrii mărimea (ex. 87), Enter">100%</b><input id="tz-in" type="number" min="30" max="300" step="5" style="display:none"><button class="pictograma" onclick="tzPas(1)" aria-label="Mărește tabelul">+</button></span>
-  <span class="ver">v9.06</span>
+  <span class="ver">v9.07</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -7078,7 +7078,7 @@ function ofEvForm(id, copie){
       #mod-ofev .evs .bt .gh{background:transparent;border:1px solid rgba(255,255,255,.35);color:#fff}#mod-ofev .evs .bt .gh:hover{background:rgba(255,255,255,.1)}
       #mod-ofev #ev-kmst{background:#f3f6fb;border-radius:10px;padding:9px 12px}#mod-ofev #ev-kmst:empty{display:none}:root[data-tema="inchis"] #mod-ofev #ev-kmst{background:var(--bg)}#mod-ofev #ev-kmst a{color:#1d4ed8}
       @media(max-width:1060px){#mod-ofev .evx{grid-template-columns:1fr}#mod-ofev .evs{position:static}#mod-ofev .g{grid-template-columns:1fr 1fr}#mod-ofev .s3{grid-column:1/-1}#mod-ofev .evp .r1{grid-template-columns:1fr 1fr}#mod-ofev .evnav{top:-18px}}</style>
-    <div class="evx"><div><nav class="evnav" id="ev-nav">${["Clientul", "Unde", "Când", "Produse", "Costuri", "Mențiuni"].map((t, i) => `<button type="button" data-i="${i + 1}" onclick="document.getElementById('evs${i + 1}').scrollIntoView({ behavior: 'smooth', block: 'start' })"><i>${i + 1}</i>${t}</button>`).join("")}</nav>
+    <div class="evx"><div><div class="evnav" id="ev-nav">${["Clientul", "Unde", "Când", "Produse", "Costuri", "Mențiuni"].map((t, i) => `<button type="button" data-i="${i + 1}" onclick="document.getElementById('evs${i + 1}').scrollIntoView({ behavior: 'smooth', block: 'start' })"><i>${i + 1}</i>${t}</button>`).join("")}</div><!-- v9.07: div, nu <nav> (regulile meniului din stânga o făceau coloană pe tot ecranul) -->
     <div class="evc" id="evs1">${cap(1, "Clientul", "")}
       <div class="g"><div class="s2"><label>Nume client (din listă sau scris de mână)</label><input id="ev-catre" list="ev-cli" value="${esc(copie ? "" : (o0 ? o0.catre : ""))}" placeholder="ex. ONCR - RM VALCEA"><datalist id="ev-cli">${CLI.map(x => `<option value="${esc(x.nume)}">`).join("")}</datalist></div>
         <div><label>Persoana de contact</label><input id="ev-cont" value="${esc(copie ? "" : k.contact || "")}"></div>
