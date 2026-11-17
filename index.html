@@ -1116,7 +1116,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
   <span id="rz-w"><button id="rz-reset" class="pictograma" title="Lățimi implicite — pune coloanele din tabelele acestei file înapoi cum erau">↺ Reset layout</button><i class="rz-sep">|</i></span>
   <span id="tz-w" title="Mărimea tabelului (doar tabelul, restul rămâne la fel), din 5 în 5%. Merge și cu Ctrl + rotița mausului, Ctrl + / Ctrl − / Ctrl 0. Dublu clic pe procent = scrii tu valoarea."><button class="pictograma" onclick="tzPas(-1)" aria-label="Micșorează tabelul">−</button><b id="tz-v" ondblclick="tzScrie()" title="Dublu clic = scrii mărimea (ex. 87), Enter">100%</b><input id="tz-in" type="number" min="30" max="300" step="5" style="display:none"><button class="pictograma" onclick="tzPas(1)" aria-label="Mărește tabelul">+</button></span>
-  <span class="ver">v9.20</span>
+  <span class="ver">v9.21</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -6295,6 +6295,17 @@ async function riDeschide(id){
       const din = lc.filter(x => pvSerii.some(s => serN(s) === serN(x.serie)));
       o.bif = new Set((leg.length ? leg : din.length ? din : (r.tip_miscare === "REDUCERE" ? [] : lc)).map(x => x.id));
       o.dinPv = din.length > 0;
+    } else {
+      // v9.21 (cerut de Ovidiu, 17.11): comanda din exterior (fără anexă) — seriile punctului (C195…) se închid și ele aici, ca să nu rămână „la client”:
+      // punctele din comandă (locatii) + seriile deja legate de comandă; altfel după amplasările de la aceeași adresă
+      const pc = new Set((Array.isArray(r.locatii) ? r.locatii : []).map(l => l && l.cod).filter(Boolean));
+      SER.filter(x => x.miscare_ridicare_id === r.id && x.punct).forEach(x => pc.add(x.punct));
+      let amp = [];
+      if(!pc.size){ const { data: am } = await db.from("miscari").select("id").is("anexa_id", null).eq("client", r.client || "").eq("loc", r.loc || "").eq("sat", r.sat || "").limit(500); amp = (am || []).map(x => x.id); }
+      o.ser = SER.filter(x => !x.anexa_id && (pc.has(x.punct) || amp.includes(x.miscare_amplasare_id)) && (x.stare === "LA CLIENT" || x.miscare_ridicare_id === r.id));
+      const lc = o.ser.filter(x => x.stare === "LA CLIENT"), leg = lc.filter(x => x.miscare_ridicare_id === r.id), din = lc.filter(x => pvSerii.some(s => serN(s) === serN(x.serie)));
+      o.bif = new Set((leg.length ? leg : din.length ? din : (/^(REDUCERE)$/.test(r.tip_miscare) ? [] : lc)).map(x => x.id));
+      o.dinPv = din.length > 0;
     }
     R.push(o);
   }
@@ -6358,7 +6369,7 @@ function riRender(){
     }
     // 3. seriile
     let se;
-    if(!o.ser.length) se = `<div class="ri-r muted">${r.anexa_id ? "Nicio serie pe locație — nimic de confirmat." : "Comandă din exterior: seriile stau pe comandă (🔢 din comandă)."}</div>`;
+    if(!o.ser.length) se = `<div class="ri-r muted">${r.anexa_id ? "Nicio serie pe locație — nimic de confirmat." : "Comandă din exterior: nicio serie pe punct — nimic de confirmat."}</div>`;
     else {
       const lc = o.ser.filter(x => x.stare === "LA CLIENT"), nb = lc.filter(x => o.bif.has(x.id)).length, buc = Math.abs(+r.buc || 0);
       se = '<div class="ri-ser">' + o.ser.map(x => { const gata = x.stare !== "LA CLIENT";
@@ -6378,7 +6389,7 @@ function riRender(){
         (p.c ? cb("ri-cli-" + k, o.cli, alteAnexe.length > 0 || alteCtr.length > 0 || p.c.activ === false, `<b>Clientul ${esc(p.c.nume)}</b> → inactiv`,
           p.c.activ === false ? "e deja inactiv" : alteCtr.length ? "nu se poate: mai are contracte active — " + alteCtr.map(x => esc(x.nr_ctr)).join(", ") : alteAnexe.length ? "nu se poate: contractul mai are anexe active" : "nu se șterge; îl poți reactiva din „Contracte și anexe clienți”") : "");
     } else if(p) inch = `<div class="ri-r muted">Nu e ultima ridicare${p.ramanSer ? " — mai rămân " + p.ramanSer + " buc. la client" : ""}: anexa rămâne activă.</div>`;
-    else inch = `<div class="ri-r muted">Comandă fără anexă — nimic de închis.</div>`;
+    else inch = `<div class="ri-r muted">Comandă fără anexă — nu are anexă de închis${o.ser.length ? "; seriile bifate de mai sus trec în „ridicată”" : ""}.</div>`;
     H.push(`<div class="ri-s"><h4>2. Punct de rută${cap}</h4>${rt}</div><div class="ri-s"><h4>3. Serii</h4>${se}</div><div class="ri-s"><h4>4. Închidere</h4>${inch}</div>`);
   });
   $("ri-corp").innerHTML = H.join("");
