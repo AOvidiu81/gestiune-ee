@@ -1116,7 +1116,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
   <span id="rz-w"><button id="rz-reset" class="pictograma" title="Lățimi implicite — pune coloanele din tabelele acestei file înapoi cum erau">↺ Reset layout</button><i class="rz-sep">|</i></span>
   <span id="tz-w" title="Mărimea tabelului (doar tabelul, restul rămâne la fel), din 5 în 5%. Merge și cu Ctrl + rotița mausului, Ctrl + / Ctrl − / Ctrl 0. Dublu clic pe procent = scrii tu valoarea."><button class="pictograma" onclick="tzPas(-1)" aria-label="Micșorează tabelul">−</button><b id="tz-v" ondblclick="tzScrie()" title="Dublu clic = scrii mărimea (ex. 87), Enter">100%</b><input id="tz-in" type="number" min="30" max="300" step="5" style="display:none"><button class="pictograma" onclick="tzPas(1)" aria-label="Mărește tabelul">+</button></span>
-  <span class="ver">v9.13</span>
+  <span class="ver">v9.14</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -15899,7 +15899,13 @@ async function pntAuto(){
 const pntSemn = r => r.sursa === "auto" ? `<span class="muted" style="cursor:help" title="Completat automat${r.rsI ? " · ora reală: " + pntOraLoc(r.rsI) + (r.reI ? " – " + pntOraLoc(r.reI) : " (rută nefinalizată)") : ""}">⚙${r.rsI ? " " + pntOraLoc(r.rsI) + (r.reI ? "–" + pntOraLoc(r.reI) : "") : ""}</span>` : r.sursa === "excel" ? '<span class="muted" title="Adus din Excel">xls</span>' : r.sursa === "manual" && pntPlin(r) ? `<span class="muted" style="cursor:help" title="Scris / corectat de mână — ce ai scris nu se mai schimbă automat${r.rsI ? " · ora reală din rută: " + pntOraLoc(r.rsI) + (r.reI ? " – " + pntOraLoc(r.reI) : " (rută nefinalizată)") : ""}">✎${r.rsI ? " " + pntOraLoc(r.rsI) + (r.reI ? "–" + pntOraLoc(r.reI) : "") : ""}</span>` : "";   // v9.04: și ora reală la rândurile corectate
 function pntStatHtml(){
   const x = ANG.L.find(a => a.id === PNT.sid) || {}, c = pntCalc(PNT.rows, PNT.luna, ANG.priv[x.id], ANG.set), dif = c.oreMin - c.normMin, vir = +PNT.vir || 0;
-  const t = (L) => `<table style="width:100%">${L.map(([a, b, bold]) => `<tr${bold ? ' style="font-weight:700"' : ""}><td>${a}</td><td style="text-align:right;white-space:nowrap">${b}</td></tr>`).join("")}</table>`;
+  // v9.14 (cerut de Ovidiu, 17.11): rândurile cu valoare (≠ 0) ies în evidență — îngroșat, cu 2 px mai mare, culoarea aplicației;
+  // cele cu 0 rămân estompate. Rândurile de referință (zile în lună, ore normate, salariul) rămân normale.
+  const REF = /^(Zile în lună|Zile lucrătoare|Ore normate|Salariu de bază|Valoarea orei|Valoarea zilei)/;
+  const are = v => /[1-9]/.test(String(v == null ? "" : v).replace(/<[^>]*>/g, ""));
+  const t = (L) => `<table style="width:100%">${L.map(([a, b, bold]) => { const ref = REF.test(String(a)), v = are(b);
+    const st = bold ? "font-weight:700;font-size:14px" : ref ? "" : v ? "font-weight:700;font-size:calc(1em + 2px);color:" + (/^\s*[−-]/.test(String(b)) ? "#C0392B" : "var(--g)") : "opacity:.55";   // minus (ex. diferența de ore) = roșu
+    return `<tr${st ? ` style="${st}"` : ""}><td>${a}</td><td style="text-align:right;white-space:nowrap">${b}</td></tr>`; }).join("")}</table>`;
   const inp = (k, v, tit) => `<input type="number" step="0.01" value="${v == null ? "" : v}" title="${tit}" onchange="PNT.${k}=afNum(this.value);PNT.murdar=true;$('pnt-stat').innerHTML=pntStatHtml()" style="text-align:right">`;
   return `<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px;margin-top:12px">
     <div><h4 style="margin:0 0 6px">Statistica zilelor</h4>${t([["Zile în lună", c.zile], ["Zile lucrătoare (luni–vineri)", c.lucr], ["Zile prezente (P + D)", c.prez], ["Zile libere (L)", c.L], ["Concediu de odihnă (CO)", c.CO], ["Concediu medical (CM)", c.CM], ["Weekend lucrat (W)", c.W], ["Sărbătoare legală lucrată (S)", c.S], ["Zile cu depășire (diurne)", c.dep], ["Absent nemotivat (N)", c.N], ["Învoire (I)", c.I]])}
