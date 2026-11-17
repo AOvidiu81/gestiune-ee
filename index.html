@@ -1116,7 +1116,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
   <span id="rz-w"><button id="rz-reset" class="pictograma" title="Lățimi implicite — pune coloanele din tabelele acestei file înapoi cum erau">↺ Reset layout</button><i class="rz-sep">|</i></span>
   <span id="tz-w" title="Mărimea tabelului (doar tabelul, restul rămâne la fel), din 5 în 5%. Merge și cu Ctrl + rotița mausului, Ctrl + / Ctrl − / Ctrl 0. Dublu clic pe procent = scrii tu valoarea."><button class="pictograma" onclick="tzPas(-1)" aria-label="Micșorează tabelul">−</button><b id="tz-v" ondblclick="tzScrie()" title="Dublu clic = scrii mărimea (ex. 87), Enter">100%</b><input id="tz-in" type="number" min="30" max="300" step="5" style="display:none"><button class="pictograma" onclick="tzPas(1)" aria-label="Mărește tabelul">+</button></span>
-  <span class="ver">v9.27</span>
+  <span class="ver">v9.28</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -7235,7 +7235,7 @@ function ofEvForm(id, copie){
       <div class="g"><div><label>Valoare (lei)</label><input id="ev-alte" type="number" step="0.01" min="0" value="${nv(c.alte, "")}"></div>
         <div class="s3"><label>Ce anume (doar pentru tine)</label><input id="ev-altet" value="${esc(c.alte_txt || "")}"></div></div></div>
     <div class="evc" id="evs6">${cap(6, "Mențiuni în ofertă", "câte una pe rând — apar în PDF la „Condiții”")}
-      <textarea id="ev-ment" rows="4" style="width:100%">${esc(ment)}</textarea>
+      <textarea id="ev-ment" rows="${Math.max(4, String(ment).split("\n").length + 1)}" style="width:100%;overflow:hidden;resize:vertical" oninput="this.style.height='auto';this.style.height=(this.scrollHeight+2)+'px'">${esc(ment)}</textarea>
       <label style="display:flex;gap:7px;align-items:center;text-transform:none;font-size:13px;cursor:pointer;margin-top:10px;letter-spacing:0"><input type="checkbox" id="ev-pezi" ${k.arata_zi ? "checked" : ""} style="width:16px;height:16px;margin:0"> scrie în ofertă și valoarea pe zi de eveniment (ex. „5 zile × 1.000 lei / zi”)</label></div>
     </div>
     <aside class="evs"><div class="t0">Calcul intern</div><div id="ev-suma"></div>
@@ -7246,6 +7246,14 @@ function ofEvForm(id, copie){
   document.body.appendChild(w); feFereastra(w);
   (k.randuri && k.randuri.length ? k.randuri : [{}]).forEach(ofEvRand);
   ofEvCursInfo(); if(k.curs == null || copie) ofEvCursBnr(false);   // v9.27: oferta nouă / copia ia cursul BNR al zilei
+  // v9.28 (cerut de Ovidiu, 17.11): Mențiunile se văd toate (câmpul crește cu textul); fereastra se deschide la mărimea ei
+  // (nu pe tot ecranul) — o poți trage din colț, iar mărimea aleasă se ține minte pentru data viitoare
+  { const tm = $("ev-ment"); if(tm){ tm.style.height = "auto"; tm.style.height = (tm.scrollHeight + 2) + "px"; } }
+  { const bx = w.querySelector(".box"); bx.classList.remove("fe-max");
+    let m0 = null; try{ m0 = JSON.parse(localStorage.getItem("ev-box") || "null"); }catch(e){}
+    bx.style.width = m0 && m0.w ? Math.min(m0.w, window.innerWidth * 0.98) + "px" : "min(1320px, 96vw)"; if(m0 && m0.h) bx.style.height = Math.min(m0.h, window.innerHeight * 0.96) + "px";
+    let t0 = 0; if(window.ResizeObserver) new ResizeObserver(() => { clearTimeout(t0); t0 = setTimeout(() => { if(!bx.isConnected || bx.classList.contains("fe-max")) return;
+      try{ localStorage.setItem("ev-box", JSON.stringify({ w: Math.round(bx.offsetWidth), h: bx.style.height ? Math.round(bx.offsetHeight) : 0 })); }catch(e){} }, 400); }).observe(bx); }
   w.addEventListener("input", ofEvSuma); w.addEventListener("change", ofEvSuma); ofEvZile(k.servisari || []);
   locAuto("ev-jud", "ev-loc", "ev-sat"); satAuto("ev-jud", "ev-loc", "ev-sat");   // v8.92: aceleași propuneri ca la Comandă nouă
 }
