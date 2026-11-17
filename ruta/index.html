@@ -1082,7 +1082,7 @@ let dayStart = {}; // {brand, plate, kmStart, driver1, driver2, startTime}
 let lastRouteRows = [];
 
 // --- Șofer EE: aplicatia ruleaza in fila „Rută” (../sofer/), care trimite datele zilei ---
-const EE_RUTA_VERSION = 'v42'; // aceeasi cu VERSIUNE din sw.js; Șofer EE o arata langa rotita
+const EE_RUTA_VERSION = 'v43'; // aceeasi cu VERSIUNE din sw.js; Șofer EE o arata langa rotita
 const SOFER_MODE = new URLSearchParams(location.search).get('sofer') === '1';
 let multiZile = null;   // mai multe zile bifate (ruta complementara), altfel null
 let multiTrasee = null; // mai multe trasee bifate, altfel null
@@ -3567,33 +3567,46 @@ function eeArataRuta(){
 // Punctele vizitate azi raman bifate si dupa schimbarea masinii (sesiune noua, aceeasi ruta)
 function extraDeschide(){
   document.getElementById('extraFer')?.remove();
-  const mele = new Set(multiTrasee || (masinaSel.value && masinaSel.value !== 'TOATE' ? [masinaSel.value] : []));
+  // v43 (cerut de Ovidiu, 17.11): două moduri — „📍 Lângă mine” (poziția de acum, cei mai apropiați primii; cel mai apropiat, dacă e
+  // la sub 150 m, e deja ales) și „🔍 Caut în listă” (din depozit: alfabetic, după nume / localitate). Fără „Traseul meu”.
   const inLista = new Set(lastRouteRows.map(r => r.clientKey).filter(Boolean));
-  const st = { tot: true, q: '', sel: null, mot: 'RECUPERARE' };
+  const st = { mod: 'gps', q: '', sel: null, mot: 'RECUPERARE', poz: lastKnownPosition ? { lat: lastKnownPosition.lat, lon: lastKnownPosition.lon, acc: null, vechi: true } : null, cauta: true, err: '' };
   const w = document.createElement('div'); w.id = 'extraFer';
   w.innerHTML = `<div class="ef-box"><b style="font-size:1.05rem">➕ Punct extra în ruta de azi</b>
     <input id="efQ" placeholder="Caută client / localitate" autocomplete="off">
-    <div class="ef-tg"><button data-t="0">Traseul meu</button><button data-t="1" class="on">Toți clienții activi</button></div>
+    <div class="ef-tg"><button data-t="gps" class="on">📍 Lângă mine</button><button data-t="lista">🔍 Caut în listă</button></div>
+    <div id="efGps" style="font-size:.85rem;opacity:.85"></div>
     <div class="ef-list" id="efL"></div>
     <div style="font-weight:700">Motiv</div>
     <div class="ef-mot"><button data-m="RECUPERARE" class="on">Recuperare</button><button data-m="LA CERERE">La cerere</button></div>
     <button class="ef-ok" id="efOk">Adaugă în ruta de azi</button><button class="ef-x" id="efX">Renunță</button></div>`;
   document.body.appendChild(w);
-  const L = w.querySelector('#efL'), poz = lastKnownPosition;
-  const dist = r => poz && r.lat && r.lon ? haversine(poz.lat, poz.lon, r.lat, r.lon) : null;
+  const L = w.querySelector('#efL'), G = w.querySelector('#efGps');
+  const dist = r => st.poz && r.lat && r.lon ? haversine(st.poz.lat, st.poz.lon, r.lat, r.lon) : null;
   const fd = d => d == null ? '' : d < 1 ? Math.round(d * 1000) + ' m' : (Math.round(d * 10) / 10).toLocaleString('ro-RO') + ' km';
   const deseneaza = () => {
-    const q = st.q.toLowerCase();
+    const q = st.q.toLowerCase(), gps = st.mod === 'gps';
+    G.style.display = gps ? '' : 'none';
+    G.innerHTML = st.cauta ? '📡 Caut poziția mașinii…' + (st.poz ? ' (până atunci, după ultima poziție știută)' : '')
+      : st.poz ? '📍 Poziția de acum' + (st.poz.acc ? ' · ±' + Math.round(st.poz.acc) + ' m' : '') + ' — cei mai apropiați clienți sunt primii'
+      : '⚠️ ' + (st.err || 'Nu am poziția GPS') + ' — caută clientul în listă';
     const c = DATA.filter(r => r.status === 'ACTIV' && r.clientKey && !inLista.has(r.clientKey) && !EXTRA[r.clientKey]
-      && (st.tot || !mele.size || mele.has(r.masina)) && (!q || (r.client + ' ' + r.localitate + ' ' + r.locatie + ' ' + r.jud).toLowerCase().includes(q)))
-      .map(r => ({ r, d: dist(r) })).sort((a, b) => (a.d == null ? 1e9 : a.d) - (b.d == null ? 1e9 : b.d) || a.r.client.localeCompare(b.r.client)).slice(0, 60);
+      && (!q || (r.client + ' ' + r.localitate + ' ' + r.locatie + ' ' + r.jud).toLowerCase().includes(q)))
+      .map(r => ({ r, d: dist(r) })).sort((a, b) => gps ? ((a.d == null ? 1e9 : a.d) - (b.d == null ? 1e9 : b.d) || a.r.client.localeCompare(b.r.client)) : a.r.client.localeCompare(b.r.client, 'ro')).slice(0, 60);
     L.innerHTML = c.length ? c.map(({ r, d }) => `<div class="ef-it${st.sel === r.clientKey ? ' on' : ''}" data-cod="${escapeHtml(r.clientKey)}"><b>${escapeHtml(r.client)}</b>
       <small>${escapeHtml([r.localitate, r.locatie].filter(Boolean).join(', '))}</small><small>${escapeHtml([r.masina, r.ziua, fd(d)].filter(Boolean).join(' · '))}</small></div>`).join('')
       : '<div style="opacity:.7;padding:8px">Niciun client găsit.</div>';
   };
   deseneaza();
+  gpsFix(10000, 0).then(f => { if(!document.body.contains(w)) return; st.cauta = false;
+    if(f && !f.err){ st.poz = f; lastKnownPosition = { lat: f.lat, lon: f.lon };
+      if(st.mod === 'gps' && !st.sel){ const cel = DATA.filter(r => r.status === 'ACTIV' && r.clientKey && !inLista.has(r.clientKey) && !EXTRA[r.clientKey] && r.lat && r.lon)
+          .map(r => ({ r, d: dist(r) })).sort((a, b) => a.d - b.d)[0];
+        if(cel && cel.d * 1000 <= 150) st.sel = cel.r.clientKey; } }
+    else { st.err = f && f.err; if(!st.poz && st.mod === 'gps'){ st.mod = 'lista'; w.querySelectorAll('.ef-tg button').forEach(x => x.classList.toggle('on', x.dataset.t === 'lista')); } }
+    deseneaza(); });
   w.querySelector('#efQ').addEventListener('input', e => { st.q = e.target.value.trim(); deseneaza(); });
-  w.querySelectorAll('.ef-tg button').forEach(b => b.addEventListener('click', () => { st.tot = b.dataset.t === '1'; w.querySelectorAll('.ef-tg button').forEach(x => x.classList.toggle('on', x === b)); deseneaza(); }));
+  w.querySelectorAll('.ef-tg button').forEach(b => b.addEventListener('click', () => { st.mod = b.dataset.t; w.querySelectorAll('.ef-tg button').forEach(x => x.classList.toggle('on', x === b)); deseneaza(); if(st.mod === 'lista') w.querySelector('#efQ').focus(); }));
   w.querySelectorAll('.ef-mot button').forEach(b => b.addEventListener('click', () => { st.mot = b.dataset.m; w.querySelectorAll('.ef-mot button').forEach(x => x.classList.toggle('on', x === b)); }));
   L.addEventListener('click', e => { const it = e.target.closest('.ef-it'); if(!it) return; st.sel = it.dataset.cod; deseneaza(); });
   w.querySelector('#efX').addEventListener('click', () => w.remove());
