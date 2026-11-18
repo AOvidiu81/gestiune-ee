@@ -1116,7 +1116,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
   <span id="rz-w"><button id="rz-reset" class="pictograma" title="Lățimi implicite — pune coloanele din tabelele acestei file înapoi cum erau">↺ Reset layout</button><i class="rz-sep">|</i></span>
   <span id="tz-w" title="Mărimea tabelului (doar tabelul, restul rămâne la fel), din 5 în 5%. Merge și cu Ctrl + rotița mausului, Ctrl + / Ctrl − / Ctrl 0. Dublu clic pe procent = scrii tu valoarea."><button class="pictograma" onclick="tzPas(-1)" aria-label="Micșorează tabelul">−</button><b id="tz-v" ondblclick="tzScrie()" title="Dublu clic = scrii mărimea (ex. 87), Enter">100%</b><input id="tz-in" type="number" min="30" max="300" step="5" style="display:none"><button class="pictograma" onclick="tzPas(1)" aria-label="Mărește tabelul">+</button></span>
-  <span class="ver">v9.52</span>
+  <span class="ver">v9.53</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -2911,7 +2911,7 @@ async function lagFisa(id){
   if(error || !data){ if($("lagp-st")) $("lagp-st").textContent = "Fișa nu s-a putut încărca: " + ((error && error.message) || ""); return; }
   const blob = new Blob([data], { type: ext === "pdf" ? "application/pdf" : "image/jpeg" });
   if(LAG.url) URL.revokeObjectURL(LAG.url); LAG.url = URL.createObjectURL(blob); LAG.blob = blob; LAG.nume = nume;
-  if(!$("lagp-fr")) return; $("lagp-fr").src = LAG.url + (ext === "pdf" ? "#view=Fit" : "");
+  if(!$("lagp-fr")) return; $("lagp-fr").src = LAG.url + (ext === "pdf" ? "#zoom=100" : "")   /* v9.53: fișa se deschide mereu la 100% */;
   ["lagp-b1", "lagp-b2", "lagp-b3"].forEach(i => { $(i).disabled = false; });
   $("lagp-st").textContent = "Fișa e un PDF obișnuit: o salvezi, o tipărești sau o trimiți ca fișier. În PDF, apeși pe GPS → Google Maps.";
 }
