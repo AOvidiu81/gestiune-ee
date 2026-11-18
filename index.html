@@ -1116,7 +1116,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
   <span id="rz-w"><button id="rz-reset" class="pictograma" title="Lățimi implicite — pune coloanele din tabelele acestei file înapoi cum erau">↺ Reset layout</button><i class="rz-sep">|</i></span>
   <span id="tz-w" title="Mărimea tabelului (doar tabelul, restul rămâne la fel), din 5 în 5%. Merge și cu Ctrl + rotița mausului, Ctrl + / Ctrl − / Ctrl 0. Dublu clic pe procent = scrii tu valoarea."><button class="pictograma" onclick="tzPas(-1)" aria-label="Micșorează tabelul">−</button><b id="tz-v" ondblclick="tzScrie()" title="Dublu clic = scrii mărimea (ex. 87), Enter">100%</b><input id="tz-in" type="number" min="30" max="300" step="5" style="display:none"><button class="pictograma" onclick="tzPas(1)" aria-label="Mărește tabelul">+</button></span>
-  <span class="ver">v9.60</span>
+  <span class="ver">v9.61</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -1717,6 +1717,17 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   /* v7.96 (cerut de Ovidiu, 07.11): Comandă nouă în ordinea lui — secțiuni 1–6 numerotate, bifă verde când e completată,
      estompată până completezi deasupra (dar se poate scrie oricând) */
   #mod-m .mm-s h4{display:flex;align-items:center;gap:8px}
+  /* v9.61: tipul comenzii ca butoane; actul -S / -R în fișă; livrarea strânsă când vine din anexă */
+  #mod-m .mm-pills{display:flex;flex-wrap:wrap;gap:6px;margin:2px 0 10px}
+  #mod-m .mm-pills button{border:1.5px solid var(--bd);background:var(--card);color:var(--tx);border-radius:999px;padding:6px 13px;font-size:12.5px;font-weight:600;cursor:pointer}
+  #mod-m .mm-pills button:hover{border-color:var(--acc)}
+  #mod-m .mm-pills button.on{background:#1b2550;border-color:#1b2550;color:#fff}
+  #mod-m .mm-act{margin-top:10px;border:1.5px solid #1a5fb4;border-radius:12px;padding:10px 12px;background:rgba(26,95,180,.06);font-size:13px;line-height:1.5}
+  #mod-m .mm-act .r{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:6px}
+  #mod-m .mm-act input[type=text]{width:190px}#mod-m .mm-act input[type=number]{width:100px}
+  #mod-m .mm-s[data-s="5"].strans > :not(h4):not(.mm-loc-rez){display:none!important}
+  #mod-m .mm-loc-rez{border:1px dashed var(--bd);border-radius:10px;padding:9px 12px;cursor:pointer;font-size:13px;line-height:1.5}
+  #mod-m .mm-loc-rez:hover{border-color:var(--acc)}
   #mod-m .mm-nr{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:50%;background:#e6ebe8;color:#4a5a52;font-size:12px;font-weight:700;flex:0 0 auto}
   #mod-m .mm-ok{display:none;margin-left:auto;color:#2f9e44;font-weight:700;font-size:15px}
   #mod-m .mm-s.gata .mm-nr{background:#2f9e44;color:#fff}
@@ -1770,8 +1781,16 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
       <input type="hidden" id="mm-id">
       <div id="mm-ciorne" style="display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:-6px 0 12px;font-size:12px"></div>
 
+      <div class="sect mm-s" data-s="2">
+        <h4><span class="mm-nr">1</span>Client și contract <span class="hint">clientul există → îl alegi; nu există → +</span><span class="mm-ok" title="completat">✓</span></h4>
+        <div class="gf g-cc">
+          <div><label>Client / societate / beneficiar</label><div class="cu-plus"><input id="mm-client" placeholder="scrie orice bucată din nume"><button type="button" class="btn sec plus" title="Client nou" onclick="clientNouDinMiscare()">+</button></div><datalist id="dl-clienti"></datalist></div>
+          <div><label>Contract</label><div class="cu-plus"><select id="mm-ctr"><option value="">— toate —</option></select><button type="button" class="btn sec plus" title="Contract nou pentru acest client" onclick="contractNouDinMiscare()">+</button></div></div>
+        </div>
+      </div>
+
       <div class="sect mm-s" data-s="1">
-        <h4><span class="mm-nr">1</span>Contract | Depozit<span class="mm-ok" title="completat">✓</span></h4>
+        <h4><span class="mm-nr">2</span>Gestiune | Depozit <span class="hint">se propune din contract</span><span class="mm-ok" title="completat">✓</span></h4>
         <div class="gf g-cc">
           <div><label>Contract (gestiune) <span class="hint" id="mm-gest-hint"></span></label><select id="mm-contract"></select></div>
           <div><label>Depozit <span class="hint">de unde pleacă marfa</span></label><select id="mm-dep"></select></div>
@@ -1779,20 +1798,9 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
         <div id="mm-caz" class="mm-caz"></div>
       </div>
 
-      <div class="sect mm-s" data-s="2">
-        <h4><span class="mm-nr">2</span>Client și contract <span class="hint">clientul există → îl alegi; nu există → +</span><span class="mm-ok" title="completat">✓</span></h4>
-        <div class="gf g-cc">
-          <div><label>Client / societate / beneficiar</label><div class="cu-plus"><input id="mm-client" placeholder="scrie orice bucată din nume"><button type="button" class="btn sec plus" title="Client nou" onclick="clientNouDinMiscare()">+</button></div><datalist id="dl-clienti"></datalist></div>
-          <div><label>Contract</label><div class="cu-plus"><select id="mm-ctr"><option value="">— toate —</option></select><button type="button" class="btn sec plus" title="Contract nou pentru acest client" onclick="contractNouDinMiscare()">+</button></div></div>
-        </div>
-        <div class="gf g-full">
-          <div><label>Anexă <span class="hint">locația contractată</span></label><div class="cu-plus"><select id="mm-anexa"><option value="">— alege din anexe —</option></select><button type="button" class="btn sec plus" title="Anexă nouă pe contractul ales" onclick="anexaNouaDinMiscare()">+</button><button type="button" class="btn sec plus" title="Editează anexa aleasă (zile de servisare, frecvență, preț…) și te întorci în comandă" onclick="anexaEditDinMiscare()">✎</button><button type="button" class="btn sec plus" title="Seriile locației (aceeași listă pentru amplasare, suplimentare, reducere, ridicare și pentru ruta șoferilor)" onclick="mmSeriiDeschide()">🔢</button><button type="button" class="btn sec plus act-btn" title="Generează actul în Word: Anexa + Proces verbal, completat din anexa aleasă, contract și client (modelul tău). Se descarcă — îl verifici, îl salvezi ca PDF în D: și îl trimiți la semnat." onclick="actGenereazaAnexaPV()"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M8 13h8M8 17h5"/></svg>Act</button></div></div>
-        </div>
-        <div id="mm-carduri" class="mm-carduri"></div>
-      </div>
-
       <div class="sect mm-s" data-s="3">
-        <h4><span class="mm-nr">3</span>Tipul comenzii<span class="mm-ok" title="completat">✓</span></h4>
+        <h4><span class="mm-nr">3</span>Ce faci?<span class="mm-ok" title="completat">✓</span></h4>
+        <div id="mm-tip-pills" class="mm-pills"></div>
         <div class="gf g-tip">
           <div><label>Tip comandă</label><select id="mm-tip"></select></div>
           <div><label>Data</label><input type="date" id="mm-data"></div>
@@ -1811,8 +1819,18 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
         </div>
       </div>
 
+      <!-- v9.61 (cerut de Ovidiu, 18.11): ordinea firească — întâi CE faci, apoi UNDE (locația), iar actul -S / -R se face singur la Salvează -->
+      <div class="sect mm-s" data-s="7">
+        <h4><span class="mm-nr">4</span>Unde? <span class="hint">locația (anexa) — caută sau desfă locația</span><span class="mm-ok" title="completat">✓</span></h4>
+        <div class="gf g-full">
+          <div><label>Anexă <span class="hint">locația contractată</span></label><div class="cu-plus"><select id="mm-anexa"><option value="">— alege din anexe —</option></select><button type="button" class="btn sec plus" title="Anexă nouă pe contractul ales" onclick="anexaNouaDinMiscare()">+</button><button type="button" class="btn sec plus" title="Editează anexa aleasă (zile de servisare, frecvență, preț…) și te întorci în comandă" onclick="anexaEditDinMiscare()">✎</button><button type="button" class="btn sec plus" title="Seriile locației (aceeași listă pentru amplasare, suplimentare, reducere, ridicare și pentru ruta șoferilor)" onclick="mmSeriiDeschide()">🔢</button><button type="button" class="btn sec plus act-btn" title="Generează actul în Word: Anexa + Proces verbal, completat din anexa aleasă, contract și client (modelul tău). Se descarcă — îl verifici, îl salvezi ca PDF în D: și îl trimiți la semnat." onclick="actGenereazaAnexaPV()"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M8 13h8M8 17h5"/></svg>Act</button></div></div>
+        </div>
+        <div id="mm-carduri" class="mm-carduri"></div>
+        <div id="mm-act" class="mm-act" style="display:none"></div>
+      </div>
+
       <div class="sect mm-s" data-s="4">
-        <h4><span class="mm-nr">4</span>Produse<span class="mm-ok" title="completat">✓</span></h4>
+        <h4><span class="mm-nr">5</span>Produse<span class="mm-ok" title="completat">✓</span></h4>
         <div class="gf g-prod">
           <div><label>Bucăți</label><input type="number" id="mm-buc" value="1"></div>
           <div><label>Produs <button type="button" class="cat-plus" onclick="catRapid('mm','prod',this)" title="Categorie nouă în catalog, dacă produsul nu există încă">＋ nou</button></label><select id="mm-prod"></select></div>
@@ -1848,7 +1866,8 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
       </div>
 
       <div class="sect mm-s" data-s="5">
-        <h4><span class="mm-nr">5</span>Locația de livrare<span class="mm-ok" title="completat">✓</span></h4>
+        <h4><span class="mm-nr">6</span>Locația de livrare<span class="mm-ok" title="completat">✓</span></h4>
+        <div id="mm-loc-rez" class="mm-loc-rez" style="display:none" onclick="MM_LOC_DESF=true;mmLocRez()" title="Clic = modifici adresa / responsabilul"></div>
         <div class="gf g-loc">
           <div><label>Județ</label><input id="mm-jud" maxlength="3"></div>
           <div><label>Loc. / Com.</label><input id="mm-loc"></div>
@@ -1876,7 +1895,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
       </div>
 
       <div class="sect mm-s" data-s="6">
-        <h4><span class="mm-nr">6</span>Servisare și observații <span class="hint">frecvență → zile → traseu</span><span class="mm-ok" title="completat">✓</span></h4>
+        <h4><span class="mm-nr">7</span>Servisare și observații <span class="hint">frecvență → zile → traseu</span><span class="mm-ok" title="completat">✓</span></h4>
         <!-- v7.26 (cerut de Ovidiu, 29.10): Servisare refăcut, compact. v7.96 (07.11): ordinea frecvență → zile → traseu; observațiile mutate aici -->
         <div class="sv-rand">
           <div id="mm-sv-frecv-d" class="sv-mic"><label>Frecvență</label><select id="mm-frecv"><option value=""></option></select></div>
@@ -5185,7 +5204,7 @@ function maCampuri(scurt){
     d.style.display = viz ? "" : "none";
   });
   // secțiunile rămase fără niciun câmp vizibil se ascund (anexa scurtă)
-  document.querySelectorAll("#mod-a .ma-sect").forEach(x => { x.style.display = [...x.querySelectorAll(".maf")].some(d => d.style.display !== "none") ? "" : "none"; });
+  document.querySelectorAll("#mod-a .ma-sect").forEach(x => { x.style.display = [...x.querySelectorAll(".maf")].some(d => d.style.display !== "none" && !(d.closest(".ma-g") && d.closest(".ma-g").style.display === "none")) ? "" : "none"; });   // v9.61: și când câmpul e într-un grup ascuns
   $("ma-an").readOnly = false;   // v4.94: numele îl scrie / corectează Ovidiu
   $("ma-info").style.display = scurt ? "" : "none";
   $("ma-randuri").style.display = scurt ? "none" : "";   // v5.11: suplimentarea / reducerea e pe un singur produs
@@ -5243,6 +5262,7 @@ function intoarceInMiscare(ce, id){
   return true;
 }
 function openMiscare(id){
+  MM_LOC_DESF = !!id; MM_ACT_K = ""; { const e = $("mm-act"); if(e){ e.style.display = "none"; e.innerHTML = ""; } }   // v9.61
   MM_FISA = null;   // v8.29: se pune din nou doar de comandaDinFisa
   MM_SV_MEM = {}; MM_SV_ANX = null;   // v8.32
   ["mm-aa-nr","mm-aa-data","mm-aa-pret","mm-aa-obs"].forEach(x => { const e = $(x); if(e) e.value = ""; }); MM_AA_K = ""; MM_AA_VECHI = null;   // v7.99
@@ -5348,6 +5368,69 @@ function mmStareGen(){
 }
 // ── v7.96 (cerut de Ovidiu, 07.11): pașii 1–6 ai Comenzii noi — bifă verde când secțiunea e completată ──
 // Nu blochează nimic și nu schimbă ce se salvează; doar arată unde mai ai de completat. Fără modificări în bază.
+// ══ v9.61 (cerut de Ovidiu, 18.11): fișa comenzii în ordinea firească ══
+const MM_TIP_PRINC = ["AMPLASARE", "SUPLIMENTARE", "REDUCERE", "RIDICARE", "SERVISARE", "EVENIMENT-A", "EVENIMENT-R", "VANZARE"];
+let MM_LOC_DESF = false, MM_ACT_K = "";
+function mmTipPills(){
+  const el = $("mm-tip-pills"), sel = $("mm-tip"); if(!el || !sel) return;
+  const opt = [...sel.options].map(o => o.value).filter(Boolean), L = MM_TIP_PRINC.filter(x => opt.includes(x)), k = L.join("|") + "#" + sel.value;
+  if(el.dataset.k === k) return; el.dataset.k = k;
+  const et = { "EVENIMENT-A": "Eveniment · amplasare", "EVENIMENT-R": "Eveniment · ridicare", "VANZARE": "Vânzare" };
+  el.innerHTML = L.map(x => `<button type="button" class="${sel.value === x ? "on" : ""}" data-t="${esc(x)}">${esc(et[x] || (x.charAt(0) + x.slice(1).toLowerCase()))}</button>`).join("") +
+    `<span class="hint" style="align-self:center">${L.includes(sel.value) ? "alt tip → lista de mai jos" : "tip ales din listă: <b>" + esc(sel.value) + "</b>"}</span>`;
+  el.querySelectorAll("button").forEach(b => b.onclick = () => { if(sel.value === b.dataset.t) return; sel.value = b.dataset.t; sel.dispatchEvent(new Event("change", { bubbles: true })); mmTipPills(); });
+}
+// tipul pentru act: suplimentare → -S, reducere / daună / furt → -R, ridicare / ridicare eveniment → -R FINAL
+function mmActTip(){ const t = $("mm-tip").value; return t === "EVENIMENT-R" ? "RIDICARE" : TIP_PIERD.test(t) ? "REDUCERE" : t; }
+function mmActPlan(){
+  if($("mm-id").value || mmModif() || mmExterior()) return null;
+  const tip = mmActTip(); if(!["SUPLIMENTARE", "REDUCERE", "RIDICARE"].includes(tip)) return null;
+  const a = ANX.find(x => x.id == $("mm-anexa").value); if(!a) return null;
+  const fin = tip === "RIDICARE", lit = fin || tip === "REDUCERE" ? "R" : "S", n = anexaNr(a);
+  if(n && n.tip === lit && (!fin || /FINAL/i.test(a.anexa || ""))) return null;   // ai ales chiar actul
+  const lin = anexeLinie(a.id);
+  if(fin && lin.some(x => x.tip_anexa === "R" && /FINAL/i.test(x.anexa || ""))) return null;   // ridicarea finală există deja
+  const baza = lin.find(x => !x.tip_anexa) || a, urm = lin.filter(x => x.tip_anexa === lit && !/FINAL/i.test(x.anexa || "")).length + 1;
+  const nB = String(baza.anexa || "ANEXA NR").trim().replace(/\s*-\s*[SR]\s*\d+\s*$/i, "").replace(/(\d+)\.0$/, "$1");
+  return { tip, fin, lit, a, baza, nume: nB + "-" + lit + (fin ? " FINAL" : urm), acum: cantLinie(a.id) };
+}
+function mmActArata(){
+  const el = $("mm-act"); if(!el) return; const P = mmActPlan();
+  if(!P){ if(el.style.display !== "none"){ el.style.display = "none"; el.innerHTML = ""; MM_ACT_K = ""; } return; }
+  const buc = Math.abs(+$("mm-buc").value || 0), zi = $("mm-data").value || today(), k = [P.a.id, P.tip, P.nume, buc, zi, P.acum].join("|");
+  if(MM_ACT_K === k) return; MM_ACT_K = k;
+  const nouBuc = P.fin ? 0 : P.lit === "R" ? P.acum - buc : P.acum + buc, mon = String(P.baza.moneda || "RON").toUpperCase() === "EUR" ? "EUR" : "lei";
+  const vechi = { nr: ($("mm-act-nr") || {}).value, pret: ($("mm-act-pret") || {}).value, da: ($("mm-act-da") || { checked: true }).checked };
+  el.style.display = "";
+  el.innerHTML = `<label style="display:flex;gap:8px;align-items:center;margin:0;cursor:pointer;text-transform:none;font-size:13px;letter-spacing:0"><input type="checkbox" id="mm-act-da" ${vechi.da ? "checked" : ""} style="width:16px;height:16px;margin:0"> <span>La <b>Salvează</b> se face și actul ${P.fin ? "de <b>ridicare finală</b>" : P.lit === "R" ? "de <b>reducere</b>" : "de <b>suplimentare</b>"} pe ${esc(P.baza.anexa || "")}</span></label>
+    <div class="r"><span>Nr. act</span><input type="text" id="mm-act-nr" value="${esc(vechi.nr || P.nume)}">
+      ${P.fin ? "" : `<span>Preț / buc</span><input type="number" step="0.01" min="0" id="mm-act-pret" value="${esc(vechi.pret || (P.baza.pret != null ? (+P.baza.pret).toFixed(2) : ""))}"> <span class="muted">${mon} + TVA</span>`}</div>
+    <div class="muted" style="margin-top:6px">${esc([P.baza.produs, P.baza.model, P.baza.model_fizic].filter(Boolean).join(" "))} · acum la client <b>${P.acum}</b> buc → după act <b>${Math.max(0, nouBuc)}</b> buc · data actului = data comenzii (<b>${esc(fmtD(zi))}</b>)${P.fin ? " · pleacă tot de la locație" : ""}</div>`;
+}
+async function mmActInainte(){
+  const P = mmActPlan(), da = $("mm-act-da");
+  if(!P || !da || !da.checked || $("mm-act").style.display === "none") return true;
+  const nr = ($("mm-act-nr").value || "").trim() || P.nume, pr = $("mm-act-pret") ? $("mm-act-pret").value : "";
+  if(!P.fin && !(Math.abs(+$("mm-buc").value || 0) > 0)){ toast("Scrie câte bucăți " + (P.lit === "R" ? "se reduc" : "se adaugă"), true); return false; }
+  const ma = $("mod-a"); ma.style.visibility = "hidden";
+  try{
+    anexaNouaDinMiscare();   // aceeași cale ca „+” (verifică dublurile), completată din comandă
+    if(!ma.classList.contains("on") || !MA_SCURT){ return !!(+$("mm-anexa").value && !mmActPlan()); }   // a ales un act existent
+    $("ma-an").value = nr; if(pr !== "" && $("ma-pret")) $("ma-pret").value = pr;
+    await saveAnexa();
+    if(ma.classList.contains("on")){ ma.style.visibility = ""; toast("Actul nu s-a salvat — verifică fereastra anexei, apoi Salvează comanda din nou", true); return false; }
+    MM_ACT_K = ""; mmActArata(); return true;
+  } finally { ma.style.visibility = ""; }
+}
+function mmLocRez(){
+  const sc = document.querySelector('#mod-m .mm-s[data-s="5"]'), el = $("mm-loc-rez"); if(!sc || !el) return;
+  const v = id => String(($(id) || {}).value || "").trim(), alte = ["mm-ls", "mm-svl"].some(i => $(i) && $(i).style.display !== "none");
+  const strans = !MM_LOC_DESF && !!v("mm-anexa") && !!(v("mm-loc") || v("mm-sat")) && !alte;
+  sc.classList.toggle("strans", strans); el.style.display = strans ? "" : "none"; if(!strans) return;
+  const adr = [v("mm-jud"), v("mm-loc")].filter(Boolean).join(" ") + (v("mm-sat") ? " – " + v("mm-sat") : ""), resp = [v("mm-pers"), v("mm-tel")].filter(Boolean).join(" · ");
+  const t = `📍 <b>${esc(adr)}</b>${resp ? `<br><span class="muted">👤 ${esc(resp)}</span>` : ""} <span style="float:right;color:var(--acc);font-weight:600">✏ modifică</span>`;
+  if(el.dataset.t !== t){ el.dataset.t = t; el.innerHTML = t; }
+}
 function mmPasiOk(){
   const v = id => { const e = $(id); return e ? String(e.value || "").trim() : ""; };
   const ext = typeof mmExterior === "function" && mmExterior(), tip = v("mm-tip");
@@ -5359,7 +5442,8 @@ function mmPasiOk(){
     3: !!(tip && v("mm-data")),
     4: !!(Math.abs(+v("mm-buc") || 0) > 0 && v("mm-prod")),
     5: !!(v("mm-loc") || v("mm-sat") || svl),
-    6: !!(v("mm-frecv") || evSv || /RIDICARE|REDUCERE|-R$/.test(tip))
+    6: !!(v("mm-frecv") || evSv || /RIDICARE|REDUCERE|-R$/.test(tip)),
+    7: !!(v("mm-anexa") || ext || (svl && true))
   };
 }
 // ── v7.98 (cerut de Ovidiu, 07.11): gestiunea PROPUSĂ din contract (ex. „1314 HD” → HUNEDOARA), se poate schimba
@@ -5519,6 +5603,7 @@ async function mmModifSalveaza(){
 function mmPasi(){
   const m = $("mod-m"); if(!m || !m.classList.contains("on")) return;
   mmCaz(); if(!$("mm-contract").value) mmGestPropune(); mmModifArata();   // v7.99
+  try{ mmTipPills(); mmActArata(); mmLocRez(); }catch(e){ console.warn("v9.61:", e); }
   const ok = mmPasiOk(); let tot = true;
   m.querySelectorAll(".mm-s").forEach(sc => { const n = +sc.dataset.s;
     sc.classList.toggle("gata", !!ok[n]); sc.classList.toggle("asteapta", !tot); if(!ok[n]) tot = false; });
@@ -5691,6 +5776,7 @@ async function saveMiscare(genereaza, fortat){
   return saveMiscareBaza(genereaza);
 }
 async function saveMiscareBaza(genereaza){
+  if(!(await mmActInainte())) return false;   // v9.61: actul -S / -R din fișă se face întâi, apoi comanda
   const tip=$("mm-tip").value; let buc=Math.abs(+$("mm-buc").value||0); if(!buc){toast("Introdu numărul de bucăți",true);return false;}
   { const aid = +$("mm-anexa").value || null;   // v6.68
     if(FARA_ACT(tip) && aid && !mmExterior() && lipsaFinal(aid)){
