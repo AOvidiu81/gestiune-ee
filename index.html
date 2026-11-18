@@ -1116,7 +1116,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
   <span id="rz-w"><button id="rz-reset" class="pictograma" title="Lățimi implicite — pune coloanele din tabelele acestei file înapoi cum erau">↺ Reset layout</button><i class="rz-sep">|</i></span>
   <span id="tz-w" title="Mărimea tabelului (doar tabelul, restul rămâne la fel), din 5 în 5%. Merge și cu Ctrl + rotița mausului, Ctrl + / Ctrl − / Ctrl 0. Dublu clic pe procent = scrii tu valoarea."><button class="pictograma" onclick="tzPas(-1)" aria-label="Micșorează tabelul">−</button><b id="tz-v" ondblclick="tzScrie()" title="Dublu clic = scrii mărimea (ex. 87), Enter">100%</b><input id="tz-in" type="number" min="30" max="300" step="5" style="display:none"><button class="pictograma" onclick="tzPas(1)" aria-label="Mărește tabelul">+</button></span>
-  <span class="ver">v9.57</span>
+  <span class="ver">v9.58</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -1667,7 +1667,15 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   .mm-carduri .mm-grup:first-child{margin-top:0}
   .mm-carduri .mm-grbox{display:grid;gap:6px;border:1.5px solid #c9d3e6;border-radius:12px;padding:8px 9px 9px;background:rgba(27,37,80,.03)}
   :root[data-tema="inchis"] .mm-carduri .mm-grbox{border-color:var(--bd);background:transparent}
-  .mm-carduri .mm-grbox .mm-grup{margin:0 2px 1px;font-weight:700;color:var(--g)}
+  .mm-carduri .mm-grbox .mm-grup{display:none}
+  .mm-carduri details.mm-grbox{padding:0;gap:0}.mm-carduri details.mm-grbox[open]{padding:0 9px 9px;gap:6px}
+  .mm-carduri details.mm-grbox>summary{list-style:none;cursor:pointer;display:flex;align-items:center;gap:10px;padding:10px 12px;font-size:13px;user-select:none}
+  .mm-carduri details.mm-grbox>summary::-webkit-details-marker{display:none}
+  .mm-carduri details.mm-grbox[open]>summary{padding:10px 3px 4px}
+  .mm-carduri details.mm-grbox .sg{display:inline-block;width:14px;color:var(--g);transition:transform .15s}.mm-carduri details.mm-grbox[open] .sg{transform:rotate(90deg)}
+  .mm-carduri details.mm-grbox .tt{font-weight:700;color:var(--g);flex:1;min-width:0}.mm-carduri details.mm-grbox .mi{font-size:11px;color:var(--mut);white-space:nowrap}
+  .mm-carduri details.mm-grbox.rid>summary .tt{color:var(--mut);font-weight:600}
+  .mm-carduri details.mm-grbox>summary:hover{background:rgba(27,37,80,.05);border-radius:11px}
   .mm-card{display:grid;grid-template-columns:minmax(150px,1fr) minmax(160px,1.5fr) minmax(150px,1.3fr) minmax(110px,1fr) minmax(130px,1.2fr);gap:4px 14px;align-items:center}
   .mm-card .nou{font-size:10px;color:var(--acc);margin-left:6px;font-weight:700}
   @media (max-width:760px){ .mm-card{display:block} }
@@ -4039,19 +4047,25 @@ function mmCarduri(){
     const pret = +a.pret ? "Preț: " + (+a.pret).toFixed(2).replace(".", ",") + " " + mon + " + TVA / zi / buc" + (+a.transport ? " · transport " + (+a.transport).toFixed(2).replace(".", ",") + " " + mon : "") : "";
     const zileP = [...new Set(pct.map(x => x.ziua).filter(Boolean))].join(", ");
     const serv = pct.length ? "Pe rută: " + [zileP, trasee].filter(Boolean).join(" · ") : "";   // v5.91: din Puncte de rută
-    return { g: b0.id, h: grupH, c: `<div class="mm-card${rid ? " rid" : ""}" data-id="${a.id}" onclick="mmCardAlege(${a.id})" title="Alege această anexă">` +
+    return { g: b0.id, id: a.id, h: grupH, c: `<div class="mm-card${rid ? " rid" : ""}" data-id="${a.id}" onclick="mmCardAlege(${a.id})" title="Alege această anexă">` +
       `<div><span class="an">${esc(a.anexa || "(fără număr)")}</span><span class="ct">${esc(fmtD(d(a)))}${rid ? " · ridicată" : ""}</span>${cap && lista.filter(x => baza(x).id === b0.id).length > 1 ? '<span class="nou">ULTIMA</span>' : ""}</div>` +
       `<div>${esc(loc)}</div><div>${esc(prod)}${pret ? `<div class="mu">${esc(pret)}</div>` : ""}</div>` +
       `<div class="mu">${esc(cont)}</div>` + (anxServText(a.id) ? `<div class="mu" title="${esc("Frecvența pe anexă (istoric):\n" + anxServIstoric(a.id))}">${esc(anxServText(a.id))}</div>` : "") + `<div class="mu">${esc(serv)}</div></div>` };   // v8.00
   });
   // v9.56 (cerut de Ovidiu, 18.11): fiecare locație (anexa + -S / -R ale ei) într-un chenar
-  const _g = []; _it.forEach(x => { if(!_g.length || _g[_g.length - 1].g !== x.g) _g.push({ g: x.g, h: x.h, c: [] }); _g[_g.length - 1].c.push(x.c); });
-  box.innerHTML = _g.map(x => '<div class="mm-grbox">' + x.h + x.c.join("") + "</div>").join("");
+  // v9.58 (cerut de Ovidiu, 18.11): chenarul se strânge — se vede doar „ANEXA NR 50 · VINTU DE JOS – JUD AB [ PENNY VINTU ]”; clic = se desface
+  const _g = []; _it.forEach(x => { if(!_g.length || _g[_g.length - 1].g !== x.g) _g.push({ g: x.g, c: [], ids: [] }); _g[_g.length - 1].c.push(x.c); _g[_g.length - 1].ids.push(x.id); });
+  box.innerHTML = _g.map(x => { const b0 = ANX.find(q => q.id === x.g) || {}, rep = (String(b0.sat || "").match(/\[[^\]]*\]/) || [""])[0];
+    const toateRid = x.ids.every(i => { const q = ANX.find(z => z.id === i); return q && !anexaActiva(q); });
+    const titlu = (b0.anexa || "(fără număr)") + " · " + [b0.loc, b0.jud ? "JUD " + b0.jud : ""].filter(Boolean).join(" – ") + (rep ? " " + rep : "");
+    return `<details class="mm-grbox${toateRid ? " rid" : ""}" data-g="${x.g}"${MM_GR_DESCHIS.has(x.g) ? " open" : ""} ontoggle="if(this.open)MM_GR_DESCHIS.add(${x.g});else MM_GR_DESCHIS.delete(${x.g})"><summary><span class="sg">▸</span><span class="tt">${esc(titlu)}</span>` +
+      `<span class="mi">${x.c.length > 1 ? x.c.length + " anexe · " : ""}CTR ${esc(nr(b0.contract_id))}${toateRid ? " · ridicată" : ""}</span></summary>` + x.c.join("") + "</details>"; }).join("");
   mmCarduriSel();
 }
+let MM_GR_DESCHIS = new Set();   // v9.58: chenarele de locație desfăcute (rămân așa cât lucrezi în fereastră)
 function mmCarduriSel(){
   const v = $("mm-anexa").value;
-  document.querySelectorAll("#mm-carduri .mm-card").forEach(e => e.classList.toggle("sel", e.dataset.id === v));
+  document.querySelectorAll("#mm-carduri .mm-card").forEach(e => { const s = e.dataset.id === v; e.classList.toggle("sel", s); if(s){ const d = e.closest("details"); if(d && !d.open){ d.open = true; MM_GR_DESCHIS.add(+d.dataset.g); } } });
 }
 function mmCardAlege(id){ mmAnexaAlege(id); $("mm-anexa").onchange(); }
 // v4.78 (hotărât de Ovidiu, 08.10): contract pe depozit secundar = comandă din exterior = client exterior.
