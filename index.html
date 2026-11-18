@@ -1116,7 +1116,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
   <span id="rz-w"><button id="rz-reset" class="pictograma" title="Lățimi implicite — pune coloanele din tabelele acestei file înapoi cum erau">↺ Reset layout</button><i class="rz-sep">|</i></span>
   <span id="tz-w" title="Mărimea tabelului (doar tabelul, restul rămâne la fel), din 5 în 5%. Merge și cu Ctrl + rotița mausului, Ctrl + / Ctrl − / Ctrl 0. Dublu clic pe procent = scrii tu valoarea."><button class="pictograma" onclick="tzPas(-1)" aria-label="Micșorează tabelul">−</button><b id="tz-v" ondblclick="tzScrie()" title="Dublu clic = scrii mărimea (ex. 87), Enter">100%</b><input id="tz-in" type="number" min="30" max="300" step="5" style="display:none"><button class="pictograma" onclick="tzPas(1)" aria-label="Mărește tabelul">+</button></span>
-  <span class="ver">v9.36</span>
+  <span class="ver">v9.37</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -6746,7 +6746,16 @@ function feFereastra(m, inchide){
 // catalogul de ofertă (nume, dotări, text „Avantaje”, poză, preț de listă — tabela `oferta_catalog`) și PDF-ul cu antetul firmei (fără diacritice).
 // Oferta NU atinge nicio anexă: când e ✔ acceptată, „📋 Fișă” deschide fișa „Date contract” cu secțiunea „Din oferta acceptată” completată,
 // iar prețurile ajung pe anexa făcută din fișă (ca la v8.82). Oferta de eveniment (cu calculul de transport) = etapa 2.
-const OF = { L: [], C: [], poze: {}, url: null, blob: null, fisier: "" };
+const OF = { L: [], C: [], S: {}, poze: {}, url: null, blob: null, fisier: "" };
+// v9.37: prețul de referință la transport (lei / km, un drum), ținut în setari_oferta — îl schimbă administratorul când se schimbă motorina
+const OF_TR_REF = [["transport_35t", "Mașini 3,5 t (și cu remorcă)", ["MASINA 3,5 T", "MASINA CU REMORCA"]], ["transport_mare", "Camioane (și cu remorcă)", ["CAMION", "CAMION CU REMORCA"]]];
+async function ofSetLoad(){ const r = await db.from("setari_oferta").select("*"); if(!r.error){ OF.S = {}; (r.data || []).forEach(x => { OF.S[x.cheie] = x; }); } }
+function ofTrRef(veh){ const g = OF_TR_REF.find(x => x[2].includes(veh)), x = g && OF.S[g[0]]; return x && x.valoare != null ? { v: +x.valoare, cheie: g[0], et: g[1], zi: x.actualizat } : null; }
+function ofEvPkmRef(seteaza){   // sub „Preț / km”: referința vehiculului ales; la schimbarea vehiculului prețul se ia din referință
+  const veh = $("ev-veh").value, r = ofTrRef(veh), el = $("ev-pkm-ref"), pk = $("ev-pkm");
+  if(seteaza) pk.value = r ? r.v : (OF_VEH.find(x => x[0] === veh) || [0, ""])[1];
+  if(el) el.innerHTML = r ? `Referință: <b>${ftBani(r.v)} lei / km</b>${+pk.value !== r.v ? ` · <a href="#" onclick="$('ev-pkm').value=${r.v};ofEvPkmRef();ofEvSuma();return false">folosește</a>` : " ✓"} · <a href="#" onclick="ofCatalog();return false" title="Prețurile de referință se schimbă în Catalogul de ofertă">schimbă</a>` : '<span class="muted">fără preț de referință</span>';
+}
 const OF_TVA = 0.21;
 const OF_ST = { ciorna: ["ciornă", "#6b7280"], trimisa: ["trimisă", "#1a5fb4"], acceptata: ["✔ acceptată", "#2E8B3C"], respinsa: ["respinsă", "#C0392B"] };
 const OF_SEMN = [["Anitoiu OVIDIU", "Area Sales Manager", "0735 214 762"], ["Anitoiu ANA-MARIA", "Regional Manager", "0735 214 751"]];
@@ -6769,7 +6778,7 @@ async function ofLoad(){
   const [a, c] = await Promise.all([db.from("oferte").select("*").order("an", { ascending: false }).order("nr", { ascending: false }).limit(400),
     db.from("oferta_catalog").select("id,cheie,nume,produs,tip,um,pret,pret_ev,igienizare,dotari,descriere,activ,ordine").order("ordine")]);
   const er = a.error || c.error; if(er){ $("of-card").innerHTML = '<p class="muted" style="margin:0">Ofertele nu s-au putut încărca: ' + esc(er.message || "") + "</p>"; return; }
-  OF.L = a.data || []; OF.C = c.data || []; ofRender();
+  OF.L = a.data || []; OF.C = c.data || []; ofRender(); ofSetLoad();
 }
 function ofRender(){
   const el = $("of-card"); if(!el) return;
@@ -7049,10 +7058,23 @@ async function ofCatalog(){
   const w = document.createElement("div"); w.className = "modal on"; w.id = "mod-ofc";
   w.innerHTML = `<div class="box" style="max-width:900px"><h3 class="lux-cap cap-mut">📚 Catalog de ofertă</h3>
     <p class="muted" style="margin:6px 0 10px">Ce scrie în ofertă despre fiecare produs. „Produs / Tip” leagă produsul de cele din aplicație (ca să treacă în fișa „Date contract” când oferta e acceptată).</p>
+    <div id="ofc-tr" style="border:1px solid var(--bd);border-radius:10px;padding:10px 12px;margin-bottom:12px"></div>
     <div id="ofc-l"><p class="muted">Se încarcă…</p></div>
     <div class="row" style="margin-top:10px"><div style="flex:0"><button class="btn sec" onclick="ofCatEd(0)">+ Produs nou în catalog</button></div><div style="flex:1"></div><div style="flex:0"><button class="btn" onclick="this.closest('.modal').remove()">Gata</button></div></div></div>`;
   document.body.appendChild(w); feFereastra(w);
-  await ofPozeIa(OF.C.map(c => c.cheie)); ofCatLista();
+  await ofSetLoad(); ofCatTr(); await ofPozeIa(OF.C.map(c => c.cheie)); ofCatLista();
+}
+function ofCatTr(){   // v9.37: prețul de referință la transport — lei / km pe un drum; se schimbă când se schimbă prețul motorinei
+  const el = $("ofc-tr"); if(!el) return;
+  el.innerHTML = `<b>🚚 Preț de referință la transport</b> <span class="muted" style="font-size:12px">— lei / km pe un drum; în oferta de eveniment se pune singur la „Preț / km”, după vehicul. Îl schimbi când se schimbă motorina (doar administratorul).</span>
+    <div class="row" style="margin-top:8px;gap:12px;flex-wrap:wrap;align-items:flex-end">${OF_TR_REF.map(([k, et, V]) => { const x = OF.S[k] || {};
+      return `<div style="flex:1;min-width:220px"><label>${esc(et)}</label><input id="ofc-tr-${k}" type="number" step="0.01" min="0" value="${x.valoare != null ? x.valoare : ""}"><div class="muted" style="font-size:11.5px;margin-top:3px">${esc(V.join(", "))}${x.actualizat ? " · schimbat " + fmtD(String(x.actualizat).slice(0, 10)) : ""}</div></div>`; }).join("")}
+      <div style="flex:0"><button class="btn" onclick="ofCatTrSalv()">💾 Salvează prețurile</button></div></div>`;
+}
+async function ofCatTrSalv(){
+  const R = []; for(const [k, et] of OF_TR_REF){ const v = $("ofc-tr-" + k).value.trim(); if(v === "" || !(+v > 0)){ toast("Pune un preț bun la „" + et + "”", true); return; } R.push({ cheie: k, eticheta: et + " — lei / km", valoare: Math.round(+v * 100) / 100, actualizat: new Date().toISOString() }); }
+  const { error } = await db.from("setari_oferta").upsert(R); if(error){ toast("Nu s-a salvat (doar administratorul poate schimba prețurile): " + error.message, true); return; }
+  await ofSetLoad(); ofCatTr(); toast("Prețurile de referință s-au salvat"); if($("ev-pkm-ref")) ofEvPkmRef();
 }
 function ofCatLista(){
   const el = $("ofc-l"); if(!el) return;
@@ -7227,9 +7249,9 @@ function ofEvForm(id, copie){
       <div id="ev-curs-w" class="g" style="margin-top:12px"><div><label>Curs EUR (lei) — pentru prețurile în EUR</label><div class="dt"><input id="ev-curs" type="number" step="0.0001" min="0" value="${esc(k.curs != null ? k.curs : ofEvCursImplicit())}" data-zi="${esc(k.curs != null ? (k.curs_data || "") : "")}" oninput="this.dataset.zi='';try{localStorage.setItem('ev-curs',this.value)}catch(e){};ofEvCursInfo();ofEvSuma()"><button type="button" class="btn sec" onclick="ofEvCursBnr(true)" title="Ia cursul BNR al zilei de pe bnr.ro">↻ BNR</button></div></div><div class="muted" id="ev-curs-i" style="align-self:end;font-size:12px"></div></div></div>
     <div class="evc" id="evs5">${cap(5, "Transport și alte costuri", "calcul intern — nu apare în ofertă")}
       <div class="sub p">Transport (amplasare + ridicare)</div>
-      <div class="g"><div><label>Vehicul</label><select id="ev-veh" onchange="$('ev-pkm').value=(OF_VEH.find(x=>x[0]===this.value)||[0,''])[1];ofEvSuma()">${OF_VEH.map(x => `<option ${x[0] === nv(c.veh, "MASINA CU REMORCA") ? "selected" : ""}>${x[0]}</option>`).join("")}</select></div>
+      <div class="g"><div><label>Vehicul</label><select id="ev-veh" onchange="ofEvPkmRef(true);ofEvSuma()">${OF_VEH.map(x => `<option ${x[0] === nv(c.veh, "MASINA CU REMORCA") ? "selected" : ""}>${x[0]}</option>`).join("")}</select></div>
         <div><label>Distanța depozit → locație (km, un drum)</label><input id="ev-km" type="number" min="0" value="${nv(c.km, "")}" placeholder="🧭 sau de mână" oninput="$('ev-kmc').value=this.value"></div>
-        <div><label>Preț / km (lei)</label><input id="ev-pkm" type="number" step="0.01" min="0" value="${nv(c.pkm, 3.5)}"></div>
+        <div><label>Preț / km (lei)</label><input id="ev-pkm" type="number" step="0.01" min="0" value="${nv(c.pkm, (ofTrRef(nv(c.veh, "MASINA CU REMORCA")) || { v: 3.5 }).v)}" oninput="ofEvPkmRef()"><div id="ev-pkm-ref" style="font-size:11.5px;margin-top:4px"></div></div>
         <div class="dt"><div style="flex:1"><label title="dus + întors la amplasare, dus + întors la ridicare">Curse</label><input id="ev-curse" type="number" min="0" value="${nv(c.curse, 4)}"></div><div style="flex:1"><label>Nr. mașini</label><input id="ev-mas" type="number" min="0" value="${nv(c.masini, 1)}"></div></div></div>
       <div class="sub">Curse de servisare <em>— 2 curse pe fiecare zi bifată · km vin din distanță, îi poți schimba</em></div>
       <div class="g"><div><label>Km pe cursă</label><input id="ev-svkm" type="number" min="0" value="${nv(c.sv_km, "")}" ${c.sv_km != null && c.sv_km !== c.km ? 'data-atins="1"' : ""} oninput="this.dataset.atins=1" placeholder="= distanța (0 = rămân pe loc)"></div>
@@ -7264,6 +7286,7 @@ function ofEvForm(id, copie){
     let t0 = 0; if(window.ResizeObserver) new ResizeObserver(() => { clearTimeout(t0); t0 = setTimeout(() => { if(!bx.isConnected || bx.classList.contains("fe-max")) return;
       try{ localStorage.setItem("ev-box", JSON.stringify({ w: Math.round(bx.offsetWidth), h: bx.style.height ? Math.round(bx.offsetHeight) : 0 })); }catch(e){} }, 400); }).observe(bx); }
   w.addEventListener("input", ofEvSuma); w.addEventListener("change", ofEvSuma); ofEvZile(k.servisari || []);
+  ofEvPkmRef(); if(!Object.keys(OF.S).length) ofSetLoad().then(() => { if($("ev-pkm-ref")) ofEvPkmRef(); });
   ["ev-jud", "ev-loc", "ev-sat", "ev-lat", "ev-lon", "ev-dep"].forEach(i => $(i).addEventListener("input", () => { delete $("ev-kmb").dataset.url; }));   // locul s-a schimbat → linkul vechi de drum nu mai e bun
   locAuto("ev-jud", "ev-loc", "ev-sat"); satAuto("ev-jud", "ev-loc", "ev-sat");   // v8.92: aceleași propuneri ca la Comandă nouă
 }
