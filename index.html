@@ -1116,7 +1116,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
   <span id="rz-w"><button id="rz-reset" class="pictograma" title="Lățimi implicite — pune coloanele din tabelele acestei file înapoi cum erau">↺ Reset layout</button><i class="rz-sep">|</i></span>
   <span id="tz-w" title="Mărimea tabelului (doar tabelul, restul rămâne la fel), din 5 în 5%. Merge și cu Ctrl + rotița mausului, Ctrl + / Ctrl − / Ctrl 0. Dublu clic pe procent = scrii tu valoarea."><button class="pictograma" onclick="tzPas(-1)" aria-label="Micșorează tabelul">−</button><b id="tz-v" ondblclick="tzScrie()" title="Dublu clic = scrii mărimea (ex. 87), Enter">100%</b><input id="tz-in" type="number" min="30" max="300" step="5" style="display:none"><button class="pictograma" onclick="tzPas(1)" aria-label="Mărește tabelul">+</button></span>
-  <span class="ver">v9.40</span>
+  <span class="ver">v9.41</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -1136,6 +1136,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <button data-p="admin" data-a="clients" data-h="puncte">Puncte de rută</button>
   <button data-p="rute">Monitorizare rute</button>
   <button data-p="raportrute">Verificare rute șoferi</button>
+  <button data-p="lipsaacces" data-h="lipsa-acces">Lipsă acces</button><!-- v9.41 (cerut de Ovidiu, 18.11): dovezile de lipsă acces trimise din aplicația de rută -->
   <button data-p="inceput" data-h="inceputul-zilei" style="display:none">Începutul zilei</button><!-- v5.36: unit în Raport foi parcurs -->
   <button data-p="angajati" data-h="angajati">Angajați</button><!-- v8.58: registrul angajaților (sursa unică) + pontaj -->
   <button data-p="flota" data-h="flota">Flotă</button><!-- v8.58: registrul flotei: acte, alimentări, consum -->
@@ -1302,6 +1303,21 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
     </div>
   </div>
   <div class="card" id="of-card"></div>
+</section>
+
+<!-- ================= LIPSĂ ACCES (v9.41) ================= -->
+<section class="page" id="p-lipsaacces">
+  <div class="card noprint">
+    <div class="row" style="align-items:flex-end;flex-wrap:wrap;gap:10px">
+      <div style="flex:0;min-width:150px"><label>Luna</label><select id="lag-luna" onchange="lagLoad()"></select></div>
+      <div style="flex:1;min-width:200px"><label>Caută</label><input id="lag-q" placeholder="client, localitate, observații…" oninput="lagRender()"></div>
+      <div style="flex:0;min-width:170px"><label>Șofer</label><select id="lag-sof" onchange="lagRender()"><option value="">toți</option></select></div>
+      <div style="flex:0;min-width:150px"><label>Contract</label><select id="lag-ctr" onchange="lagRender()"><option value="">toate</option></select></div>
+      <div style="flex:0"><button class="btn sec" onclick="lagLoad()">↻ Reîncarcă</button></div>
+    </div>
+    <p class="muted" style="margin:8px 0 0">Dovezile trimise de șoferi din aplicația de rută la „Lipsă acces” (poze + date + GPS). 📄 deschide fișa PDF (pe GPS apeși → Google Maps), 🖼 arată pozele. Fișierele stau 6 luni în bază, apoi se arhivează în Drive.</p>
+  </div>
+  <div class="card" id="lag-card"><p class="muted">Se încarcă…</p></div>
 </section>
 
 <!-- ================= CALENDAR (v8.41) ================= -->
@@ -2808,6 +2824,7 @@ document.querySelectorAll("nav button").forEach(b=>b.onclick=(ev)=>{
   if(b.dataset.p==="admin"){ if(b.dataset.a) $("a-tabel").value = b.dataset.a; else if($("a-tabel").value === "clients") $("a-tabel").value = "soferi"; adminSchimba(); }   // v5.35: Puncte de rută doar în fila lor
   if(b.dataset.p==="verificare") loadVerif();
   if(b.dataset.p==="oferte") ofLoad();   // v8.85: meniul Oferte
+  if(b.dataset.p==="lipsaacces") lagLoad();   // v9.41
   if(b.dataset.p==="fise") cdLoad();   // v8.27: pagina proprie a fișelor
   if(b.dataset.p==="calendar"){ KAL_M = {}; KAL_C = {}; kalArata(); }   // v8.41 / v8.42: comenzile se reîncarcă la fiecare deschidere
   if(b.dataset.p==="pv"){ pvMod(b.dataset.v || "pv"); loadPV(); }
@@ -2818,6 +2835,62 @@ document.querySelectorAll("nav button").forEach(b=>b.onclick=(ev)=>{
   if(b.dataset.p==="foi") loadFP(true);   // v6.51: mereu proaspăt (rutele se finalizează între timp)
   try{ history.replaceState(null,"","#"+(b.dataset.h||b.dataset.p)); }catch(e){}
 });
+
+// ================= v9.41 (cerut de Ovidiu, 18.11): LIPSĂ ACCES — dovezile din aplicația de rută =================
+// Tabelul lipsa_acces (RLS: administratorul vede tot) + fișierele din stocarea „lipsa-acces” (poze[0] = fișa PDF, apoi pozele simple).
+// Fișierele se deschid cu linkuri semnate de 10 minute. Arhivarea în Drive (6 luni) vine în etapa 3.
+const LAG = { L: [] };
+const LAG_LUNI = ["Ianuarie","Februarie","Martie","Aprilie","Mai","Iunie","Iulie","August","Septembrie","Octombrie","Noiembrie","Decembrie"];
+function lagLuni(){ const s = $("lag-luna"); if(!s || s.options.length) return; const a = new Date(), o = [];
+  for(let i = 0; i < 12; i++){ const d = new Date(a.getFullYear(), a.getMonth() - i, 1); o.push(`<option value="${d.getFullYear()}-${zi2(d.getMonth() + 1)}">${LAG_LUNI[d.getMonth()]} ${d.getFullYear()}</option>`); }
+  s.innerHTML = o.join("") + '<option value="">toate lunile</option>'; }
+async function lagLoad(){
+  lagLuni(); const el = $("lag-card"); if(!el) return; el.innerHTML = '<p class="muted">Se încarcă…</p>';
+  const v = $("lag-luna").value; let q = db.from("lipsa_acces").select("*").order("creat", { ascending: false }).limit(2000);
+  if(v){ const [y, m] = v.split("-").map(Number), de = new Date(y, m - 1, 1), pana = new Date(y, m, 1); q = q.gte("creat", de.toISOString()).lt("creat", pana.toISOString()); }
+  const { data, error } = await q; if(error){ el.innerHTML = '<p class="muted">Nu s-au putut încărca: ' + esc(error.message) + "</p>"; return; }
+  LAG.L = data || [];
+  const opt = (id, L, gol) => { const s = $(id), cur = s.value; s.innerHTML = `<option value="">${gol}</option>` + [...new Set(L.filter(Boolean))].sort().map(x => `<option ${x === cur ? "selected" : ""}>${esc(x)}</option>`).join(""); };
+  opt("lag-sof", LAG.L.map(r => r.sofer), "toți"); opt("lag-ctr", LAG.L.map(r => r.contract), "toate");
+  lagRender();
+}
+function lagZiOra(t){ const d = new Date(t), Z = ["DUM.","LUN.","MAR.","MIE.","JOI","VIN.","SÂM."];
+  return { zi: `<span style="display:inline-block;min-width:38px;font-weight:600">${Z[d.getDay()]}</span>- ${zi2(d.getDate())}.${zi2(d.getMonth() + 1)}.${d.getFullYear()}`, ora: zi2(d.getHours()) + ":" + zi2(d.getMinutes()) }; }
+function lagRender(){
+  const el = $("lag-card"); if(!el) return;
+  const q = faraDiac(($("lag-q").value || "").toLowerCase().trim()), sf = $("lag-sof").value, ct = $("lag-ctr").value;
+  const L = LAG.L.filter(r => (!sf || r.sofer === sf) && (!ct || r.contract === ct) && (!q || faraDiac([r.client, r.localitate, r.locatie, r.observatii, (r.motive || []).join(" "), r.client_key].join(" ").toLowerCase()).includes(q)));
+  if(!L.length){ el.innerHTML = '<p class="muted" style="margin:0">Nicio lipsă de acces' + (LAG.L.length ? " pentru filtrele alese." : " în perioada aleasă.") + "</p>"; return; }
+  el.innerHTML = `<div class="muted" style="margin-bottom:8px">${L.length} ${L.length === 1 ? "lipsă de acces" : "lipsuri de acces"}</div><div style="overflow:auto"><table><tr><th>Data</th><th>Ora</th><th>Client / locație</th><th>Șofer · mașină</th><th>Contract</th><th>Motiv</th><th>Observații</th><th>GPS</th><th>Dovada</th><th></th></tr>` +
+    L.map(r => { const t = lagZiOra(r.creat), nf = (r.poze || []).length, ar = !!r.arhivat_la;
+      return `<tr><td style="white-space:nowrap">${t.zi}</td><td>${t.ora}</td>
+        <td><b>${esc(r.client || "")}</b><div class="muted" style="font-size:12px">${esc([r.localitate, r.jud].filter(Boolean).join(" · "))}${r.locatie ? " — " + esc(r.locatie) : ""}</div></td>
+        <td>${esc(r.sofer || "")}${r.sofer2 ? " + " + esc(r.sofer2) : ""}<div class="muted" style="font-size:12px">${esc([r.masina, r.traseu, r.ziua].filter(Boolean).join(" · "))}</div></td>
+        <td>${esc(r.contract || "—")}</td><td style="color:#b42318;font-size:13px">${esc((r.motive || []).join(", ") || "—")}</td>
+        <td style="font-size:13px;max-width:260px">${esc(r.observatii || "")}</td>
+        <td style="white-space:nowrap">${r.lat != null ? `<a href="https://maps.google.com/?q=${r.lat},${r.lon}" target="_blank" rel="noopener">📍 hartă</a><div class="muted" style="font-size:12px">±${Math.round(r.gps_acc || 0)} m${r.dist_m != null ? " · " + r.dist_m + " m de punct" : ""}</div>` : "—"}</td>
+        <td style="white-space:nowrap">${ar ? `<span class="muted" title="${esc(r.arhiva_cale || "")}">în Drive</span>` : nf ? `<button class="btn sm sec" onclick="lagFisa(${r.id})" title="Fișa PDF">📄</button> ${nf > 1 ? `<button class="btn sm sec" onclick="lagPoze(${r.id})" title="Pozele">🖼 ${nf - 1}</button>` : ""}` : "—"}</td>
+        <td><button class="btn sm sec" onclick="lagSterge(${r.id})" title="Șterge (cu fișierele) — ex. probele">🗑</button></td></tr>`; }).join("") + "</table></div>";
+}
+async function lagUrl(cale){ const { data, error } = await db.storage.from("lipsa-acces").createSignedUrl(cale, 600); if(error){ toast(error.message, true); return null; } return data.signedUrl; }
+async function lagFisa(id){ const r = LAG.L.find(x => x.id === id); if(!r || !(r.poze || []).length) return; const w = window.open("", "_blank"); const u = await lagUrl(r.poze[0]); if(u){ if(w) w.location = u; else window.open(u, "_blank"); } else if(w) w.close(); }
+async function lagPoze(id){
+  const r = LAG.L.find(x => x.id === id); if(!r) return; const P = (r.poze || []).slice(1);
+  document.getElementById("mod-lag")?.remove(); const w = document.createElement("div"); w.className = "modal on"; w.id = "mod-lag";
+  w.innerHTML = `<div class="box" style="max-width:1100px"><h3 class="lux-cap cap-mut">🖼 ${esc(r.client || "")} — ${lagZiOra(r.creat).zi.replace(/<[^>]+>/g, "")}, ora ${lagZiOra(r.creat).ora}</h3>
+    <div id="lag-poze" style="display:flex;flex-wrap:wrap;gap:10px;margin:10px 0"><p class="muted">Se încarcă…</p></div>
+    <div class="row" style="justify-content:flex-end"><div style="flex:0"><button class="btn sec" onclick="lagFisa(${id})">📄 Fișa PDF</button></div><div style="flex:0"><button class="btn" onclick="this.closest('.modal').remove()">Închide</button></div></div></div>`;
+  document.body.appendChild(w); if(typeof feFereastra === "function") feFereastra(w);
+  const U = []; for(const c of P) U.push(await lagUrl(c));
+  $("lag-poze").innerHTML = U.filter(Boolean).map((u, i) => `<a href="${u}" target="_blank" rel="noopener" title="Poza ${i + 1} — clic = mărime reală"><img src="${u}" alt="" style="max-height:420px;max-width:100%;border-radius:10px;border:1px solid var(--bd)"></a>`).join("") || '<p class="muted">Fără poze.</p>';
+}
+async function lagSterge(id){
+  const r = LAG.L.find(x => x.id === id); if(!r) return;
+  if(!confirm(`Ștergi lipsa de acces de la „${r.client}” (${lagZiOra(r.creat).ora}) cu fișa și pozele ei?\nNu se mai poate recupera.`)) return;
+  if((r.poze || []).length){ const { error } = await db.storage.from("lipsa-acces").remove(r.poze); if(error){ toast("Fișierele nu s-au șters: " + error.message, true); return; } }
+  const { error } = await db.from("lipsa_acces").delete().eq("id", id); if(error){ toast(error.message, true); return; }
+  toast("Șters"); lagLoad();
+}
 
 // ================= INIT =================
 async function init(){
