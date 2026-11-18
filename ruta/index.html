@@ -554,6 +554,26 @@
 .ctr-pop{display:none;margin:8px 0 2px;background:#1b2550;color:#fff;border-radius:10px;padding:8px 12px;font-size:.85rem;line-height:1.55}
 .ctr-pop.on{display:block}
 .ctr-pop a{color:#9fd0ff;font-weight:700;text-decoration:none}
+/* v45: Lipsă acces — dovadă cu poză (test, doar pentru angajații bifați în GestiuneEE) */
+#laPage{position:fixed;inset:0;z-index:9999;background:#f3f5f9;color:#1a2233;overflow:auto;-webkit-overflow-scrolling:touch;font-size:15px}
+#laPage .la-h{position:sticky;top:0;background:#b45309;color:#fff;padding:12px 14px;display:flex;align-items:center;gap:10px;z-index:2}
+#laPage .la-h b{flex:1;font-size:1.05rem}#laPage .la-x{background:rgba(255,255,255,.2);border-radius:8px;padding:6px 10px;cursor:pointer}
+#laPage .la-b{padding:12px 14px 40px;display:flex;flex-direction:column;gap:12px}
+#laPage .la-card{background:#fff;border:1px solid #dde3ec;border-radius:12px;padding:10px 12px}
+#laPage .la-mut{color:#5b6578;font-size:.82rem}
+#laPage .la-btn{display:block;text-align:center;border-radius:12px;padding:13px 10px;font-weight:700;cursor:pointer;border:1px solid #cfd6e2;background:#fff;color:#1a2233}
+#laPage .la-btn.prim{background:#16a34a;border-color:#16a34a;color:#fff;font-size:1.02rem}
+#laPage .la-btn.cam{background:#1b2550;border-color:#1b2550;color:#fff}
+#laPage .la-btn.dis{opacity:.5;pointer-events:none}
+#laPage .la-chips{display:flex;flex-wrap:wrap;gap:7px}
+#laPage .la-chip{border:1.5px solid #2f5bd3;border-radius:10px;padding:7px 11px;font-size:.85rem;font-weight:600;cursor:pointer;background:#fff}
+#laPage .la-chip.on{background:rgba(47,91,211,.12)}
+#laPage textarea{width:100%;box-sizing:border-box;min-height:70px;border:1px solid #cfd6e2;border-radius:10px;padding:8px 10px;font:inherit}
+#laPage .la-poze{display:flex;gap:8px;flex-wrap:wrap}#laPage .la-poze div{position:relative}
+#laPage .la-poze img{width:140px;height:105px;object-fit:cover;border-radius:8px;display:block}
+#laPage .la-poze span{position:absolute;top:4px;right:4px;background:rgba(0,0,0,.6);color:#fff;border-radius:6px;padding:1px 7px;cursor:pointer}
+#laPage .la-st{font-size:.85rem;padding:8px 10px;border-radius:10px;background:#eef2ff}
+#laPage .la-st.err{background:#fde8e8;color:#9b1c1c}
 </style>
 <script>if(new URLSearchParams(location.search).get('sofer')==='1')document.documentElement.classList.add('ee-deschis');</script>
 <style>
@@ -1088,7 +1108,7 @@ let dayStart = {}; // {brand, plate, kmStart, driver1, driver2, startTime}
 let lastRouteRows = [];
 
 // --- Șofer EE: aplicatia ruleaza in fila „Rută” (../sofer/), care trimite datele zilei ---
-const EE_RUTA_VERSION = 'v44'; // aceeasi cu VERSIUNE din sw.js; Șofer EE o arata langa rotita
+const EE_RUTA_VERSION = 'v45'; // aceeasi cu VERSIUNE din sw.js; Șofer EE o arata langa rotita
 const SOFER_MODE = new URLSearchParams(location.search).get('sofer') === '1';
 let multiZile = null;   // mai multe zile bifate (ruta complementara), altfel null
 let multiTrasee = null; // mai multe trasee bifate, altfel null
@@ -1895,6 +1915,7 @@ listEl.addEventListener('click', (e)=>{
     eeEcranAprins();
     delete cardOverrides[key];
     finalizeCardVisually(key, 700);
+    if(type === 'LA' && TEST_LA && r) laDeschide(r);   // v45: dovada cu poză (test)
   } else if(obsCancel){
     const key = obsCancel.dataset.key;
     if(visitLog[key]) delete visitLog[key]._obsOpen;
@@ -2185,7 +2206,7 @@ async function loadClientsFromSupabase(){
     DATA.length = 0; DATA.push(...newData);
     assignIds(DATA);
     rebuildDataById();
-    ctrIncarca();   // v44
+    ctrIncarca(); laFlagIncarca();   // v44 / v45
     return true;
   }catch(err){
     console.error('Eroare la încărcarea clienților din Supabase:', err);
@@ -3219,6 +3240,131 @@ async function ctrIncarca(){
   try{ const { data, error } = await sb.rpc('ruta_contracte'); if(error || !data) return;
     const n = {}; data.forEach(x => { if(x.client_key) n[x.client_key] = x; }); const avea = Object.keys(CTR).length; CTR = n;
     if(data.length || avea) render(); }catch(e){ console.warn('CTR nu s-a încărcat:', e); }
+}
+// ===== v45 (cerut de Ovidiu, 18.11) — LIPSĂ ACCES cu dovadă: poză cu chenar de date + observații + trimitere pe WhatsApp
+// către agentul contractului. TEST: doar contul bifat în GestiuneEE (Angajați → Salarizare → „test: lipsă acces cu poză”,
+// funcția eu_test_la()). Pozele (max. 2, ~250 KB) merg în stocarea „lipsa-acces”, rândul în tabelul lipsa_acces;
+// mesajul are linkuri semnate (210 zile — pozele se arhivează în Drive după 6 luni). „LA” se înregistrează ca înainte.
+let TEST_LA = false;
+async function laFlagIncarca(){ if(!sb) return; try{ const { data } = await sb.rpc('eu_test_la'); TEST_LA = data === true; }catch(e){} }
+const LA_MOTIVE = ['Poartă închisă', 'Nu e nimeni pe locație', 'Acces blocat (utilaje / mașini)', 'Drum impracticabil', 'Toaleta negăsită / mutată', 'Câine liber', 'Lucrare oprită'];
+const LA_ZILE = ['DUM.', 'LUN.', 'MAR.', 'MIE.', 'JOI', 'VIN.', 'SÂM.'];
+let LA = null;   // { r, poze:[{blob,url}], motive:Set, fix, ctr, id, linkuri }
+function laDataTxt(d){ return LA_ZILE[d.getDay()] + ' ' + pad2(d.getDate()) + '.' + pad2(d.getMonth() + 1) + '.' + d.getFullYear(); }
+function laOraTxt(d){ return pad2(d.getHours()) + ':' + pad2(d.getMinutes()); }
+function laTel(t){ let n = String(t || '').replace(/\D/g, ''); if(n.startsWith('00')) n = n.slice(2); else if(n.startsWith('0')) n = '40' + n.slice(1); return n; }
+async function laDeschide(r){
+  LA = { r, poze: [], motive: new Set(), fix: null, ctr: null, t: new Date() };
+  let el = document.getElementById('laPage'); if(el) el.remove();
+  el = document.createElement('div'); el.id = 'laPage'; document.body.appendChild(el); laDeseneaza();
+  gpsFix(10000, 30000).then(f => { if(!LA || LA.r !== r) return; LA.fix = f && !f.err ? f : { err: (f && f.err) || 'fără GPS' }; laDeseneaza(); });
+  if(sb && r.clientKey) sb.rpc('la_contract', { p_key: r.clientKey }).then(({ data }) => { if(!LA || LA.r !== r) return; LA.ctr = data && data[0] ? data[0] : { contract: '' }; laDeseneaza(); }).catch(() => {});
+}
+function laInchide(){ if(LA) LA.poze.forEach(p => URL.revokeObjectURL(p.url)); LA = null; const el = document.getElementById('laPage'); if(el) el.remove(); }
+function laGpsTxt(){ const f = LA.fix; if(!f) return '📡 caut GPS…'; if(f.err) return '⚠️ ' + f.err;
+  const r = LA.r, d = r.lat && r.lon ? Math.round(gpsDistM(f, { lat: +r.lat, lon: +r.lon })) : null;
+  return `📡 ${f.lat.toFixed(6)}, ${f.lon.toFixed(6)} · ±${Math.round(f.acc)} m${d != null ? ' · la ' + d + ' m de punct' : ''}`; }
+function laDeseneaza(){
+  const el = document.getElementById('laPage'); if(!el || !LA) return; const r = LA.r, c = LA.ctr;
+  const dest = !c ? 'caut agentul contractului…' : !c.contract ? '<span style="color:#9b1c1c">nu găsesc contractul punctului — trimiți ca imagine</span>'
+    : `Contract <b>${escapeHtml(c.contract)}</b>${c.depozit && c.depozit !== c.contract ? ' · DEP. ' + escapeHtml(c.depozit) : ''} → ${c.agent ? '<b>' + escapeHtml(agentScurt(c.agent)) + '</b> · ' : ''}${c.telefon ? '<span style="white-space:nowrap">' + escapeHtml(c.telefon) + '</span>' : '<span style="color:#9b1c1c">fără telefon la depozit</span>'}`;
+  const gata = LA.poze.length > 0 && !LA.merge;
+  el.innerHTML = `<div class="la-h"><b>⚠️ Lipsă acces — dovadă</b><span class="la-x" data-la="x">✖</span></div>
+  <div class="la-b">
+    <div class="la-card"><div style="font-weight:700">${escapeHtml(r.client)}</div><div class="la-mut">${escapeHtml(r.localitate || '')}${r.jud ? ' · ' + escapeHtml(r.jud) : ''}${r.locatie ? ' — ' + escapeHtml(r.locatie) : ''}</div>
+      <div class="la-mut" style="margin-top:4px">${laDataTxt(LA.t)}, ora ${laOraTxt(LA.t)} · ${laGpsTxt()}</div>
+      <div style="margin-top:6px;font-size:.88rem">📨 ${dest}</div></div>
+    <div class="la-poze">${LA.poze.map((p, i) => `<div><img src="${p.url}" alt=""><span data-la="del" data-i="${i}">✖</span></div>`).join('')}</div>
+    ${LA.poze.length < 2 ? `<label class="la-btn cam">📷 ${LA.poze.length ? 'Încă o poză (opțional)' : 'Fă poza'}<input type="file" accept="image/*" capture="environment" style="display:none" id="laFile"></label>` : ''}
+    <div class="la-card"><div class="la-mut" style="margin-bottom:6px">Motiv (atingi unul sau mai multe)</div><div class="la-chips">${LA_MOTIVE.map(m => `<span class="la-chip ${LA.motive.has(m) ? 'on' : ''}" data-la="mot">${escapeHtml(m)}</span>`).join('')}</div></div>
+    <div class="la-card"><div class="la-mut" style="margin-bottom:6px">Observații</div><textarea id="laObs" placeholder="ex. discutat pe șantier, revin săptămâna viitoare">${escapeHtml(LA.obs || '')}</textarea></div>
+    ${LA.st ? `<div class="la-st ${LA.stErr ? 'err' : ''}">${LA.st}</div>` : ''}
+    <div class="la-btn prim ${gata && c && c.telefon ? '' : 'dis'}" data-la="wa">${LA.merge ? '⏳ Se salvează…' : LA.id ? '📨 Deschide din nou WhatsApp' : '💾 Salvează și trimite pe WhatsApp'}</div>
+    <div class="la-btn ${gata ? '' : 'dis'}" data-la="share">📤 Trimite poza ca imagine (alegi tu contactul)</div>
+    <div class="la-btn" data-la="x">${LA.id ? '✔ Gata' : 'Închide fără dovadă'}</div>
+    <div class="la-mut">„Lipsă acces” e deja înregistrat la punct. Poza primește jos un chenar cu data, ora, GPS-ul, mașina, traseul și clientul.</div>
+  </div>`;
+  const fi = document.getElementById('laFile'); if(fi) fi.onchange = () => { const f = fi.files && fi.files[0]; if(f) laPoza(f); };
+  const ob = document.getElementById('laObs'); if(ob) ob.oninput = () => { LA.obs = ob.value; };
+}
+document.addEventListener('click', e => {
+  const t = e.target.closest('#laPage [data-la]'); if(!t || !LA) return; const a = t.dataset.la;
+  if(a === 'x'){ if(!LA.id && LA.poze.length && !confirm('Închizi fără să salvezi poza?')) return; laInchide(); }
+  else if(a === 'del'){ const p = LA.poze.splice(+t.dataset.i, 1)[0]; if(p) URL.revokeObjectURL(p.url); laDeseneaza(); }
+  else if(a === 'mot'){ const m = t.textContent; LA.motive.has(m) ? LA.motive.delete(m) : LA.motive.add(m); laDeseneaza(); }
+  else if(a === 'wa') laTrimite();
+  else if(a === 'share') laShare();
+});
+function laLiniiChenar(){
+  const r = LA.r, f = LA.fix, c = LA.ctr || {}, L = [];
+  L.push([laDataTxt(LA.t) + ' · ora ' + laOraTxt(LA.t), true]);
+  L.push([r.client || '', true]);
+  L.push([(r.localitate || '') + (r.jud ? ' · ' + r.jud : '') + (r.locatie ? ' — ' + r.locatie : ''), false]);
+  L.push([f && !f.err ? `GPS ${f.lat.toFixed(6)}, ${f.lon.toFixed(6)} ±${Math.round(f.acc)} m` + (r.lat && r.lon ? ` · la ${Math.round(gpsDistM(f, { lat: +r.lat, lon: +r.lon }))} m de punct` : '') : 'GPS indisponibil', false]);
+  L.push([[dayStart.plate, r.masina, r.ziua].filter(Boolean).join(' · ') + (dayStart.driver1 ? ' · Șofer: ' + dayStart.driver1 + (dayStart.driver2 ? ' + ' + dayStart.driver2 : '') : ''), false]);
+  L.push([(c.contract ? 'CTR. ' + c.contract + (c.depozit && c.depozit !== c.contract ? ' / DEP. ' + c.depozit : '') + ' · ' : '') + 'cod ' + (r.clientKey || '—'), false]);
+  if(LA.motive.size) L.push(['Motiv: ' + [...LA.motive].join(', '), false]);
+  return L;
+}
+function laIncarcaImg(file){ return new Promise((res, rej) => { const u = URL.createObjectURL(file), im = new Image(); im.onload = () => { URL.revokeObjectURL(u); res(im); }; im.onerror = () => { URL.revokeObjectURL(u); rej(new Error('poza nu se poate citi')); }; im.src = u; }); }
+async function laPoza(file){
+  try{ LA.st = '⏳ pregătesc poza…'; LA.stErr = false; laDeseneaza();
+    const im = await laIncarcaImg(file), k = Math.min(1, 1600 / Math.max(im.naturalWidth, im.naturalHeight));
+    LA.poze.push({ img: im, k, url: URL.createObjectURL(file), orig: file }); LA.st = ''; laDeseneaza();
+  }catch(e){ LA.st = '⚠️ ' + e.message; LA.stErr = true; laDeseneaza(); }
+}
+function laChenar(p){   // poza micșorată la max. 1600 px + chenarul de date jos (ca la PV-uri)
+  const W = Math.round(p.img.naturalWidth * p.k), H = Math.round(p.img.naturalHeight * p.k), L = laLiniiChenar();
+  const fs = Math.max(13, Math.round(Math.min(W, H) / 42)), lh = Math.round(fs * 1.32), pad = Math.round(fs * 0.7), bh = pad * 2 + lh * (L.length + 1);
+  const cv = document.createElement('canvas'); cv.width = W; cv.height = H; const g = cv.getContext('2d');
+  g.drawImage(p.img, 0, 0, W, H); g.fillStyle = 'rgba(10,16,32,0.72)'; g.fillRect(0, H - bh, W, bh);
+  let y = H - bh + pad + fs; g.textBaseline = 'alphabetic';
+  g.fillStyle = '#ff5a4f'; g.font = `800 ${Math.round(fs * 1.15)}px Roboto, Arial, sans-serif`; g.fillText('LIPSĂ ACCES', pad, y);
+  const lw = g.measureText('LIPSĂ ACCES').width; g.fillStyle = '#c9d3e6'; g.font = `600 ${Math.round(fs * 0.8)}px Roboto, Arial, sans-serif`; g.fillText('Euro Ecologic', pad + lw + fs * 0.6, y);
+  L.forEach(([t, b]) => { y += lh; g.fillStyle = '#fff'; g.font = `${b ? 700 : 500} ${fs}px Roboto, Arial, sans-serif`; let s2 = t; while(s2.length > 4 && g.measureText(s2).width > W - pad * 2) s2 = s2.slice(0, -2); g.fillText(s2 === t ? t : s2 + '…', pad, y); });
+  return new Promise(res => cv.toBlob(b => res(b), 'image/jpeg', 0.72));
+}
+function laTextMesaj(linkuri){
+  const r = LA.r, f = LA.fix, c = LA.ctr || {};
+  return ['⚠️ LIPSĂ ACCES — Euro Ecologic', 'Client: ' + (r.client || ''), 'Locație: ' + (r.localitate || '') + (r.jud ? ', ' + r.jud : '') + (r.locatie ? ' — ' + r.locatie : ''),
+    'Data: ' + laDataTxt(LA.t) + ', ora ' + laOraTxt(LA.t), LA.motive.size ? 'Motiv: ' + [...LA.motive].join(', ') : '', (LA.obs || '').trim() ? 'Obs: ' + LA.obs.trim() : '',
+    f && !f.err ? `GPS: https://maps.google.com/?q=${f.lat.toFixed(6)},${f.lon.toFixed(6)}` : '',
+    'Mașina: ' + [dayStart.plate, r.masina].filter(Boolean).join(' · ') + (dayStart.driver1 ? ' · Șofer: ' + dayStart.driver1 : ''),
+    c.contract ? 'Contract: ' + c.contract + (c.depozit && c.depozit !== c.contract ? ' (livrat din ' + c.depozit + ')' : '') : '',
+    ...(linkuri || []).map((u, i) => (linkuri.length > 1 ? 'Poza ' + (i + 1) : 'Poza') + ': ' + u)].filter(Boolean).join('\n');
+}
+async function laTrimite(){
+  if(!LA || LA.merge) return; const c = LA.ctr || {};
+  if(LA.id && LA.linkuri){ window.open('https://wa.me/' + laTel(c.telefon) + '?text=' + encodeURIComponent(laTextMesaj(LA.linkuri)), '_blank'); return; }
+  if(!sb){ LA.st = '⚠️ fără legătură cu baza'; LA.stErr = true; laDeseneaza(); return; }
+  LA.merge = true; LA.st = '⏳ salvez pozele…'; LA.stErr = false; LA.obs = (document.getElementById('laObs') || {}).value || LA.obs || ''; laDeseneaza();
+  try{
+    const r = LA.r, f = LA.fix, d = LA.t, cale = [], linkuri = [];
+    const baza = d.getFullYear() + '/' + pad2(d.getMonth() + 1) + '/' + d.getFullYear() + pad2(d.getMonth() + 1) + pad2(d.getDate()) + '_' + pad2(d.getHours()) + pad2(d.getMinutes()) + '_' + String(r.clientKey || 'punct').replace(/[^A-Za-z0-9-]/g, '') + '_' + Math.random().toString(36).slice(2, 7);
+    for(let i = 0; i < LA.poze.length; i++){
+      const b = await laChenar(LA.poze[i]), pth = baza + '_' + (i + 1) + '.jpg';
+      const up = await sb.storage.from('lipsa-acces').upload(pth, b, { contentType: 'image/jpeg', upsert: false }); if(up.error) throw up.error;
+      cale.push(pth);
+      const sg = await sb.storage.from('lipsa-acces').createSignedUrl(pth, 210 * 24 * 3600); if(!sg.error && sg.data) linkuri.push(sg.data.signedUrl);
+    }
+    const rand = { session_id: currentSessionId || null, client_key: r.clientKey || null, client: r.client || null, jud: r.jud || null, localitate: r.localitate || null, locatie: r.locatie || null,
+      sofer: dayStart.driver1 || null, sofer2: dayStart.driver2 || null, masina: dayStart.plate || null, traseu: r.masina || null, ziua: r.ziua || null,
+      lat: f && !f.err ? f.lat : null, lon: f && !f.err ? f.lon : null, gps_acc: f && !f.err ? Math.round(f.acc * 10) / 10 : null,
+      dist_m: f && !f.err && r.lat && r.lon ? Math.round(gpsDistM(f, { lat: +r.lat, lon: +r.lon })) : null,
+      motive: [...LA.motive], observatii: (LA.obs || '').trim() || null, contract: c.contract || null, depozit: c.depozit || null, agent: c.agent || null, telefon: c.telefon || null,
+      poze: cale, whatsapp_la: c.telefon ? new Date().toISOString() : null };
+    const ins = await sb.from('lipsa_acces').insert(rand).select('id').single(); if(ins.error) throw ins.error;
+    LA.id = ins.data.id; LA.linkuri = linkuri; LA.merge = false; LA.st = '✅ Salvat. Se deschide WhatsApp — apasă săgeata verde de Trimite.'; laDeseneaza();
+    if(c.telefon) window.open('https://wa.me/' + laTel(c.telefon) + '?text=' + encodeURIComponent(laTextMesaj(linkuri)), '_blank');
+  }catch(e){ LA.merge = false; LA.st = '⚠️ Nu s-a salvat (' + escapeHtml(e.message || 'fără semnal') + '). Încearcă din nou când ai semnal, sau „Trimite poza ca imagine”.'; LA.stErr = true; laDeseneaza(); }
+}
+async function laShare(){
+  if(!LA || !LA.poze.length) return;
+  try{ const files = []; for(let i = 0; i < LA.poze.length; i++){ const b = await laChenar(LA.poze[i]); files.push(new File([b], 'lipsa-acces-' + (i + 1) + '.jpg', { type: 'image/jpeg' })); }
+    const text = laTextMesaj(LA.linkuri || []);
+    if(navigator.canShare && navigator.canShare({ files })) await navigator.share({ files, text });
+    else { LA.st = '⚠️ Telefonul nu permite trimiterea de poze din aplicație.'; LA.stErr = true; laDeseneaza(); }
+  }catch(e){ /* anulat */ }
 }
 function agentScurt(n){ const p = String(n || '').trim().split(/\s+/).filter(Boolean); return p.length > 1 ? p[0][0] + '. ' + p.slice(1).join(' ') : p.join(' '); }
 function ctrTagHtml(r){ const k = r.clientKey && CTR[r.clientKey]; if(!k || !k.contract) return '';
