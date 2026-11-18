@@ -1116,7 +1116,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
   <span id="rz-w"><button id="rz-reset" class="pictograma" title="Lățimi implicite — pune coloanele din tabelele acestei file înapoi cum erau">↺ Reset layout</button><i class="rz-sep">|</i></span>
   <span id="tz-w" title="Mărimea tabelului (doar tabelul, restul rămâne la fel), din 5 în 5%. Merge și cu Ctrl + rotița mausului, Ctrl + / Ctrl − / Ctrl 0. Dublu clic pe procent = scrii tu valoarea."><button class="pictograma" onclick="tzPas(-1)" aria-label="Micșorează tabelul">−</button><b id="tz-v" ondblclick="tzScrie()" title="Dublu clic = scrii mărimea (ex. 87), Enter">100%</b><input id="tz-in" type="number" min="30" max="300" step="5" style="display:none"><button class="pictograma" onclick="tzPas(1)" aria-label="Mărește tabelul">+</button></span>
-  <span class="ver">v9.61</span>
+  <span class="ver">v9.62</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -5751,8 +5751,10 @@ function mmVerifLista(){
   if(/^(AMPLASARE|SUPLIMENTARE)$/.test(tip)){
     const f = v("mm-frecv"), z = v("mm-zi").split(",").filter(Boolean), m = f.match(/^(\d+)\s*\/\s*Sap/i);
     if(!f) W.push(["Frecvența de servisare e goală", "mm-frecv"]);
-    if(m && +m[1] !== z.length) W.push(["Frecvența „" + f + "” nu se potrivește cu zilele bifate (" + z.length + ")", "mm-frecv"]);
-    if(m && !ext && !v("mm-traseu")) W.push(["Traseul e gol — punctul nu ajunge pe rută", "mm-traseu"]);
+    // v9.62 (cerut de Ovidiu, 18.11): marfa dintr-un depozit exterior (ex. IASI) — ziua și traseul nu se știu; frecvența merge în comandă, fără avertizări
+    const depExt = (DEP.find(d => d.nume === v("mm-dep") || d.cod === v("mm-dep")) || {}).tip === "secundar";
+    if(m && !depExt && +m[1] !== z.length) W.push(["Frecvența „" + f + "” nu se potrivește cu zilele bifate (" + z.length + ")", "mm-frecv"]);
+    if(m && !ext && !depExt && !v("mm-traseu")) W.push(["Traseul e gol — punctul nu ajunge pe rută", "mm-traseu"]);
   }
   return { B, W };
 }
