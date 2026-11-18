@@ -549,8 +549,9 @@
   html.ee-deschis .history-item .h-status.activa{background:#e6f5ea; border-color:rgba(29,123,58,0.4);}
   html.ee-deschis #syncQueueBadge{color:var(--portocaliu) !important;}
 /* v44: CTR. (al cui e contractul) + agent — doar pentru angajații bifați în GestiuneEE */
-.ctr-tag{background:#fff4e0;color:#8a4b00;border:1px solid #f0c27a;border-radius:6px;padding:1px 7px;font-weight:700;font-size:.72rem;cursor:pointer;-webkit-tap-highlight-color:transparent}
-.dep-tag{background:#eef1f6;color:#3d4a63;border:1px solid #cfd6e2;border-radius:6px;padding:1px 7px;font-weight:700;font-size:.72rem}
+.ctr-tag,.dep-tag{background:transparent;color:var(--text);border:1px solid currentColor;border-radius:6px;padding:1px 7px;font-weight:700;font-size:.72rem;-webkit-tap-highlight-color:transparent}
+html.ee-deschis .ctr-tag,html.ee-deschis .dep-tag{color:#111827}
+.ctr-tag.tel{cursor:pointer}   /* v48: se atinge doar unde se vede agentul (bifa „vede_contract”) */
 .ctr-pop{display:none;margin:8px 0 2px;background:#1b2550;color:#fff;border-radius:10px;padding:8px 12px;font-size:.85rem;line-height:1.55}
 .ctr-pop.on{display:block}
 .ctr-pop a{color:#9fd0ff;font-weight:700;text-decoration:none}
@@ -1108,7 +1109,7 @@ let dayStart = {}; // {brand, plate, kmStart, driver1, driver2, startTime}
 let lastRouteRows = [];
 
 // --- Șofer EE: aplicatia ruleaza in fila „Rută” (../sofer/), care trimite datele zilei ---
-const EE_RUTA_VERSION = 'v47'; // aceeasi cu VERSIUNE din sw.js; Șofer EE o arata langa rotita
+const EE_RUTA_VERSION = 'v48'; // aceeasi cu VERSIUNE din sw.js; Șofer EE o arata langa rotita
 const SOFER_MODE = new URLSearchParams(location.search).get('sofer') === '1';
 let multiZile = null;   // mai multe zile bifate (ruta complementara), altfel null
 let multiTrasee = null; // mai multe trasee bifate, altfel null
@@ -3232,8 +3233,8 @@ function echScurt(x){ const m = /^(\d+)\s+(.+)$/.exec(String(x).trim()); const n
   const t = nume.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase(); const g = ECH_COD.find(([r]) => r.test(t));
   return (m ? m[1] + ' ' : '') + (g ? g[1] : nume); }
 // v44 (cerut de Ovidiu, 18.11): „CTR. HUNEDOARA” = al cui e contractul punctului (+ „DEP. X” când se livrează din alt depozit);
-// atins → agentul depozitului contractului și telefonul (apelabil). Vine din funcția ruta_contracte(), care dă date DOAR
-// contului bifat în GestiuneEE (Angajați → Salarizare → „vede al cui e contractul”); ceilalți nu văd nimic nou.
+// atins → agentul depozitului contractului și telefonul (apelabil). v48 (cerut de Ovidiu, 18.11): CTR./DEP. la TOȚI (fără fundal, text negru);
+// agentul + telefonul (și lipsa de acces cu poză) doar pentru contul bifat în GestiuneEE — funcția ruta_contracte() nu trimite telefonul altora.
 let CTR = {};
 async function ctrIncarca(){
   if(!sb) return;
@@ -3266,7 +3267,7 @@ function laGpsTxt(){ const f = LA.fix; if(!f) return '📡 caut GPS…'; if(f.er
 function laDeseneaza(){
   const el = document.getElementById('laPage'); if(!el || !LA) return; const r = LA.r, c = LA.ctr;
   const dest = !c ? 'caut agentul contractului…' : !c.contract ? '<span style="color:#9b1c1c">nu găsesc contractul punctului — alegi tu contactul</span>'
-    : `Contract <b>${escapeHtml(c.contract)}</b>${c.depozit && c.depozit !== c.contract ? ' · DEP. ' + escapeHtml(c.depozit) : ''} → ${c.agent ? '<b>' + escapeHtml(agentScurt(c.agent)) + '</b> · ' : ''}${c.telefon ? '<span style="white-space:nowrap">' + escapeHtml(c.telefon) + '</span>' : '<span style="color:#9b1c1c">fără telefon la depozit</span>'}`;
+    : `Contract <b>${escapeHtml(c.contract)}</b> → ${c.agent ? '<b>' + escapeHtml(agentScurt(c.agent)) + '</b> · ' : ''}${c.telefon ? '<span style="white-space:nowrap">' + escapeHtml(c.telefon) + '</span>' : '<span style="color:#9b1c1c">fără telefon la depozit</span>'}`;
   const gata = LA.poze.length > 0 && !LA.merge;
   el.innerHTML = `<div class="la-h"><b>⚠️ Lipsă acces — dovadă</b><span class="la-x" data-la="x">✖</span></div>
   <div class="la-b">
@@ -3459,8 +3460,8 @@ async function laTrimitePdf(){
 }
 function agentScurt(n){ const p = String(n || '').trim().split(/\s+/).filter(Boolean); return p.length > 1 ? p[0][0] + '. ' + p.slice(1).join(' ') : p.join(' '); }
 function ctrTagHtml(r){ const k = r.clientKey && CTR[r.clientKey]; if(!k || !k.contract) return '';
-  return `<span class="ctr-tag" data-ctr="${escapeHtml(r.clientKey)}">CTR. ${escapeHtml(k.contract)}</span>` + (k.depozit && k.depozit !== k.contract ? `<span class="dep-tag">DEP. ${escapeHtml(k.depozit)}</span>` : ''); }
-function ctrPopHtml(r){ const k = r.clientKey && CTR[r.clientKey]; if(!k || !k.contract) return '';
+  return `<span class="ctr-tag${k.telefon || k.agent ? ' tel' : ''}" data-ctr="${escapeHtml(r.clientKey)}">CTR. ${escapeHtml(k.contract)}</span>`; }   // v48b: doar contractul, fără DEP. (cerut 18.11)
+function ctrPopHtml(r){ const k = r.clientKey && CTR[r.clientKey]; if(!k || !k.contract || !(k.telefon || k.agent)) return '';   // v48: agentul + telefonul doar cu bifa
   const tel = String(k.telefon || '').trim();
   return `<div class="ctr-pop">Contract <b>${escapeHtml(k.contract)}</b>${k.agent ? ` · agent <b>${escapeHtml(agentScurt(k.agent))}</b>` : ''}<br>${tel ? `<a href="${telUrl(tel)}">📞 ${escapeHtml(tel)}</a>` : '<span style="opacity:.7">fără telefon trecut la depozit</span>'}</div>`; }
 function qtyLabel(r){
