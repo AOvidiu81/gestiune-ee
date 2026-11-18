@@ -1116,7 +1116,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
   <span id="rz-w"><button id="rz-reset" class="pictograma" title="Lățimi implicite — pune coloanele din tabelele acestei file înapoi cum erau">↺ Reset layout</button><i class="rz-sep">|</i></span>
   <span id="tz-w" title="Mărimea tabelului (doar tabelul, restul rămâne la fel), din 5 în 5%. Merge și cu Ctrl + rotița mausului, Ctrl + / Ctrl − / Ctrl 0. Dublu clic pe procent = scrii tu valoarea."><button class="pictograma" onclick="tzPas(-1)" aria-label="Micșorează tabelul">−</button><b id="tz-v" ondblclick="tzScrie()" title="Dublu clic = scrii mărimea (ex. 87), Enter">100%</b><input id="tz-in" type="number" min="30" max="300" step="5" style="display:none"><button class="pictograma" onclick="tzPas(1)" aria-label="Mărește tabelul">+</button></span>
-  <span class="ver">v9.42</span>
+  <span class="ver">v9.43</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -7216,14 +7216,16 @@ function ofEvCursInfo(){
   i.innerHTML = e.dataset.zi ? `curs <b>BNR</b> din <b>${esc(fmtD(e.dataset.zi))}</b> — apare în PDF cu data lui` : e.value ? "curs scris de mână (sau păstrat din ofertă) — „↻ BNR” ia cursul zilei" : "pune cursul sau apasă „↻ BNR”";
 }
 async function ofEvCursBnr(manual){
-  const e = $("ev-curs"); if(!e) return;
+  const e = $("ev-curs"); if(!e) return; const vechi = +e.value || 0, ziVeche = e.dataset.zi || "";
   try{
     const { data: d, error } = await db.functions.invoke("bnr", { body: { moneda: "EUR" } });
     if(error || !d || !d.curs) throw new Error((d && d.eroare) || (error && error.message) || "fără răspuns");
     e.value = d.curs; e.dataset.zi = d.data || today(); try{ localStorage.setItem("ev-curs", d.curs); }catch(_){}
     ofEvCursInfo(); ofEvSuma(); if(manual) toast("Curs BNR " + fmtD(d.data) + ": " + d.curs + " lei / EUR");
+    else if(vechi && ziVeche && +d.curs !== vechi) toast("Cursul BNR s-a actualizat: " + vechi + " (" + fmtD(ziVeche) + ") → " + d.curs + " lei / EUR (" + fmtD(d.data) + ")");   // v9.43
   }catch(er){ ofEvCursInfo(); if(manual) toast("Cursul BNR nu s-a putut lua: " + (er.message || er) + " — scrie-l de mână", true); }
 }
+const ofEvCiorna = o => !o || !o.stare || o.stare === "ciorna";   // v9.43
 const ofEvCursImplicit = () => { try{ return localStorage.getItem("ev-curs") || ""; }catch(e){ return ""; } };   // v9.27: fără curs fix — îl ia „↻ BNR”   // v9.18
 function ofEvCalc(k){   // ca foaia CALCUL: chirie = Σ(buc. × preț / zi) × zile; transport = curse × mașini × km × preț / km; servisare = 2 × zile cu servisare × km × preț / km
   const r2 = x => Math.round(x * 100) / 100, c = k.calc || {}, zile = ofEvNrZile(k.ev_de, k.ev_pana), R = k.randuri || [];
@@ -7349,7 +7351,9 @@ function ofEvForm(id, copie){
         <div class="r2"><button class="btn gh" onclick="ofEvSalveaza(false)">💾 Salvează</button><button class="btn gh" onclick="this.closest('.modal').remove()">Renunță</button></div></div></aside></div></div>`;
   document.body.appendChild(w); feFereastra(w);
   (k.randuri && k.randuri.length ? k.randuri : [{}]).forEach(ofEvRand);
-  ofEvCursInfo(); if(k.curs == null || copie) ofEvCursBnr(false);   // v9.27: oferta nouă / copia ia cursul BNR al zilei
+  // v9.27: oferta nouă / copia ia cursul BNR al zilei. v9.43 (cerut de Ovidiu, 18.11): și CIORNA deschisă din nou își actualizează cursul
+  // BNR singură (dacă e mai vechi decât azi); oferta TRIMISĂ / acceptată își păstrează cursul cu care a plecat la client; cursul scris de mână rămâne.
+  ofEvCursInfo(); if(k.curs == null || copie || (ofEvCiorna(o0) && k.curs_data && k.curs_data < today())) ofEvCursBnr(false);
   // v9.28 (cerut de Ovidiu, 17.11): Mențiunile se văd toate (câmpul crește cu textul); fereastra se deschide la mărimea ei
   // (nu pe tot ecranul) — o poți trage din colț, iar mărimea aleasă se ține minte pentru data viitoare
   { const tm = $("ev-ment"); if(tm){ tm.style.height = "auto"; tm.style.height = (tm.scrollHeight + 2) + "px"; } }
@@ -7442,6 +7446,8 @@ function ofEvSuma(){
       `<span>${ftBani(k.total * (1 + OF_TVA))} lei cu TVA</span>` + (k.total_ofertat != null && k.calculat ? `<br><span>${k.total >= k.calculat ? "+" : "−"}${ftBani(Math.abs(k.total - k.calculat))} lei față de calcul</span>` : "") : '<span>Pune zilele, produsele și distanța.</span>';
 }
 async function ofEvSalveaza(siPdf){
+  { const e = $("ev-curs"), id0 = +$("mod-ofev").dataset.id || null, o0 = id0 ? OF.L.find(x => x.id === id0) : null;   // v9.43: ciorna se salvează cu cursul BNR al zilei
+    if(e && e.dataset.zi && e.dataset.zi < today() && ofEvCiorna(o0)) await ofEvCursBnr(false); }
   const catre = $("ev-catre").value.trim().toUpperCase(), k = ofEvCiteste(); if(!catre){ toast("Scrie numele clientului", true); return; }
   if(!k.zile){ toast("Alege prima și ultima zi a evenimentului", true); return; }
   if(!k.randuri.length || k.randuri.some(r => !r.buc)){ toast("Adaugă produsele și pune cantitatea la fiecare", true); return; }
