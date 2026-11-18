@@ -1116,7 +1116,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
   <span id="rz-w"><button id="rz-reset" class="pictograma" title="Lățimi implicite — pune coloanele din tabelele acestei file înapoi cum erau">↺ Reset layout</button><i class="rz-sep">|</i></span>
   <span id="tz-w" title="Mărimea tabelului (doar tabelul, restul rămâne la fel), din 5 în 5%. Merge și cu Ctrl + rotița mausului, Ctrl + / Ctrl − / Ctrl 0. Dublu clic pe procent = scrii tu valoarea."><button class="pictograma" onclick="tzPas(-1)" aria-label="Micșorează tabelul">−</button><b id="tz-v" ondblclick="tzScrie()" title="Dublu clic = scrii mărimea (ex. 87), Enter">100%</b><input id="tz-in" type="number" min="30" max="300" step="5" style="display:none"><button class="pictograma" onclick="tzPas(1)" aria-label="Mărește tabelul">+</button></span>
-  <span class="ver">v9.46</span>
+  <span class="ver">v9.47</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -5785,6 +5785,15 @@ function mmSeriiText(){
 // v5.00 (hotărât de Ovidiu, 08.10): la REDUCERE seria o alege șoferul pe teren, în PV; tu confirmi după PV
 const serAlege=(buc,lc)=>lc.length ? { lista: lc, alege: buc||1 } : null;   // v5.01: textul se face în textComandaDin
 const serN=s=>String(s||"").trim().replace(/^EE-?\s*/i,"").toUpperCase();
+// v9.47: seria din PV „aproape” de una de la client — o singură cifră diferită / lipsă / în plus, sau două cifre inversate (6506 ↔ EE-6505)
+function serAproape(a, b){ a = serN(a); b = serN(b); if(!a || !b || a === b) return false;
+  if(a.length === b.length){ const d = [...a].map((c, i) => c !== b[i] ? i : -1).filter(i => i >= 0); return d.length === 1 || (d.length === 2 && d[1] === d[0] + 1 && a[d[0]] === b[d[1]] && a[d[1]] === b[d[0]]); }
+  if(Math.abs(a.length - b.length) !== 1) return false; const [l, s2] = a.length > b.length ? [a, b] : [b, a];
+  for(let i = 0; i < l.length; i++) if(l.slice(0, i) + l.slice(i + 1) === s2) return true; return false; }
+function riPropune(lc, din, pvSerii){   // seriile din PV fără potrivire exactă → cea mai apropiată serie la client (una singură, nefolosită)
+  const fol = new Set(din.map(x => x.id)), P = [];
+  pvSerii.filter(s => !lc.some(x => serN(x.serie) === serN(s))).forEach(s => { const c = lc.filter(x => !fol.has(x.id) && serAproape(s, x.serie)); if(c.length === 1){ fol.add(c[0].id); P.push({ pv: s, x: c[0] }); } });
+  return P; }
 let MM_PV=null;   // v5.00: seriile trecute de șofer în PV (pv_records.serii) pentru comanda deschisă
 async function mmPvSerii(id){
   MM_PV=null; if(!id) return;
@@ -6365,7 +6374,8 @@ async function riDeschide(id){
       o.ser = SER.filter(x => loc.includes(x.anexa_id) && (x.stare === "LA CLIENT" || x.miscare_ridicare_id === r.id));
       const lc = o.ser.filter(x => x.stare === "LA CLIENT");
       const leg = lc.filter(x => x.miscare_ridicare_id === r.id);
-      const din = lc.filter(x => pvSerii.some(s => serN(s) === serN(x.serie)));
+      const din0 = lc.filter(x => pvSerii.some(s => serN(s) === serN(x.serie)));
+      o.prop = riPropune(lc, din0, pvSerii); const din = din0.concat(o.prop.map(q => q.x));   // v9.47
       o.bif = new Set((leg.length ? leg : din.length ? din : (r.tip_miscare === "REDUCERE" ? [] : lc)).map(x => x.id));
       o.dinPv = din.length > 0;
     } else {
@@ -6376,7 +6386,8 @@ async function riDeschide(id){
       let amp = [];
       if(!pc.size){ const { data: am } = await db.from("miscari").select("id").is("anexa_id", null).eq("client", r.client || "").eq("loc", r.loc || "").eq("sat", r.sat || "").limit(500); amp = (am || []).map(x => x.id); }
       o.ser = SER.filter(x => !x.anexa_id && (pc.has(x.punct) || amp.includes(x.miscare_amplasare_id)) && (x.stare === "LA CLIENT" || x.miscare_ridicare_id === r.id));
-      const lc = o.ser.filter(x => x.stare === "LA CLIENT"), leg = lc.filter(x => x.miscare_ridicare_id === r.id), din = lc.filter(x => pvSerii.some(s => serN(s) === serN(x.serie)));
+      const lc = o.ser.filter(x => x.stare === "LA CLIENT"), leg = lc.filter(x => x.miscare_ridicare_id === r.id), din0 = lc.filter(x => pvSerii.some(s => serN(s) === serN(x.serie)));
+      o.prop = riPropune(lc, din0, pvSerii); const din = din0.concat(o.prop.map(q => q.x));   // v9.47
       o.bif = new Set((leg.length ? leg : din.length ? din : (/^(REDUCERE)$/.test(r.tip_miscare) ? [] : lc)).map(x => x.id));
       o.dinPv = din.length > 0;
     }
@@ -6447,6 +6458,11 @@ function riRender(){
       const lc = o.ser.filter(x => x.stare === "LA CLIENT"), nb = lc.filter(x => o.bif.has(x.id)).length, buc = Math.abs(+r.buc || 0);
       se = '<div class="ri-ser">' + o.ser.map(x => { const gata = x.stare !== "LA CLIENT";
         return `<label><input type="checkbox" ${o.bif.has(x.id) || gata ? "checked" : ""} ${gata ? "disabled" : ""} onchange="riSer(${k},${x.id},this.checked)"> <b>${esc(x.serie || "fără serie")}</b> ${esc(x.model || x.produs || "")}${gata ? ` <span class="muted">· ${esc(String(x.stare).toLowerCase())} ${fmtD(x.data_ridicarii)}</span>` : ""}</label>`; }).join("") + "</div>" +
+        ((o.prop || []).length ? `<div style="color:var(--t-warn);font-weight:600;margin:4px 0">⚠ În PV: ${o.prop.map(q => `<b>${esc(q.pv)}</b> → la client e <b>${esc(q.x.serie)}</b>`).join(", ")} — am bifat-o; verifică PV-ul (📄) și debifează dacă nu e ea.</div>` : "") +   // v9.47
+        (() => { const ram = lc.filter(x => !o.bif.has(x.id)), plec = lc.filter(x => o.bif.has(x.id)), mod = {};
+          plec.forEach(x => { const k = x.model || x.produs || "?"; mod[k] = (mod[k] || 0) + 1; });
+          return `<div style="margin:4px 0">🏠 Rămân la client: <b>${ram.length ? ram.map(x => esc(x.serie || "fără serie")).join(", ") : "nimic"}</b>` +
+            (plec.length ? ` · 📦 intră în depozit: <b>${Object.entries(mod).map(([k2, n2]) => n2 + " × " + esc(k2)).join(", ")}</b>` : "") + "</div>"; })() +
         `<div class="muted">Bifate ${nb} din ${lc.length} la client · comanda are ${buc} buc` + (o.dinPv ? " · bifele vin din PV" : P.pvSerii.length ? ' · <span style="color:var(--t-warn)">seriile din PV nu se potrivesc: ' + esc(P.pvSerii.join(", ")) + "</span>" : "") +
         (nb && nb !== buc && r.tip_miscare !== "EVENIMENT-R" ? ' · <span style="color:var(--t-warn)">nu se potrivesc cu bucățile</span>' : "") + ` → trec în „ridicată” cu data ${fmtD(r.data)}</div>`;
     }
@@ -6527,6 +6543,7 @@ async function riSalveaza(){
   RI = null; closeModal("mod-ri");
   if($("mod-m").classList.contains("on") && +$("mm-id").value === m.id) closeModal("mod-m");   // formularul avea bifele vechi — să nu le salveze peste
   await reloadClienti(); await incarcaPct(); renderMiscari();
+  if($("p-atentie") && $("p-atentie").classList.contains("on")){ try{ await reloadSerii(); }catch(e){} loadAtentie(); }   // v9.47
   toast(facute.length ? "Ridicare închisă: " + facute.join(", ") : "Nu ai bifat nimic — nimic schimbat", !facute.length);
 }
 async function clientReactiveaza(id){
@@ -9314,6 +9331,25 @@ async function serSalveaza(){
     produs:r.produs,tip:r.tip||null,model:r.model||null,serie:(r.serie||"").trim()||null,stare:r.stare||"LA CLIENT",
     data_amplasarii:r.data_amplasarii||null,data_ridicarii:r.data_ridicarii||null,observatii:(r.observatii||"").trim()||null,punct:r.punct||null,
     ...(r.miscare_ridicare_id ? { miscare_ridicare_id: r.miscare_ridicare_id } : {})});   // v8.03
+  // v9.47 (cerut de Ovidiu, 18.11 — CONFIND 328): seriile trecute aici „ridicată” nu se legau de comanda de ridicare → Stoc pe modele „nu coincide”.
+  // Caut comanda de ridicare / reducere a locației (același produs, cu bucăți încă fără serie) și o propun.
+  { const fara = SR_ROWS.filter(r => r.stare && r.stare !== "LA CLIENT" && !r.miscare_ridicare_id && (!r.id || ((SER.find(x => x.id === r.id) || {}).stare === "LA CLIENT")));
+    if(fara.length){
+      const kA = extCheie(a.jud, a.loc, a.sat), prod = [...new Set(fara.map(r => r.produs))];
+      const { data: cm } = await db.from("miscari").select("id,data,tip_miscare,buc,produs,jud,loc,sat,locatii,anexa_id,client").in("tip_miscare", ["RIDICARE", "REDUCERE", "EVENIMENT-R", "SPONSORIZARE-R"]).in("produs", prod).limit(3000);
+      const aici = (cm || []).filter(x => (a.id && x.anexa_id && serLocIds(x.anexa_id).includes(a.id)) || extLocuri(x).some(l => extCheie(l.jud, l.loc, l.sat) === kA) || (Array.isArray(x.locatii) && x.locatii.some(l => l && l.cod && SR_ROWS.some(r => r.punct === l.cod))));
+      const leg = {}; fara.forEach(r => {
+        const c = aici.filter(x => x.produs === r.produs && Math.abs(+x.buc || 0) > SER.filter(y => y.miscare_ridicare_id === x.id).length + Object.values(leg).filter(v => v.c === x.id).length)
+          .sort((x, y) => (y.data || "").localeCompare(x.data || ""))[0];
+        if(c) leg[fara.indexOf(r)] = { r, c: c.id, m: c }; });
+      const L = Object.values(leg);
+      if(L.length){
+        const txt = [...new Set(L.map(v => v.c))].map(id => { const m = L.find(v => v.c === id).m; return `comanda ${id} (${m.tip_miscare} ${fmtD(m.data)}, ${Math.abs(+m.buc || 0)} buc): ` + L.filter(v => v.c === id).map(v => v.r.serie || "fără serie").join(", "); }).join("\n");
+        if(confirm("Ai trecut serii ca ridicate fără să fie legate de comanda de ridicare:\n\n" + txt +
+          "\n\nOK = le leg de comandă (ca „✓ Închide ridicarea” — Stocul pe modele rămâne corect)\nAnulează = le salvez fără legătură\n\nData viitoare: după PV, folosește „✓ Închide ridicarea” din comandă sau din De urmărit."))
+          L.forEach(v => { v.r.miscare_ridicare_id = v.c; v.r.data_ridicarii = v.r.data_ridicarii || v.m.data || today(); });
+      }
+    } }
   const noi=SR_ROWS.filter(r=>!r.id).map(baza);
   if(noi.length){ const {error}=await db.from("serii").insert(noi); if(error){toast(error.message,true);return;} }
   for(const r of SR_ROWS.filter(r=>r.id)){
@@ -11631,6 +11667,29 @@ async function loadAtentie(){
     AT.push({ cheie, titlu, nota, cap, randuri });
   };
 
+  // v9.47 (cerut de Ovidiu, 18.11): RIDICĂRI DE ÎNCHIS — comenzile de ridicare / reducere cu PV făcut de șofer în aplicație,
+  // dar încă neînchise (PV de citit, punctul de rută / RT, serii nelegate de comandă) → „✓ Închide” deschide direct fereastra de închidere.
+  { const dela = new Date(Date.now() - 120 * 864e5).toISOString().slice(0, 10);
+    const { data: rm } = await db.from("miscari").select("*").in("tip_miscare", ["RIDICARE", "REDUCERE", "EVENIMENT-R", "SPONSORIZARE-R"]).not("pv_facut_de", "is", null).gte("data", dela).limit(2000);
+    const rand = [];
+    (rm || []).forEach(m => {
+      if(!MISC.some(x => x.id === m.id)) MISC.push(m);
+      let L = riDeFacut(m) || [];
+      if(!m.anexa_id){   // comanda din exterior (punct C…): riDeFacut nu le vede
+        L = [];
+        if(!["V", "W"].includes(m.pv || "-")) L.push("PV de citit (PV = V)");
+        if(m.tip_miscare !== "EVENIMENT-R" && m.rt !== "V") L.push("punctul de rută + RT");
+        const leg = SER.filter(x => x.miscare_ridicare_id === m.id).length, buc = Math.abs(+m.buc || 0);
+        if(areSerie(m.produs) && leg < buc) L.push((buc - leg) + " buc. fără serie legată de comandă");
+      }
+      if(!L.length) return;
+      const loc = Array.isArray(m.locatii) && m.locatii[0] ? [m.locatii[0].localitate, m.locatii[0].locatie].filter(Boolean).join(", ") : [m.loc, m.sat].filter(Boolean).join(", ");
+      rand.push({ id: "ri" + m.id, ri: m.id, ctx: L.join("|"), v: [m.id, fmtD(m.data), m.tip_miscare, m.client || "", loc, Math.abs(+m.buc || 0) + " " + (m.produs || ""), "PV " + (m.pv_facut_de || ""), L.join(" · ")] });
+    });
+    add("rid_de_inchis", "Ridicări de închis (după PV)",
+      "Șoferul a făcut PV-ul în aplicație. „✓ Închide” deschide fereastra în care confirmi dintr-un pas: PV = V, punctul de rută scăzut + RT, seriile din PV legate de comandă (ce rămâne la client se vede acolo).",
+      ["Comanda", "Data", "Tip", "Client", "Locație", "Buc.", "PV făcut de", "De făcut"], rand.sort((a, b) => b.ri - a.ri)); }
+
   add("ctr_expirate", "Contracte expirate, încă marcate ACTIV",
       "Au trecut de data de expirare, dar în aplicație figurează active. Ori se prelungesc, ori se trec pe INACTIV.",
       ["Nr. contract", "Client", "A expirat la", "De câte zile"],
@@ -11827,6 +11886,17 @@ function atPopup(){
 }
 function atPopupInchide(){ const m = $("mod-atp"); if(m) m.remove(); }
 function atPopupMergi(cheie){ atPopupInchide(); deschideSectiune("atentie"); if(cheie) setTimeout(() => alegeAtentie(cheie), 50); }
+// v9.47: din „Ridicări de închis” direct în fereastra de închidere
+async function atInchideRid(id){
+  if(!MISC.some(x => x.id === id)){ const { data } = await db.from("miscari").select("*").eq("id", id).maybeSingle(); if(data) MISC.push(data); }
+  await riDeschide(id);
+}
+// v9.47 (cerut de Ovidiu, 18.11): clic pe contractul expirat / care expiră → fereastra contractului, derulată la prelungire (acte adiționale / Nedeterminat)
+function atCtr(id){
+  openContract(id);
+  setTimeout(() => { const el = $("mk-aa"), bx = el && (el.closest("fieldset") || el.parentElement); if(!bx) return;
+    bx.scrollIntoView({ behavior: "smooth", block: "center" }); bx.style.transition = "box-shadow .3s"; bx.style.boxShadow = "0 0 0 3px #f59e0b"; setTimeout(() => { bx.style.boxShadow = ""; }, 2200); }, 150);
+}
 // v6.68: deschide comanda din De urmărit (o aduce în listă dacă filtrele din Comenzi n-o au)
 async function atDeschideCmd(id){
   if(!MISC.some(x => x.id === id)){
@@ -11918,16 +11988,19 @@ function renderAtentie(){
   $("t-nota").textContent = x.nota;
   const rnd = atVizibile(x);
   $("t-tbl").innerHTML =
-    "<thead><tr>" + x.cap.map(h => `<th>${esc(h)}</th>`).join("") + (x.randuri.some(r => r.mid) ? '<th class="noprint"></th>' : "") + (x.randuri.some(r => r.aa) ? '<th class="noprint"></th>' : "") +
+    "<thead><tr>" + x.cap.map(h => `<th>${esc(h)}</th>`).join("") + (x.randuri.some(r => r.mid) ? '<th class="noprint"></th>' : "") + (x.randuri.some(r => r.aa) ? '<th class="noprint"></th>' : "") + (x.randuri.some(r => r.ri) ? '<th class="noprint"></th>' : "") +
     `<th class="noprint">Rezolvat</th><th class="noprint">Amână până la</th><th class="noprint">Notă</th></tr></thead><tbody>` +
     rnd.map(r => {
       const n = AT_NOTE[atK(x.cheie, r.id)], pot = atPotrivit(n, r);
+      const cel = (v, j) => { const t = esc(v === null || v === undefined ? "" : v);   // v9.47: nr. contract / client → se deschide contractul la prelungire
+        return r.aa && j < 2 ? `<td><a href="#" onclick="atCtr(${r.aa});return false" title="Deschide contractul — prelungire cu act adițional sau tacită">${t}</a></td>` : `<td>${t}</td>`; };
       const bif  = pot && n.stare === "rezolvat" ? " checked" : "";
       const pana = pot && n.stare === "aminat" ? (n.pana_la || "") : "";
       const nt   = pot ? (n.nota || "") : "";
-      return "<tr>" + r.v.map(v => `<td>${esc(v === null || v === undefined ? "" : v)}</td>`).join("") +
+      return "<tr>" + r.v.map(cel).join("") +
         (x.randuri.some(q => q.mid) ? `<td class="noprint">${r.mid ? `<button class="btn sm" onclick="atDeschideCmd(${r.mid})">Deschide</button>` : ""}</td>` : "") +
         (x.randuri.some(q => q.aa) ? `<td class="noprint">${r.aa ? `<button class="btn sm" onclick="aaDeschide(${r.aa})" title="Act adițional de prelungire: perioada nouă + anexele active la data actului">📝 Act adițional</button>` : ""}</td>` : "") +   // v9.06
+        (x.randuri.some(q => q.ri) ? `<td class="noprint">${r.ri ? `<button class="btn sm" style="background:#2E8B3C;border-color:#2E8B3C" onclick="atInchideRid(${r.ri})" title="Fereastra de închidere a ridicării (PV, punct de rută, serii)">✓ Închide</button>` : ""}</td>` : "") +   // v9.47
         `<td class="noprint" style="text-align:center"><input type="checkbox"${bif} onchange="atSalveaza(${r.i},'rezolvat',this.checked)"></td>` +
         `<td class="noprint"><input type="date" value="${esc(pana)}" onchange="atSalveaza(${r.i},'pana_la',this.value)"></td>` +
         `<td class="noprint"><input value="${esc(nt)}" placeholder="scrie ceva…" onchange="atSalveaza(${r.i},'nota',this.value)" style="min-width:170px"></td></tr>`;
