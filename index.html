@@ -1116,7 +1116,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
   <span id="rz-w"><button id="rz-reset" class="pictograma" title="Lățimi implicite — pune coloanele din tabelele acestei file înapoi cum erau">↺ Reset layout</button><i class="rz-sep">|</i></span>
   <span id="tz-w" title="Mărimea tabelului (doar tabelul, restul rămâne la fel), din 5 în 5%. Merge și cu Ctrl + rotița mausului, Ctrl + / Ctrl − / Ctrl 0. Dublu clic pe procent = scrii tu valoarea."><button class="pictograma" onclick="tzPas(-1)" aria-label="Micșorează tabelul">−</button><b id="tz-v" ondblclick="tzScrie()" title="Dublu clic = scrii mărimea (ex. 87), Enter">100%</b><input id="tz-in" type="number" min="30" max="300" step="5" style="display:none"><button class="pictograma" onclick="tzPas(1)" aria-label="Mărește tabelul">+</button></span>
-  <span class="ver">v9.49</span>
+  <span class="ver">v9.50</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -2250,6 +2250,9 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   #mod-admin .pr-g{display:grid;gap:10px;margin-bottom:8px}
   #mod-admin .pr-g.c1{grid-template-columns:1fr} #mod-admin .pr-g.c2{grid-template-columns:1fr 1fr}
   #mod-admin .pr-g.cj{grid-template-columns:110px 1fr} #mod-admin .pr-g.c4{grid-template-columns:repeat(4,1fr)}
+  #mod-admin .pr-r3{display:grid;grid-template-columns:90px minmax(140px,1fr) 2.4fr;gap:2px 10px;align-items:start;margin-bottom:8px}#mod-admin .pr-r3 label{margin:0}
+  #mod-admin .pr-r3 .pr-pn{background:var(--gl,#f1f4f9);font-weight:700;cursor:default}#mod-admin .pr-r3 .pr-acc{min-height:35px;margin:0;resize:vertical;line-height:1.35;overflow:hidden}
+  @media(max-width:600px){ #mod-admin .pr-r3{grid-template-columns:80px 1fr} #mod-admin .pr-r3 label:nth-child(3),#mod-admin .pr-r3 .pr-acc{grid-column:1/-1} }
   #mod-admin textarea{width:100%;min-height:60px;resize:vertical}
   @media(max-width:600px){ #mod-admin .pr-g.c2,#mod-admin .pr-g.c4,#mod-admin .pr-g.cj{grid-template-columns:1fr} }
   #mod-a .box{resize:both;overflow:auto;width:1000px;max-width:98vw;max-height:96vh;min-width:400px;min-height:300px;position:relative}
@@ -14230,12 +14233,28 @@ function adminDeschide(rec, nou){
 // se țin în clients.echipamente ca „2 LAVOARE” — aplicația de rute le arată deja pe cardul punctului. Accesoriile țin de toalete.
 let PR_ECH = [];
 const PR_CAMP = [["toalete","Toalete"],["containere","Containere / cabine"],["garduri","Garduri"]];
+// v9.50 (cerut de Ovidiu, 18.11): fiecare produs pe un rând cu 3 chenare — Buc. · Produs · Accesorii (accesoriile într-un câmp mare, se văd toate)
+function prRanduri(g){
+  if(g.dataset.l) return; g.dataset.l = "1"; g.classList.remove("c4"); g.style.display = "block";
+  const acc = $("af-accesorii"); let ta = null;
+  if(acc){ ta = document.createElement("textarea"); ta.id = "af-accesorii"; ta.value = acc.value; ta.rows = 1; ta.className = "pr-acc"; ta.placeholder = "accesoriile toaletelor (dozator săpun, dispenser…)";
+    ta.addEventListener("input", () => prAccInalt(ta)); acc.parentElement.remove(); }
+  PR_CAMP.forEach(([c, e]) => { const el = $("af-" + c); if(!el) return; const old = el.parentElement, row = document.createElement("div"); row.className = "pr-r3";
+    row.innerHTML = `<label>Buc.</label><label>Produs</label><label>${c === "toalete" ? "Accesorii" : ""}</label>`;
+    row.appendChild(el); const pn = document.createElement("input"); pn.value = e; pn.readOnly = true; pn.tabIndex = -1; pn.className = "pr-pn"; row.appendChild(pn);
+    row.appendChild(c === "toalete" && ta ? ta : document.createElement("div")); old.replaceWith(row); });
+  if(ta) setTimeout(() => prAccInalt(ta), 0);
+}
+function prAccInalt(ta){ ta.style.height = "auto"; ta.style.height = Math.max(35, ta.scrollHeight + 2) + "px"; }
+const prRand = () => { const a = $("af-accesorii"); return !!(a && a.parentElement && a.parentElement.classList.contains("pr-r3")); };   // accesoriile stau pe rândul toaletelor
 function prProduse(rec){
   const t = $("af-toalete"); if(!t) return;
   const g = t.closest(".pr-g"); if(!g) return;
+  prRanduri(g);
   PR_ECH = (Array.isArray(rec && rec.echipamente) ? rec.echipamente : []).filter(Boolean).map(x => { const m = /^(\d+)\s+(.+)$/.exec(String(x).trim()); return m ? { n: +m[1], p: m[2] } : { n: "", p: String(x).trim() }; });
   PR_CAMP.forEach(([c]) => { const el = $("af-" + c); if(el) el.parentElement.style.display = +el.value ? "" : "none"; });
-  const acc = $("af-accesorii"); if(acc) acc.parentElement.style.display = +t.value || acc.value ? "" : "none";
+  const acc = $("af-accesorii"); if(acc && !prRand()) acc.parentElement.style.display = +t.value || acc.value ? "" : "none";
+  if(acc && prRand() && acc.value && !+t.value) t.parentElement.style.display = "";
   let x = $("pr-ech"); if(!x){ x = document.createElement("div"); x.id = "pr-ech"; g.after(x); }
   prDeseneaza();
 }
@@ -14253,7 +14272,7 @@ function prDeseneaza(){
 function prAdauga(v){
   if(!v) return;
   if(v.startsWith("c:")){ const c = v.slice(2), el = $("af-" + c); el.parentElement.style.display = ""; if(!+el.value) el.value = 1;
-    if(c === "toalete"){ const a = $("af-accesorii"); if(a) a.parentElement.style.display = ""; }
+    if(c === "toalete" && !prRand()){ const a = $("af-accesorii"); if(a) a.parentElement.style.display = ""; }
     prDeseneaza(); el.focus(); el.select(); return; }
   PR_ECH.push({ n: 1, p: v.slice(2) }); prDeseneaza();
 }
@@ -14635,7 +14654,7 @@ function rUrmator(){
   ["toalete","containere","garduri"].forEach(c => {
     if(x.camp && c !== x.camp && !(+x.rec[c] || 0)) $("af-" + c).parentElement.style.display = "none";
   });
-  if(!x.rec.accesorii) $("af-accesorii").parentElement.style.display = "none";
+  if(!x.rec.accesorii && !prRand()) $("af-accesorii").parentElement.style.display = "none";
 }
 const unesteAcc = (a, b) => [...new Set([a, b].join(",").split(",").map(t => t.trim()).filter(Boolean))].join(", ");
 // Numărul anexei: „ANEXA NR 1.0-S1” → principal 1 (locația / șantierul), produs 0, sufix S1.
