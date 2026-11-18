@@ -1116,7 +1116,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
   <span id="rz-w"><button id="rz-reset" class="pictograma" title="Lățimi implicite — pune coloanele din tabelele acestei file înapoi cum erau">↺ Reset layout</button><i class="rz-sep">|</i></span>
   <span id="tz-w" title="Mărimea tabelului (doar tabelul, restul rămâne la fel), din 5 în 5%. Merge și cu Ctrl + rotița mausului, Ctrl + / Ctrl − / Ctrl 0. Dublu clic pe procent = scrii tu valoarea."><button class="pictograma" onclick="tzPas(-1)" aria-label="Micșorează tabelul">−</button><b id="tz-v" ondblclick="tzScrie()" title="Dublu clic = scrii mărimea (ex. 87), Enter">100%</b><input id="tz-in" type="number" min="30" max="300" step="5" style="display:none"><button class="pictograma" onclick="tzPas(1)" aria-label="Mărește tabelul">+</button></span>
-  <span class="ver">v9.31</span>
+  <span class="ver">v9.32</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -16457,7 +16457,7 @@ const flt2 = v => v == null ? "—" : (Math.round(v * 100) / 100).toLocaleString
 function fltConsHtml(c, n){
   if(c == null) return ""; const k = fltNivel(c, n), L = k == null ? null : FLT_NIV[k];
   const sv = L ? `<svg width="14" height="14" viewBox="0 0 14 14" style="flex:0 0 14px;fill:${L.c}">${L.g}</svg>` : '<span style="display:inline-block;width:14px"></span>';
-  return `<span style="display:inline-flex;align-items:center;gap:7px;font-weight:700;font-variant-numeric:tabular-nums${L && k === 2 ? ";color:" + L.c : ""}" title="${L ? "Normat " + flt1(n) + " L / 100 km — " + L.t : "Fără consum normat"}">${sv}<span>${flt2(c)}</span></span>`;
+  return `<span style="display:inline-flex;align-items:center;gap:7px;font-weight:700;font-variant-numeric:tabular-nums${L && k === 2 ? ";color:" + L.c : ""}" title="${L ? "Normat " + flt1(n) + " L / 100 km — " + L.t : "Fără consum normat"}">${sv}<span style="display:inline-block;min-width:5.2ch;text-align:right">${flt2(c)}</span></span>`;
 }
 function fltRaportHtml(m){
   const r = fltRaport(m, FLT.luna), n = +m.consum_normat || 0, cr = fltCons(r.motR != null ? r.motR : r.mot, r.km), lt = FLT.luna, nl = new Date(+lt.slice(0, 4), +lt.slice(5, 7) - 1, 1).toLocaleDateString("ro-RO", { month: "long", year: "numeric" });
