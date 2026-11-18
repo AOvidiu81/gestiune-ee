@@ -1116,7 +1116,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
   <span id="rz-w"><button id="rz-reset" class="pictograma" title="Lățimi implicite — pune coloanele din tabelele acestei file înapoi cum erau">↺ Reset layout</button><i class="rz-sep">|</i></span>
   <span id="tz-w" title="Mărimea tabelului (doar tabelul, restul rămâne la fel), din 5 în 5%. Merge și cu Ctrl + rotița mausului, Ctrl + / Ctrl − / Ctrl 0. Dublu clic pe procent = scrii tu valoarea."><button class="pictograma" onclick="tzPas(-1)" aria-label="Micșorează tabelul">−</button><b id="tz-v" ondblclick="tzScrie()" title="Dublu clic = scrii mărimea (ex. 87), Enter">100%</b><input id="tz-in" type="number" min="30" max="300" step="5" style="display:none"><button class="pictograma" onclick="tzPas(1)" aria-label="Mărește tabelul">+</button></span>
-  <span class="ver">v9.47</span>
+  <span class="ver">v9.49</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -2873,7 +2873,40 @@ function lagRender(){
         <td><button class="btn sm sec" onclick="lagSterge(${r.id})" title="Șterge (cu fișierele) — ex. probele">🗑</button></td></tr>`; }).join("") + "</table></div>";
 }
 async function lagUrl(cale){ const { data, error } = await db.storage.from("lipsa-acces").createSignedUrl(cale, 600); if(error){ toast(error.message, true); return null; } return data.signedUrl; }
-async function lagFisa(id){ const r = LAG.L.find(x => x.id === id); if(!r || !(r.poze || []).length) return; const w = window.open("", "_blank"); const u = await lagUrl(r.poze[0]); if(u){ if(w) w.location = u; else window.open(u, "_blank"); } else if(w) w.close(); }
+// v9.49 (cerut de Ovidiu, 18.11): fișa se deschide ÎN aplicație ca un PDF obișnuit (nu ca pagină web) → Salvează PDF / Tipărește / Trimite (e-mail, WhatsApp…)
+async function lagFisa(id){
+  const r = LAG.L.find(x => x.id === id); if(!r || !(r.poze || []).length) return;
+  const t = lagZiOra(r.creat), zi = t.zi.replace(/<[^>]+>/g, "").replace(/^\S+\s*-\s*/, "").trim();
+  const ext = /\.pdf$/i.test(r.poze[0]) ? "pdf" : "jpg", nume = ("Lipsa acces - " + faraDiac(r.client || "").replace(/[\\/:*?"<>|]+/g, " ").trim() + " - " + zi + "." + ext);
+  document.getElementById("mod-lagp")?.remove();
+  const w = document.createElement("div"); w.className = "modal on"; w.id = "mod-lagp";
+  w.innerHTML = `<div class="box" style="max-width:1100px;width:96vw;padding:0"><h3 class="lux-cap cap-mut" style="margin:0">${esc(nume)}</h3>
+    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:8px 12px;background:#16233c;color:#e6ebf4;font-size:13px">
+      <span id="lagp-st" style="flex:1;color:#cfd6e4;font-size:12px">Se încarcă fișa…</span>
+      <button class="btn" id="lagp-b1" disabled onclick="lagFisaAct('pdf')" title="Salvează fișierul în calculator">💾 Salvează PDF</button>
+      <button class="btn" id="lagp-b2" disabled onclick="lagFisaAct('print')">🖨 Tipărește</button>
+      <button class="btn" id="lagp-b3" disabled onclick="lagFisaAct('share')" title="Trimite fișierul (e-mail, WhatsApp…) din fereastra de partajare">📤 Trimite</button>
+      <button class="btn sec" onclick="this.closest('.modal').remove()">Închide</button></div>
+    <iframe id="lagp-fr" title="Fișa" style="width:100%;height:78vh;border:0;display:block;background:#525659"></iframe></div>`;
+  document.body.appendChild(w); if(typeof feFereastra === "function") feFereastra(w);
+  const { data, error } = await db.storage.from("lipsa-acces").download(r.poze[0]);
+  if(error || !data){ if($("lagp-st")) $("lagp-st").textContent = "Fișa nu s-a putut încărca: " + ((error && error.message) || ""); return; }
+  const blob = new Blob([data], { type: ext === "pdf" ? "application/pdf" : "image/jpeg" });
+  if(LAG.url) URL.revokeObjectURL(LAG.url); LAG.url = URL.createObjectURL(blob); LAG.blob = blob; LAG.nume = nume;
+  if(!$("lagp-fr")) return; $("lagp-fr").src = LAG.url + (ext === "pdf" ? "#view=Fit" : "");
+  ["lagp-b1", "lagp-b2", "lagp-b3"].forEach(i => { $(i).disabled = false; });
+  $("lagp-st").textContent = "Fișa e un PDF obișnuit: o salvezi, o tipărești sau o trimiți ca fișier. În PDF, apeși pe GPS → Google Maps.";
+}
+async function lagFisaAct(ce){
+  if(!LAG.blob) return;
+  if(ce === "print"){ try{ $("lagp-fr").contentWindow.focus(); $("lagp-fr").contentWindow.print(); }catch(e){ window.open(LAG.url, "_blank"); toast("Am deschis fișa într-o filă nouă — tipărește de acolo (Ctrl+P)"); } return; }
+  const file = new File([LAG.blob], LAG.nume, { type: LAG.blob.type });
+  if(ce === "share"){
+    if(navigator.canShare && navigator.canShare({ files: [file] })){ try{ await navigator.share({ files: [file], title: LAG.nume }); }catch(e){} return; }
+    toast("Calculatorul nu are fereastră de partajare — am salvat fișierul; atașează-l în e-mail", true);
+  }
+  const a = document.createElement("a"); a.href = URL.createObjectURL(file); a.download = LAG.nume; document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 4000);
+}
 async function lagPoze(id){
   const r = LAG.L.find(x => x.id === id); if(!r) return; const P = (r.poze || []).slice(1);
   document.getElementById("mod-lag")?.remove(); const w = document.createElement("div"); w.className = "modal on"; w.id = "mod-lag";
@@ -7096,6 +7129,7 @@ function ofHtml(o){
 }
 async function ofPdfBlob(o){
   if((o.continut || {}).fel === "eveniment") return ofEvPdfBlob(o);   // v8.88: pagină culcată
+  try{ return await ofChPdfBlob(o); }catch(e){ console.warn("oferta nouă (v9.48) n-a mers, fac varianta veche:", e); }   // v9.48: oferta de chirie în stilul ofertei de eveniment
   await cdLib(); await ofPozeIa(((o.continut || {}).randuri || []).map(r => r.cat));
   const f = document.createElement("iframe"); f.style.cssText = "position:fixed;left:-10000px;top:0;width:794px;height:1123px;border:0"; document.body.appendChild(f);
   try{
@@ -7733,6 +7767,148 @@ async function ofEvRes(){
   return (OF.evRes = { fonts, logo });
 }
 async function ofEvPdfBlob(o){ await cdLib(); return ofEvPdfDoc(window.jspdf.jsPDF, o, await ofEvRes()).output("blob"); }
+// v9.48 (cerut de Ovidiu, 18.11): oferta de CHIRIE în stilul ofertei de eveniment — A4 culcat, banda din stânga (logo, număr, dată, valoare),
+// dreapta: client, tabelul produselor cu prețuri, condiții și semnătura; pozele + dotările pe pagina a doua. Culoarea de accent VERDE (evenimentul e roșu).
+async function ofImgData(src){   // poza din catalog (data: sau fișier) → { d, w, h, fmt } pentru jsPDF
+  if(!src) return null;
+  try{
+    let d = src;
+    if(!/^data:/.test(src)){ const r = await fetch(new URL(src, location.href).href); if(!r.ok) return null; const b = await r.blob(); d = await new Promise(ok => { const fr = new FileReader(); fr.onload = () => ok(fr.result); fr.readAsDataURL(b); }); }
+    const im = await new Promise((ok, no) => { const i = new Image(); i.onload = () => ok(i); i.onerror = no; i.src = d; });
+    return { d, w: im.naturalWidth || 1, h: im.naturalHeight || 1, fmt: /^data:image\/png/i.test(d) ? "PNG" : "JPEG" };
+  }catch(e){ return null; }
+}
+async function ofChRes(o){
+  const F = await ofEvRes(), k = o.continut || {}, R = k.randuri || [], img = {};
+  if(k.poze !== false){ await ofPozeIa(R.map(r => r.cat)); for(const c of [...new Set(R.map(r => r.cat).filter(Boolean))]){ const x = await ofImgData(OF.poze[c]); if(x) img[c] = x; } }
+  const st = k.stampila !== false ? await ofImgData("pv/assets/docs/stampila_euro_ecologic.png") : null;
+  return { ...F, img, st };
+}
+function ofChPdfDoc(jsPDF, o, F){
+  const k = o.continut || {}, d = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4", compress: true });
+  [["R4", "Regular"], ["R5", "Medium"], ["R7", "Bold"], ["R8", "ExtraBold"]].forEach(([n, f]) => { d.addFileToVFS("Roboto-" + f + ".ttf", F.fonts[n]); d.addFont("Roboto-" + f + ".ttf", n, "normal"); });
+  const NAV = [27, 37, 80], ACC = [46, 139, 60], TX = [26, 34, 51], MUT = [107, 117, 145], LIN = [222, 227, 236], W = 297, H = 210;
+  const T = s => faraDiac(s == null ? "" : String(s)), U = s => T(s).toUpperCase();
+  const f = (n, sz, col) => { d.setFont(n, "normal"); d.setFontSize(sz); d.setTextColor(...(col || TX)); };
+  const lab = (t, x, y, col, al) => { f("R7", 7, col || MUT); d.setCharSpace(0.45); d.text(U(t), x, y, al ? { align: al } : undefined); d.setCharSpace(0); };
+  const fit = (t, n, sz, max, min) => { let s = sz; f(n, s); while(s > (min || 7) && d.getTextWidth(t) > max){ s -= 0.5; d.setFontSize(s); } return s; };
+  const LL = ["ianuarie", "februarie", "martie", "aprilie", "mai", "iunie", "iulie", "august", "septembrie", "octombrie", "noiembrie", "decembrie"];
+  const dl = z => z ? +z.slice(8) + " " + LL[+z.slice(5, 7) - 1] + " " + z.slice(0, 4) : "-";
+  const bani2 = v => (+v || 0).toLocaleString("ro-RO", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const cap = s => { const x = T(s).trim(); return x.charAt(0).toUpperCase() + x.slice(1); };
+  const R = k.randuri || [], toal = R.some(r => /toalet/i.test(r.nume)), cats = [...new Set(R.map(r => r.cat).filter(Boolean))].map(ofCat).filter(Boolean);
+  const unul = cats.length === 1 && cats.length === new Set(R.map(r => r.cat || r.nume)).size;
+  const titlu = k.titlu || (unul ? (toal ? "TOALETE ECOLOGICE" : cats[0].nume) : cats.length <= 1 && toal ? "TOALETE ECOLOGICE" : "");
+  const SW = 84, X = SW + 14, XR = W - 14, CW = XR - X;
+  const stripe = () => { d.setFillColor(...ACC); d.rect(0, 0, W, 2.2, "F"); };
+  const subsol = () => { f("R4", 7.5, MUT); d.text("Prestator: SC EURO ECOLOGIC SRL  |  J 2007 000205 190  |  CUI RO 21311085  |  Sediu: Vlahita, jud. Harghita", XR, H - 7, { align: "right" }); };
+
+  // ── banda din stânga ──
+  stripe(); d.setDrawColor(...LIN); d.setLineWidth(0.45); d.line(SW, 14, SW, H - 14);
+  if(F.logo){ const lw = 56, lh = lw * 300 / 1036; d.addImage(F.logo, "PNG", 12, 16, lw, lh); }
+  f("R8", 27, NAV); d.text("OFERTA", 12, 58);
+  f("R8", 17, ACC); d.setCharSpace(0.6); d.text("INCHIRIERE", 12.4, 66.5); d.setCharSpace(0);
+  let y = 82; [["Numarul ofertei", T(ofNr(o))], ["Data", dl(o.data)], ["Valabila", k.valabil ? k.valabil + " zile de la emitere" : "-"], ["Punct de lucru", "HUNEDOARA"]].forEach(([a, b]) => {
+    lab(a, 12, y); f("R7", 11.5, TX); d.text(b, 12, y + 5.6); y += 14; });
+  // valoarea: totalul (dacă se arată) sau prețul de pornire
+  const val = k.arata_total ? R.reduce((s, r) => s + (ofTotalRand(r, k.zile) || 0), 0) + (+k.transport || 0) : 0;
+  let ty = 148; d.setDrawColor(...LIN); d.setLineWidth(0.3); d.line(12, ty - 10, SW - 12, ty - 10);
+  d.setFillColor(...ACC); d.rect(12, ty - 3.2, 1.2, 3.6, "F");
+  if(val > 0){ lab("Valoare totala" + (k.zile ? " (" + k.zile + " zile)" : ""), 15, ty);
+    const tv = bani2(val) + " lei"; f("R5", 11); const wT = d.getTextWidth("+ TVA"); let tsz = 25; f("R8", tsz); while(tsz > 14 && d.getTextWidth(tv) + 2.5 + wT > SW - 24){ tsz -= 0.5; d.setFontSize(tsz); }
+    f("R8", tsz, NAV); d.text(tv, 12, ty + 11); const wv = d.getTextWidth(tv); f("R5", 11, TX); d.text("+ TVA", 12 + wv + 2.5, ty + 11);
+    f("R4", 9, MUT); d.text(bani2(val * (1 + OF_TVA)) + " lei cu TVA inclus", 12, ty + 16.5);
+  } else { const p0 = R.filter(r => r.pret != null).sort((a, b) => a.pret - b.pret)[0];
+    lab("Pret de la", 15, ty);
+    if(p0){ const tv = bani2(p0.pret) + " lei"; f("R8", 24, NAV); d.text(tv, 12, ty + 11); const wv = d.getTextWidth(tv); f("R5", 11, TX); d.text("+ TVA", 12 + wv + 2.5, ty + 11);
+      f("R4", 9, MUT); d.text(("/ " + (OF_PE[p0.pe] || "bucata") + " / " + (/^ML$/i.test(p0.um || "") ? "ML" : "buc.")).replace("/  /", "/"), 12, ty + 16.5); } }
+  d.setDrawColor(...LIN); d.line(12, 184, SW - 12, 184);
+  f("R7", 8.5, TX); d.text("0735 214 751  /  0735 214 762", 12, 190.5);
+  f("R4", 8.5, MUT); d.text("hunedoara@eurowc.ro", 12, 195.5); d.text("www.eurowc.ro", 12, 200.5);
+
+  // ── conținutul ──
+  lab("Client", X, 20);
+  const cl = U(o.catre), csz = fit(cl, "R8", 24, CW, 14); f("R8", csz, NAV); d.text(cl, X, 30);
+  const c2 = X + CW * 0.56;
+  lab("Locatia", X, 41); f("R5", 12.5, TX); d.text(d.splitTextToSize(U(k.locatia) || "-", c2 - X - 8).slice(0, 2), X, 47.2);
+  lab("Oferta pentru", c2, 41); f("R5", 12.5, TX); d.text(d.splitTextToSize(U(titlu) || (R.length + " produse"), XR - c2)[0], c2, 47.2);
+  if(k.minim_buc || k.minim_per){ f("R4", 9.5, MUT); d.text(T("minim " + [k.minim_buc, k.minim_per].filter(Boolean).join(", ")), c2, 52.6); }
+  d.setDrawColor(...LIN); d.setLineWidth(0.3); d.line(X, 57, XR, 57);
+  // tabelul produselor
+  const arT = !!k.arata_total && R.some(r => ofTotalRand(r, k.zile) != null), poze = k.poze !== false && Object.keys(F.img || {}).length;
+  const xQ = X + CW * (arT ? 0.60 : 0.66), xP = X + CW * (arT ? 0.80 : 0.86), xV = XR, py = 66;
+  lab("Produs", X, py); lab("Cantitate", xQ, py, MUT, "right"); lab("Pret / U.M.", xP, py, MUT, "right"); if(arT) lab("Valoare", xV, py, MUT, "right"); else lab("Servisare", XR, py, MUT, "right");
+  d.setDrawColor(...NAV); d.setLineWidth(0.5); d.line(X, py + 2.5, XR, py + 2.5);
+  const ment = [];
+  if(R.some(r => r.frecventa)) ment.push("Pretul include servisarea / intretinerea" + (toal ? " toaletelor" : "") + ": absorbtie, spalare, solutie biodegradabila, odorizare si hartie igienica");
+  if(k.transport) ment.push("Transport: " + bani2(k.transport) + " lei + TVA, pentru toate produsele" + (k.transport_avans !== false ? ", achitat integral in avans" : ""));
+  if(k.livrare) ment.push("Livrarea se face la locatia stabilita, in minimum " + k.livrare + " zile lucratoare de la confirmare" + (k.transport && k.transport_avans !== false ? "a sumei de transport" : ""));
+  if(k.minim_buc || k.minim_per) ment.push("Oferta este pentru" + (k.minim_buc ? " un minim de " + k.minim_buc : "") + (k.minim_per ? (k.minim_buc ? "," : "") + " o perioada de " + k.minim_per : ""));
+  if(k.sv_cerere != null) ment.push("Servisare la cerere, in alte zile decat cele contractate: " + bani2(k.sv_cerere) + " lei + TVA / " + (toal ? "toaleta" : "bucata"));
+  if(k.pret_ev != null) ment.push("Pentru evenimente: " + bani2(k.pret_ev) + " lei + TVA / zi / " + (toal ? "toaleta" : "bucata") + ", cu servisare zilnica");
+  (k.mentiuni || "").split("\n").map(x => x.trim()).filter(Boolean).forEach(m => ment.push(m));
+  if(k.plata) ment.push(k.plata);
+  // locul pentru condiții + semnătură, ca la eveniment (litera de cel puțin 8 pt)
+  const bot = H - 11, gap = 8, w1 = CW - 80, w2 = (CW - gap) / 2, h1 = (L, s0) => L.length * s0 * 0.47 + s0 * 0.12;
+  const masoara = (s0, nc) => { f("R4", s0); const Ls = ment.map(m => d.splitTextToSize(cap(m), (nc === 1 ? w1 : w2) - 5));
+    let col = [Ls], hh = [Ls.reduce((t, L) => t + h1(L, s0), 0)];
+    if(nc === 2){ const tot = hh[0]; let a = 0, i = 0; while(i < Ls.length && a + h1(Ls[i], s0) <= tot / 2 + 0.01) a += h1(Ls[i++], s0); if(!i) i = 1; col = [Ls.slice(0, i), Ls.slice(i)]; hh = col.map(c => c.reduce((t, L) => t + h1(L, s0), 0)); }
+    return { s0, nc, col, need: 7.5 + Math.max(28, ...hh) }; };
+  const yLim = Math.max(118, bot - masoara(9, 1).need - 7);
+  const rh0 = (yLim - py - 4) / Math.max(1, R.length), rh = Math.max(7.5, Math.min(poze ? 20 : 13, rh0)), cuPoza = poze && rh >= 11;
+  let ry = py + 4; d.setLineWidth(0.2); d.setDrawColor(...LIN);
+  R.forEach(r => {
+    const mid = ry + rh / 2, im = cuPoza && F.img[r.cat]; let xn = X;
+    if(im){ const bh = rh - 2.5, bw = Math.min(bh * im.w / im.h, 22); const hh = bw * im.h / im.w; d.addImage(im.d, im.fmt, X + (22 - bw) / 2, ry + (rh - hh) / 2, bw, hh); xn = X + 26; }
+    else if(cuPoza) xn = X + 26;
+    const fr = OF_FR[r.frecventa] || r.frecventa, sub = [r.acc ? "cu " + T(r.acc).toLowerCase() : "", !arT ? "" : fr ? "servisare " + T(fr).toLowerCase() : ""].filter(Boolean).join(" · ");
+    const fs = rh >= 11 ? 12.5 : 11, wn = xQ - xn - 18, fsn = fit(T(r.nume), "R5", fs, wn, 9.5); f("R5", fsn, TX);
+    const Ln = d.splitTextToSize(T(r.nume), wn).slice(0, rh >= 14 ? 2 : 1), y0 = mid - (Ln.length - 1) * fsn * 0.21 + (sub ? -0.8 : 1.6) - (sub && Ln.length > 1 ? 1.5 : 0);
+    d.text(Ln, xn, y0, { lineHeightFactor: 1.15 });
+    if(sub){ f("R4", 8.5, MUT); d.text(d.splitTextToSize(sub, wn)[0], xn, y0 + (Ln.length - 1) * fsn * 0.42 + 4.8); }
+    const um = /^ML$/i.test(r.um || "") ? "ML" : "buc.";
+    if(r.buc){ f("R4", 9, MUT); const wu = d.getTextWidth(um); d.text(um, xQ, mid + 1.6, { align: "right" }); f("R8", fs + 0.5, NAV); d.text(String(r.buc), xQ - wu - 1.5, mid + 1.6, { align: "right" }); }
+    f("R8", fs + 0.5, NAV); d.text(r.pret != null ? bani2(r.pret) + " lei" : "-", xP, mid - 0.4, { align: "right" });
+    f("R4", 8, MUT); d.text(("+ TVA / " + (OF_PE[r.pe] ? OF_PE[r.pe] + " / " : "") + (um === "ML" ? "ML" : "buc.")), xP, mid + 3.8, { align: "right" });
+    if(arT){ const tot = ofTotalRand(r, k.zile); if(tot != null){ f("R8", fs, NAV); d.text(bani2(tot) + " lei", xV, mid - 0.4, { align: "right" }); f("R4", 8, MUT); d.text(k.zile + " zile + TVA", xV, mid + 3.8, { align: "right" }); } }
+    else { f("R5", 9.5, TX); d.text(fr ? T(fr) : "-", XR, mid + 1.6, { align: "right" }); }
+    ry += rh; d.line(X, ry, XR, ry); });
+  // condiții + semnătura
+  const top0 = ry + 8; let C = null;
+  for(const [nc, s0] of [[1, 10], [1, 9.5], [1, 9], [2, 9.5], [2, 9], [2, 8.5], [2, 8], [2, 7.5], [2, 7]]){ C = masoara(s0, nc); if(bot - C.need >= top0) break; }
+  const fsz = C.s0, cy = Math.max(top0, bot - C.need); d.setDrawColor(...LIN); d.setLineWidth(0.3); d.line(X, cy - 3, XR, cy - 3);
+  if(ment.length){ lab("Conditii", X, cy + 1.5);
+    C.col.forEach((col, ci) => { const x0 = X + ci * (w2 + gap); let my = cy + 7.5;
+      col.forEach(L => { d.setFillColor(...ACC); d.rect(x0, my - fsz * 0.24, fsz * 0.18, fsz * 0.18, "F"); f("R4", fsz, TX); d.text(L, x0 + 4.5, my, { lineHeightFactor: 1.33 }); my += h1(L, fsz); }); }); }
+  const sm = k.semnatar || {}, sx = C.nc === 1 ? XR : XR, sy = C.nc === 1 ? cy + 1.5 : bot - 18;
+  if(C.nc === 1 || !ment.length){
+    f("R7", 11); let tw = d.getTextWidth(U(sm.nume || "")); f("R4", 9.5); tw = Math.max(tw, d.getTextWidth(T(sm.functie || "")), d.getTextWidth(T(sm.tel || "")));
+    if(F.st){ const sh = 22, swd = sh * F.st.w / F.st.h; d.addImage(F.st.d, F.st.fmt, XR - tw - swd - 3, sy - 2, swd, sh); }   // ștampila în stânga semnăturii
+    lab("Cu stima", sx, sy, MUT, "right"); f("R7", 11, NAV); d.text(U(sm.nume || ""), sx, sy + 6.5, { align: "right" });
+    f("R4", 9.5, MUT); d.text(T(sm.functie || ""), sx, sy + 11.5, { align: "right" }); d.text(T(sm.tel || ""), sx, sy + 16, { align: "right" }); }
+  subsol();
+
+  // ── pagina 2: pozele și dotările produselor ──
+  const det = k.poze !== false ? cats.filter(c => c.dotari || F.img[c.cheie]) : [];
+  for(let i = 0; i < det.length; i += 2){
+    d.addPage("a4", "landscape"); stripe();
+    f("R8", 18, NAV); d.text("Date tehnice si specificatii", 14, 20); lab(ofNr(o) + "  ·  " + U(o.catre), XR, 20, MUT, "right");
+    d.setDrawColor(...LIN); d.setLineWidth(0.3); d.line(14, 25, XR, 25);
+    det.slice(i, i + 2).forEach((c, j) => {
+      const x0 = 14 + j * ((W - 28) / 2 + 0), cw = (W - 28) / 2 - 8, im = F.img[c.cheie];
+      f("R8", 14, ACC); d.text(d.splitTextToSize(U(c.nume), cw)[0], x0, 36);
+      let yy = 42;
+      if(im){ const mh = 62, mw = Math.min(cw, mh * im.w / im.h), hh = mw * im.h / im.w; d.addImage(im.d, im.fmt, x0, yy, mw, hh); f("R4", 7, MUT); d.text("* imagine cu caracter informativ", x0, yy + hh + 3.5); yy += hh + 9; }
+      if(c.dotari){ lab("Dotari", x0, yy); yy += 5;
+        c.dotari.split("\n").map(x => x.trim()).filter(Boolean).forEach(x => { const L = d.splitTextToSize(cap(x), cw - 5); if(yy > H - 24) return; d.setFillColor(...ACC); d.rect(x0, yy - 2.2, 1.6, 1.6, "F"); f("R4", 9.5, TX); d.text(L, x0 + 4.5, yy, { lineHeightFactor: 1.3 }); yy += L.length * 4.4 + 0.8; }); }
+      if(c.descriere && yy < H - 30){ yy += 3; lab("Avantaje", x0, yy); yy += 5; f("R4", 8.5, MUT); const L = d.splitTextToSize(T(c.descriere), cw); const n = Math.max(1, Math.floor((H - 18 - yy) / 3.9)); d.text(L.slice(0, n), x0, yy, { lineHeightFactor: 1.3 }); }
+    });
+    subsol();
+  }
+  d.setProperties({ title: "Oferta " + ofNr(o) + " - " + T(o.catre), author: "SC EURO ECOLOGIC SRL", subject: "Oferta de inchiriere", creator: "GestiuneEE" });
+  return d;
+}
+async function ofChPdfBlob(o){ await cdLib(); return ofChPdfDoc(window.jspdf.jsPDF, o, await ofChRes(o)).output("blob"); }
 // ── oferta de eveniment acceptată → fișa „Date contract” cu „Eveniment” bifat; prețul pe bucată nu se trece (clientul a primit doar totalul) ──
 function ofEvLaFisa(o){
   const k = o.continut || {}; cdNou();

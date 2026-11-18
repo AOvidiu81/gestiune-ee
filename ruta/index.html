@@ -1109,7 +1109,7 @@ let dayStart = {}; // {brand, plate, kmStart, driver1, driver2, startTime}
 let lastRouteRows = [];
 
 // --- Șofer EE: aplicatia ruleaza in fila „Rută” (../sofer/), care trimite datele zilei ---
-const EE_RUTA_VERSION = 'v48'; // aceeasi cu VERSIUNE din sw.js; Șofer EE o arata langa rotita
+const EE_RUTA_VERSION = 'v49'; // aceeasi cu VERSIUNE din sw.js; Șofer EE o arata langa rotita
 const SOFER_MODE = new URLSearchParams(location.search).get('sofer') === '1';
 let multiZile = null;   // mai multe zile bifate (ruta complementara), altfel null
 let multiTrasee = null; // mai multe trasee bifate, altfel null
@@ -3275,7 +3275,7 @@ function laDeseneaza(){
       <div class="la-mut" style="margin-top:4px">${laDataTxt(LA.t)}, ora ${laOraTxt(LA.t)} · ${laGpsTxt()}</div>
       <div style="margin-top:6px;font-size:.88rem">📨 ${dest}</div></div>
     <div class="la-poze">${LA.poze.map((p, i) => `<div><img src="${p.url}" alt=""><span data-la="del" data-i="${i}">✖</span></div>`).join('')}</div>
-    ${LA.poze.length < 3 ? `<label class="la-btn cam">📷 ${LA.poze.length ? 'Încă o poză (opțional, max. 3)' : 'Fă poza'}<input type="file" accept="image/*" capture="environment" style="display:none" id="laFile"></label>` : ''}
+    ${LA.poze.length < 3 ? `<div class="la-mut" style="margin-bottom:-6px">📸 Ține telefonul <b>pe orizontală (culcat)</b> — poza umple toată pagina fișei; fiecare poză are pagina ei.</div><label class="la-btn cam">📷 ${LA.poze.length ? 'Încă o poză (opțional, max. 3)' : 'Fă poza'}<input type="file" accept="image/*" capture="environment" style="display:none" id="laFile"></label>` : ''}
     <div class="la-card"><div class="la-mut" style="margin-bottom:6px">Motiv (atingi unul sau mai multe)</div><div class="la-chips">${LA_MOTIVE.map(m => `<span class="la-chip ${LA.motive.has(m) ? 'on' : ''}" data-la="mot">${escapeHtml(m)}</span>`).join('')}</div></div>
     <div class="la-card"><div class="la-mut" style="margin-bottom:6px">Observații</div><textarea id="laObs" placeholder="ex. discutat pe șantier, revin săptămâna viitoare">${escapeHtml(LA.obs || '')}</textarea></div>
     ${LA.poze.length ? `<div class="la-card"><div class="la-mut" style="margin-bottom:6px">Așa arată dovada trimisă</div><img id="laPrev" alt="" style="width:100%;border-radius:8px;display:block;background:#e5e9f0;min-height:120px"${LA.prevUrl ? ` src="${LA.prevUrl}"` : ''}></div>` : ''}
@@ -3311,7 +3311,8 @@ function laIncarcaImg(file){ return new Promise((res, rej) => { const u = URL.cr
 async function laPoza(file){
   try{ LA.st = '⏳ pregătesc poza…'; LA.stErr = false; laDeseneaza();
     const im = await laIncarcaImg(file), k = Math.min(1, 1600 / Math.max(im.naturalWidth, im.naturalHeight));
-    LA.poze.push({ img: im, k, url: URL.createObjectURL(file), orig: file }); LA.st = ''; laDeseneaza();
+    LA.poze.push({ img: im, k, url: URL.createObjectURL(file), orig: file });
+    LA.st = im.naturalHeight > im.naturalWidth ? '⚠️ Poza e pe verticală — în fișă se taie sus și jos. Dacă vrei tot terenul, ștearg-o (✖) și refă-o cu telefonul culcat.' : ''; LA.stErr = false; laDeseneaza();
   }catch(e){ LA.st = '⚠️ ' + e.message; LA.stErr = true; laDeseneaza(); }
 }
 // v45b (cerut de Ovidiu): în loc de chenar peste poză — o FIȘĂ: antet, pozele întregi în chenare (1 / 2 / 3 aranjate), zonă de date separată
@@ -3343,8 +3344,10 @@ function laQrLib(){ if(window.qrcode) return Promise.resolve(window.qrcode); if(
 function laQr(g, lib, txt, x, y, sz){ try{ const q = lib(0, 'M'); q.addData(txt); q.make(); const n = q.getModuleCount(), m = sz / (n + 2);
   g.fillStyle = '#fff'; g.fillRect(x, y, sz, sz); g.fillStyle = '#111827';
   for(let i = 0; i < n; i++) for(let j = 0; j < n; j++) if(q.isDark(i, j)) g.fillRect(Math.floor(x + (j + 1) * m), Math.floor(y + (i + 1) * m), Math.ceil(m), Math.ceil(m)); return true; }catch(e){ return false; } }
-async function laFisa(){
-  const W = 1920, H = 1080, SW = 640, X0 = W - SW, PAD = 34, F = 'Roboto, Arial, sans-serif', P = LA.poze.slice(0, 3);
+// v49 (cerut de Ovidiu, 18.11 15:49): ca la PV-uri — o PAGINĂ pentru fiecare poză, poza umple tot cadrul (decupată centrat, fără benzi albe);
+// coloana cu datele se repetă pe fiecare pagină. laFisa(i) = pagina pozei i.
+async function laFisa(idx){
+  idx = idx || 0; const W = 1920, H = 1080, SW = 640, X0 = W - SW, PAD = 34, F = 'Roboto, Arial, sans-serif', NP = Math.min(3, LA.poze.length), P = LA.poze.slice(idx, idx + 1);
   const r = LA.r, f = LA.fix, c = LA.ctr || {}, ok = f && !f.err, dist = ok && r.lat && r.lon ? Math.round(gpsDistM(f, { lat: +r.lat, lon: +r.lon })) : null;
   const RED = '#D7000F', NAV = '#1b2550', TXT = '#111827', MUT = '#6b7591', LIN = '#d5dbe6';
   const qrLib = ok ? await laQrLib() : null;
@@ -3352,12 +3355,12 @@ async function laFisa(){
   g.fillStyle = '#fff'; g.fillRect(0, 0, W, H);
   // stânga: pozele, pe alb, cu chenar subțire
   if(P.length){
-    const R = laAranj(P.map(p => p.img.naturalWidth / p.img.naturalHeight), X0 - 2 * PAD, H - 2 * PAD, 22);
-    P.forEach((p, i) => { const [x0, y0, w, h] = R[i], x = x0 + PAD, y = y0 + PAD;
-      g.save(); laRR(g, x, y, w, h, 12); g.clip(); g.drawImage(p.img, x, y, w, h); g.restore();
-      g.strokeStyle = LIN; g.lineWidth = 2; laRR(g, x, y, w, h, 12); g.stroke();
-      if(P.length > 1){ g.fillStyle = '#fff'; g.beginPath(); g.arc(x + 30, y + 30, 19, 0, 7); g.fill(); g.strokeStyle = RED; g.lineWidth = 3; g.stroke();
-        g.fillStyle = RED; g.font = `800 21px ${F}`; g.fillText(String(i + 1), x + 30 - g.measureText(String(i + 1)).width / 2, y + 37); } });
+    const im = P[0].img, x = PAD, y = PAD, w = X0 - 2 * PAD, h = H - 2 * PAD, k = Math.max(w / im.naturalWidth, h / im.naturalHeight), sw = w / k, sh = h / k;
+    g.save(); laRR(g, x, y, w, h, 12); g.clip(); g.drawImage(im, (im.naturalWidth - sw) / 2, (im.naturalHeight - sh) / 2, sw, sh, x, y, w, h); g.restore();   // umple cadrul (cover)
+    g.strokeStyle = LIN; g.lineWidth = 2; laRR(g, x, y, w, h, 12); g.stroke();
+    if(NP > 1){ const t = 'Poza ' + (idx + 1) + ' din ' + NP; g.font = `800 24px ${F}`; const tw0 = g.measureText(t).width + 32;
+      g.fillStyle = 'rgba(255,255,255,.92)'; laRR(g, x + 18, y + 18, tw0, 44, 22); g.fill(); g.strokeStyle = RED; g.lineWidth = 3; laRR(g, x + 18, y + 18, tw0, 44, 22); g.stroke();
+      g.fillStyle = RED; g.fillText(t, x + 34, y + 48); }
   }
   g.fillStyle = LIN; g.fillRect(X0, PAD, 2, H - 2 * PAD);   // linie între poze și date
   const tx = X0 + 44, tw = SW - 84;
@@ -3407,11 +3410,14 @@ async function laFisa(){
 // v46c (cerut de Ovidiu, 18.11 10:19): fișa se trimite ca PDF (ca raportul de rută pentru STRABAG) — GPS-ul și QR-ul se apasă → Google Maps
 function laBlobDataUrl(b){ return new Promise(res => { const fr = new FileReader(); fr.onload = () => res(fr.result); fr.readAsDataURL(b); }); }
 async function laFisaPdf(jpg){
-  if(!window.jspdf) return null; jpg = jpg || await laFisa(); const f = LA.fix;
+  if(!window.jspdf) return null; const f = LA.fix, n = Math.max(1, Math.min(3, LA.poze.length));
   const { jsPDF } = window.jspdf, PW = 297, PH = 297 * 1080 / 1920, k = PW / 1920;
   const d = new jsPDF({ orientation: 'landscape', unit: 'mm', format: [PW, PH] });
-  d.addImage(await laBlobDataUrl(jpg), 'JPEG', 0, 0, PW, PH);
-  if(f && !f.err){ const url = `https://maps.google.com/?q=${f.lat.toFixed(6)},${f.lon.toFixed(6)}`; (LA._zone || []).forEach(([x, y, w, h]) => d.link(x * k, y * k, w * k, h * k, { url })); }
+  for(let i = 0; i < n; i++){   // v49: o pagină pentru fiecare poză
+    const pj = i === 0 && jpg ? jpg : await laFisa(i); if(i) d.addPage([PW, PH], 'landscape');
+    d.addImage(await laBlobDataUrl(pj), 'JPEG', 0, 0, PW, PH);
+    if(f && !f.err){ const url = `https://maps.google.com/?q=${f.lat.toFixed(6)},${f.lon.toFixed(6)}`; (LA._zone || []).forEach(([x, y, w, h]) => d.link(x * k, y * k, w * k, h * k, { url })); }
+  }
   d.setProperties({ title: 'Lipsă acces — ' + (LA.r.client || '') + ' — ' + laDataTxt(LA.t) + ' ' + laOraTxt(LA.t), author: 'Euro Ecologic' });
   return d.output('blob');
 }
