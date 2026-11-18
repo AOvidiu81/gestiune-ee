@@ -1116,7 +1116,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
   <span id="rz-w"><button id="rz-reset" class="pictograma" title="Lățimi implicite — pune coloanele din tabelele acestei file înapoi cum erau">↺ Reset layout</button><i class="rz-sep">|</i></span>
   <span id="tz-w" title="Mărimea tabelului (doar tabelul, restul rămâne la fel), din 5 în 5%. Merge și cu Ctrl + rotița mausului, Ctrl + / Ctrl − / Ctrl 0. Dublu clic pe procent = scrii tu valoarea."><button class="pictograma" onclick="tzPas(-1)" aria-label="Micșorează tabelul">−</button><b id="tz-v" ondblclick="tzScrie()" title="Dublu clic = scrii mărimea (ex. 87), Enter">100%</b><input id="tz-in" type="number" min="30" max="300" step="5" style="display:none"><button class="pictograma" onclick="tzPas(1)" aria-label="Mărește tabelul">+</button></span>
-  <span class="ver">v9.50</span>
+  <span class="ver">v9.51</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -1306,6 +1306,20 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
 </section>
 
 <!-- ================= LIPSĂ ACCES (v9.41) ================= -->
+<style>
+  #p-lipsaacces .lag-cap{font-size:13px;color:var(--mut);margin:0 0 10px}#p-lipsaacces .lag-cap b{color:var(--tx);font-size:15px}
+  #p-lipsaacces .lag-w{border:1px solid var(--bd,#d5dbe6);border-radius:14px;overflow:auto;background:var(--card);box-shadow:0 1px 2px rgba(16,24,40,.05),0 6px 18px rgba(16,24,40,.06)}
+  #lag-tbl{border-collapse:separate;border-spacing:0;width:100%;margin:0}
+  #lag-tbl thead th{position:sticky;top:0;z-index:2;background:linear-gradient(180deg,#f7f9fc,#eef2f8);color:#4a5872;font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;padding:11px 12px;border-bottom:1px solid var(--bd,#d5dbe6);text-align:left;white-space:nowrap}
+  :root[data-tema="inchis"] #lag-tbl thead th{background:var(--bg);color:var(--mut)}
+  #lag-tbl td{padding:10px 12px;border-bottom:1px solid var(--bd,#e6eaf1);vertical-align:top;font-size:13px}
+  #lag-tbl td+td,#lag-tbl th+th{border-left:1px solid var(--bd,#e6eaf1)}
+  #lag-tbl tbody tr:last-child td{border-bottom:0}
+  #lag-tbl tbody tr:nth-child(even) td{background:rgba(27,37,80,.025)}
+  #lag-tbl tbody tr:hover td{background:rgba(47,91,211,.06)}
+  #lag-tbl td:first-child{white-space:nowrap}
+  #lag-tbl .lag-b{background:#1b2550;border-color:#1b2550;color:#fff;white-space:nowrap}#lag-tbl .lag-b2{white-space:nowrap}
+</style>
 <section class="page" id="p-lipsaacces">
   <div class="card noprint">
     <div class="row" style="align-items:flex-end;flex-wrap:wrap;gap:10px">
@@ -2864,7 +2878,8 @@ function lagRender(){
   const q = faraDiac(($("lag-q").value || "").toLowerCase().trim()), sf = $("lag-sof").value, ct = $("lag-ctr").value;
   const L = LAG.L.filter(r => (!sf || r.sofer === sf) && (!ct || r.contract === ct) && (!q || faraDiac([r.client, r.localitate, r.locatie, r.observatii, (r.motive || []).join(" "), r.client_key].join(" ").toLowerCase()).includes(q)));
   if(!L.length){ el.innerHTML = '<p class="muted" style="margin:0">Nicio lipsă de acces' + (LAG.L.length ? " pentru filtrele alese." : " în perioada aleasă.") + "</p>"; return; }
-  el.innerHTML = `<div class="muted" style="margin-bottom:8px">${L.length} ${L.length === 1 ? "lipsă de acces" : "lipsuri de acces"}</div><div style="overflow:auto"><table><tr><th>Data</th><th>Ora</th><th>Client / locație</th><th>Șofer · mașină</th><th>Contract</th><th>Motiv</th><th>Observații</th><th>GPS</th><th>Dovada</th><th></th></tr>` +
+  // v9.51 (cerut de Ovidiu, 18.11): tabel în chenar, cu „|” între coloane (lățimea se trage din antet și se ține minte — mecanismul din v6.93)
+  el.innerHTML = `<div class="lag-cap"><b>${L.length}</b> ${L.length === 1 ? "lipsă de acces" : "lipsuri de acces"}</div><div class="tw lag-w"><table id="lag-tbl"><thead><tr><th>Data</th><th>Ora</th><th>Client / locație</th><th>Șofer · mașină</th><th>Contract</th><th>Motiv</th><th>Observații</th><th>GPS</th><th>Dovada</th><th></th></tr></thead><tbody>` +
     L.map(r => { const t = lagZiOra(r.creat), nf = (r.poze || []).length, ar = !!r.arhivat_la;
       return `<tr><td style="white-space:nowrap">${t.zi}</td><td>${t.ora}</td>
         <td><b>${esc(r.client || "")}</b><div class="muted" style="font-size:12px">${esc([r.localitate, r.jud].filter(Boolean).join(" · "))}${r.locatie ? " — " + esc(r.locatie) : ""}</div></td>
@@ -2872,8 +2887,8 @@ function lagRender(){
         <td>${esc(r.contract || "—")}</td><td style="color:#b42318;font-size:13px">${esc((r.motive || []).join(", ") || "—")}</td>
         <td style="font-size:13px;max-width:260px">${esc(r.observatii || "")}</td>
         <td style="white-space:nowrap">${r.lat != null ? `<a href="https://maps.google.com/?q=${r.lat},${r.lon}" target="_blank" rel="noopener">📍 hartă</a><div class="muted" style="font-size:12px">±${Math.round(r.gps_acc || 0)} m${r.dist_m != null ? " · " + r.dist_m + " m de punct" : ""}</div>` : "—"}</td>
-        <td style="white-space:nowrap">${ar ? `<span class="muted" title="${esc(r.arhiva_cale || "")}">în Drive</span>` : nf ? `<button class="btn sm sec" onclick="lagFisa(${r.id})" title="Fișa PDF">📄</button> ${nf > 1 ? `<button class="btn sm sec" onclick="lagPoze(${r.id})" title="Pozele">🖼 ${nf - 1}</button>` : ""}` : "—"}</td>
-        <td><button class="btn sm sec" onclick="lagSterge(${r.id})" title="Șterge (cu fișierele) — ex. probele">🗑</button></td></tr>`; }).join("") + "</table></div>";
+        <td style="white-space:nowrap">${ar ? `<span class="muted" title="${esc(r.arhiva_cale || "")}">în Drive</span>` : nf ? `<button class="btn sm lag-b" onclick="lagFisa(${r.id})" title="Fișa PDF — salvezi, tipărești, trimiți">📄 Fișa</button> ${nf > 1 ? `<button class="btn sm sec lag-b2" onclick="lagPoze(${r.id})" title="Pozele mari">🖼 ${nf - 1}</button>` : ""}` : "—"}</td>
+        <td><button class="btn sm sec" onclick="lagSterge(${r.id})" title="Șterge (cu fișierele) — ex. probele">🗑</button></td></tr>`; }).join("") + "</tbody></table></div>";
 }
 async function lagUrl(cale){ const { data, error } = await db.storage.from("lipsa-acces").createSignedUrl(cale, 600); if(error){ toast(error.message, true); return null; } return data.signedUrl; }
 // v9.49 (cerut de Ovidiu, 18.11): fișa se deschide ÎN aplicație ca un PDF obișnuit (nu ca pagină web) → Salvează PDF / Tipărește / Trimite (e-mail, WhatsApp…)
