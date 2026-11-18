@@ -548,6 +548,12 @@
   html.ee-deschis .resume-box{background:#e6f5ea; border-color:rgba(29,123,58,0.4);}
   html.ee-deschis .history-item .h-status.activa{background:#e6f5ea; border-color:rgba(29,123,58,0.4);}
   html.ee-deschis #syncQueueBadge{color:var(--portocaliu) !important;}
+/* v44: CTR. (al cui e contractul) + agent — doar pentru angajații bifați în GestiuneEE */
+.ctr-tag{background:#fff4e0;color:#8a4b00;border:1px solid #f0c27a;border-radius:6px;padding:1px 7px;font-weight:700;font-size:.72rem;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.dep-tag{background:#eef1f6;color:#3d4a63;border:1px solid #cfd6e2;border-radius:6px;padding:1px 7px;font-weight:700;font-size:.72rem}
+.ctr-pop{display:none;margin:8px 0 2px;background:#1b2550;color:#fff;border-radius:10px;padding:8px 12px;font-size:.85rem;line-height:1.55}
+.ctr-pop.on{display:block}
+.ctr-pop a{color:#9fd0ff;font-weight:700;text-decoration:none}
 </style>
 <script>if(new URLSearchParams(location.search).get('sofer')==='1')document.documentElement.classList.add('ee-deschis');</script>
 <style>
@@ -1082,7 +1088,7 @@ let dayStart = {}; // {brand, plate, kmStart, driver1, driver2, startTime}
 let lastRouteRows = [];
 
 // --- Șofer EE: aplicatia ruleaza in fila „Rută” (../sofer/), care trimite datele zilei ---
-const EE_RUTA_VERSION = 'v43'; // aceeasi cu VERSIUNE din sw.js; Șofer EE o arata langa rotita
+const EE_RUTA_VERSION = 'v44'; // aceeasi cu VERSIUNE din sw.js; Șofer EE o arata langa rotita
 const SOFER_MODE = new URLSearchParams(location.search).get('sofer') === '1';
 let multiZile = null;   // mai multe zile bifate (ruta complementara), altfel null
 let multiTrasee = null; // mai multe trasee bifate, altfel null
@@ -1795,6 +1801,8 @@ window.addEventListener('scroll', ()=>{
 }, {passive:true, capture:true});
 
 listEl.addEventListener('click', (e)=>{
+  const ctrT = e.target.closest('.ctr-tag');   // v44: CTR. atins → agentul și telefonul (al doilea atins le ascunde)
+  if(ctrT){ const pop = ctrT.closest('.card') && ctrT.closest('.card').querySelector('.ctr-pop'); if(pop) pop.classList.toggle('on'); return; }
   const nameToggle = e.target.closest('.cartela-badge') ? null : e.target.closest('.card-name-toggle');
   const arriveBtn = e.target.closest('.visit-btn.arrive');
   const leaveBtn = e.target.closest('.visit-btn.leave');
@@ -2177,6 +2185,7 @@ async function loadClientsFromSupabase(){
     DATA.length = 0; DATA.push(...newData);
     assignIds(DATA);
     rebuildDataById();
+    ctrIncarca();   // v44
     return true;
   }catch(err){
     console.error('Eroare la încărcarea clienților din Supabase:', err);
@@ -3201,12 +3210,29 @@ const ECH_COD = [[/LAVOAR\s*INT/, 'LI'], [/LAVOAR\s*EXT/, 'LE'], [/DOZATOR|SAPUN
 function echScurt(x){ const m = /^(\d+)\s+(.+)$/.exec(String(x).trim()); const nume = (m ? m[2] : String(x)).trim();
   const t = nume.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase(); const g = ECH_COD.find(([r]) => r.test(t));
   return (m ? m[1] + ' ' : '') + (g ? g[1] : nume); }
+// v44 (cerut de Ovidiu, 18.11): „CTR. HUNEDOARA” = al cui e contractul punctului (+ „DEP. X” când se livrează din alt depozit);
+// atins → agentul depozitului contractului și telefonul (apelabil). Vine din funcția ruta_contracte(), care dă date DOAR
+// contului bifat în GestiuneEE (Angajați → Salarizare → „vede al cui e contractul”); ceilalți nu văd nimic nou.
+let CTR = {};
+async function ctrIncarca(){
+  if(!sb) return;
+  try{ const { data, error } = await sb.rpc('ruta_contracte'); if(error || !data) return;
+    const n = {}; data.forEach(x => { if(x.client_key) n[x.client_key] = x; }); const avea = Object.keys(CTR).length; CTR = n;
+    if(data.length || avea) render(); }catch(e){ console.warn('CTR nu s-a încărcat:', e); }
+}
+function agentScurt(n){ const p = String(n || '').trim().split(/\s+/).filter(Boolean); return p.length > 1 ? p[0][0] + '. ' + p.slice(1).join(' ') : p.join(' '); }
+function ctrTagHtml(r){ const k = r.clientKey && CTR[r.clientKey]; if(!k || !k.contract) return '';
+  return `<span class="ctr-tag" data-ctr="${escapeHtml(r.clientKey)}">CTR. ${escapeHtml(k.contract)}</span>` + (k.depozit && k.depozit !== k.contract ? `<span class="dep-tag">DEP. ${escapeHtml(k.depozit)}</span>` : ''); }
+function ctrPopHtml(r){ const k = r.clientKey && CTR[r.clientKey]; if(!k || !k.contract) return '';
+  const tel = String(k.telefon || '').trim();
+  return `<div class="ctr-pop">Contract <b>${escapeHtml(k.contract)}</b>${k.agent ? ` · agent <b>${escapeHtml(agentScurt(k.agent))}</b>` : ''}<br>${tel ? `<a href="${telUrl(tel)}">📞 ${escapeHtml(tel)}</a>` : '<span style="opacity:.7">fără telefon trecut la depozit</span>'}</div>`; }
 function qtyLabel(r){
   const parts = [];
   if(r.toalete) parts.push(`<span class="qty"><b>${r.toalete}</b> toaletă</span>`);
   if(r.containere) parts.push(`<span class="qty"><b>${r.containere}</b> lavoar</span>`);
   if(r.garduri) parts.push(`<span class="qty"><b>${r.garduri}</b> toaletă proprie</span>`);
   if(r.frecventa) parts.push(`<span>${r.frecventa}</span>`);
+  const ctr = ctrTagHtml(r); if(ctr) parts.push(ctr);   // v44
   if(r.echipamente && r.echipamente.length) parts.push(`<span>${r.echipamente.map(echScurt).join(', ')}</span>`);   // R37: „1 LE”
   const serii = seriiPunct(r);
   if(serii) parts.push(`<span class="ee-serii">🔢 ${escapeHtml(serii)}</span>`);
@@ -3316,7 +3342,7 @@ function cardHtml(r, orderNum, historyInfo){
         ${r.ziua ? `<span class="badge day">${r.ziua}</span>`:''}
         ${r.masina ? `<span class="badge masina ${masinaClass}">${r.masina}</span>`:''}
         <a class="call-btn ${hasTel?'':'disabled'}" href="${hasTel? telUrl(r.telefon):'#'}">📞 Sună</a>
-      </div>
+      </div>${ctrPopHtml(r)}
     </div>
     ${(!open && inProgress) ? `<div class="visit-row collapsed-leave-row"><div class="visit-btn leave" data-key="${escapeHtml(key)}">🚪 Am plecat</div></div>` : ''}
     ${weekHistoryRowHtml(r)}

@@ -1116,7 +1116,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
   <span id="rz-w"><button id="rz-reset" class="pictograma" title="Lățimi implicite — pune coloanele din tabelele acestei file înapoi cum erau">↺ Reset layout</button><i class="rz-sep">|</i></span>
   <span id="tz-w" title="Mărimea tabelului (doar tabelul, restul rămâne la fel), din 5 în 5%. Merge și cu Ctrl + rotița mausului, Ctrl + / Ctrl − / Ctrl 0. Dublu clic pe procent = scrii tu valoarea."><button class="pictograma" onclick="tzPas(-1)" aria-label="Micșorează tabelul">−</button><b id="tz-v" ondblclick="tzScrie()" title="Dublu clic = scrii mărimea (ex. 87), Enter">100%</b><input id="tz-in" type="number" min="30" max="300" step="5" style="display:none"><button class="pictograma" onclick="tzPas(1)" aria-label="Mărește tabelul">+</button></span>
-  <span class="ver">v9.37</span>
+  <span class="ver">v9.38</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -15944,7 +15944,8 @@ async function angFisa(x){
       ${afBif("an-activ", "angajat activ", x.activ !== false)}</div>
     <p class="muted" style="margin:6px 0 0">Program de birou completat = zilele lucrătoare se pontează singure cu aceste ore (ziua cu rută ia orele rutei). Gol = pontajul vine din rute.</p>
     ${ANG.admin ? `<h4 style="margin:16px 0 8px">🔒 Salarizare <span class="muted" style="font-weight:400;font-size:12px">— vizibil doar administratorului</span></h4>
-    <div class="grid3" style="grid-template-columns:repeat(5,minmax(130px,1fr))">${afC("an-sal", "Salariu de bază (lei)", pv.salariu_baza, "number")}${afC("an-mar", "Mărire salariu (lei)", pv.marire, "number")}${afC("an-dmar", "Data măririi", pv.data_marire, "date")}${afC("an-tr", "Transport (lei / lună)", pv.transport_luna, "number")}${afC("an-ad", "Alte diurne (lei)", pv.alte_diurne == null ? 0 : pv.alte_diurne, "number", 'title="După performanță — o completezi tu la final de lună; se adaugă la totalul de plată din pontaj"')}</div>` : ""}
+    <div class="grid3" style="grid-template-columns:repeat(5,minmax(130px,1fr))">${afC("an-sal", "Salariu de bază (lei)", pv.salariu_baza, "number")}${afC("an-mar", "Mărire salariu (lei)", pv.marire, "number")}${afC("an-dmar", "Data măririi", pv.data_marire, "date")}${afC("an-tr", "Transport (lei / lună)", pv.transport_luna, "number")}${afC("an-ad", "Alte diurne (lei)", pv.alte_diurne == null ? 0 : pv.alte_diurne, "number", 'title="După performanță — o completezi tu la final de lună; se adaugă la totalul de plată din pontaj"')}</div>
+    <div class="grid3">${afBif("an-vctr", "în aplicația de rută vede al cui e contractul (CTR.) și agentul cu telefon", pv.vede_contract, "v9.38: bifat = pe cardul punctului apare „CTR. HUNEDOARA” (+ „DEP.” când se livrează din alt depozit); atins → agentul și telefonul. Se vede doar când se loghează acest angajat.")}</div>` : ""}
     <div class="row" style="margin-top:16px;justify-content:flex-end"><div style="flex:1"></div><div style="flex:0"><button class="btn sec" onclick="angTab('dash')">Înapoi</button></div><div style="flex:0"><button class="btn" onclick="angSalveaza(${nou ? "null" : x.id})">Salvează</button></div></div></div></details></div>` +
     (nou || !ANG.admin ? "" : `<div class="card"><details class="an-det" ${ANG.contDeschis ? "open" : ""} ontoggle="ANG.contDeschis=this.open"><summary style="cursor:pointer;list-style:none;display:flex;align-items:center;gap:12px;flex-wrap:wrap">
       <span class="an-sag" style="display:inline-block;width:20px;font-size:14px;color:var(--g)">▸</span><span style="font-weight:700;color:var(--g)">🔑 Cont de acces și PIN</span><span id="an-cont-st" class="muted" style="font-size:13px">se încarcă…</span></summary>
@@ -15974,7 +15975,7 @@ async function angSalveaza(id){
   let sid = id;
   if(id){ const { error } = await db.from("soferi").update(rec).eq("id", id); if(error){ toast(error.message, true); return; } }
   else { rec.depozit_id = (ANG.L.find(x => x.depozit_id) || {}).depozit_id || null; const { data, error } = await db.from("soferi").insert(rec).select("id").single(); if(error){ toast(error.message, true); return; } sid = data.id; }
-  if(ANG.admin){ const { error } = await db.from("angajati_privat").upsert({ sofer_id: sid, salariu_baza: afNum(v("an-sal")), marire: afNum(v("an-mar")), data_marire: v("an-dmar") || null, transport_luna: afNum(v("an-tr")), alte_diurne: afNum(v("an-ad")) || 0, updated_at: new Date().toISOString() });
+  if(ANG.admin){ const { error } = await db.from("angajati_privat").upsert({ sofer_id: sid, salariu_baza: afNum(v("an-sal")), marire: afNum(v("an-mar")), data_marire: v("an-dmar") || null, transport_luna: afNum(v("an-tr")), alte_diurne: afNum(v("an-ad")) || 0, vede_contract: !!($("an-vctr") && $("an-vctr").checked), updated_at: new Date().toISOString() });
     if(error){ toast("Angajatul s-a salvat, salarizarea nu: " + error.message, true); return; } }
   toast("Salvat: " + nume); PNT.murdar = false; ANG.tab = sid; angIncarca();
 }
