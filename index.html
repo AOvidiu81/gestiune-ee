@@ -1116,7 +1116,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
   <span id="rz-w"><button id="rz-reset" class="pictograma" title="Lățimi implicite — pune coloanele din tabelele acestei file înapoi cum erau">↺ Reset layout</button><i class="rz-sep">|</i></span>
   <span id="tz-w" title="Mărimea tabelului (doar tabelul, restul rămâne la fel), din 5 în 5%. Merge și cu Ctrl + rotița mausului, Ctrl + / Ctrl − / Ctrl 0. Dublu clic pe procent = scrii tu valoarea."><button class="pictograma" onclick="tzPas(-1)" aria-label="Micșorează tabelul">−</button><b id="tz-v" ondblclick="tzScrie()" title="Dublu clic = scrii mărimea (ex. 87), Enter">100%</b><input id="tz-in" type="number" min="30" max="300" step="5" style="display:none"><button class="pictograma" onclick="tzPas(1)" aria-label="Mărește tabelul">+</button></span>
-  <span class="ver">v9.32</span>
+  <span class="ver">v9.36</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -7175,12 +7175,14 @@ function ofEvForm(id, copie){
       #mod-ofev .sub em{font-style:normal;text-transform:none;letter-spacing:0;font-weight:500;color:var(--mut)}
       #mod-ofev .cdsv{display:flex;flex-wrap:wrap;gap:7px}#mod-ofev .cdsv label,#mod-ofev .evp .ac label{display:inline-flex;align-items:center;gap:6px;border:1px solid #d5dbe8;border-radius:999px;padding:6px 13px;font-size:12.5px;cursor:pointer;text-transform:none;letter-spacing:0;font-weight:600;margin:0;color:var(--tx);background:var(--card);transition:all .15s}
       #mod-ofev .cdsv label:has(input:checked),#mod-ofev .evp .ac label:has(input:checked){background:#1b2550;border-color:#1b2550;color:#fff}#mod-ofev .cdsv input,#mod-ofev .evp .ac input[type=checkbox]{width:auto;margin:0;accent-color:#E3000F}
+      #mod-ofev .cdsv label{border:1.5px solid #2f5bd3;border-radius:10px;background:transparent;color:var(--tx)}#mod-ofev .cdsv label:has(input:checked){background:rgba(47,91,211,.10);border-color:#2f5bd3;color:var(--tx)}#mod-ofev .cdsv input{accent-color:#2f5bd3}
+      #mod-ofev .ev-nrz{height:40px;display:flex;align-items:center;padding:0 12px;border:1px solid #d5dbe8;border-radius:10px;font-weight:700;color:#1b2550;background:rgba(27,37,80,.05)}:root[data-tema="inchis"] #mod-ofev .ev-nrz{color:var(--tx);border-color:var(--bd)}
       #mod-ofev .evp{border:1px solid #e3e7ef;border-left:4px solid #1b2550;border-radius:12px;padding:14px 16px;margin-bottom:10px;background:linear-gradient(180deg,#fbfcfe,#f6f8fc)}
       :root[data-tema="inchis"] #mod-ofev .evp{background:var(--card)}
-      #mod-ofev .evp .r1{display:grid;grid-template-columns:1.1fr 1.3fr 1.6fr 76px 290px 40px;gap:10px;align-items:end}#mod-ofev .evp .r-pw{display:flex;gap:5px}#mod-ofev .evp .r-pw input{flex:1 1 90px}#mod-ofev .evp .r-pw select{flex:0 0 auto;width:auto;padding:8px 6px}#mod-ofev .evp .r1 > button{height:40px;width:40px;padding:0}
-      #mod-ofev .evp .r2{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-top:10px;flex-wrap:wrap}
+      #mod-ofev .evp .r1{display:grid;grid-template-columns:1.1fr 1.3fr 1.8fr 40px;gap:10px;align-items:end}#mod-ofev .evp .r3{display:grid;grid-template-columns:90px 300px 1fr;gap:10px;align-items:end;margin-top:10px}#mod-ofev .evp .r-pw{display:flex;gap:5px}#mod-ofev .evp .r-pw input{flex:1 1 90px}#mod-ofev .evp .r-pw select{flex:0 0 auto;width:auto;padding:8px 6px}#mod-ofev .evp .r1 > button{height:40px;width:40px;padding:0}
+      #mod-ofev .evp .ac:not(:empty){margin-top:10px}
       #mod-ofev .evp .ac{display:flex;flex-wrap:wrap;gap:6px;align-items:center;font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#6b7591}#mod-ofev .evp .ac .a-n{width:58px;height:24px!important;padding:1px 5px!important;display:none;border-radius:6px!important;color:var(--tx)}#mod-ofev .evp .ac label:has(input:checked) .a-n{display:inline-block}
-      #mod-ofev .evp .r-tot{margin-left:auto;font-size:13px;color:#1b2550;white-space:nowrap}#mod-ofev .evp .r-tot b{font-size:15px}
+      #mod-ofev .evp .r-tot{justify-self:end;align-self:center;font-size:13px;color:#1b2550;white-space:nowrap}#mod-ofev .evp .r-tot b{font-size:15px}
       #mod-ofev .evs{position:sticky;top:6px;background:linear-gradient(165deg,#1b2550 0,#26357a 100%);color:#fff;border-radius:18px;padding:20px 20px 18px;box-shadow:0 14px 34px rgba(27,37,80,.30);overflow:hidden}
       #mod-ofev .evs::before{content:"";display:block;height:4px;background:#E3000F;margin:-20px -20px 16px}
       #mod-ofev .evs .t0{font-size:11px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:#aab3cf;margin-bottom:4px}
@@ -7192,34 +7194,41 @@ function ofEvForm(id, copie){
       #mod-ofev .evs .bt .pr{background:#E3000F;border-color:#E3000F;color:#fff}#mod-ofev .evs .bt .pr:hover{filter:brightness(1.08)}
       #mod-ofev .evs .bt .gh{background:transparent;border:1px solid rgba(255,255,255,.35);color:#fff}#mod-ofev .evs .bt .gh:hover{background:rgba(255,255,255,.1)}
       #mod-ofev #ev-kmst{background:#f3f6fb;border-radius:10px;padding:9px 12px}#mod-ofev #ev-kmst:empty{display:none}:root[data-tema="inchis"] #mod-ofev #ev-kmst{background:var(--bg)}#mod-ofev #ev-kmst a{color:#1d4ed8}
-      @media(max-width:1060px){#mod-ofev .evx{grid-template-columns:1fr}#mod-ofev .evs{position:static}#mod-ofev .g{grid-template-columns:1fr 1fr}#mod-ofev .s3{grid-column:1/-1}#mod-ofev .evp .r1{grid-template-columns:1fr 1fr}#mod-ofev .evnav{top:-18px}}</style>
+      @media(max-width:1060px){#mod-ofev .evx{grid-template-columns:1fr}#mod-ofev .evs{position:static}#mod-ofev .g{grid-template-columns:1fr 1fr}#mod-ofev .s3{grid-column:1/-1}#mod-ofev .evp .r1{grid-template-columns:1fr 1fr}#mod-ofev .evp .r3{grid-template-columns:90px 1fr}#mod-ofev .evp .r3 .r-tot{grid-column:1/-1}#mod-ofev .evnav{top:-18px}}</style>
     <div class="evx"><div><div class="evnav" id="ev-nav">${["Clientul", "Unde", "Când", "Produse", "Costuri", "Mențiuni"].map((t, i) => `<button type="button" data-i="${i + 1}" onclick="document.getElementById('evs${i + 1}').scrollIntoView({ behavior: 'smooth', block: 'start' })"><i>${i + 1}</i>${t}</button>`).join("")}</div><!-- v9.07: div, nu <nav> (regulile meniului din stânga o făceau coloană pe tot ecranul) -->
     <div class="evc" id="evs1">${cap(1, "Clientul", "")}
-      <div class="g"><div class="s2"><label>Nume client (din listă sau scris de mână)</label><input id="ev-catre" list="ev-cli" value="${esc(copie ? "" : (o0 ? o0.catre : ""))}" placeholder="ex. ONCR - RM VALCEA"><datalist id="ev-cli">${CLI.map(x => `<option value="${esc(x.nume)}">`).join("")}</datalist></div>
-        <div><label>Persoana de contact</label><input id="ev-cont" value="${esc(copie ? "" : k.contact || "")}"></div>
-        <div><label>Telefon</label><input id="ev-tel" value="${esc(copie ? "" : k.tel || "")}"></div>
-        <div><label>Data ofertei</label><input id="ev-data" type="date" value="${nou ? today() : o0.data}"></div></div></div>
+      <div class="g"><div><label>Data ofertei</label><input id="ev-data" type="date" data-afis="zi" style="font-weight:600" value="${nou ? today() : o0.data}"></div>
+        <div class="s4"><label>Nume client (din listă sau scris de mână)</label><input id="ev-catre" list="ev-cli" value="${esc(copie ? "" : (o0 ? o0.catre : ""))}" placeholder="ex. ONCR - RM VALCEA"><datalist id="ev-cli">${CLI.map(x => `<option value="${esc(x.nume)}">`).join("")}</datalist></div>
+        <div class="s2"><label>Persoana de contact</label><input id="ev-cont" value="${esc(copie ? "" : k.contact || "")}"></div>
+        <div class="s2"><label>Telefon</label><input id="ev-tel" value="${esc(copie ? "" : k.tel || "")}"></div></div></div>
     <div class="evc" id="evs2">${cap(2, "Unde e evenimentul", "scrii adresa sau lipești coordonatele GPS — distanța se calculează de la depozit")}
       <div class="g"><div><label>Județ</label><input id="ev-jud" maxlength="3" value="${esc(k.jud || "")}" placeholder="ex. HD" style="text-transform:uppercase"></div>
         <div><label>Localitate / Comună</label><input id="ev-loc" value="${esc(k.loc != null ? k.loc : (k.locatia || ""))}" placeholder="ex. PETROSANI"></div>
         <div class="s2"><label>Sat / Stradă / Nr. / [ reper ]</label><input id="ev-sat" value="${esc(k.sat || "")}" placeholder="ex. SAT PIETRENI, STR PRINCIPALA NR 12"></div>
-        <div class="s2"><label>Coordonate GPS <span class="muted" style="text-transform:none">(Google Maps: clic dreapta pe loc → copiezi cifrele)</span></label><div class="dt"><input id="ev-gps" value="${esc(k.gps || "")}" placeholder="ex. 45.4183, 23.3706" style="flex:1" onkeydown="if(event.key==='Enter'){event.preventDefault();ofEvGps()}"><button type="button" class="btn sm sec" onclick="ofEvGps()" title="Scoate județul, localitatea și strada din coordonate și calculează distanța" style="white-space:nowrap">📍 Adresa din GPS</button></div></div>
-        <div><label>Plecare din (depozit)</label><input id="ev-dep" list="ev-depl" value="${esc(nv(k.depozit, depPrincipal() || "HUNEDOARA"))}"><datalist id="ev-depl">${DEP.map(d => `<option value="${esc(d.nume)}">`).join("")}</datalist></div>
+        <div><label>Latitudine (GPS)</label><input id="ev-lat" value="${esc(ofEvG0(k.gps)[0])}" placeholder="ex. 45.4183" oninput="ofEvLatLip(this)" onkeydown="if(event.key==='Enter'){event.preventDefault();ofEvGps()}"></div>
+        <div><label>Longitudine (GPS)</label><input id="ev-lon" value="${esc(ofEvG0(k.gps)[1])}" placeholder="ex. 23.3706" oninput="ofEvLatLip(this)" onkeydown="if(event.key==='Enter'){event.preventDefault();ofEvGps()}"></div>
+        <div style="align-self:end"><button type="button" class="btn sec" onclick="ofEvGps()" title="Scoate județul, localitatea și strada din coordonate și calculează distanța" style="width:100%;white-space:nowrap">📍 Adresa din GPS</button></div>
+        <div class="muted" style="align-self:end;font-size:12px;line-height:1.35">Google Maps: clic dreapta pe loc → copiezi cifrele și le lipești la Latitudine (se împart singure)</div>
+        <div><label>Plecare din (depozit)</label><select id="ev-dep">${ofEvDepOpt(nv(k.depozit, depPrincipal() || "HUNEDOARA"))}</select></div>
         <div style="align-self:end"><button type="button" class="btn sec" id="ev-kmb" onclick="ofEvKm()" title="Distanța pe șosea de la depozit până la locație (OpenStreetMap)" style="width:100%">🧭 Calculează km</button></div>
-        <div class="s4" id="ev-kmst" style="font-size:13px;line-height:1.45">${k.km_info ? esc(k.km_info) : '<span class="muted">Completează locația, apoi „🧭 Calculează km”. Kilometrii îi poți scrie și de mână, la pasul 5.</span>'}</div></div></div>
+        <div><label>Km calculați (un drum) — îi poți corecta</label><input id="ev-kmc" type="number" min="0" value="${nv(c.km, "")}" placeholder="🧭 sau de mână" oninput="ofEvKmSet(this.value)" style="font-weight:700"></div>
+        <div style="align-self:end"><button type="button" class="btn sec" onclick="ofEvMaps()" title="Deschide drumul (sau locul) în Google Maps, ca să verifici km" style="width:100%">🗺 Deschide în Google Maps</button></div>
+        <div class="s4" id="ev-kmst" style="font-size:13px;line-height:1.45">${k.km_info ? esc(k.km_info) : '<span class="muted">Completează locația, apoi „🧭 Calculează km”. Verifici pe Google Maps și, dacă e nevoie, corectezi km în chenar — trec singuri jos, la Distanță și la Km pe cursă.</span>'}</div></div></div>
     <div class="evc" id="evs3">${cap(3, "Când", "amplasarea și ridicarea se pun singure cu o zi înainte / după — le poți schimba")}
       <div class="g"><div><label>Prima zi a evenimentului</label><input id="ev-de" type="date" value="${esc(k.ev_de || "")}" onchange="ofEvZile()"></div>
-        <div><label>Ultima zi</label><input id="ev-pana" type="date" value="${esc(k.ev_pana || "")}" onchange="ofEvZile()"></div>
-        <div><label>Amplasare — ziua / ora</label><div class="dt"><input id="ev-ad" type="date" value="${esc(k.amp_data || "")}"><input id="ev-ao" type="time" value="${esc(k.amp_ora || "12:00")}" style="max-width:104px"></div></div>
-        <div><label>Ridicare — ziua / ora</label><div class="dt"><input id="ev-rz" type="date" value="${esc(k.rid_data || "")}"><input id="ev-ro" type="time" value="${esc(k.rid_ora || "12:00")}" style="max-width:104px"></div></div>
-        <div class="s4"><label>Zilele cu servisare <span class="muted" style="text-transform:none">(apar în ofertă; debifezi zilele fără servisare)</span></label><div id="ev-sv" class="cdsv"></div></div></div></div>
+        <div><label>Ultima zi a evenimentului</label><input id="ev-pana" type="date" value="${esc(k.ev_pana || "")}" onchange="ofEvZile()"></div>
+        <div><label>Zile de eveniment</label><div id="ev-nrz" class="ev-nrz">—</div></div>
+        <div class="s2"><label>Amplasare — ziua / ora</label><div class="dt"><input id="ev-ad" type="date" value="${esc(k.amp_data || "")}"><input id="ev-ao" type="time" value="${esc(k.amp_ora || "12:00")}" style="max-width:104px"></div></div>
+        <div class="s2"><label>Ridicare — ziua / ora</label><div class="dt"><input id="ev-rz" type="date" value="${esc(k.rid_data || "")}"><input id="ev-ro" type="time" value="${esc(k.rid_ora || "12:00")}" style="max-width:104px"></div></div>
+        <div class="s4"><label>Alte mențiuni pentru amplasare și ridicare <span class="muted" style="text-transform:none">(câte una pe rând; apar în ofertă)</span></label><textarea id="ev-ampm" rows="2" style="height:auto;min-height:62px;resize:vertical" placeholder="ex. acces cu camionul doar pe poarta din spate; ridicarea după ora 22:00">${esc(k.amp_ment || "")}</textarea></div>
+        <div class="s4"><label>Zilele cu servisare <span class="muted" style="text-transform:none">(apar în ofertă; bifezi tu zilele cu servisare)</span></label><div id="ev-sv" class="cdsv"></div></div></div></div>
     <div class="evc" id="evs4">${cap(4, "Ce produse", "prețul vine din Catalogul de ofertă (pe zi, în lei); îl poți trece și în EUR sau pe tot evenimentul — clientul NU vede prețurile pe bucată")}
       <div id="ev-rd"></div><button type="button" class="btn sm sec" onclick="ofEvRand({});ofEvSuma()">+ Adaugă produs</button>
       <div id="ev-curs-w" class="g" style="margin-top:12px"><div><label>Curs EUR (lei) — pentru prețurile în EUR</label><div class="dt"><input id="ev-curs" type="number" step="0.0001" min="0" value="${esc(k.curs != null ? k.curs : ofEvCursImplicit())}" data-zi="${esc(k.curs != null ? (k.curs_data || "") : "")}" oninput="this.dataset.zi='';try{localStorage.setItem('ev-curs',this.value)}catch(e){};ofEvCursInfo();ofEvSuma()"><button type="button" class="btn sec" onclick="ofEvCursBnr(true)" title="Ia cursul BNR al zilei de pe bnr.ro">↻ BNR</button></div></div><div class="muted" id="ev-curs-i" style="align-self:end;font-size:12px"></div></div></div>
     <div class="evc" id="evs5">${cap(5, "Transport și alte costuri", "calcul intern — nu apare în ofertă")}
       <div class="sub p">Transport (amplasare + ridicare)</div>
       <div class="g"><div><label>Vehicul</label><select id="ev-veh" onchange="$('ev-pkm').value=(OF_VEH.find(x=>x[0]===this.value)||[0,''])[1];ofEvSuma()">${OF_VEH.map(x => `<option ${x[0] === nv(c.veh, "MASINA CU REMORCA") ? "selected" : ""}>${x[0]}</option>`).join("")}</select></div>
-        <div><label>Distanța depozit → locație (km, un drum)</label><input id="ev-km" type="number" min="0" value="${nv(c.km, "")}" placeholder="🧭 sau de mână"></div>
+        <div><label>Distanța depozit → locație (km, un drum)</label><input id="ev-km" type="number" min="0" value="${nv(c.km, "")}" placeholder="🧭 sau de mână" oninput="$('ev-kmc').value=this.value"></div>
         <div><label>Preț / km (lei)</label><input id="ev-pkm" type="number" step="0.01" min="0" value="${nv(c.pkm, 3.5)}"></div>
         <div class="dt"><div style="flex:1"><label title="dus + întors la amplasare, dus + întors la ridicare">Curse</label><input id="ev-curse" type="number" min="0" value="${nv(c.curse, 4)}"></div><div style="flex:1"><label>Nr. mașini</label><input id="ev-mas" type="number" min="0" value="${nv(c.masini, 1)}"></div></div></div>
       <div class="sub">Curse de servisare <em>— 2 curse pe fiecare zi bifată · km vin din distanță, îi poți schimba</em></div>
@@ -7255,6 +7264,7 @@ function ofEvForm(id, copie){
     let t0 = 0; if(window.ResizeObserver) new ResizeObserver(() => { clearTimeout(t0); t0 = setTimeout(() => { if(!bx.isConnected || bx.classList.contains("fe-max")) return;
       try{ localStorage.setItem("ev-box", JSON.stringify({ w: Math.round(bx.offsetWidth), h: bx.style.height ? Math.round(bx.offsetHeight) : 0 })); }catch(e){} }, 400); }).observe(bx); }
   w.addEventListener("input", ofEvSuma); w.addEventListener("change", ofEvSuma); ofEvZile(k.servisari || []);
+  ["ev-jud", "ev-loc", "ev-sat", "ev-lat", "ev-lon", "ev-dep"].forEach(i => $(i).addEventListener("input", () => { delete $("ev-kmb").dataset.url; }));   // locul s-a schimbat → linkul vechi de drum nu mai e bun
   locAuto("ev-jud", "ev-loc", "ev-sat"); satAuto("ev-jud", "ev-loc", "ev-sat");   // v8.92: aceleași propuneri ca la Comandă nouă
 }
 // un produs: Produs / Tip ca în aplicație (nomenclatoare) + accesoriile categoriei; numele din ofertă și prețul pe zi vin din Catalogul de ofertă (Produs + Tip)
@@ -7265,9 +7275,11 @@ function ofEvRand(r){
   d.innerHTML = `<div class="r1"><div><label>Produs</label><select class="r-prod">${opt(nomv("produs").filter(x => !/PROPRI/i.test(x)), P0, "— alt produs (scris de mână) —")}</select></div>
     <div><label>Tip</label><select class="r-tip"></select></div>
     <div><label>Cum apare în ofertă</label><input class="r-nume" value="${esc(r.nume || "")}"></div>
-    <div><label class="r-uml">Buc.</label><input class="r-buc" type="number" min="0" value="${esc(r.buc || "")}"></div>
+    <button type="button" class="btn sm sec" title="Scoate produsul">✕</button></div>
+    <div class="ac"></div>
+    <div class="r3"><div><label class="r-uml">Buc.</label><input class="r-buc" type="number" min="0" value="${esc(r.buc || "")}"></div>
     <div><label>Preț</label><div class="r-pw"><input class="r-pret" type="number" step="0.01" min="0" value="${r.pret ?? ""}"><select class="r-mon"><option value="lei">lei</option><option value="EUR"${r.mon === "EUR" ? " selected" : ""}>EUR</option></select><select class="r-pe"><option value="zi">/ zi</option><option value="eveniment"${r.pe === "eveniment" ? " selected" : ""}>/ eveniment</option></select></div></div>
-    <button type="button" class="btn sm sec" title="Scoate produsul">✕</button></div><div class="r2"><div class="ac"></div><div class="r-tot"></div></div>`;
+    <div class="r-tot"></div></div>`;
   const pr = d.querySelector(".r-prod"), tp = d.querySelector(".r-tip"), q = s => d.querySelector(s);
   const cat = () => OF.C.find(x => x.produs && x.produs === pr.value && (x.tip || "") === tp.value) || (tp.value ? null : OF.C.find(x => x.produs && x.produs === pr.value));
   const tipuri = v => { const L = modeleDe(pr.value).filter(x => !/PROPRI|DAUNA|SECOND/i.test(x)); if(v && !L.includes(v)) L.push(v); tp.innerHTML = pr.value ? opt(L, v, "— alege tipul —") : '<option value="">—</option>'; tp.disabled = !pr.value; };
@@ -7280,12 +7292,14 @@ function ofEvRand(r){
   tipuri(T0); acc(r.acc); um(); if(r.um) d.dataset.um = r.um;
   q("button").onclick = () => { d.remove(); ofEvSuma(); }; $("ev-rd").appendChild(d);
 }
-function ofEvZile(init){   // bifele zilelor cu servisare; o zi nou apărută vine bifată (la eveniment se servisează de obicei zilnic)
+function ofEvZile(init){   // bifele zilelor cu servisare; v9.36: zilele vin DEBIFATE — le bifează Ovidiu (în ofertele salvate rămân cele bifate)
   const a = $("ev-de").value, b = $("ev-pana").value, box = $("ev-sv"), dinOferta = Array.isArray(init);
   const vechi = new Set((box.dataset.zile || "").split(",").filter(Boolean)), bif = new Set(dinOferta ? init : [...box.querySelectorAll("input:checked")].map(i => i.value));
+  const nz = $("ev-nrz"); if(nz) nz.textContent = "—";
   if(!a || !b || b < a){ box.innerHTML = '<span class="muted">alege prima și ultima zi</span>'; box.dataset.zile = ""; ofEvSuma(); return; }
   const Z = [], d = dtz(a), e = dtz(b); while(d <= e && Z.length < 31){ Z.push(ziLocala(d)); d.setDate(d.getDate() + 1); }
-  box.innerHTML = Z.map(z => `<label><input type="checkbox" value="${z}" ${bif.has(z) || (!dinOferta && !vechi.has(z)) ? "checked" : ""}> ${ofEvZi(z).split(",").slice(0, 3).join(" ")}</label>`).join(""); box.dataset.zile = Z.join(",");
+  box.innerHTML = Z.map(z => `<label><input type="checkbox" value="${z}" ${bif.has(z) ? "checked" : ""}> ${ofEvZi(z).split(",").slice(0, 3).join(" ")}</label>`).join(""); box.dataset.zile = Z.join(",");
+  if(nz) nz.textContent = Z.length + (Z.length === 1 ? " zi" : " zile");
   if(!$("ev-ad").value){ const x = dtz(a); x.setDate(x.getDate() - 1); $("ev-ad").value = ziLocala(x); }
   if(!$("ev-rz").value){ const x = dtz(b); x.setDate(x.getDate() + 1); $("ev-rz").value = ziLocala(x); }
   ofEvSuma();
@@ -7296,8 +7310,8 @@ function ofEvCiteste(){
     const acc = [...d.querySelectorAll(".ac input[type=checkbox]:checked")].map(x => { const m = x.parentNode.querySelector(".a-n"), q = m ? Math.abs(Math.round(+m.value || 0)) : 0; return (q ? q + " " : "") + x.value; }).join(", ");
     return { produs: g(".r-prod"), tip: g(".r-tip"), acc, cat: d.dataset.cat || "", nume: g(".r-nume"), um: d.dataset.um || "Bucata", buc: +g(".r-buc") || null, pret: p === "" ? null : +p, mon: g(".r-mon") === "EUR" ? "EUR" : "lei", pe: g(".r-pe") === "eveniment" ? "eveniment" : "zi" }; }).filter(r => r.nume);
   const adr = { jud: locMare(v("ev-jud")), loc: locMare(v("ev-loc")), sat: locMare(v("ev-sat")) };
-  const k = { fel: "eveniment", ...adr, locatia: ofEvLoc(adr), gps: v("ev-gps"), km_info: ($("ev-kmst").querySelector("b") ? $("ev-kmst").innerText.split("\n")[0].replace(/\s*·\s*vezi drumul.*$/, "") : ""), contact: v("ev-cont"), tel: v("ev-tel"),
-    depozit: v("ev-dep").toUpperCase(), emitent: depPrincipal() || "HUNEDOARA", ev_de: v("ev-de"), ev_pana: v("ev-pana"), amp_data: v("ev-ad"), amp_ora: v("ev-ao"), rid_data: v("ev-rz"), rid_ora: v("ev-ro"),
+  const k = { fel: "eveniment", ...adr, locatia: ofEvLoc(adr), gps: ofEvGpsTxt(), km_info: ($("ev-kmst").querySelector("b") ? $("ev-kmst").innerText.split("\n")[0].replace(/\s*·\s*vezi drumul.*$/, "") : ""), contact: v("ev-cont"), tel: v("ev-tel"),
+    depozit: v("ev-dep").toUpperCase(), emitent: depPrincipal() || "HUNEDOARA", ev_de: v("ev-de"), ev_pana: v("ev-pana"), amp_data: v("ev-ad"), amp_ora: v("ev-ao"), rid_data: v("ev-rz"), rid_ora: v("ev-ro"), amp_ment: v("ev-ampm"),
     servisari: [...$("ev-sv").querySelectorAll("input:checked")].map(i => i.value), randuri, mentiuni: v("ev-ment"), arata_zi: $("ev-pezi").checked,
     calc: { veh: v("ev-veh"), pkm: n("ev-pkm"), km: n("ev-km"), curse: n("ev-curse"), masini: n("ev-mas"), sv_km: n("ev-svkm"), sv_pkm: n("ev-svpkm"), mac_nr: n("ev-macn"), mac_pret: n("ev-macp"), ig_pret: n("ev-igp"), alte: n("ev-alte"), alte_txt: v("ev-altet") },
     total_ofertat: n("ev-total"), curs: n("ev-curs"), curs_data: ($("ev-curs") && $("ev-curs").dataset.zi) || null };
@@ -7356,6 +7370,18 @@ const OF_NOMI = "https://nominatim.openstreetmap.org/";
 const ofEvLoc = k => { const s = String(k.sat || "").trim().replace(/,+$/, "").trim(); return [s, k.loc].filter(Boolean).join(", ") + (k.jud ? " / " + k.jud : ""); };
 const ofEvHav = (a, b) => { const R = 6371, q = x => x * Math.PI / 180, h = Math.sin(q(b.lat - a.lat) / 2) ** 2 + Math.cos(q(a.lat)) * Math.cos(q(b.lat)) * Math.sin(q(b.lon - a.lon) / 2) ** 2; return 2 * R * Math.asin(Math.sqrt(h)); };
 async function ofEvJson(url, ms){ const c = new AbortController(), t = setTimeout(() => c.abort(), ms || 9000); try{ const r = await fetch(url, { signal: c.signal }); if(!r.ok) throw new Error("http " + r.status); return await r.json(); } finally { clearTimeout(t); } }
+// v9.34: GPS în două chenare (Latitudine / Longitudine); „lat, lon” lipit în oricare se împarte singur. În ofertă se ține tot „lat, lon”.
+function ofEvG0(t){ const g = ofEvGpsCit(t); return g ? [String(g.lat), String(g.lon)] : [String(t || ""), ""]; }
+function ofEvGpsTxt(){ const a = ($("ev-lat") || {}).value || "", b = ($("ev-lon") || {}).value || ""; return a.trim() && b.trim() ? a.trim() + ", " + b.trim() : (a + " " + b).trim(); }
+function ofEvLatLip(el){ const g = /[,;\s@=!]/.test(el.value.trim()) ? ofEvGpsCit(el.value) : null; if(g){ $("ev-lat").value = g.lat.toFixed(6); $("ev-lon").value = g.lon.toFixed(6); } }
+function ofEvKmSet(v){   // km din chenar → jos: Distanța depozit → locație și Km pe cursă (servisare)
+  const km = $("ev-km"), sk = $("ev-svkm"); if(km) km.value = v; if(sk){ sk.value = v; delete sk.dataset.atins; } ofEvSuma(); }
+function ofEvMaps(){   // drumul calculat; altfel locul din GPS; altfel drumul depozit → adresa scrisă
+  const b = $("ev-kmb"), g = ofEvGpsCit(ofEvGpsTxt()), adr = [$("ev-sat").value, $("ev-loc").value, JUD_NUME[locMare($("ev-jud").value).trim()] || $("ev-jud").value].map(x => String(x || "").replace(/\[.*?\]/g, "").trim()).filter(Boolean).join(", ");
+  const dep = ofEvDepLoc($("ev-dep").value), e = encodeURIComponent;
+  const u = b && b.dataset.url ? b.dataset.url : g ? (dep ? `https://www.google.com/maps/dir/?api=1&origin=${e(dep + ", Romania")}&destination=${g.lat},${g.lon}` : `https://www.google.com/maps/search/?api=1&query=${g.lat},${g.lon}`)
+    : adr ? `https://www.google.com/maps/dir/?api=1&origin=${e((dep || "Hunedoara") + ", Romania")}&destination=${e(adr + ", Romania")}` : "";
+  if(!u){ toast("Completează locația sau coordonatele GPS", true); return; } window.open(u, "_blank", "noopener"); }
 function ofEvGpsCit(t){   // „45.8064, 22.9255”, „45.8064 N 22.9255 E” sau un link Google Maps (@lat,lon / q=lat,lon / !3dlat!4dlon)
   const s = String(t || ""); let m = /!3d(-?\d+\.\d+)!4d(-?\d+\.\d+)/.exec(s) || /[@=](-?\d{1,2}\.\d+),\s*(-?\d{1,3}\.\d+)/.exec(s) || /(-?\d{1,2}\.\d+)\s*°?\s*[NS]?\s*[,;\s]\s*(-?\d{1,3}\.\d+)/i.exec(s);
   if(!m && /^\s*\d{1,2},\d+\s*[;\s]\s*\d{1,2},\d+\s*$/.test(s)) m = /(\d{1,2},\d+)\s*[;\s]\s*(\d{1,2},\d+)/.exec(s);   // zecimale cu virgulă
@@ -7367,7 +7393,7 @@ const ofEvMed = L => { const m = a => { const s = a.slice().sort((x, y) => x - y
 async function ofEvNomi(par){ const q = new URLSearchParams({ format: "jsonv2", countrycodes: "ro", limit: "5", addressdetails: "1", "accept-language": "ro", ...par });
   try{ const r = await ofEvJson(OF_NOMI + "search?" + q, 9000); return Array.isArray(r) ? r : []; }catch(e){ return []; } }
 async function ofEvDest(){   // unde e evenimentul: coordonatele scrise → strada din hartă → căutare OpenStreetMap → centrul satului / localității
-  const g = ofEvGpsCit($("ev-gps").value); if(g) return { ...g, ce: "coordonatele GPS" };
+  const g = ofEvGpsCit(ofEvGpsTxt()); if(g) return { ...g, ce: "coordonatele GPS" };
   const jud = locMare($("ev-jud").value).trim(), locV = $("ev-loc").value.trim(), satV = $("ev-sat").value.trim();
   if(!locV && !satV) return null;
   await Promise.all([locIncarca(), strIncarca(jud)]);
@@ -7383,11 +7409,18 @@ async function ofEvDest(){   // unde e evenimentul: coordonatele scrise → stra
   const S = L.filter(r => r.x != null && (si < 0 || r.sat === si)); if(S.length) return { ...ofEvMed(S), ce: "mijlocul străzilor din " + (si >= 0 ? "sat" : "localitate") + " (aproximativ)" };
   return null;
 }
+// v9.35: depozitele ca în aplicație — principalul (HUNEDOARA) primul, apoi secundarele, în ordinea din Setări → Depozite
+function ofEvDepOpt(v){ v = String(v || "").toUpperCase(); const P = DEP.filter(d => d.tip === "principal"), S = DEP.filter(d => d.tip !== "principal"), o = d => `<option value="${esc(d.nume)}" ${(d.nume || "").toUpperCase() === v ? "selected" : ""}>${esc(d.nume)}</option>`;
+  return (v && !DEP.some(d => (d.nume || "").toUpperCase() === v) ? `<option selected>${esc(v)}</option>` : "") + (P.length ? `<optgroup label="Principal">${P.map(o).join("")}</optgroup>` : "") + (S.length ? `<optgroup label="Secundare">${S.map(o).join("")}</optgroup>` : ""); }
+// localitatea din care se calculează km pentru un depozit fără coordonate (centrul localității, ca în Google Maps)
+const OF_DEP_LOC = { HARGHITA: "VLAHITA", MURES: "TARGU MURES" };
+function ofEvDepLoc(n){ n = String(n || "").trim().toUpperCase(); const d = DEP.find(x => (x.nume || "").toUpperCase() === n), a = d && d.adresa ? String(d.adresa).split(/[,-]/)[0].trim().toUpperCase() : "";
+  return OF_DEP_LOC[n] || (a && !/^PESTIS/.test(a) ? a : "") || n; }
 async function ofEvPlecare(){   // depozitul de plecare: coordonatele din Setări → Depozite; fără ele, îl caut după adresă / nume
   const n = $("ev-dep").value.trim().toUpperCase(), d = DEP.find(x => (x.nume || "").toUpperCase() === n);
   if(d && d.lat != null && d.lon != null) return { lat: +d.lat, lon: +d.lon, ce: n, exact: true };
-  if(!n) return null; let R = await ofEvNomi({ city: n }); if(!R.length && d && d.adresa) R = await ofEvNomi({ q: d.adresa + ", Romania" }); if(!R.length) R = await ofEvNomi({ q: n + ", Romania" }); if(!R.length) return null;   // v8.94: întâi după numele depozitului (SIBIU, ARAD…)
-  return { lat: +R[0].lat, lon: +R[0].lon, ce: n + " (fără coordonate salvate — luat centrul localității)", exact: false };
+  if(!n) return null; const L = ofEvDepLoc(n); let R = await ofEvNomi({ city: L }); if(!R.length) R = await ofEvNomi({ q: L + ", Romania" }); if(!R.length && d && d.adresa) R = await ofEvNomi({ q: d.adresa + ", Romania" }); if(!R.length) return null;   // v8.94: întâi după numele depozitului (SIBIU, ARAD…)
+  return { lat: +R[0].lat, lon: +R[0].lon, ce: n + (L !== n ? " (centrul localității " + locTitlu(L) + ")" : " (centrul localității)"), exact: false };
 }
 async function ofEvKm(){
   const st = $("ev-kmst"), b = $("ev-kmb"); if(!st) return; const zi = t => { st.innerHTML = t; };
@@ -7399,16 +7432,16 @@ async function ofEvKm(){
     for(const u of OF_OSRM){ try{ const j = await ofEvJson(u + p, 9000); if(j && j.code === "Ok" && j.routes && j.routes[0]){ r = j.routes[0]; break; } }catch(e){} }
     if(!$("ev-km")) return;
     const km = Math.round(r ? r.distance / 1000 : ofEvHav(A, B) * 1.3), min = r ? Math.round(r.duration / 60) : 0;
-    $("ev-km").value = km; ofEvSuma();
+    ofEvKmSet(km); $("ev-kmc").value = km; b.dataset.url = `https://www.google.com/maps/dir/${A.lat},${A.lon}/${B.lat},${B.lon}`;
     zi((r ? `🧭 <b>${km} km</b> pe șosea, un drum (cam ${Math.floor(min / 60)} h ${String(min % 60).padStart(2, "0")} min cu autoturismul)` : `⚠ <b>≈ ${km} km</b> — APROXIMATIV: serviciul de drumuri nu răspunde, am luat linia dreaptă (${Math.round(ofEvHav(A, B))} km) × 1,3`) +
       ` · de la ${esc(A.ce)} până la ${esc(B.ce)} · <a href="https://www.google.com/maps/dir/${A.lat},${A.lon}/${B.lat},${B.lon}" target="_blank" rel="noopener">vezi drumul în Google Maps</a>` +
-      `<br><span class="muted">Am pus ${km} la „Distanța depozit → locație” din calcul; o poți schimba de mână. Sursa: OpenStreetMap.</span>`);
+      `<br><span class="muted">Am pus ${km} km în chenar, jos la „Distanța depozit → locație” și la „Km pe cursă”. Dacă pe Google Maps iese altfel, corectează-i în chenar. Sursa: OpenStreetMap.</span>`);
   } finally { if(b) b.disabled = false; }
 }
 async function ofEvGps(){   // coordonate → adresă în formatul aplicației (județ, „COM X”, „SAT Y, STR Z NR 5”), apoi distanța
-  const st = $("ev-kmst"), g = ofEvGpsCit($("ev-gps").value);
+  const st = $("ev-kmst"), g = ofEvGpsCit(ofEvGpsTxt());
   if(!g){ st.innerHTML = "⚠ Nu înțeleg coordonatele — scrie-le ca în Google Maps: <b>45.8064, 22.9255</b> (sau lipește linkul locului)."; return; }
-  $("ev-gps").value = g.lat.toFixed(6) + ", " + g.lon.toFixed(6); st.textContent = "Caut adresa…";
+  $("ev-lat").value = g.lat.toFixed(6); $("ev-lon").value = g.lon.toFixed(6); st.textContent = "Caut adresa…";
   let r = null; try{ r = await ofEvJson(OF_NOMI + "reverse?" + new URLSearchParams({ format: "jsonv2", lat: g.lat, lon: g.lon, zoom: "18", addressdetails: "1", "accept-language": "ro" }), 9000); }catch(e){}
   const a = r && r.address;
   if(!a){ st.innerHTML = "⚠ Adresa n-a putut fi scoasă acum (serviciul nu răspunde) — scrie-o de mână; distanța o calculez din coordonate."; return ofEvKm(); }
@@ -7443,7 +7476,7 @@ function ofEvPdfDoc(jsPDF, o, F){
   const dz = z => new Date(z + "T00:00:00"), zi = z => z ? ZL[dz(z).getDay()] : "", dl = z => z ? +z.slice(8) + " " + LL[+z.slice(5, 7) - 1] + " " + z.slice(0, 4) : "-";
   const ds = z => ZL[dz(z).getDay()].slice(0, 3) + " " + (+z.slice(8)) + " " + LL[+z.slice(5, 7) - 1].slice(0, 3);
   const R = k.randuri || [], S = k.servisari || [], zile = k.zile || 0;
-  const ment = (k.mentiuni || "").split("\n").map(x => x.trim()).filter(Boolean); if(k.cazare) ment.push("CAZARE SI MASA PT 2 PERSOANE CARE RAMAN PE EVENIMENT");
+  const ment = ((k.amp_ment ? k.amp_ment + "\n" : "") + (k.mentiuni || "")).split("\n").map(x => x.trim()).filter(Boolean);   // v9.36: întâi mențiunile de amplasare / ridicare if(k.cazare) ment.push("CAZARE SI MASA PT 2 PERSOANE CARE RAMAN PE EVENIMENT");
   if(k.igienizare > 0 && !ment.some(m => /igienizare/i.test(m))) ment.push("Pretul include igienizarea finala a containerelor");
   const cap = s => { const x = T(s).toLowerCase(); return x.charAt(0).toUpperCase() + x.slice(1); };
   const bani = v => (+v || 0).toLocaleString("ro-RO", { minimumFractionDigits: Number.isInteger(+v || 0) ? 0 : 2, maximumFractionDigits: 2 });
@@ -15349,6 +15382,8 @@ const dataAfisata = izo => {
   const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(izo || "");
   return m ? m[3] + "-" + m[2] + "-" + m[1] : "";
 };
+// v9.35: câmpurile cu data-afis="zi" arată „MIE. - 18.11.2026” (ziua + data cu puncte); valoarea rămâne ISO, ca peste tot.
+const dataAfisataZi = izo => { const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(izo || ""); return m ? FLT_ZILE[new Date(+m[1], +m[2] - 1, +m[3]).getDay()] + " - " + m[3] + "." + m[2] + "." + m[1] : ""; };
 // Iertător la ce se tastează: 24-09-2026, 24.09.2026, 24/9/26, 24092026 — toate merg.
 function dataIzo(txt){
   const t = String(txt == null ? "" : txt).trim();
@@ -15392,7 +15427,7 @@ function calendarActiveaza(radacina){
   (radacina || document).querySelectorAll('input[type="date"]').forEach(inp => {
     if(inp.dataset.cal) return;
     const izo = DESC_VAL.get.call(inp);        // se citește ÎNAINTE de schimbarea tipului
-    inp.dataset.cal = "1";
+    inp.dataset.cal = "1"; const afis = inp.dataset.afis === "zi" ? dataAfisataZi : dataAfisata;
     inp.type = "text";
     inp.autocomplete = "off";
     inp.inputMode = "numeric";
@@ -15400,19 +15435,19 @@ function calendarActiveaza(radacina){
     Object.defineProperty(inp, "value", {
       configurable: true,
       get(){ return dataIzo(DESC_VAL.get.call(inp)); },
-      set(v){ DESC_VAL.set.call(inp, dataAfisata(dataIzo(v))); }
+      set(v){ DESC_VAL.set.call(inp, afis(dataIzo(v))); }
     });
     inp.value = izo;
     inp.addEventListener("focus", () => calendarDeschide(inp));
     inp.addEventListener("click", () => calendarDeschide(inp));
-    inp.addEventListener("blur",  () => { const v = inp.value; DESC_VAL.set.call(inp, dataAfisata(v)); if(CAL_INP === inp) calendarInchide(); });   // v6.15: Tab / alt câmp → calendarul dispare
+    inp.addEventListener("blur",  () => { const v = inp.value; DESC_VAL.set.call(inp, afis(v)); if(CAL_INP === inp) calendarInchide(); });   // v6.15: Tab / alt câmp → calendarul dispare
     inp.addEventListener("input", () => {   // v6.15: data scrisă de mână mută calendarul pe luna ei
       const v = inp.value; if(!v || CAL_INP !== inp || !CAL_EL) return;
       const d = new Date(v + "T00:00:00"); CAL_LUNA = new Date(d.getFullYear(), d.getMonth(), 1); calendarDeseneaza();
     });
     inp.addEventListener("keydown", e => {
       if(e.key === "Escape") calendarInchide();
-      if(e.key === "Enter"){ const v = inp.value; DESC_VAL.set.call(inp, dataAfisata(v)); calendarInchide(); }
+      if(e.key === "Enter"){ const v = inp.value; DESC_VAL.set.call(inp, afis(v)); calendarInchide(); }
     });
   });
 }
