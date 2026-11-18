@@ -1116,7 +1116,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
   <span id="rz-w"><button id="rz-reset" class="pictograma" title="Lățimi implicite — pune coloanele din tabelele acestei file înapoi cum erau">↺ Reset layout</button><i class="rz-sep">|</i></span>
   <span id="tz-w" title="Mărimea tabelului (doar tabelul, restul rămâne la fel), din 5 în 5%. Merge și cu Ctrl + rotița mausului, Ctrl + / Ctrl − / Ctrl 0. Dublu clic pe procent = scrii tu valoarea."><button class="pictograma" onclick="tzPas(-1)" aria-label="Micșorează tabelul">−</button><b id="tz-v" ondblclick="tzScrie()" title="Dublu clic = scrii mărimea (ex. 87), Enter">100%</b><input id="tz-in" type="number" min="30" max="300" step="5" style="display:none"><button class="pictograma" onclick="tzPas(1)" aria-label="Mărește tabelul">+</button></span>
-  <span class="ver">v9.28</span>
+  <span class="ver">v9.29</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -15371,6 +15371,23 @@ function dataIzo(txt){
   return a + "-" + zi2(l) + "-" + zi2(z);
 }
 
+// v9.29 (cerut de Ovidiu, 18.11): orele în format 24 h peste tot (07:00, 14:30 — fără AM / PM). Câmpurile „time” ale browserului
+// urmează limba Windows-ului (la el AM / PM), așa că devin câmpuri text „hh:mm”: scrii 7 → 07:00, 730 → 07:30, 1430 → 14:30, 7.30 → 07:30.
+// Valoarea rămâne „HH:MM”, exact ca înainte, deci tot ce citea ora merge la fel. Se aplică singur și câmpurilor apărute mai târziu.
+function ora24Norm(v){
+  const t = String(v || "").trim(); if(!t) return "";
+  let h, m; const p = t.match(/^(\d{1,2})\s*[:.,h ]\s*(\d{1,2})$/i);
+  if(p){ h = +p[1]; m = +p[2]; } else if(/^\d{1,4}$/.test(t)){ if(t.length <= 2){ h = +t; m = 0; } else { h = +t.slice(0, t.length - 2); m = +t.slice(-2); } } else return null;
+  if(h > 23 || m > 59) return null; return String(h).padStart(2, "0") + ":" + String(m).padStart(2, "0");
+}
+function ora24Activeaza(rad){
+  (rad || document).querySelectorAll('input[type="time"]').forEach(e => { const v = e.value; e.type = "text"; e.dataset.ora24 = "1"; e.value = v ? v.slice(0, 5) : "";
+    e.placeholder = e.placeholder || "hh:mm"; e.maxLength = 5; e.inputMode = "numeric"; e.autocomplete = "off"; if(!e.title) e.title = "Ora în format 24 h (ex. 07:00, 14:30) — poți scrie și 7, 730, 1430"; });
+}
+document.addEventListener("change", ev => { const e = ev.target; if(!e || !e.dataset || !e.dataset.ora24) return;   // înaintea onchange-ului câmpului
+  const n = ora24Norm(e.value); if(n === null){ toast("Ora „" + e.value + "” nu e bună — scrie ca 07:00 sau 14:30", true); e.value = ""; } else e.value = n; }, true);
+document.addEventListener("DOMContentLoaded", () => { ora24Activeaza(document);
+  let p = false; new MutationObserver(() => { if(p) return; p = true; requestAnimationFrame(() => { p = false; if(document.querySelector('input[type="time"]')) ora24Activeaza(document); }); }).observe(document.body, { childList: true, subtree: true }); });
 function calendarActiveaza(radacina){
   (radacina || document).querySelectorAll('input[type="date"]').forEach(inp => {
     if(inp.dataset.cal) return;
