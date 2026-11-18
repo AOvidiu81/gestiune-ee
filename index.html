@@ -1116,7 +1116,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
   <span id="rz-w"><button id="rz-reset" class="pictograma" title="Lățimi implicite — pune coloanele din tabelele acestei file înapoi cum erau">↺ Reset layout</button><i class="rz-sep">|</i></span>
   <span id="tz-w" title="Mărimea tabelului (doar tabelul, restul rămâne la fel), din 5 în 5%. Merge și cu Ctrl + rotița mausului, Ctrl + / Ctrl − / Ctrl 0. Dublu clic pe procent = scrii tu valoarea."><button class="pictograma" onclick="tzPas(-1)" aria-label="Micșorează tabelul">−</button><b id="tz-v" ondblclick="tzScrie()" title="Dublu clic = scrii mărimea (ex. 87), Enter">100%</b><input id="tz-in" type="number" min="30" max="300" step="5" style="display:none"><button class="pictograma" onclick="tzPas(1)" aria-label="Mărește tabelul">+</button></span>
-  <span class="ver">v9.43</span>
+  <span class="ver">v9.44</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -7213,14 +7213,14 @@ const ofEvBani = v => (+v || 0).toLocaleString("ro-RO", { minimumFractionDigits:
 // (browserul nu poate citi direct de pe bnr.ro). Oferta nouă îl ia singură; ofertele salvate își păstrează cursul; „↻ BNR” îl reia; scris de mână = al tău.
 function ofEvCursInfo(){
   const e = $("ev-curs"), i = $("ev-curs-i"); if(!e || !i) return;
-  i.innerHTML = e.dataset.zi ? `curs <b>BNR</b> din <b>${esc(fmtD(e.dataset.zi))}</b> — apare în PDF cu data lui` : e.value ? "curs scris de mână (sau păstrat din ofertă) — „↻ BNR” ia cursul zilei" : "pune cursul sau apasă „↻ BNR”";
+  i.innerHTML = e.dataset.zi ? `curs <b>BNR</b> din <b>${esc(fmtD(e.dataset.zi))}</b>${e.dataset.verif ? ` · verificat azi la <b>${esc(e.dataset.verif)}</b>` : ""} — apare în PDF cu data lui` : e.value ? "curs scris de mână (sau păstrat din ofertă) — „↻ BNR” ia cursul zilei" : "pune cursul sau apasă „↻ BNR”";
 }
 async function ofEvCursBnr(manual){
   const e = $("ev-curs"); if(!e) return; const vechi = +e.value || 0, ziVeche = e.dataset.zi || "";
   try{
     const { data: d, error } = await db.functions.invoke("bnr", { body: { moneda: "EUR" } });
     if(error || !d || !d.curs) throw new Error((d && d.eroare) || (error && error.message) || "fără răspuns");
-    e.value = d.curs; e.dataset.zi = d.data || today(); try{ localStorage.setItem("ev-curs", d.curs); }catch(_){}
+    e.value = d.curs; e.dataset.zi = d.data || today(); { const t = new Date(); e.dataset.verif = zi2(t.getHours()) + ":" + zi2(t.getMinutes()); } try{ localStorage.setItem("ev-curs", d.curs); }catch(_){}
     ofEvCursInfo(); ofEvSuma(); if(manual) toast("Curs BNR " + fmtD(d.data) + ": " + d.curs + " lei / EUR");
     else if(vechi && ziVeche && +d.curs !== vechi) toast("Cursul BNR s-a actualizat: " + vechi + " (" + fmtD(ziVeche) + ") → " + d.curs + " lei / EUR (" + fmtD(d.data) + ")");   // v9.43
   }catch(er){ ofEvCursInfo(); if(manual) toast("Cursul BNR nu s-a putut lua: " + (er.message || er) + " — scrie-l de mână", true); }
@@ -7295,6 +7295,8 @@ function ofEvForm(id, copie){
     <div class="evx"><div><div class="evnav" id="ev-nav">${["Clientul", "Unde", "Când", "Produse", "Costuri", "Mențiuni"].map((t, i) => `<button type="button" data-i="${i + 1}" onclick="document.getElementById('evs${i + 1}').scrollIntoView({ behavior: 'smooth', block: 'start' })"><i>${i + 1}</i>${t}</button>`).join("")}</div><!-- v9.07: div, nu <nav> (regulile meniului din stânga o făceau coloană pe tot ecranul) -->
     <div class="evc" id="evs1">${cap(1, "Clientul", "")}
       <div class="g"><div><label>Data ofertei</label><input id="ev-data" type="date" data-afis="zi" style="font-weight:600" value="${nou ? today() : o0.data}"></div>
+        <div id="ev-curs-w"><label>Curs BNR (lei / EUR)</label><div class="dt"><input id="ev-curs" style="font-weight:600" type="number" step="0.0001" min="0" value="${esc(k.curs != null ? k.curs : ofEvCursImplicit())}" data-zi="${esc(k.curs != null ? (k.curs_data || "") : "")}" oninput="this.dataset.zi='';try{localStorage.setItem('ev-curs',this.value)}catch(e){};ofEvCursInfo();ofEvSuma()"><button type="button" class="btn sec" onclick="ofEvCursBnr(true)" title="Verifică / ia cursul BNR al zilei de pe bnr.ro" style="white-space:nowrap">↻ BNR</button></div></div>
+        <div class="s2 muted" id="ev-curs-i" style="align-self:end;font-size:12px;padding-bottom:10px"></div>
         <div class="s4"><label>Nume client (din listă sau scris de mână)</label><input id="ev-catre" list="ev-cli" value="${esc(copie ? "" : (o0 ? o0.catre : ""))}" placeholder="ex. ONCR - RM VALCEA"><datalist id="ev-cli">${CLI.map(x => `<option value="${esc(x.nume)}">`).join("")}</datalist></div>
         <div class="s2"><label>Persoana de contact</label><input id="ev-cont" value="${esc(copie ? "" : k.contact || "")}"></div>
         <div class="s2"><label>Telefon</label><input id="ev-tel" value="${esc(copie ? "" : k.tel || "")}"></div></div></div>
@@ -7321,7 +7323,7 @@ function ofEvForm(id, copie){
         <div class="s4"><label>Zilele cu servisare <span class="muted" style="text-transform:none">(apar în ofertă; bifezi tu zilele cu servisare)</span></label><div id="ev-sv" class="cdsv"></div></div></div></div>
     <div class="evc" id="evs4">${cap(4, "Ce produse", "prețul vine din Catalogul de ofertă (pe zi, în lei); îl poți trece și în EUR sau pe tot evenimentul — clientul NU vede prețurile pe bucată")}
       <div id="ev-rd"></div><button type="button" class="btn sm sec" onclick="ofEvRand({});ofEvSuma()">+ Adaugă produs</button>
-      <div id="ev-curs-w" class="g" style="margin-top:12px"><div><label>Curs EUR (lei) — pentru prețurile în EUR</label><div class="dt"><input id="ev-curs" type="number" step="0.0001" min="0" value="${esc(k.curs != null ? k.curs : ofEvCursImplicit())}" data-zi="${esc(k.curs != null ? (k.curs_data || "") : "")}" oninput="this.dataset.zi='';try{localStorage.setItem('ev-curs',this.value)}catch(e){};ofEvCursInfo();ofEvSuma()"><button type="button" class="btn sec" onclick="ofEvCursBnr(true)" title="Ia cursul BNR al zilei de pe bnr.ro">↻ BNR</button></div></div><div class="muted" id="ev-curs-i" style="align-self:end;font-size:12px"></div></div></div>
+</div>
     <div class="evc" id="evs5">${cap(5, "Transport și alte costuri", "calcul intern — nu apare în ofertă")}
       <div class="sub p">Transport (amplasare + ridicare)</div>
       <div class="g"><div><label>Vehicul</label><select id="ev-veh" onchange="ofEvPkmRef(true);ofEvSuma()">${OF_VEH.map(x => `<option ${x[0] === nv(c.veh, "MASINA CU REMORCA") ? "selected" : ""}>${x[0]}</option>`).join("")}</select></div>
@@ -7426,7 +7428,7 @@ function ofEvSuma(){
   const k = ofEvCiteste(), c = k.calc, cam = /^CAMION/i.test(c.veh || "");
   $("ev-mac-w").style.display = cam ? "" : "none"; $("ev-ig-w").style.display = k.ig_nr ? "" : "none";
   $("ev-igt").textContent = k.ig_nr ? k.ig_nr + (k.ig_nr === 1 ? " container" : " containere") + " × " + ftBani(c.ig_pret || 0) + " lei = " + ftBani(k.igienizare) + " lei — se adună la total" + (c.ig_pret == null ? " (pune prețul standard; îl poți salva în 📚 Catalog, la container)" : "") : "";
-  const curs = +k.curs || 0; $("ev-curs-w").style.display = k.randuri.some(r => r.mon === "EUR") ? "" : "none";
+  const curs = +k.curs || 0;   // v9.44: cursul stă la pasul 1 (lângă data ofertei), mereu vizibil
   [...$("ev-rd").children].forEach(d => { const q = +d.querySelector(".r-buc").value || 0, p = +d.querySelector(".r-pret").value || 0, t = d.querySelector(".r-tot"), eur = d.querySelector(".r-mon").value === "EUR", ev = d.querySelector(".r-pe").value === "eveniment";
     const m = eur ? "EUR" : "lei", lp = eur ? p * curs : p;
     if(t) t.innerHTML = !(q && p) ? "" : ev ? `${q} × ${ftBani(p)} ${m} = <b>${ftBani(q * p)} ${m} / eveniment</b>${eur ? ` · ${ftBani(q * lp)} lei` + (curs ? "" : " (pune cursul)") : ""}`
