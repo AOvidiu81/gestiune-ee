@@ -1116,7 +1116,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
   <span id="rz-w"><button id="rz-reset" class="pictograma" title="Lățimi implicite — pune coloanele din tabelele acestei file înapoi cum erau">↺ Reset layout</button><i class="rz-sep">|</i></span>
   <span id="tz-w" title="Mărimea tabelului (doar tabelul, restul rămâne la fel), din 5 în 5%. Merge și cu Ctrl + rotița mausului, Ctrl + / Ctrl − / Ctrl 0. Dublu clic pe procent = scrii tu valoarea."><button class="pictograma" onclick="tzPas(-1)" aria-label="Micșorează tabelul">−</button><b id="tz-v" ondblclick="tzScrie()" title="Dublu clic = scrii mărimea (ex. 87), Enter">100%</b><input id="tz-in" type="number" min="30" max="300" step="5" style="display:none"><button class="pictograma" onclick="tzPas(1)" aria-label="Mărește tabelul">+</button></span>
-  <span class="ver">v9.66</span>
+  <span class="ver">v9.67</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -1243,8 +1243,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <div class="card noprint">
     <div class="row">
       <!-- v6.74 (cerut de Ovidiu, 23.10): ordinea Comandă nouă · Caută · An · Luna · Tip · Produs · Depozit · Export · PDF; filtrele se aplică singure; „Filtrează” → „Resetează tot” -->
-      <div style="flex:0"><button class="btn" onclick="openMiscare()">+ Comandă nouă</button></div>
-      <div style="flex:0"><button class="btn sec" onclick="trDeschide()" title="Mută marfă dintr-un depozit în altul: se fac singure TransferOUT (de unde pleacă) și TransferIN (unde ajunge)">🔁 Transfer</button></div>
+      <div style="flex:0"><button class="btn" onclick="openMiscare();mmStartArata()">+ Comandă nouă</button></div>
       <div><label>Caută (client / localitate / contract)</label><div style="position:relative"><input id="f-q" placeholder="ex: ACOMIN" style="padding-right:30px"><button type="button" id="f-q-x" title="Șterge căutarea" onclick="fqSterge()" style="display:none;position:absolute;right:4px;top:50%;transform:translateY(-50%);border:0;background:none;color:var(--mut);font-size:16px;line-height:1;padding:4px 6px;cursor:pointer">✕</button></div></div>
       <div><label>An</label><select id="f-an" onchange="loadMiscari()"></select></div>
       <div><label>Luna</label><select id="f-luna" onchange="loadMiscari()"><option value="">Toate</option></select></div>
@@ -1730,6 +1729,21 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   #mod-m .mm-s[data-s="5"].strans > :not(h4):not(.mm-loc-rez){display:none!important}
   #mod-m .mm-loc-rez{border:1px dashed var(--bd);border-radius:10px;padding:9px 12px;cursor:pointer;font-size:13px;line-height:1.5}
   #mod-m .mm-loc-rez:hover{border-color:var(--acc)}
+  /* v9.67: ecranul „Ce faci?” + fișa care arată doar ce trebuie pentru tipul ales */
+  #mod-m .box{position:relative}
+  #mod-m .mm-start{position:absolute;inset:0;z-index:30;background:var(--card);border-radius:inherit;display:flex;flex-direction:column;overflow:auto}
+  #mod-m .mm-start .st-cap{background:#1b2550;color:#fff;padding:16px 22px;font-size:18px;font-weight:700;display:flex;align-items:center;gap:10px}
+  #mod-m .mm-start .st-cap button{margin-left:auto;background:transparent;border:1px solid rgba(255,255,255,.55);color:#fff;border-radius:8px;padding:6px 12px;cursor:pointer}
+  #mod-m .mm-start .st-corp{padding:16px 22px 22px}
+  #mod-m .mm-start .st-g{margin:0 0 16px}#mod-m .mm-start .st-g h5{margin:0 0 8px;font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--mut)}
+  #mod-m .mm-start .st-l{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:10px}
+  #mod-m .mm-start .st-t{border:1.5px solid var(--bd);border-radius:14px;padding:12px 14px;background:var(--card);cursor:pointer;text-align:left;color:var(--tx);transition:border-color .15s,box-shadow .15s,transform .1s}
+  #mod-m .mm-start .st-t:hover{border-color:#1a5fb4;box-shadow:0 4px 14px rgba(26,95,180,.15);transform:translateY(-1px)}
+  #mod-m .mm-start .st-t b{display:block;font-size:14px;margin-bottom:3px}#mod-m .mm-start .st-t span{font-size:12px;color:var(--mut);line-height:1.35;display:block}
+  #mod-m .mm-start .st-t i{font-style:normal;font-size:20px;display:block;margin-bottom:4px}
+  #mod-m[data-fel="vz"] .mm-s[data-s="7"], #mod-m[data-fel="vz"] #mm-caz, #mod-m[data-fel="vz"] .g-cc > div:has(#mm-ctr), #mod-m[data-fel="vz"] .g-cc > div:has(#mm-contract),
+  #mod-m[data-fel="vz"] .sv-rand, #mod-m[data-fel="vz"] #mm-sv-ev{display:none!important}
+  #mod-m .mm-schimba{font-size:12px;color:var(--acc);cursor:pointer;text-decoration:underline;margin-left:8px;font-weight:600;text-transform:none;letter-spacing:0}
   #mod-m .mm-nr{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:50%;background:#e6ebe8;color:#4a5a52;font-size:12px;font-weight:700;flex:0 0 auto}
   #mod-m .mm-ok{display:none;margin-left:auto;color:#2f9e44;font-weight:700;font-size:15px}
   #mod-m .mm-s.gata .mm-nr{background:#2f9e44;color:#fff}
@@ -1779,6 +1793,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
       </div>
     </div>
 
+    <div id="mm-start" class="mm-start" style="display:none"></div><!-- v9.67: „Ce faci?” înainte de orice -->
     <div class="lux-corp">
       <input type="hidden" id="mm-id">
       <div id="mm-ciorne" style="display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:-6px 0 12px;font-size:12px"></div>
@@ -1801,12 +1816,20 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
       </div>
 
       <div class="sect mm-s" data-s="3">
-        <h4><span class="mm-nr">3</span>Ce faci?<span class="mm-ok" title="completat">✓</span></h4>
+        <h4><span class="mm-nr">3</span>Ce faci?<span class="mm-ok" title="completat">✓</span><span class="mm-schimba" onclick="mmStartArata(true)" title="Alege alt tip de comandă">↺ alege din nou</span></h4>
         <div id="mm-tip-pills" class="mm-pills"></div>
         <div class="gf g-tip">
           <div><label>Tip comandă</label><select id="mm-tip"></select></div>
           <div><label>Data</label><input type="date" id="mm-data"></div>
           <div><label>Ora</label><input id="mm-ora" maxlength="20" placeholder="ex. 08:00" title="Ora la care trebuie să ajungă șoferul (ex. 08:00 sau 08:00-09:00) — apare în textul pentru șoferi"></div>
+        </div>
+        <!-- v9.67 (cerut de Ovidiu, 19.11): VÂNZARE — prețul, factura și dovada plății merg în comandă (prima linie din Observații) → la șofer, pe PV -->
+        <div id="mm-vz" class="mm-act" style="display:none">
+          <b>Vânzare</b> <span class="hint" style="text-transform:none;letter-spacing:0">se completează ce se știe; merge la șofer, în textul comenzii și pe PV-ul de vânzare</span>
+          <div class="r"><span>Preț / buc</span><input type="number" step="0.01" min="0" id="mm-vz-pret" style="width:110px"><span class="muted">lei + TVA</span>
+            <span>Factura nr.</span><input type="text" id="mm-vz-fact" style="width:130px" placeholder="ex. EE 1234"></div>
+          <div class="r"><span>Plata</span><select id="mm-vz-plata" style="width:auto"><option value=""></option><option>plătită cu OP</option><option>plătită cu chitanța</option><option>plătită numerar</option><option>plătită cu cardul</option><option>se încasează la livrare</option><option>neplătită</option></select>
+            <span>Nr. document plată</span><input type="text" id="mm-vz-doc" style="width:150px" placeholder="ex. OP 456 / chitanța 78"></div>
         </div>
         <!-- v7.99 (cerut de Ovidiu, 07.11): MODIFICARE ANEXĂ = act adițional la aceeași anexă, fără mișcare de stoc -->
         <div id="mm-aa" class="mm-aa" style="display:none">
@@ -5299,6 +5322,7 @@ function openMiscare(id){
   MM_FRATI = []; mmXpReset(); mmDoc(true); if(r && r.grup_id === r.id) mmFratiIncarca(r.id).then(() => { if(mmExterior() && +$("mm-id").value === r.id) mmXpDin(MM_FRATI); });   // v5.13; v7.94: produsele comenzii din exterior
   mmZile();
   mmAntet(); $("mod-m").classList.add("on");
+  { const s0 = $("mm-start"); if(s0) s0.style.display = "none"; mmFel(); if($("mm-tip").value === "VANZARE") $("mm-obs").value = mmVzCiteste($("mm-obs").value); else mmVzCiteste(""); }   // v9.67
   mmModClient(); mmExtIncarca(); mmEvpArata(); mmSpArata(); mmRiArata(); MM_LS = null; $("mm-sat").placeholder = ""; mmLsArata();   // v6.79 / v7.20 / v7.22 / v7.24
   MM_CIORNA = null; $("mm-ciorne").innerHTML = ""; if(!r) mmCiorne();
   MM_SVL = r && svLoc(r) ? r.locatii.filter(l => l && l.sv).map(l => ({ ...l })) : []; mmSvlArata();   // v7.34
@@ -5383,6 +5407,48 @@ function mmTipPills(){
   el.innerHTML = L.map(x => `<button type="button" class="${sel.value === x ? "on" : ""}" data-t="${esc(x)}">${esc(et[x] || (x.charAt(0) + x.slice(1).toLowerCase()))}</button>`).join("") +
     `<span class="hint" style="align-self:center">${L.includes(sel.value) ? "alt tip → lista de mai jos" : "tip ales din listă: <b>" + esc(sel.value) + "</b>"}</span>`;
   el.querySelectorAll("button").forEach(b => b.onclick = () => { if(sel.value === b.dataset.t) return; sel.value = b.dataset.t; sel.dispatchEvent(new Event("change", { bubbles: true })); mmTipPills(); });
+}
+// ══ v9.67 (cerut de Ovidiu, 19.11): „Comandă nouă” începe cu ecranul „Ce faci?” — după alegere, fișa arată doar ce trebuie ══
+const MM_START = [
+  ["La client — închiriere", [["AMPLASARE", "📦", "Amplasare", "Locație nouă sau una existentă; anexa nouă se face la Salvează"], ["SUPLIMENTARE", "➕", "Suplimentare", "Mai multe bucăți la o locație; actul -S se face singur"],
+    ["REDUCERE", "➖", "Reducere", "Pleacă o parte din bucăți; actul -R se face singur"], ["RIDICARE", "🚚", "Ridicare", "Pleacă tot de la locație; ridicarea finală -R FINAL"], ["SERVISARE", "🧽", "Servisare", "Servisare la cerere sau în plus"]]],
+  ["Eveniment", [["EVENIMENT-A", "🎪", "Eveniment · amplasare", "Toalete pe zilele evenimentului"], ["EVENIMENT-R", "🎪", "Eveniment · ridicare", "Ridicarea de la eveniment"]]],
+  ["Fără închiriere", [["VANZARE", "💰", "Vânzare", "Din ce depozit pleacă, cui, preț, factură, plata; la șofer cu PV de vânzare"], ["SPONSORIZARE-A", "🤝", "Sponsorizare", "Fără anexă și fără factură"],
+    ["DAUNA", "⚠️", "Daună / furt", "Produs distrus sau furat de la client"], ["MODIFICARE ANEXA", "📝", "Act adițional", "Se schimbă prețul sau servisarea pe o anexă"]]],
+  ["Între depozitele noastre", [["TRANSFER", "🔁", "Transfer", "Din depozitul tău în alt depozit: TransferOUT + TransferIN, singure"]]]
+];
+function mmStartArata(din){
+  const el = $("mm-start"); if(!el) return; const opt = [...$("mm-tip").options].map(o => o.value);
+  el.innerHTML = `<div class="st-cap">Ce faci? <span style="font-weight:400;font-size:13px;opacity:.8">alege tipul comenzii — fișa arată apoi doar ce îți trebuie</span>
+      <button type="button" onclick="${din ? "$('mm-start').style.display='none'" : "closeModal('mod-m')"}">${din ? "← Înapoi la fișă" : "✕ Renunță"}</button></div>
+    <div class="st-corp">${MM_START.map(([g, L]) => { const T = L.filter(([t]) => t === "TRANSFER" || opt.includes(t)); return T.length ? `<div class="st-g"><h5>${esc(g)}</h5><div class="st-l">` +
+      T.map(([t, ic, n, d]) => `<button type="button" class="st-t" onclick="mmStartAlege('${t}')"><i>${ic}</i><b>${esc(n)}</b><span>${esc(d)}</span></button>`).join("") + "</div></div>" : ""; }).join("")}
+      <div class="muted" style="font-size:12px">Alt tip (FURT, SPONSORIZARE-R…)? Alege oricare, apoi schimbă-l din lista „Tip comandă”.</div></div>`;
+  el.style.display = "flex";
+}
+function mmStartAlege(t){
+  $("mm-start").style.display = "none";
+  if(t === "TRANSFER"){ closeModal("mod-m"); trDeschide(); return; }
+  const sel = $("mm-tip"); sel.value = t; sel.dispatchEvent(new Event("change", { bubbles: true })); mmFel(); try{ mmTipPills(); }catch(e){}
+  setTimeout(() => { const c = $("mm-client"); if(c && !c.value) c.focus(); }, 60);
+}
+function mmFel(){ const m = $("mod-m"); if(m) m.dataset.fel = $("mm-tip").value === "VANZARE" ? "vz" : ""; const v = $("mm-vz"); if(v) v.style.display = $("mm-tip").value === "VANZARE" ? "" : "none"; }
+$("mm-tip").addEventListener("change", mmFel);
+const MM_VZ_RE = /^VANZARE:[^\n]*\n?/;
+function mmVzText(){
+  const pr = $("mm-vz-pret").value, f = $("mm-vz-fact").value.trim(), pl = $("mm-vz-plata").value, dc = $("mm-vz-doc").value.trim();
+  const L = [pr !== "" ? "Pret " + (+pr).toLocaleString("ro-RO", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " lei + TVA/buc" : "", f ? "Factura nr " + f : "", pl || dc ? "Plata: " + [pl, dc].filter(Boolean).join(" ") : ""].filter(Boolean);
+  return L.length ? "VANZARE: " + faraDiac(L.join(" · ")) : "";
+}
+function mmVzCiteste(obs){   // la deschiderea unei vânzări salvate, prima linie din Observații înapoi în câmpuri
+  ["mm-vz-pret", "mm-vz-fact", "mm-vz-plata", "mm-vz-doc"].forEach(i => { const e = $(i); if(e) e.value = ""; });
+  const m = /^VANZARE:([^\n]*)/.exec(obs || ""); if(!m) return obs || "";
+  const t = m[1], g = re => (re.exec(t) || [])[1] || "";
+  const pr = g(/Pret ([\d.,]+)/); if(pr) $("mm-vz-pret").value = +pr.replace(/\./g, "").replace(",", ".") || "";
+  $("mm-vz-fact").value = g(/Factura nr ([^·]+)/).trim();
+  const pl = g(/Plata: ([^·]+)/).trim(), opt = [...$("mm-vz-plata").options].map(o => o.value).filter(Boolean).sort((a, b) => b.length - a.length), po = opt.find(o => faraDiac(pl).toLowerCase().startsWith(faraDiac(o).toLowerCase()));
+  if(po){ $("mm-vz-plata").value = po; $("mm-vz-doc").value = pl.slice(po.length).trim(); } else $("mm-vz-doc").value = pl;
+  return (obs || "").replace(MM_VZ_RE, "");
 }
 // tipul pentru act: suplimentare → -S, reducere / daună / furt → -R, ridicare / ridicare eveniment → -R FINAL
 function mmActTip(){ const t = $("mm-tip").value; return t === "EVENIMENT-R" ? "RIDICARE" : TIP_PIERD.test(t) ? "REDUCERE" : t; }
@@ -5471,13 +5537,13 @@ function mmPasiOk(){
   const evSv = !!document.querySelector('#mod-m input[name="mm-ev-sv"]:checked');
   const svl = typeof MM_SVL !== "undefined" && Array.isArray(MM_SVL) && MM_SVL.length && $("mm-svl") && $("mm-svl").style.display !== "none";
   return {
-    1: !!(v("mm-contract") && v("mm-dep")),
-    2: !!(v("mm-client") && (ext || v("mm-ctr"))),
+    1: !!((v("mm-contract") || tip === "VANZARE") && v("mm-dep")),
+    2: !!(v("mm-client") && (ext || v("mm-ctr") || tip === "VANZARE")),
     3: !!(tip && v("mm-data")),
     4: !!(Math.abs(+v("mm-buc") || 0) > 0 && v("mm-prod")),
     5: !!(v("mm-loc") || v("mm-sat") || svl),
     6: !!(v("mm-frecv") || evSv || /RIDICARE|REDUCERE|-R$/.test(tip)),
-    7: !!(v("mm-anexa") || ext || svl || ($("mm-act-da") && $("mm-act-da").checked && $("mm-act").style.display !== "none"))
+    7: !!(v("mm-anexa") || ext || svl || tip === "VANZARE" || ($("mm-act-da") && $("mm-act-da").checked && $("mm-act").style.display !== "none"))
   };
 }
 // ── v7.98 (cerut de Ovidiu, 07.11): gestiunea PROPUSĂ din contract (ex. „1314 HD” → HUNEDOARA), se poate schimba
@@ -5828,9 +5894,11 @@ function mmVerifLista(){
   const v = id => String(($(id) || {}).value || "").trim(), ext = mmExterior(), tip = v("mm-tip"), B = [], W = [];
   if(!tip) B.push(["Tipul comenzii nu e ales", "mm-tip"]);
   if(!v("mm-data")) B.push(["Lipsește data comenzii", "mm-data"]);
-  const trf = /^Transfer/i.test(tip);   // v9.65: transferul între depozite n-are client / contract
+  const trf = /^Transfer/i.test(tip), vz = tip === "VANZARE";   // v9.65: transferul între depozite n-are client / contract   // v9.67: vânzarea n-are contract
+  if(vz && !v("mm-dep")) B.push(["Alege din ce depozit pleacă marfa vândută", "mm-dep"]);
+  if(vz && !v("mm-pers")) W.push(["Cine preia marfa la livrare (nume) e gol", "mm-pers"]);
   if(!trf && !v("mm-client")) B.push(["Clientul nu e ales", "mm-client"]);
-  if(!trf && !ext && !v("mm-ctr")) B.push(["Contractul nu e ales", "mm-ctr"]);
+  if(!trf && !vz && !ext && !v("mm-ctr")) B.push(["Contractul nu e ales", "mm-ctr"]);
   if(!ext && /^(AMPLASARE|SUPLIMENTARE|REDUCERE|RIDICARE|EVENIMENT-A|EVENIMENT-R)$/.test(tip) && !(+v("mm-anexa")))
     B.push(["Anexa nu e aleasă (sau creată cu + lângă Anexă) — fără anexă comanda nu intră în Facturare", "mm-anexa"]);
   if(!(Math.abs(+v("mm-buc") || 0) > 0)) B.push(["Bucăți = 0", "mm-buc"]);
@@ -5905,6 +5973,7 @@ async function saveMiscareBaza(genereaza){
     jud:$("mm-jud").value||null,loc:$("mm-loc").value||null,sat:$("mm-sat").value||null,contract:$("mm-contract").value||null,depozit:$("mm-dep").value||null,
     pers_resp:$("mm-pers").value||null,telefon:$("mm-tel").value||null,frecv_serv:$("mm-frecv").value||null,zi_serv:$("mm-zi").value||null,traseu:$("mm-traseu").value||null,observatii:$("mm-obs").value||null,
     contract_id:+$("mm-ctr").value||null, anexa_id:+$("mm-anexa").value||null};
+  if(tip === "VANZARE"){ const vz = mmVzText(); rec.observatii = [vz, String(rec.observatii || "").replace(MM_VZ_RE, "")].filter(Boolean).join("\n") || null; rec.anexa_id = null; rec.contract_id = null; }   // v9.67
   if(mmExterior()){ rec.client_id = null; rec.contract_id = null; rec.anexa_id = null; }   // v4.78: clientul exterior nu e în baza lui
   if(mmExterior() && LS_TIP.test(tip) && $("mm-ls").style.display !== "none" && !$("mm-ls").dataset.multi){ mmLsArata();   // v7.22: locația din șantier → miscari.locatii
     const r = MM_LS && !MM_LS.nou ? mmLsLocuri().find(x => x.cod === MM_LS.cod) : null;
@@ -11536,7 +11605,8 @@ async function raportLuna(){
   // la client (o servisare pe anexă adăuga până acum +1 bucată în ziua ei; la GLS apărea un rând „fără anexă”)
   const misT = await miscariLuna(an, luna);
   R_TRF = trLuna(misT);   // v9.66 (cerut de Ovidiu, 19.11): transferurile între depozite apar separat, sub raport (nu sunt la clienți)
-  const mis = misT.filter(m => !ctrExterior(m) && m.tip_miscare !== "SERVISARE" && !SP_TIP.test(m.tip_miscare || "") && !/^Transfer/i.test(m.tip_miscare || ""));   // v7.30: sponsorizările nu intră
+  const mis = misT.filter(m => !ctrExterior(m) && m.tip_miscare !== "SERVISARE" && !SP_TIP.test(m.tip_miscare || "") && !/^Transfer/i.test(m.tip_miscare || "") && m.tip_miscare !== "VANZARE");   // v7.30: sponsorizările nu intră   // v9.67: nici vânzările
+  R_VZ = misT.filter(m => m.tip_miscare === "VANZARE" && !ctrExterior(m)).sort((a, b) => String(a.data).localeCompare(String(b.data)));
   R_ANTET = ["NR. CTR","NUMELE FIRMEI","LOCATIA DE LIVRARE","NR. ANEXA","DATA LIVRARE","PRODUS","TIP",
              "LIVRAT DIN DEPOZIT","RETUR IN DEPOZIT","0"];
   for(let d = 1; d <= nz; d++) R_ANTET.push(String(d));
@@ -11639,7 +11709,7 @@ async function raportLuna(){
 const rlCul = j => { const v = Object.values(R_CEL[j] || {}); return v.includes("down") ? "R" : v.includes("up") ? "V" : ""; };
 let FCTR_PRIM = new Map();
 // v9.66: transferurile lunii — un rând pe mutare (TransferOUT + TransferIN pereche), [data, din, în, produs, tip, model, buc, observații]
-let R_TRF = [];
+let R_TRF = [], R_VZ = [];
 function trLuna(L){
   const T = (L || []).filter(m => /^Transfer/i.test(m.tip_miscare || "")), folosit = new Set(), rez = [];
   const capete = m => { const x = /TRANSFER\s+(.+?)\s*→\s*(.+)$/i.exec(m.client || ""); return x ? [x[1].trim(), x[2].trim()] : ["", ""]; };
@@ -11651,9 +11721,13 @@ function trLuna(L){
 }
 function rlTrfArata(){
   const el = $("r-trf"); if(!el) return;
-  if(R_NUME !== "Raport_luna" || !R_TRF.length){ el.innerHTML = ""; return; }
+  if(R_NUME !== "Raport_luna" || (!R_TRF.length && !R_VZ.length)){ el.innerHTML = ""; return; }
   const tot = R_TRF.reduce((t, r) => t + r[6], 0);
-  el.innerHTML = `<div class="card" style="margin-top:12px"><h3 style="margin:0 0 8px;color:var(--g)">🔁 Transferuri între depozite în luna aceasta <span class="muted" style="font-size:13px;font-weight:400">— ${R_TRF.length} ${R_TRF.length === 1 ? "mutare" : "mutări"}, ${tot} buc.</span></h3>
+  const vz = R_VZ.length ? `<div class="card" style="margin-top:12px"><h3 style="margin:0 0 8px;color:var(--g)">💰 Vânzări în luna aceasta <span class="muted" style="font-size:13px;font-weight:400">— ${R_VZ.length}, ${R_VZ.reduce((t, m) => t + Math.abs(+m.buc || 0), 0)} buc.</span></h3>
+    <div class="tw"><table><thead><tr><th>Data</th><th>Client</th><th>Din depozitul</th><th>Produs</th><th>Tip</th><th>Model</th><th style="text-align:right">Buc.</th><th>Livrare</th><th>Preț / factură / plată</th></tr></thead><tbody>` +
+    R_VZ.map(m => `<tr><td>${esc(fmtD(m.data))}</td><td><b>${esc(m.client || "")}</b></td><td>${esc(m.depozit || "")}</td><td>${esc(m.produs || "")}</td><td>${esc(m.model || "")}</td><td>${esc(m.model_fizic || "")}</td><td style="text-align:right"><b>${Math.abs(+m.buc || 0)}</b></td><td>${esc([m.loc, m.sat].filter(Boolean).join(", "))}</td><td>${esc(((/^VANZARE:([^\n]*)/.exec(m.observatii || "") || [])[1] || "").trim())}</td></tr>`).join("") + "</tbody></table></div></div>" : "";
+  if(!R_TRF.length){ el.innerHTML = vz; return; }
+  el.innerHTML = vz + `<div class="card" style="margin-top:12px"><h3 style="margin:0 0 8px;color:var(--g)">🔁 Transferuri între depozite în luna aceasta <span class="muted" style="font-size:13px;font-weight:400">— ${R_TRF.length} ${R_TRF.length === 1 ? "mutare" : "mutări"}, ${tot} buc.</span></h3>
     <div class="tw"><table><thead><tr><th>Data</th><th>Din depozitul</th><th></th><th>În depozitul</th><th>Produs</th><th>Tip</th><th>Model</th><th style="text-align:right">Buc.</th><th>Observații</th></tr></thead><tbody>` +
     R_TRF.map(r => `<tr><td>${esc(fmtD(r[0]))}</td><td><b>${esc(r[1])}</b></td><td style="color:#1a5fb4">➜</td><td><b>${esc(r[2])}</b></td><td>${esc(r[3])}</td><td>${esc(r[4])}</td><td>${esc(r[5])}</td><td style="text-align:right"><b>${r[6]}</b></td><td>${esc(r[7])}</td></tr>`).join("") +
     `</tbody></table></div></div>`;
@@ -19668,6 +19742,9 @@ async function expExcel(D, an, luna, nz, lunaT, ultima, sufix){
   { const TR = trLuna(D.lun);   // v9.66 (cerut de Ovidiu, 19.11): transferurile între depozite din lună
     if(TR.length){ titlu("Transferuri între depozite");
       tabel(["Data", "Din depozitul", "În depozitul", "Produs", "Tip", "Model", "Bucăți", "Observații"], TR.map(r => [fmtD(r[0]).replace(/-/g, "."), r[1], r[2], r[3], r[4], r[5], r[6], r[7]])); } }
+  { const VZ = (D.lun || []).filter(m => m.tip_miscare === "VANZARE" && !ctrExterior(m)).sort((a, b) => String(a.data).localeCompare(String(b.data)));   // v9.67: vânzările lunii
+    if(VZ.length){ titlu("Vânzări");
+      tabel(["Data", "Client", "Din depozitul", "Produs", "Tip", "Bucăți", "Livrare", "Preț / factură / plată"], VZ.map(m => [fmtD(m.data).replace(/-/g, "."), m.client || "", m.depozit || "", m.produs || "", [m.model, m.model_fizic].filter(Boolean).join(" "), Math.abs(+m.buc || 0), [m.loc, m.sat].filter(Boolean).join(", "), ((/^VANZARE:([^\n]*)/.exec(m.observatii || "") || [])[1] || "").trim()])); } }
   [ws, s2].forEach(w => w.eachRow({ includeEmpty: false }, row => row.eachCell(c => { c.font = { ...(c.font || {}), name: "Calibri" }; })));
   // ---------- datele graficelor (foaie ascunsă) ----------
   const dt = wb.addWorksheet("DATE GRAFICE"); dt.state = "hidden";
