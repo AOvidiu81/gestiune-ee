@@ -1116,7 +1116,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
   <span id="rz-w"><button id="rz-reset" class="pictograma" title="Lățimi implicite — pune coloanele din tabelele acestei file înapoi cum erau">↺ Reset layout</button><i class="rz-sep">|</i></span>
   <span id="tz-w" title="Mărimea tabelului (doar tabelul, restul rămâne la fel), din 5 în 5%. Merge și cu Ctrl + rotița mausului, Ctrl + / Ctrl − / Ctrl 0. Dublu clic pe procent = scrii tu valoarea."><button class="pictograma" onclick="tzPas(-1)" aria-label="Micșorează tabelul">−</button><b id="tz-v" ondblclick="tzScrie()" title="Dublu clic = scrii mărimea (ex. 87), Enter">100%</b><input id="tz-in" type="number" min="30" max="300" step="5" style="display:none"><button class="pictograma" onclick="tzPas(1)" aria-label="Mărește tabelul">+</button></span>
-  <span class="ver">v9.63</span>
+  <span class="ver">v9.64</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -12299,7 +12299,9 @@ function atPopup(){
     return `<div class="atp-g"><div class="atp-h"><b>${esc(x.titlu)}</b><span class="atp-n${exp || L.some(rosu) ? " r" : ""}">${L.length}</span>
       <button class="btn sm sec" onclick="atPopupMergi('${x.cheie}')">Deschide în De urmărit →</button></div>
       <div class="tw" style="max-height:none"><table><thead><tr>${x.cap.map(h => `<th>${esc(h)}</th>`).join("")}</tr></thead><tbody>` +
-      L.slice(0, N).map(r => `<tr${exp || rosu(r) ? ' class="atp-r"' : ""}>${r.v.map(v => `<td>${esc(v == null ? "" : v)}</td>`).join("")}</tr>`).join("") +
+      L.slice(0, N).map(r => { const go = r.go || (r.aa ? "atCtr(" + r.aa + ")" : r.ri ? "atInchideRid(" + r.ri + ")" : r.mid ? "atDeschideCmd(" + r.mid + ")" : "");   // v9.64: prima coloană = link la locul de rezolvat
+        return `<tr${exp || rosu(r) ? ' class="atp-r"' : ""}>${r.v.map((v, j) => { const t = esc(v == null ? "" : v);
+          return j === 0 && go ? `<td><a href="#" class="atp-a" onclick="atPopupInchide();${esc(go)};return false" title="Deschide locul unde se rezolvă">${t}</a></td>` : `<td>${t}</td>`; }).join("")}</tr>`; }).join("") +
       `</tbody></table></div>${L.length > N ? `<div class="muted" style="font-size:12px;margin-top:3px">… și încă ${L.length - N} — toate în De urmărit</div>` : ""}</div>`; };
   const nr = urg.reduce((t, x) => t + viz(x).length, 0);
   const azi = new Date().toLocaleDateString("ro-RO", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
@@ -12307,7 +12309,7 @@ function atPopup(){
   w.innerHTML = `<div class="box" style="max-width:1100px;width:96vw"><h3 class="lux-cap cap-mut">🔔 Alertele zilei — ${esc(azi)}</h3>
     <style>#mod-atp .atp-g{margin:0 0 14px}#mod-atp .atp-h{display:flex;align-items:center;gap:10px;margin-bottom:5px}#mod-atp .atp-h b{font-size:14px}
       #mod-atp .atp-h .btn{margin-left:auto}#mod-atp .atp-n{min-width:24px;text-align:center;padding:1px 8px;border-radius:999px;background:#b45309;color:#fff;font-weight:700;font-size:12px}
-      #mod-atp .atp-n.r{background:#C0392B}#mod-atp tr.atp-r td{color:#C0392B;font-weight:600}#mod-atp td,#mod-atp th{font-size:12.5px}</style>
+      #mod-atp .atp-n.r{background:#C0392B}#mod-atp tr.atp-r td{color:#C0392B;font-weight:600}#mod-atp a.atp-a{color:inherit;text-decoration:underline;text-underline-offset:2px}#mod-atp a.atp-a:hover{color:var(--acc)}#mod-atp td,#mod-atp th{font-size:12.5px}</style>
     <div class="muted" style="margin-bottom:10px">${urg.length ? `<b style="color:var(--tx)">${nr}</b> ${nr === 1 ? "lucru" : "lucruri"} care au expirat sau expiră în următoarele <b style="color:var(--tx)">${esc($("t-zile").value || "90")}</b> de zile. ` : ""}Ce marchezi „Rezolvat” sau amâni în De urmărit nu mai apare aici.</div>
     <div style="max-height:62vh;overflow:auto;padding-right:4px">${urg.map(grup).join("") || '<div class="muted">Nimic expirat sau care expiră în curând. ✓</div>'}</div>
     ${alte.length ? `<div style="margin-top:6px;padding-top:8px;border-top:1px solid var(--bd);font-size:12.5px"><b>De verificat (date incomplete):</b> ${alte.map(x => `<a href="#" onclick="atPopupMergi('${x.cheie}');return false">${esc(x.titlu)} (${viz(x).length})</a>`).join(" · ")}</div>` : ""}
@@ -18798,19 +18800,29 @@ $("ma-model").addEventListener("change", () => umpleAcc("ma-prod","ma-model"));
 // Clicurile pe butoane, linkuri, câmpuri nu marchează.
 // v7.09 (cerut de Ovidiu, 27.10): pe lângă rând se marchează și celula (chenar subțire, atribut data-tc); săgețile ↑ ↓ ← → mută rândul / celula,
 // Enter = intră în căsuța din celulă (dacă are), Esc = demarchează. În căsuțele de text ↑ ↓ trec la aceeași căsuță pe rândul de sus / jos.
-function tcMarcheaza(tr, td){
+function tcMarcheaza(tr, td, pastreaza){
   const tb = tr.closest("table"); if(!tb) return;
-  tb.querySelectorAll("tr.r-ales").forEach(x => x.classList.remove("r-ales"));
-  tb.querySelectorAll("td[data-tc]").forEach(x => x.removeAttribute("data-tc"));
-  tr.classList.add("r-ales");
+  // v9.64 (cerut de Ovidiu, 19.11): o singură selecție în toată pagina (și între tabele diferite), nu câte una pe tabel
+  if(!pastreaza) document.querySelectorAll("tr.r-ales").forEach(x => x.classList.remove("r-ales"));
+  document.querySelectorAll("td[data-tc]").forEach(x => x.removeAttribute("data-tc"));
+  tr.classList.add("r-ales"); TC_ANCORA = tr;
   if(td) td.setAttribute("data-tc", "");
 }
+let TC_ANCORA = null;
+document.addEventListener("mousedown", e => {   // Shift + clic pe rânduri nu mai selectează textul paginii
+  if(e.shiftKey && e.target.closest && e.target.closest("tbody tr") && !e.target.closest("input,select,textarea,button,a")) e.preventDefault(); });
 document.addEventListener("click", e => {
   const tr = e.target.closest && e.target.closest("tbody tr"); if(!tr) return;
   if(e.target.closest("button,a,label,summary,.flag")) return;
   const tb = tr.closest("table"); if(!tb) return;
   const td = e.target.closest("td"); const inp = e.target.closest("input,select,textarea");
   if(inp){ tcMarcheaza(tr, td); return; }   // clic în căsuță: marchează, fără demarcare
+  // v9.64: Ctrl + clic = adaugă / scoate rândul din selecție; Shift + clic = toate rândurile de la ultimul ales până aici (în același tabel)
+  if(e.ctrlKey || e.metaKey){ if(tr.classList.contains("r-ales")){ tr.classList.remove("r-ales"); if(td) td.removeAttribute("data-tc"); } else tcMarcheaza(tr, td, true); return; }
+  if(e.shiftKey && TC_ANCORA && TC_ANCORA.isConnected && TC_ANCORA.closest("table") === tb){
+    const R = tcRanduri(tb), a = R.indexOf(TC_ANCORA), b = R.indexOf(tr);
+    if(a >= 0 && b >= 0){ const anc = TC_ANCORA; document.querySelectorAll("tr.r-ales").forEach(x => x.classList.remove("r-ales"));
+      R.slice(Math.min(a, b), Math.max(a, b) + 1).forEach(x => x.classList.add("r-ales")); document.querySelectorAll("td[data-tc]").forEach(x => x.removeAttribute("data-tc")); if(td) td.setAttribute("data-tc", ""); TC_ANCORA = anc; return; } }
   const era = tr.classList.contains("r-ales"), celEra = td && td.hasAttribute("data-tc");
   if(era && (celEra || !td)){ tr.classList.remove("r-ales"); if(td) td.removeAttribute("data-tc"); return; }
   tcMarcheaza(tr, td);
