@@ -1116,7 +1116,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
   <span id="rz-w"><button id="rz-reset" class="pictograma" title="Lățimi implicite — pune coloanele din tabelele acestei file înapoi cum erau">↺ Reset layout</button><i class="rz-sep">|</i></span>
   <span id="tz-w" title="Mărimea tabelului (doar tabelul, restul rămâne la fel), din 5 în 5%. Merge și cu Ctrl + rotița mausului, Ctrl + / Ctrl − / Ctrl 0. Dublu clic pe procent = scrii tu valoarea."><button class="pictograma" onclick="tzPas(-1)" aria-label="Micșorează tabelul">−</button><b id="tz-v" ondblclick="tzScrie()" title="Dublu clic = scrii mărimea (ex. 87), Enter">100%</b><input id="tz-in" type="number" min="30" max="300" step="5" style="display:none"><button class="pictograma" onclick="tzPas(1)" aria-label="Mărește tabelul">+</button></span>
-  <span class="ver">v9.74</span>
+  <span class="ver">v9.75</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -3249,7 +3249,7 @@ let SR = null;
 const srEfect = () => { const e = {}; (NOM.tip_miscare || []).forEach(r => { e[r.valoare] = r.efect_stoc || "niciun"; }); return e; };
 async function srCalc(zi, depF){
   const [mi, se, si] = await Promise.all([
-    db.from("miscari").select("id,grup_id,data,tip_miscare,contract,depozit,produs,buc,client,pv,pv_facut_la").limit(20000),
+    db.from("miscari").select("id,grup_id,data,tip_miscare,contract,depozit,produs,model_fizic,buc,client,pv,pv_facut_la").limit(20000),
     db.from("serii").select("id,produs,model,serie,stare,data_amplasarii,data_ridicarii,miscare_amplasare_id,miscare_ridicare_id").limit(20000),
     db.from("stoc_initial").select("*") ]);
   if(mi.error || se.error || si.error) throw (mi.error || se.error || si.error);
@@ -3293,9 +3293,13 @@ async function srCalc(zi, depF){
       const gr = {}; ord.filter(m => m.ef === "inchiriere").forEach(m => { const c = grupDe(m) + (m.buc < 0 ? "-" : "+"); (gr[c] = gr[c] || { l: [], n: 0 }).l.push(m); gr[c].n += Math.abs(m.buc); });
       Object.entries(gr).forEach(([c, o]) => { const lipsa = o.n - (leg[c] || 0); if(lipsa > 0){ const m = o.l[0];
         astepta.push({ m, lipsa, iese: c.endsWith("+"), pv: !!(m.pv_facut_la || ["V", "W"].includes(m.pv)) }); } });
+      // v9.75 (întrebarea lui Ovidiu, 19.11): transferurile și vânzările (fără serii pe PV) mută modelul scris pe comandă (ARMAL, MONDO…);
+      // cele fără model rămân la „fără model” și sunt socotite ca așteptate
+      let faraTr = 0;
+      ord.filter(m => m.ef === "depozit_in" || m.ef === "depozit_out").forEach(m => { const d = efDep(m); if(m.model_fizic) mod[m.model_fizic] = (mod[m.model_fizic] || 0) + d; else faraTr += d; });
       const tm = Object.values(mod).reduce((a, x) => a + x, 0); faraModel = depo - tm;
       Object.entries(mod).forEach(([nm, v]) => { if(v < 0) alerte.push(`modelul ${nm} iese pe minus (${v}) — o serie amplasată fără să fie în numărătoare?`); });
-      const asteptat = astepta.reduce((a, x) => a + (x.iese ? -x.lipsa : x.lipsa), 0);
+      const asteptat = astepta.reduce((a, x) => a + (x.iese ? -x.lipsa : x.lipsa), 0) + faraTr;
       if(faraModel !== asteptat) alerte.push(`pe modele nu coincide cu totalul: fără model ${faraModel}, din comenzile fără serii ar trebui ${asteptat}`);
       if(areSerie(prod)) astepta.filter(x => x.pv).forEach(x => alerte.push(`comanda ${x.m.id} (${x.m.tip_miscare} ${fmtD(x.m.data)}, ${x.m.client || ""}) are PV, dar ${x.lipsa} buc fără serie confirmată`));
     }
