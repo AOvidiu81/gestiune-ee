@@ -1116,7 +1116,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
   <span id="rz-w"><button id="rz-reset" class="pictograma" title="Lățimi implicite — pune coloanele din tabelele acestei file înapoi cum erau">↺ Reset layout</button><i class="rz-sep">|</i></span>
   <span id="tz-w" title="Mărimea tabelului (doar tabelul, restul rămâne la fel), din 5 în 5%. Merge și cu Ctrl + rotița mausului, Ctrl + / Ctrl − / Ctrl 0. Dublu clic pe procent = scrii tu valoarea."><button class="pictograma" onclick="tzPas(-1)" aria-label="Micșorează tabelul">−</button><b id="tz-v" ondblclick="tzScrie()" title="Dublu clic = scrii mărimea (ex. 87), Enter">100%</b><input id="tz-in" type="number" min="30" max="300" step="5" style="display:none"><button class="pictograma" onclick="tzPas(1)" aria-label="Mărește tabelul">+</button></span>
-  <span class="ver">v9.65</span>
+  <span class="ver">v9.66</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -1392,6 +1392,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   </div>
   <div class="card noprint ver-banda" id="r-ver" style="display:none"></div>
   <div class="card ecran-t"><div class="tw"><table id="r-tbl"></table></div></div>
+  <div id="r-trf"></div><!-- v9.66: transferurile dintre depozite din luna aleasă (Raport lună) -->
 </section>
 
 <!-- ================= REGISTRU DOCUMENTE ================= -->
@@ -11533,7 +11534,9 @@ async function raportLuna(){
   // (nici în Facturare — aceea pleacă doar din anexe); rămân în Comenzi și în rute.
   // v6.42 (hotărât de Ovidiu, 19.10): comenzile SERVISARE nu intră în Raport lună — raportul arată doar produsele închiriate
   // la client (o servisare pe anexă adăuga până acum +1 bucată în ziua ei; la GLS apărea un rând „fără anexă”)
-  const mis = (await miscariLuna(an, luna)).filter(m => !ctrExterior(m) && m.tip_miscare !== "SERVISARE" && !SP_TIP.test(m.tip_miscare || ""));   // v7.30: sponsorizările nu intră
+  const misT = await miscariLuna(an, luna);
+  R_TRF = trLuna(misT);   // v9.66 (cerut de Ovidiu, 19.11): transferurile între depozite apar separat, sub raport (nu sunt la clienți)
+  const mis = misT.filter(m => !ctrExterior(m) && m.tip_miscare !== "SERVISARE" && !SP_TIP.test(m.tip_miscare || "") && !/^Transfer/i.test(m.tip_miscare || ""));   // v7.30: sponsorizările nu intră
   R_ANTET = ["NR. CTR","NUMELE FIRMEI","LOCATIA DE LIVRARE","NR. ANEXA","DATA LIVRARE","PRODUS","TIP",
              "LIVRAT DIN DEPOZIT","RETUR IN DEPOZIT","0"];
   for(let d = 1; d <= nz; d++) R_ANTET.push(String(d));
@@ -11635,7 +11638,28 @@ async function raportLuna(){
 // altfel cu verde dacă a venit ceva (amplasare / suplimentare); după zilele colorate din R_CEL
 const rlCul = j => { const v = Object.values(R_CEL[j] || {}); return v.includes("down") ? "R" : v.includes("up") ? "V" : ""; };
 let FCTR_PRIM = new Map();
+// v9.66: transferurile lunii — un rând pe mutare (TransferOUT + TransferIN pereche), [data, din, în, produs, tip, model, buc, observații]
+let R_TRF = [];
+function trLuna(L){
+  const T = (L || []).filter(m => /^Transfer/i.test(m.tip_miscare || "")), folosit = new Set(), rez = [];
+  const capete = m => { const x = /TRANSFER\s+(.+?)\s*→\s*(.+)$/i.exec(m.client || ""); return x ? [x[1].trim(), x[2].trim()] : ["", ""]; };
+  const ch = m => [m.data, m.produs, m.model || "", m.model_fizic || "", Math.abs(+m.buc || 0), m.client || ""].join("|");
+  T.filter(m => /OUT$/i.test(m.tip_miscare)).forEach(o => { const p = T.find(i => /IN$/i.test(i.tip_miscare) && !folosit.has(i.id) && ch(i) === ch(o)); if(p) folosit.add(p.id);
+    const [a, b] = capete(o); rez.push([o.data, o.depozit || a, p ? p.depozit : b, o.produs || "", o.model || "", o.model_fizic || "", Math.abs(+o.buc || 0), String(o.observatii || "").replace(/^→\s*\S+\s*·?\s*/, "")]); });
+  T.filter(m => /IN$/i.test(m.tip_miscare) && !folosit.has(m.id)).forEach(i => { const [a] = capete(i); rez.push([i.data, a, i.depozit || "", i.produs || "", i.model || "", i.model_fizic || "", Math.abs(+i.buc || 0), String(i.observatii || "").replace(/^←\s*\S+\s*·?\s*/, "")]); });
+  return rez.sort((x, y) => String(x[0]).localeCompare(String(y[0])));
+}
+function rlTrfArata(){
+  const el = $("r-trf"); if(!el) return;
+  if(R_NUME !== "Raport_luna" || !R_TRF.length){ el.innerHTML = ""; return; }
+  const tot = R_TRF.reduce((t, r) => t + r[6], 0);
+  el.innerHTML = `<div class="card" style="margin-top:12px"><h3 style="margin:0 0 8px;color:var(--g)">🔁 Transferuri între depozite în luna aceasta <span class="muted" style="font-size:13px;font-weight:400">— ${R_TRF.length} ${R_TRF.length === 1 ? "mutare" : "mutări"}, ${tot} buc.</span></h3>
+    <div class="tw"><table><thead><tr><th>Data</th><th>Din depozitul</th><th></th><th>În depozitul</th><th>Produs</th><th>Tip</th><th>Model</th><th style="text-align:right">Buc.</th><th>Observații</th></tr></thead><tbody>` +
+    R_TRF.map(r => `<tr><td>${esc(fmtD(r[0]))}</td><td><b>${esc(r[1])}</b></td><td style="color:#1a5fb4">➜</td><td><b>${esc(r[2])}</b></td><td>${esc(r[3])}</td><td>${esc(r[4])}</td><td>${esc(r[5])}</td><td style="text-align:right"><b>${r[6]}</b></td><td>${esc(r[7])}</td></tr>`).join("") +
+    `</tbody></table></div></div>`;
+}
 function deseneazaRaport(){
+  try{ rlTrfArata(); }catch(e){ console.warn("transferuri:", e); }   // v9.66
   const fl = R_NUME === "Facturare";   // v6.89: lățimi fixe + ACC. doar la Facturare „În lucru”
   // v7.87: butonul „1 factură” apare pe primul rând al fiecărui contract care are cel puțin 2 rânduri în luna aceasta
   FCTR_PRIM = new Map();
@@ -19641,6 +19665,9 @@ async function expExcel(D, an, luna, nz, lunaT, ultima, sufix){
   tabel(["Tip comandă", "Comenzi", "Bucăți"], tipuri.map(t => [t, peTip.get(t).n, peTip.get(t).b]).concat([["TOTAL", nCmd, ""]]), j => j === tipuri.length);
   titlu("Depozitul care a livrat / ridicat");
   tabel(["Depozit", "Comenzi", "Livrate", "Ridicate"], [...peDep.keys()].sort().map(k => [k, peDep.get(k).n, peDep.get(k).in, peDep.get(k).out]));
+  { const TR = trLuna(D.lun);   // v9.66 (cerut de Ovidiu, 19.11): transferurile între depozite din lună
+    if(TR.length){ titlu("Transferuri între depozite");
+      tabel(["Data", "Din depozitul", "În depozitul", "Produs", "Tip", "Model", "Bucăți", "Observații"], TR.map(r => [fmtD(r[0]).replace(/-/g, "."), r[1], r[2], r[3], r[4], r[5], r[6], r[7]])); } }
   [ws, s2].forEach(w => w.eachRow({ includeEmpty: false }, row => row.eachCell(c => { c.font = { ...(c.font || {}), name: "Calibri" }; })));
   // ---------- datele graficelor (foaie ascunsă) ----------
   const dt = wb.addWorksheet("DATE GRAFICE"); dt.state = "hidden";
