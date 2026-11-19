@@ -1116,7 +1116,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
   <span id="rz-w"><button id="rz-reset" class="pictograma" title="Lățimi implicite — pune coloanele din tabelele acestei file înapoi cum erau">↺ Reset layout</button><i class="rz-sep">|</i></span>
   <span id="tz-w" title="Mărimea tabelului (doar tabelul, restul rămâne la fel), din 5 în 5%. Merge și cu Ctrl + rotița mausului, Ctrl + / Ctrl − / Ctrl 0. Dublu clic pe procent = scrii tu valoarea."><button class="pictograma" onclick="tzPas(-1)" aria-label="Micșorează tabelul">−</button><b id="tz-v" ondblclick="tzScrie()" title="Dublu clic = scrii mărimea (ex. 87), Enter">100%</b><input id="tz-in" type="number" min="30" max="300" step="5" style="display:none"><button class="pictograma" onclick="tzPas(1)" aria-label="Mărește tabelul">+</button></span>
-  <span class="ver">v9.64</span>
+  <span class="ver">v9.65</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -1244,6 +1244,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
     <div class="row">
       <!-- v6.74 (cerut de Ovidiu, 23.10): ordinea Comandă nouă · Caută · An · Luna · Tip · Produs · Depozit · Export · PDF; filtrele se aplică singure; „Filtrează” → „Resetează tot” -->
       <div style="flex:0"><button class="btn" onclick="openMiscare()">+ Comandă nouă</button></div>
+      <div style="flex:0"><button class="btn sec" onclick="trDeschide()" title="Mută marfă dintr-un depozit în altul: se fac singure TransferOUT (de unde pleacă) și TransferIN (unde ajunge)">🔁 Transfer</button></div>
       <div><label>Caută (client / localitate / contract)</label><div style="position:relative"><input id="f-q" placeholder="ex: ACOMIN" style="padding-right:30px"><button type="button" id="f-q-x" title="Șterge căutarea" onclick="fqSterge()" style="display:none;position:absolute;right:4px;top:50%;transform:translateY(-50%);border:0;background:none;color:var(--mut);font-size:16px;line-height:1;padding:4px 6px;cursor:pointer">✕</button></div></div>
       <div><label>An</label><select id="f-an" onchange="loadMiscari()"></select></div>
       <div><label>Luna</label><select id="f-luna" onchange="loadMiscari()"><option value="">Toate</option></select></div>
@@ -5767,12 +5768,68 @@ async function mmDataAnexa(rec, dataVeche){
 }
 // ── v7.97 (cerut de Ovidiu, 07.11): „Înainte de salvare — verifică” la Comandă nouă ──
 // ⛔ = nu se poate salva până nu completezi; ⚠ = poți apăsa „Salvează așa”. SERVISAREA rămâne neatinsă (cum e acum).
+// ══ v9.65 (cerut de Ovidiu, 19.11): TRANSFER între depozite — o fereastră; la Salvează se fac singure TransferOUT (din) și TransferIN (în) ══
+function trDeschide(){
+  document.getElementById("mod-tr")?.remove();
+  const dep = DEP.map(d => d.nume), opt = (L, v) => L.map(x => `<option ${x === v ? "selected" : ""}>${esc(x)}</option>`).join("");
+  const w = document.createElement("div"); w.className = "modal on"; w.id = "mod-tr";
+  w.innerHTML = `<div class="box" style="max-width:820px"><h3 class="lux-cap cap-mut">🔁 Transfer între depozite</h3>
+    <style>#mod-tr .trg{display:grid;grid-template-columns:150px 1fr 40px 1fr;gap:8px 10px;align-items:end}#mod-tr .trr{display:grid;grid-template-columns:80px 1.2fr 1.2fr 1fr 34px;gap:8px;align-items:end;margin-bottom:6px}
+      #mod-tr .sag{font-size:22px;text-align:center;color:#1a5fb4;padding-bottom:6px}#mod-tr label{font-size:11px}</style>
+    <div class="trg"><div><label>Data</label><input type="date" id="tr-data" value="${today()}"></div>
+      <div><label>Din depozitul <span class="hint">pleacă marfa</span></label><select id="tr-din"><option value=""></option>${opt(dep, "HUNEDOARA")}</select></div><div class="sag">➜</div>
+      <div><label>În depozitul <span class="hint">ajunge marfa</span></label><select id="tr-in"><option value=""></option>${opt(dep, "")}</select></div></div>
+    <h4 style="margin:14px 0 6px">Ce se mută</h4><div id="tr-rd"></div>
+    <button type="button" class="btn sm sec" onclick="trRand()">+ Încă un produs</button>
+    <div style="margin-top:12px"><label>Observații <span class="hint">ex. mașina, șoferul</span></label><input id="tr-obs" placeholder="ex. HR 95 EEC — Ovidiu"></div>
+    <div class="muted" id="tr-rez" style="margin-top:10px;font-size:12.5px"></div>
+    <div class="row" style="margin-top:14px;justify-content:flex-end"><div style="flex:1"></div>
+      <div style="flex:0"><button class="btn sec" onclick="this.closest('.modal').remove()">Renunță</button></div>
+      <div style="flex:0"><button class="btn" onclick="trSalveaza(this)">💾 Salvează transferul</button></div></div></div>`;
+  document.body.appendChild(w); feFereastra(w); trRand();
+  w.addEventListener("input", trRez); w.addEventListener("change", trRez); trRez();
+}
+function trRand(){
+  const d = document.createElement("div"), P = nomv("produs"); d.className = "trr";
+  d.innerHTML = `<div><label>Bucăți</label><input type="number" min="1" class="t-buc" value="1"></div>
+    <div><label>Produs</label><select class="t-prod">${P.map(x => `<option>${esc(x)}</option>`).join("")}</select></div>
+    <div><label>Tip</label><select class="t-tip"></select></div>
+    <div><label>Model <span class="hint">opțional</span></label><select class="t-mf"></select></div>
+    <button type="button" class="btn sm sec" title="Scoate rândul">✕</button>`;
+  const pr = d.querySelector(".t-prod"), tp = d.querySelector(".t-tip"), mf = d.querySelector(".t-mf");
+  const umple = () => { tp.innerHTML = modeleDe(pr.value).filter(x => !/PROPRI|DAUNA|SECOND/i.test(x)).map(x => `<option>${esc(x)}</option>`).join("");
+    const L = typeof modeleFiziceDe === "function" ? modeleFiziceDe(pr.value, tp.value) : []; mf.innerHTML = '<option value="">—</option>' + L.map(x => `<option>${esc(x)}</option>`).join(""); };
+  pr.onchange = umple; tp.onchange = () => { const L = typeof modeleFiziceDe === "function" ? modeleFiziceDe(pr.value, tp.value) : []; mf.innerHTML = '<option value="">—</option>' + L.map(x => `<option>${esc(x)}</option>`).join(""); };
+  umple(); d.querySelector("button").onclick = () => { d.remove(); trRez(); }; $("tr-rd").appendChild(d); trRez();
+}
+function trCiteste(){
+  return [...document.querySelectorAll("#tr-rd .trr")].map(d => ({ buc: Math.abs(Math.round(+d.querySelector(".t-buc").value || 0)), produs: d.querySelector(".t-prod").value, model: d.querySelector(".t-tip").value || null, model_fizic: d.querySelector(".t-mf").value || null })).filter(r => r.buc && r.produs);
+}
+function trRez(){
+  const el = $("tr-rez"); if(!el) return; const din = $("tr-din").value, ins = $("tr-in").value, R = trCiteste();
+  el.innerHTML = din && ins && din !== ins && R.length ? `La Salvează: <b>TransferOUT</b> din <b>${esc(din)}</b> (−) și <b>TransferIN</b> în <b>${esc(ins)}</b> (+) — ${esc(R.map(r => r.buc + " " + [r.produs, r.model, r.model_fizic].filter(Boolean).join(" ")).join(", "))}. Fără client, contract sau facturare; nu apare pe ruta șoferilor.` :
+    din && ins && din === ins ? '<span style="color:#C0392B">Depozitul de plecare și cel de sosire sunt același.</span>' : "Alege depozitele și ce se mută.";
+}
+async function trSalveaza(btn){
+  const zi = $("tr-data").value, din = $("tr-din").value, ins = $("tr-in").value, R = trCiteste(), obs = $("tr-obs").value.trim();
+  if(!zi){ toast("Pune data transferului", true); return; } if(!din || !ins){ toast("Alege din ce depozit pleacă și în ce depozit ajunge marfa", true); return; }
+  if(din === ins){ toast("Depozitele sunt același", true); return; } if(!R.length){ toast("Adaugă ce se mută (bucăți și produs)", true); return; }
+  const cl = "TRANSFER " + din + " → " + ins, baza = { data: zi, client: cl, client_id: null, contract: null, contract_id: null, anexa_id: null, din_telefon: false };
+  const rec = R.flatMap(r => [{ ...baza, ...r, tip_miscare: "TransferOUT", buc: -r.buc, depozit: din, observatii: ["→ " + ins, obs].filter(Boolean).join(" · ") },
+                              { ...baza, ...r, tip_miscare: "TransferIN", buc: r.buc, depozit: ins, observatii: ["← " + din, obs].filter(Boolean).join(" · ") }]);
+  btn.disabled = true;
+  const { error } = await db.from("miscari").insert(rec); btn.disabled = false;
+  if(error){ toast("Transferul nu s-a salvat: " + error.message, true); return; }
+  $("mod-tr").remove(); toast("Transfer salvat: " + R.map(r => r.buc + " " + r.produs).join(", ") + " · " + din + " → " + ins);
+  if(MISC_INCARCAT) loadMiscari();
+}
 function mmVerifLista(){
   const v = id => String(($(id) || {}).value || "").trim(), ext = mmExterior(), tip = v("mm-tip"), B = [], W = [];
   if(!tip) B.push(["Tipul comenzii nu e ales", "mm-tip"]);
   if(!v("mm-data")) B.push(["Lipsește data comenzii", "mm-data"]);
-  if(!v("mm-client")) B.push(["Clientul nu e ales", "mm-client"]);
-  if(!ext && !v("mm-ctr")) B.push(["Contractul nu e ales", "mm-ctr"]);
+  const trf = /^Transfer/i.test(tip);   // v9.65: transferul între depozite n-are client / contract
+  if(!trf && !v("mm-client")) B.push(["Clientul nu e ales", "mm-client"]);
+  if(!trf && !ext && !v("mm-ctr")) B.push(["Contractul nu e ales", "mm-ctr"]);
   if(!ext && /^(AMPLASARE|SUPLIMENTARE|REDUCERE|RIDICARE|EVENIMENT-A|EVENIMENT-R)$/.test(tip) && !(+v("mm-anexa")))
     B.push(["Anexa nu e aleasă (sau creată cu + lângă Anexă) — fără anexă comanda nu intră în Facturare", "mm-anexa"]);
   if(!(Math.abs(+v("mm-buc") || 0) > 0)) B.push(["Bucăți = 0", "mm-buc"]);
