@@ -1116,7 +1116,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
   <span id="rz-w"><button id="rz-reset" class="pictograma" title="Lățimi implicite — pune coloanele din tabelele acestei file înapoi cum erau">↺ Reset layout</button><i class="rz-sep">|</i></span>
   <span id="tz-w" title="Mărimea tabelului (doar tabelul, restul rămâne la fel), din 5 în 5%. Merge și cu Ctrl + rotița mausului, Ctrl + / Ctrl − / Ctrl 0. Dublu clic pe procent = scrii tu valoarea."><button class="pictograma" onclick="tzPas(-1)" aria-label="Micșorează tabelul">−</button><b id="tz-v" ondblclick="tzScrie()" title="Dublu clic = scrii mărimea (ex. 87), Enter">100%</b><input id="tz-in" type="number" min="30" max="300" step="5" style="display:none"><button class="pictograma" onclick="tzPas(1)" aria-label="Mărește tabelul">+</button></span>
-  <span class="ver">v9.67</span>
+  <span class="ver">v9.68</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -1731,16 +1731,29 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   #mod-m .mm-loc-rez:hover{border-color:var(--acc)}
   /* v9.67: ecranul „Ce faci?” + fișa care arată doar ce trebuie pentru tipul ales */
   #mod-m .box{position:relative}
-  #mod-m .mm-start{position:absolute;inset:0;z-index:30;background:var(--card);border-radius:inherit;display:flex;flex-direction:column;overflow:auto}
-  #mod-m .mm-start .st-cap{background:#1b2550;color:#fff;padding:16px 22px;font-size:18px;font-weight:700;display:flex;align-items:center;gap:10px}
-  #mod-m .mm-start .st-cap button{margin-left:auto;background:transparent;border:1px solid rgba(255,255,255,.55);color:#fff;border-radius:8px;padding:6px 12px;cursor:pointer}
-  #mod-m .mm-start .st-corp{padding:16px 22px 22px}
-  #mod-m .mm-start .st-g{margin:0 0 16px}#mod-m .mm-start .st-g h5{margin:0 0 8px;font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--mut)}
-  #mod-m .mm-start .st-l{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:10px}
-  #mod-m .mm-start .st-t{border:1.5px solid var(--bd);border-radius:14px;padding:12px 14px;background:var(--card);cursor:pointer;text-align:left;color:var(--tx);transition:border-color .15s,box-shadow .15s,transform .1s}
-  #mod-m .mm-start .st-t:hover{border-color:#1a5fb4;box-shadow:0 4px 14px rgba(26,95,180,.15);transform:translateY(-1px)}
-  #mod-m .mm-start .st-t b{display:block;font-size:14px;margin-bottom:3px}#mod-m .mm-start .st-t span{font-size:12px;color:var(--mut);line-height:1.35;display:block}
-  #mod-m .mm-start .st-t i{font-style:normal;font-size:20px;display:block;margin-bottom:4px}
+  #mod-m .mm-start{position:absolute;inset:0;z-index:30;background:#f4f6fb;border-radius:inherit;display:flex;flex-direction:column;overflow:auto}
+  :root[data-tema="inchis"] #mod-m .mm-start{background:var(--bg)}
+  #mod-m .mm-start .st-cap{background:linear-gradient(135deg,#1b2550,#24346f);color:#fff;padding:18px 24px;display:flex;align-items:center;gap:16px;flex:0 0 auto}
+  #mod-m .mm-start .st-t1{font-size:19px;font-weight:700;letter-spacing:.2px}#mod-m .mm-start .st-t2{font-size:13px;opacity:.78;margin-top:3px}
+  #mod-m .mm-start .st-x{margin-left:auto;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.4);color:#fff;border-radius:9px;padding:7px 14px;font-size:13px;font-weight:600;cursor:pointer}
+  #mod-m .mm-start .st-x:hover{background:rgba(255,255,255,.18)}
+  #mod-m .mm-start .st-corp{padding:20px 24px 24px;max-width:1080px;width:100%;box-sizing:border-box}
+  #mod-m .mm-start .st-g{margin:0 0 20px}
+  #mod-m .mm-start .st-g h5{display:flex;align-items:center;gap:8px;margin:0 0 10px;font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#5b6478}
+  #mod-m .mm-start .st-g h5 span{width:8px;height:8px;border-radius:50%;background:var(--c)}
+  #mod-m .mm-start .st-g h5::after{content:"";flex:1;height:1px;background:#dfe4ee}
+  #mod-m .mm-start .st-l{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:12px}
+  #mod-m .mm-start .st-t{position:relative;display:flex;align-items:flex-start;gap:12px;text-align:left;background:#fff;border:1px solid #dfe4ee;border-radius:12px;padding:14px 38px 14px 14px;cursor:pointer;color:#1e2638;
+    box-shadow:0 1px 2px rgba(16,24,40,.05);transition:border-color .15s,box-shadow .15s,transform .12s}
+  :root[data-tema="inchis"] #mod-m .mm-start .st-t{background:var(--card);border-color:var(--bd);color:var(--tx)}
+  #mod-m .mm-start .st-t:hover,#mod-m .mm-start .st-t:focus-visible{border-color:var(--c);box-shadow:0 6px 18px rgba(16,24,40,.10),0 0 0 3px color-mix(in srgb,var(--c) 14%,transparent);transform:translateY(-1px);outline:none}
+  #mod-m .mm-start .st-ic{flex:0 0 40px;height:40px;border-radius:10px;display:flex;align-items:center;justify-content:center;color:var(--c);background:color-mix(in srgb,var(--c) 11%,#fff)}
+  #mod-m .mm-start .st-ic svg{width:22px;height:22px}
+  #mod-m .mm-start .st-tx{flex:1;min-width:0}
+  #mod-m .mm-start .st-tx b{display:block;font-size:14.5px;font-weight:700;margin:1px 0 3px}#mod-m .mm-start .st-tx small{display:block;font-size:12.3px;line-height:1.4;color:#6b7491}
+  #mod-m .mm-start kbd{font:600 11px/1 ui-monospace,Consolas,monospace;padding:3px 6px;border:1px solid #d3d9e6;border-bottom-width:2px;border-radius:5px;background:#f7f9fc;color:#6b7491}
+  #mod-m .mm-start .st-t kbd{position:absolute;top:10px;right:10px}
+  #mod-m .mm-start .st-nota{font-size:12px;color:#6b7491;margin-top:4px}
   #mod-m[data-fel="vz"] .mm-s[data-s="7"], #mod-m[data-fel="vz"] #mm-caz, #mod-m[data-fel="vz"] .g-cc > div:has(#mm-ctr), #mod-m[data-fel="vz"] .g-cc > div:has(#mm-contract),
   #mod-m[data-fel="vz"] .sv-rand, #mod-m[data-fel="vz"] #mm-sv-ev{display:none!important}
   #mod-m .mm-schimba{font-size:12px;color:var(--acc);cursor:pointer;text-decoration:underline;margin-left:8px;font-weight:600;text-transform:none;letter-spacing:0}
@@ -5409,23 +5422,40 @@ function mmTipPills(){
   el.querySelectorAll("button").forEach(b => b.onclick = () => { if(sel.value === b.dataset.t) return; sel.value = b.dataset.t; sel.dispatchEvent(new Event("change", { bubbles: true })); mmTipPills(); });
 }
 // ══ v9.67 (cerut de Ovidiu, 19.11): „Comandă nouă” începe cu ecranul „Ce faci?” — după alegere, fișa arată doar ce trebuie ══
+// v9.68 (cerut de Ovidiu, 19.11): design refăcut — iconițe desenate (nu emoji), culoare pe grupă, plăci egale, tastele 1–9 aleg
+const MM_IC = {
+  box: '<path d="M21 8l-9-5-9 5 9 5 9-5z"/><path d="M3 8v8l9 5 9-5V8"/><path d="M12 13v8"/>',
+  plus: '<circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/>', minus: '<circle cx="12" cy="12" r="9"/><path d="M8 12h8"/>',
+  truck: '<path d="M3 6h11v10H3z"/><path d="M14 10h4l3 3v3h-7z"/><circle cx="7" cy="18" r="1.8"/><circle cx="17.5" cy="18" r="1.8"/>',
+  drop: '<path d="M12 3s6 6.5 6 11a6 6 0 0 1-12 0c0-4.5 6-11 6-11z"/><path d="M9.5 14.5a2.5 2.5 0 0 0 2.5 2.5"/>',
+  calp: '<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M8 3v4M16 3v4M3 10h18M12 13v5M9.5 15.5h5"/>',
+  calx: '<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M8 3v4M16 3v4M3 10h18M10 13.5l4 4M14 13.5l-4 4"/>',
+  tag: '<path d="M3 12V4h8l10 10-8 8z"/><circle cx="7.5" cy="8.5" r="1.4"/>', gift: '<rect x="3" y="9" width="18" height="12" rx="1.5"/><path d="M3 13h18M12 9v12"/><path d="M12 9c-2-3.5-6-3.5-5-.5M12 9c2-3.5 6-3.5 5-.5"/>',
+  warn: '<path d="M12 3l10 18H2z"/><path d="M12 10v5M12 18v.01"/>', doc: '<path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M14 3v6h6M9 15l6-6"/>',
+  swap: '<path d="M4 8h14l-4-4M20 16H6l4 4"/>'
+};
 const MM_START = [
-  ["La client — închiriere", [["AMPLASARE", "📦", "Amplasare", "Locație nouă sau una existentă; anexa nouă se face la Salvează"], ["SUPLIMENTARE", "➕", "Suplimentare", "Mai multe bucăți la o locație; actul -S se face singur"],
-    ["REDUCERE", "➖", "Reducere", "Pleacă o parte din bucăți; actul -R se face singur"], ["RIDICARE", "🚚", "Ridicare", "Pleacă tot de la locație; ridicarea finală -R FINAL"], ["SERVISARE", "🧽", "Servisare", "Servisare la cerere sau în plus"]]],
-  ["Eveniment", [["EVENIMENT-A", "🎪", "Eveniment · amplasare", "Toalete pe zilele evenimentului"], ["EVENIMENT-R", "🎪", "Eveniment · ridicare", "Ridicarea de la eveniment"]]],
-  ["Fără închiriere", [["VANZARE", "💰", "Vânzare", "Din ce depozit pleacă, cui, preț, factură, plata; la șofer cu PV de vânzare"], ["SPONSORIZARE-A", "🤝", "Sponsorizare", "Fără anexă și fără factură"],
-    ["DAUNA", "⚠️", "Daună / furt", "Produs distrus sau furat de la client"], ["MODIFICARE ANEXA", "📝", "Act adițional", "Se schimbă prețul sau servisarea pe o anexă"]]],
-  ["Între depozitele noastre", [["TRANSFER", "🔁", "Transfer", "Din depozitul tău în alt depozit: TransferOUT + TransferIN, singure"]]]
+  ["La client — închiriere", "#1a5fb4", [["AMPLASARE", "box", "Amplasare", "Locație nouă sau existentă; anexa nouă se face la Salvează"], ["SUPLIMENTARE", "plus", "Suplimentare", "Mai multe bucăți la o locație; actul -S se face singur"],
+    ["REDUCERE", "minus", "Reducere", "Pleacă o parte din bucăți; actul -R se face singur"], ["RIDICARE", "truck", "Ridicare", "Pleacă tot de la locație (ridicare finală)"], ["SERVISARE", "drop", "Servisare", "Servisare la cerere sau în plus"]]],
+  ["Eveniment", "#7c3aed", [["EVENIMENT-A", "calp", "Eveniment · amplasare", "Produse pe zilele evenimentului"], ["EVENIMENT-R", "calx", "Eveniment · ridicare", "Ridicarea de la eveniment"]]],
+  ["Fără închiriere", "#b45309", [["VANZARE", "tag", "Vânzare", "Depozit, client, preț, factură, plată; PV de vânzare la șofer"], ["SPONSORIZARE-A", "gift", "Sponsorizare", "Fără anexă și fără factură"],
+    ["DAUNA", "warn", "Daună / furt", "Produs distrus sau furat de la client"], ["MODIFICARE ANEXA", "doc", "Act adițional", "Se schimbă prețul sau servisarea pe o anexă"]]],
+  ["Între depozitele noastre", "#0f766e", [["TRANSFER", "swap", "Transfer", "Din depozitul tău în alt depozit (OUT + IN, singure)"]]]
 ];
 function mmStartArata(din){
-  const el = $("mm-start"); if(!el) return; const opt = [...$("mm-tip").options].map(o => o.value);
-  el.innerHTML = `<div class="st-cap">Ce faci? <span style="font-weight:400;font-size:13px;opacity:.8">alege tipul comenzii — fișa arată apoi doar ce îți trebuie</span>
-      <button type="button" onclick="${din ? "$('mm-start').style.display='none'" : "closeModal('mod-m')"}">${din ? "← Înapoi la fișă" : "✕ Renunță"}</button></div>
-    <div class="st-corp">${MM_START.map(([g, L]) => { const T = L.filter(([t]) => t === "TRANSFER" || opt.includes(t)); return T.length ? `<div class="st-g"><h5>${esc(g)}</h5><div class="st-l">` +
-      T.map(([t, ic, n, d]) => `<button type="button" class="st-t" onclick="mmStartAlege('${t}')"><i>${ic}</i><b>${esc(n)}</b><span>${esc(d)}</span></button>`).join("") + "</div></div>" : ""; }).join("")}
-      <div class="muted" style="font-size:12px">Alt tip (FURT, SPONSORIZARE-R…)? Alege oricare, apoi schimbă-l din lista „Tip comandă”.</div></div>`;
+  const el = $("mm-start"); if(!el) return; const opt = [...$("mm-tip").options].map(o => o.value); let n = 0; MM_START_K = [];
+  const ic = k => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${MM_IC[k] || ""}</svg>`;
+  el.innerHTML = `<div class="st-cap"><div><div class="st-t1">Comandă nouă</div><div class="st-t2">Ce faci? Alege tipul — fișa arată apoi doar ce îți trebuie.</div></div>
+      <button type="button" class="st-x" onclick="${din ? "$('mm-start').style.display='none'" : "closeModal('mod-m')"}">${din ? "← Înapoi la fișă" : "Renunță"}</button></div>
+    <div class="st-corp">${MM_START.map(([g, cul, L]) => { const T = L.filter(([t]) => t === "TRANSFER" || opt.includes(t)); if(!T.length) return "";
+      return `<section class="st-g" style="--c:${cul}"><h5><span></span>${esc(g)}</h5><div class="st-l">` +
+        T.map(([t, k, nm, d]) => { n++; MM_START_K.push(t); return `<button type="button" class="st-t" onclick="mmStartAlege('${t}')"><span class="st-ic">${ic(k)}</span><span class="st-tx"><b>${esc(nm)}</b><small>${esc(d)}</small></span>${n <= 9 ? `<kbd>${n}</kbd>` : ""}</button>`; }).join("") + "</div></section>"; }).join("")}
+      <div class="st-nota">Alt tip (furt, sponsorizare · ridicare…)? Alege cel mai apropiat, apoi schimbă-l din lista „Tip comandă”. Tastele <kbd>1</kbd>–<kbd>9</kbd> aleg direct.</div></div>`;
   el.style.display = "flex";
 }
+let MM_START_K = [];
+document.addEventListener("keydown", e => { const el = $("mm-start"); if(!el || el.style.display === "none" || !$("mod-m").classList.contains("on")) return;
+  if(/^[1-9]$/.test(e.key) && !e.target.closest("input,textarea,select")){ const t = MM_START_K[+e.key - 1]; if(t){ e.preventDefault(); mmStartAlege(t); } } });
 function mmStartAlege(t){
   $("mm-start").style.display = "none";
   if(t === "TRANSFER"){ closeModal("mod-m"); trDeschide(); return; }
@@ -5874,7 +5904,7 @@ function trCiteste(){
 }
 function trRez(){
   const el = $("tr-rez"); if(!el) return; const din = $("tr-din").value, ins = $("tr-in").value, R = trCiteste();
-  el.innerHTML = din && ins && din !== ins && R.length ? `La Salvează: <b>TransferOUT</b> din <b>${esc(din)}</b> (−) și <b>TransferIN</b> în <b>${esc(ins)}</b> (+) — ${esc(R.map(r => r.buc + " " + [r.produs, r.model, r.model_fizic].filter(Boolean).join(" ")).join(", "))}. Fără client, contract sau facturare; nu apare pe ruta șoferilor.` :
+  el.innerHTML = din && ins && din !== ins && R.length ? `La Salvează: <b>TransferOUT</b> din <b>${esc(din)}</b> (−) și <b>TransferIN</b> în <b>${esc(ins)}</b> (+): ${esc(R.map(r => r.buc + " " + [prodN(r.produs, r.buc), r.model, r.model_fizic].filter(Boolean).join(" ")).join(", "))}. Fără client, contract sau facturare; nu apare pe ruta șoferilor.` :
     din && ins && din === ins ? '<span style="color:#C0392B">Depozitul de plecare și cel de sosire sunt același.</span>' : "Alege depozitele și ce se mută.";
 }
 async function trSalveaza(btn){
@@ -5887,7 +5917,7 @@ async function trSalveaza(btn){
   btn.disabled = true;
   const { error } = await db.from("miscari").insert(rec); btn.disabled = false;
   if(error){ toast("Transferul nu s-a salvat: " + error.message, true); return; }
-  $("mod-tr").remove(); toast("Transfer salvat: " + R.map(r => r.buc + " " + r.produs).join(", ") + " · " + din + " → " + ins);
+  $("mod-tr").remove(); toast("Transfer salvat: " + R.map(r => r.buc + " " + prodN(r.produs, r.buc)).join(", ") + " · " + din + " → " + ins);
   if(MISC_INCARCAT) loadMiscari();
 }
 function mmVerifLista(){
