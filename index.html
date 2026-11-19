@@ -1116,7 +1116,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
   <span id="rz-w"><button id="rz-reset" class="pictograma" title="Lățimi implicite — pune coloanele din tabelele acestei file înapoi cum erau">↺ Reset layout</button><i class="rz-sep">|</i></span>
   <span id="tz-w" title="Mărimea tabelului (doar tabelul, restul rămâne la fel), din 5 în 5%. Merge și cu Ctrl + rotița mausului, Ctrl + / Ctrl − / Ctrl 0. Dublu clic pe procent = scrii tu valoarea."><button class="pictograma" onclick="tzPas(-1)" aria-label="Micșorează tabelul">−</button><b id="tz-v" ondblclick="tzScrie()" title="Dublu clic = scrii mărimea (ex. 87), Enter">100%</b><input id="tz-in" type="number" min="30" max="300" step="5" style="display:none"><button class="pictograma" onclick="tzPas(1)" aria-label="Mărește tabelul">+</button></span>
-  <span class="ver">v9.72</span>
+  <span class="ver">v9.73</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -5936,7 +5936,8 @@ async function trSalveaza(btn){
   const trL = trp.some(Boolean) ? "TRANSPORT: " + faraDiac(trp.map(x => x || "-").join(" | ")) : "";
   if(!zi){ toast("Pune data transferului", true); return; } if(!din || !ins){ toast("Alege din ce depozit pleacă și în ce depozit ajunge marfa", true); return; }
   if(din === ins){ toast("Depozitele sunt același", true); return; } if(!R.length){ toast("Adaugă ce se mută (bucăți și produs)", true); return; }
-  const cl = "TRANSFER " + din + " → " + ins, baza = { data: zi, client: cl, client_id: null, contract: null, contract_id: null, anexa_id: null, din_telefon: false };
+  const cl = "TRANSFER " + din + " → " + ins, baza = { data: zi, client: cl, client_id: null, contract: null, contract_id: null, anexa_id: null, din_telefon: false,
+    pers_resp: $("tr-sof").value.trim() || null, telefon: $("tr-tel").value.trim() || null };   // v9.73: șoferul și telefonul lui și în coloanele Responsabil / Telefon din Comenzi
   const ob = (sag, dep) => [trL, [sag + " " + dep, obs].filter(Boolean).join(" · ")].filter(Boolean).join("\n");
   // v9.71 (hotărât de Ovidiu, 19.11): se ține doar partea depozitului tău — din HUNEDOARA = doar TransferOUT; în HUNEDOARA = doar TransferIN
   // (stocul celuilalt depozit nu te privește); între două depozite străine = amândouă.
