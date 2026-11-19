@@ -1116,7 +1116,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
   <span id="rz-w"><button id="rz-reset" class="pictograma" title="Lățimi implicite — pune coloanele din tabelele acestei file înapoi cum erau">↺ Reset layout</button><i class="rz-sep">|</i></span>
   <span id="tz-w" title="Mărimea tabelului (doar tabelul, restul rămâne la fel), din 5 în 5%. Merge și cu Ctrl + rotița mausului, Ctrl + / Ctrl − / Ctrl 0. Dublu clic pe procent = scrii tu valoarea."><button class="pictograma" onclick="tzPas(-1)" aria-label="Micșorează tabelul">−</button><b id="tz-v" ondblclick="tzScrie()" title="Dublu clic = scrii mărimea (ex. 87), Enter">100%</b><input id="tz-in" type="number" min="30" max="300" step="5" style="display:none"><button class="pictograma" onclick="tzPas(1)" aria-label="Mărește tabelul">+</button></span>
-  <span class="ver">v9.68</span>
+  <span class="ver">v9.69</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -5878,12 +5878,19 @@ function trDeschide(){
       <div><label>În depozitul <span class="hint">ajunge marfa</span></label><select id="tr-in"><option value=""></option>${opt(dep, "")}</select></div></div>
     <h4 style="margin:14px 0 6px">Ce se mută</h4><div id="tr-rd"></div>
     <button type="button" class="btn sm sec" onclick="trRand()">+ Încă un produs</button>
-    <div style="margin-top:12px"><label>Observații <span class="hint">ex. mașina, șoferul</span></label><input id="tr-obs" placeholder="ex. HR 95 EEC — Ovidiu"></div>
+    <h4 style="margin:14px 0 6px">Transportul <span class="hint" style="text-transform:none;letter-spacing:0">opțional — ce știi; apar și în Raport lună</span></h4>
+    <div style="display:grid;grid-template-columns:1.3fr 1fr 1.2fr 1fr;gap:8px 10px">
+      <div><label>Vehicul</label><select id="tr-veh"><option value=""></option><option>Mașină 3,5 t</option><option>Mașină 3,5 t cu remorcă</option><option>Camion</option><option>Camion cu remorcă</option><option>Transport terț</option></select></div>
+      <div><label>Nr. mașină</label><input id="tr-nr" list="tr-nrl" placeholder="ex. HR 95 EEC" style="text-transform:uppercase"><datalist id="tr-nrl">${(MAS || []).map(m => m.nr || m.numar).filter(Boolean).map(x => `<option value="${esc(x)}">`).join("")}</datalist></div>
+      <div><label>Șofer</label><input id="tr-sof" list="tr-sofl" placeholder="nume și prenume"><datalist id="tr-sofl">${(SOF || []).map(x => x.nume).filter(Boolean).map(x => `<option value="${esc(x)}">`).join("")}</datalist></div>
+      <div><label>Telefon șofer</label><input id="tr-tel" placeholder="07xx xxx xxx"></div></div>
+    <div style="margin-top:10px"><label>Observații</label><input id="tr-obs" placeholder="ex. se încarcă dimineața, la depozit"></div>
     <div class="muted" id="tr-rez" style="margin-top:10px;font-size:12.5px"></div>
     <div class="row" style="margin-top:14px;justify-content:flex-end"><div style="flex:1"></div>
       <div style="flex:0"><button class="btn sec" onclick="this.closest('.modal').remove()">Renunță</button></div>
       <div style="flex:0"><button class="btn" onclick="trSalveaza(this)">💾 Salvează transferul</button></div></div></div>`;
   document.body.appendChild(w); feFereastra(w); trRand();
+  $("tr-sof").addEventListener("change", () => { const x = (SOF || []).find(q => (q.nume || "").toLowerCase() === $("tr-sof").value.trim().toLowerCase()); if(x && x.telefon && !$("tr-tel").value) $("tr-tel").value = x.telefon; });   // v9.69
   w.addEventListener("input", trRez); w.addEventListener("change", trRez); trRez();
 }
 function trRand(){
@@ -5909,11 +5916,15 @@ function trRez(){
 }
 async function trSalveaza(btn){
   const zi = $("tr-data").value, din = $("tr-din").value, ins = $("tr-in").value, R = trCiteste(), obs = $("tr-obs").value.trim();
+  // v9.69 (cerut de Ovidiu, 19.11): transportul (vehicul, nr., șofer, telefon) — prima linie din Observații, ca „TRANSPORT: …”
+  const trp = [$("tr-veh").value, $("tr-nr").value.trim().toUpperCase(), $("tr-sof").value.trim(), $("tr-tel").value.trim()];
+  const trL = trp.some(Boolean) ? "TRANSPORT: " + faraDiac(trp.map(x => x || "-").join(" | ")) : "";
   if(!zi){ toast("Pune data transferului", true); return; } if(!din || !ins){ toast("Alege din ce depozit pleacă și în ce depozit ajunge marfa", true); return; }
   if(din === ins){ toast("Depozitele sunt același", true); return; } if(!R.length){ toast("Adaugă ce se mută (bucăți și produs)", true); return; }
   const cl = "TRANSFER " + din + " → " + ins, baza = { data: zi, client: cl, client_id: null, contract: null, contract_id: null, anexa_id: null, din_telefon: false };
-  const rec = R.flatMap(r => [{ ...baza, ...r, tip_miscare: "TransferOUT", buc: -r.buc, depozit: din, observatii: ["→ " + ins, obs].filter(Boolean).join(" · ") },
-                              { ...baza, ...r, tip_miscare: "TransferIN", buc: r.buc, depozit: ins, observatii: ["← " + din, obs].filter(Boolean).join(" · ") }]);
+  const ob = (sag, dep) => [trL, [sag + " " + dep, obs].filter(Boolean).join(" · ")].filter(Boolean).join("\n");
+  const rec = R.flatMap(r => [{ ...baza, ...r, tip_miscare: "TransferOUT", buc: -r.buc, depozit: din, observatii: ob("→", ins) },
+                              { ...baza, ...r, tip_miscare: "TransferIN", buc: r.buc, depozit: ins, observatii: ob("←", din) }]);
   btn.disabled = true;
   const { error } = await db.from("miscari").insert(rec); btn.disabled = false;
   if(error){ toast("Transferul nu s-a salvat: " + error.message, true); return; }
@@ -11744,9 +11755,12 @@ function trLuna(L){
   const T = (L || []).filter(m => /^Transfer/i.test(m.tip_miscare || "")), folosit = new Set(), rez = [];
   const capete = m => { const x = /TRANSFER\s+(.+?)\s*→\s*(.+)$/i.exec(m.client || ""); return x ? [x[1].trim(), x[2].trim()] : ["", ""]; };
   const ch = m => [m.data, m.produs, m.model || "", m.model_fizic || "", Math.abs(+m.buc || 0), m.client || ""].join("|");
+  // v9.69: din Observații — „TRANSPORT: vehicul | nr | șofer | telefon” (prima linie) + restul observațiilor
+  const trp = m => { const t = String(m.observatii || ""), x = /^TRANSPORT:\s*([^\n]*)\n?/.exec(t), P = x ? x[1].split("|").map(q => q.trim()).map(q => q === "-" ? "" : q) : ["", "", "", ""];
+    const rest = (x ? t.slice(x[0].length) : t).replace(/^[→←]\s*[^·\n]*·?\s*/, "").trim(); return [P[0] || "", P[1] || "", P[2] || "", P[3] || "", rest]; };
   T.filter(m => /OUT$/i.test(m.tip_miscare)).forEach(o => { const p = T.find(i => /IN$/i.test(i.tip_miscare) && !folosit.has(i.id) && ch(i) === ch(o)); if(p) folosit.add(p.id);
-    const [a, b] = capete(o); rez.push([o.data, o.depozit || a, p ? p.depozit : b, o.produs || "", o.model || "", o.model_fizic || "", Math.abs(+o.buc || 0), String(o.observatii || "").replace(/^→\s*\S+\s*·?\s*/, "")]); });
-  T.filter(m => /IN$/i.test(m.tip_miscare) && !folosit.has(m.id)).forEach(i => { const [a] = capete(i); rez.push([i.data, a, i.depozit || "", i.produs || "", i.model || "", i.model_fizic || "", Math.abs(+i.buc || 0), String(i.observatii || "").replace(/^←\s*\S+\s*·?\s*/, "")]); });
+    const [a, b] = capete(o), q = trp(o); rez.push([o.data, o.depozit || a, p ? p.depozit : b, o.produs || "", o.model || "", o.model_fizic || "", Math.abs(+o.buc || 0), q[4], q[0], q[1], q[2], q[3]]); });
+  T.filter(m => /IN$/i.test(m.tip_miscare) && !folosit.has(m.id)).forEach(i => { const [a] = capete(i), q = trp(i); rez.push([i.data, a, i.depozit || "", i.produs || "", i.model || "", i.model_fizic || "", Math.abs(+i.buc || 0), q[4], q[0], q[1], q[2], q[3]]); });
   return rez.sort((x, y) => String(x[0]).localeCompare(String(y[0])));
 }
 function rlTrfArata(){
@@ -11758,8 +11772,8 @@ function rlTrfArata(){
     R_VZ.map(m => `<tr><td>${esc(fmtD(m.data))}</td><td><b>${esc(m.client || "")}</b></td><td>${esc(m.depozit || "")}</td><td>${esc(m.produs || "")}</td><td>${esc(m.model || "")}</td><td>${esc(m.model_fizic || "")}</td><td style="text-align:right"><b>${Math.abs(+m.buc || 0)}</b></td><td>${esc([m.loc, m.sat].filter(Boolean).join(", "))}</td><td>${esc(((/^VANZARE:([^\n]*)/.exec(m.observatii || "") || [])[1] || "").trim())}</td></tr>`).join("") + "</tbody></table></div></div>" : "";
   if(!R_TRF.length){ el.innerHTML = vz; return; }
   el.innerHTML = vz + `<div class="card" style="margin-top:12px"><h3 style="margin:0 0 8px;color:var(--g)">🔁 Transferuri între depozite în luna aceasta <span class="muted" style="font-size:13px;font-weight:400">— ${R_TRF.length} ${R_TRF.length === 1 ? "mutare" : "mutări"}, ${tot} buc.</span></h3>
-    <div class="tw"><table><thead><tr><th>Data</th><th>Din depozitul</th><th></th><th>În depozitul</th><th>Produs</th><th>Tip</th><th>Model</th><th style="text-align:right">Buc.</th><th>Observații</th></tr></thead><tbody>` +
-    R_TRF.map(r => `<tr><td>${esc(fmtD(r[0]))}</td><td><b>${esc(r[1])}</b></td><td style="color:#1a5fb4">➜</td><td><b>${esc(r[2])}</b></td><td>${esc(r[3])}</td><td>${esc(r[4])}</td><td>${esc(r[5])}</td><td style="text-align:right"><b>${r[6]}</b></td><td>${esc(r[7])}</td></tr>`).join("") +
+    <div class="tw"><table><thead><tr><th>Data</th><th>Din depozitul</th><th></th><th>În depozitul</th><th>Produs</th><th>Tip</th><th>Model</th><th style="text-align:right">Buc.</th><th>Vehicul</th><th>Nr. mașină</th><th>Șofer</th><th>Telefon</th><th>Observații</th></tr></thead><tbody>` +
+    R_TRF.map(r => `<tr><td>${esc(fmtD(r[0]))}</td><td><b>${esc(r[1])}</b></td><td style="color:#1a5fb4">➜</td><td><b>${esc(r[2])}</b></td><td>${esc(prodN(r[3], r[6]))}</td><td>${esc(r[4])}</td><td>${esc(r[5])}</td><td style="text-align:right"><b>${r[6]}</b></td><td>${esc(r[8] || "")}</td><td>${esc(r[9] || "")}</td><td>${esc(r[10] || "")}</td><td>${esc(r[11] || "")}</td><td>${esc(r[7])}</td></tr>`).join("") +
     `</tbody></table></div></div>`;
 }
 function deseneazaRaport(){
@@ -19771,7 +19785,7 @@ async function expExcel(D, an, luna, nz, lunaT, ultima, sufix){
   tabel(["Depozit", "Comenzi", "Livrate", "Ridicate"], [...peDep.keys()].sort().map(k => [k, peDep.get(k).n, peDep.get(k).in, peDep.get(k).out]));
   { const TR = trLuna(D.lun);   // v9.66 (cerut de Ovidiu, 19.11): transferurile între depozite din lună
     if(TR.length){ titlu("Transferuri între depozite");
-      tabel(["Data", "Din depozitul", "În depozitul", "Produs", "Tip", "Model", "Bucăți", "Observații"], TR.map(r => [fmtD(r[0]).replace(/-/g, "."), r[1], r[2], r[3], r[4], r[5], r[6], r[7]])); } }
+      tabel(["Data", "Din depozitul", "În depozitul", "Produs", "Tip", "Model", "Bucăți", "Vehicul", "Nr. mașină", "Șofer", "Telefon", "Observații"], TR.map(r => [fmtD(r[0]).replace(/-/g, "."), r[1], r[2], prodN(r[3], r[6]), r[4], r[5], r[6], r[8] || "", r[9] || "", r[10] || "", r[11] || "", r[7]])); } }
   { const VZ = (D.lun || []).filter(m => m.tip_miscare === "VANZARE" && !ctrExterior(m)).sort((a, b) => String(a.data).localeCompare(String(b.data)));   // v9.67: vânzările lunii
     if(VZ.length){ titlu("Vânzări");
       tabel(["Data", "Client", "Din depozitul", "Produs", "Tip", "Bucăți", "Livrare", "Preț / factură / plată"], VZ.map(m => [fmtD(m.data).replace(/-/g, "."), m.client || "", m.depozit || "", m.produs || "", [m.model, m.model_fizic].filter(Boolean).join(" "), Math.abs(+m.buc || 0), [m.loc, m.sat].filter(Boolean).join(", "), ((/^VANZARE:([^\n]*)/.exec(m.observatii || "") || [])[1] || "").trim()])); } }
