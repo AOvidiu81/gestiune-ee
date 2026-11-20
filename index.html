@@ -2976,7 +2976,7 @@ function lagRender(){
 // v9.79 (cerut de Ovidiu, 20.11): numele fișierelor din datele fișei — LA_CLIENT_LOCALITATE_LOCATIE_2026-11-18_1119_P2.jpg (la fel în aplicația de rută și în arhivă)
 const lagCurat = (x, m) => faraDiac(String(x || "")).toUpperCase().replace(/[^A-Z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, m);
 function lagNume(r, suf){ const d = new Date(r.creat);
-  return ["LA", lagCurat(r.client, 30) || "PUNCT", lagCurat(r.localitate, 20), lagCurat(r.locatie, 25), d.getFullYear() + "-" + zi2(d.getMonth() + 1) + "-" + zi2(d.getDate()), zi2(d.getHours()) + zi2(d.getMinutes()), suf].filter(Boolean).join("_"); }
+  return ["LA", lagCurat(r.client, 30) || "PUNCT", lagCurat(r.localitate, 20), lagCurat(r.locatie, 40), d.getFullYear() + "-" + zi2(d.getMonth() + 1) + "-" + zi2(d.getDate()), zi2(d.getHours()) + zi2(d.getMinutes()), suf].filter(Boolean).join("_"); }
 async function lagUrl(cale){ const { data, error } = await db.storage.from("lipsa-acces").createSignedUrl(cale, 600); if(error){ toast(error.message, true); return null; } return data.signedUrl; }
 // v9.49 (cerut de Ovidiu, 18.11): fișa se deschide ÎN aplicație ca un PDF obișnuit (nu ca pagină web) → Salvează PDF / Tipărește / Trimite (e-mail, WhatsApp…)
 async function lagFisa(id){

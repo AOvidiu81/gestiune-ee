@@ -1115,7 +1115,7 @@ let dayStart = {}; // {brand, plate, kmStart, driver1, driver2, startTime}
 let lastRouteRows = [];
 
 // --- Șofer EE: aplicatia ruleaza in fila „Rută” (../sofer/), care trimite datele zilei ---
-const EE_RUTA_VERSION = 'v50'; // aceeasi cu VERSIUNE din sw.js; Șofer EE o arata langa rotita
+const EE_RUTA_VERSION = 'v51'; // aceeasi cu VERSIUNE din sw.js; Șofer EE o arata langa rotita
 const SOFER_MODE = new URLSearchParams(location.search).get('sofer') === '1';
 let multiZile = null;   // mai multe zile bifate (ruta complementara), altfel null
 let multiTrasee = null; // mai multe trasee bifate, altfel null
@@ -3425,14 +3425,17 @@ async function laFisa(idx){
   // jos: QR cu locul (Google Maps) + nota; deasupra lui, observațiile
   const QS = 150, yFoot = H - 24 - 56, yQr = yFoot - 18 - QS, areQr = !!(ok && qrLib);
   const ob = (LA.obs || '').trim(), yMax = (areQr ? yQr : yFoot) - 18;
-  if(ob && y < yMax - 70){ g.font = `500 21px ${F}`; let L = laRupe(g, ob, tw - 36); const maxL = Math.floor((yMax - y - 44) / 28); if(L.length > maxL){ L = L.slice(0, Math.max(1, maxL)); L[L.length - 1] += ' …'; }
-    const bh = 44 + L.length * 28; g.strokeStyle = '#d97706'; g.lineWidth = 2; laRR(g, tx - 12, y - 6, tw + 24, bh, 10); g.stroke();
+  // v51 (cerut de Ovidiu, 20.11): cu 3 motive nu mai era loc deasupra QR-ului și observațiile lipseau din fișă → atunci merg lângă QR (în locul notei „Locul pe hartă”)
+  const xQr = X0 + SW - 44 - QS - 6; let obJos = false, bw = tw + 24, yMaxO = yMax;
+  if(ob && !(y < yMax - 70) && areQr){ obJos = true; yMaxO = yFoot - 18; bw = xQr - 16 - (tx - 12); }
+  if(ob && y < yMaxO - 70){ g.font = `500 21px ${F}`; let L = laRupe(g, ob, bw - 60); const maxL = Math.floor((yMaxO - y - 44) / 28); if(L.length > maxL){ L = L.slice(0, Math.max(1, maxL)); L[L.length - 1] += ' …'; }
+    const bh = 44 + L.length * 28; g.strokeStyle = '#d97706'; g.lineWidth = 2; laRR(g, tx - 12, y - 6, bw, bh, 10); g.stroke();
     g.fillStyle = '#92400e'; g.font = `700 16px ${F}`; g.fillText('OBSERVAȚII', tx + 4, y + 20); g.fillStyle = '#3b2a0a'; g.font = `500 21px ${F}`;
     L.forEach((t, j) => g.fillText(t, tx + 4, y + 50 + j * 28)); }
   if(areQr && laQr(g, qrLib, `https://maps.google.com/?q=${f.lat.toFixed(6)},${f.lon.toFixed(6)}`, X0 + SW - 44 - QS, yQr, QS)){
     g.strokeStyle = LIN; g.lineWidth = 2; laRR(g, X0 + SW - 44 - QS - 6, yQr - 6, QS + 12, QS + 12, 8); g.stroke(); LA._zone.push([X0 + SW - 44 - QS - 6, yQr - 6, QS + 12, QS + 12]);
-    g.fillStyle = TXT; g.font = `700 20px ${F}`; g.fillText('Locul pe hartă', tx, yQr + 50);
-    g.fillStyle = MUT; g.font = `500 18px ${F}`; ['Apeși pe GPS (în PDF) sau', 'scanezi codul cu camera →', 'se deschide Google Maps.'].forEach((t, j) => g.fillText(t, tx, yQr + 80 + j * 24)); }
+    if(!obJos){ g.fillStyle = TXT; g.font = `700 20px ${F}`; g.fillText('Locul pe hartă', tx, yQr + 50);
+    g.fillStyle = MUT; g.font = `500 18px ${F}`; ['Apeși pe GPS (în PDF) sau', 'scanezi codul cu camera →', 'se deschide Google Maps.'].forEach((t, j) => g.fillText(t, tx, yQr + 80 + j * 24)); } }
   // subsol: chenar bleumarin, fără plin
   g.strokeStyle = NAV; g.lineWidth = 3; laRR(g, X0 + 24, yFoot, SW - 48, 56, 10); g.stroke();
   g.fillStyle = NAV; g.font = `800 22px ${F}`; g.fillText('EURO ECOLOGIC', tx, yFoot + 36);
@@ -3466,7 +3469,7 @@ function laPrevizualizare(){ if(!LA) return; LA.ver = (LA.ver || 0) + 1; const v
 // v50: același nume ca în GestiuneEE — LA_CLIENT_LOCALITATE_LOCATIE_2026-11-18_1119 (+ _FISA / _P1…P5)
 const laCurat = (x, m) => String(x || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase().replace(/[^A-Z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, m);
 function laNumeBaza(){ const r = LA.r, d = LA.t;
-  return ['LA', laCurat(r.client, 30) || 'PUNCT', laCurat(r.localitate, 20), laCurat(r.locatie, 25), d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate()), pad2(d.getHours()) + pad2(d.getMinutes())].filter(Boolean).join('_'); }
+  return ['LA', laCurat(r.client, 30) || 'PUNCT', laCurat(r.localitate, 20), laCurat(r.locatie, 40), d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate()), pad2(d.getHours()) + pad2(d.getMinutes())].filter(Boolean).join('_'); }
 function laNumeFisier(){ return laNumeBaza() + '_FISA'; }
 async function laSalveaza(fisa){   // fișa (PDF sau JPEG) + pozele simple în stocare, rândul în lipsa_acces
   const r = LA.r, f = LA.fix, d = LA.t, c = LA.ctr || {}, cale = [];
