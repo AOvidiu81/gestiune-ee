@@ -1116,7 +1116,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
   <span id="rz-w"><button id="rz-reset" class="pictograma" title="Lățimi implicite — pune coloanele din tabelele acestei file înapoi cum erau">↺ Reset layout</button><i class="rz-sep">|</i></span>
   <span id="tz-w" title="Mărimea tabelului (doar tabelul, restul rămâne la fel), din 5 în 5%. Merge și cu Ctrl + rotița mausului, Ctrl + / Ctrl − / Ctrl 0. Dublu clic pe procent = scrii tu valoarea."><button class="pictograma" onclick="tzPas(-1)" aria-label="Micșorează tabelul">−</button><b id="tz-v" ondblclick="tzScrie()" title="Dublu clic = scrii mărimea (ex. 87), Enter">100%</b><input id="tz-in" type="number" min="30" max="300" step="5" style="display:none"><button class="pictograma" onclick="tzPas(1)" aria-label="Mărește tabelul">+</button></span>
-  <span class="ver">v9.79</span>
+  <span class="ver">v9.80</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -1757,6 +1757,11 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   #mod-m .mm-start .st-nota{font-size:12px;color:#6b7491;margin-top:4px}
   #mod-m[data-fel="vz"] .mm-s[data-s="7"], #mod-m[data-fel="vz"] #mm-caz, #mod-m[data-fel="vz"] .g-cc > div:has(#mm-ctr), #mod-m[data-fel="vz"] .g-cc > div:has(#mm-contract),
   #mod-m[data-fel="vz"] .sv-rand, #mod-m[data-fel="vz"] #mm-sv-ev{display:none!important}
+  /* v9.80 (cerut de Ovidiu, 20.11): fișa comenzii ascunde câmpurile fără legătură cu tipul (doar afișarea; valorile din anexă rămân și se salvează ca înainte) */
+  #mod-m:is([data-tipc="RIDICARE"],[data-tipc="EVENIMENT-R"],[data-tipc="REDUCERE"],[data-tipc="SERVISARE"],[data-tipc="SPONSORIZARE-A"]) .g-prod > div:has(#mm-mf),
+  #mod-m:is([data-tipc="RIDICARE"],[data-tipc="EVENIMENT-R"]) #mm-sv-frecv-d, #mod-m:is([data-tipc="RIDICARE"],[data-tipc="EVENIMENT-R"],[data-tipc="SERVISARE"]) #mm-sv-zile-d,
+  #mod-m[data-tipc="SERVISARE"] .gf:has(> div > #mm-acc),
+  #mod-m:is([data-tipc="DAUNA"],[data-tipc="FURT"]) .sv-rand, #mod-m:is([data-tipc="DAUNA"],[data-tipc="FURT"],[data-tipc="MODIFICARE ANEXA"]) .g-tip > div:has(#mm-ora){display:none!important}
   #mod-m .mm-schimba{font-size:12px;color:var(--acc);cursor:pointer;text-decoration:underline;margin-left:8px;font-weight:600;text-transform:none;letter-spacing:0}
   #mod-m .mm-nr{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:50%;background:#e6ebe8;color:#4a5a52;font-size:12px;font-weight:700;flex:0 0 auto}
   #mod-m .mm-ok{display:none;margin-left:auto;color:#2f9e44;font-weight:700;font-size:15px}
@@ -5590,7 +5595,7 @@ function mmStartAlege(t){
   const sel = $("mm-tip"); sel.value = t; sel.dispatchEvent(new Event("change", { bubbles: true })); mmFel(); try{ mmTipPills(); }catch(e){}
   setTimeout(() => { const c = $("mm-client"); if(c && !c.value) c.focus(); }, 60);
 }
-function mmFel(){ const m = $("mod-m"); if(m) m.dataset.fel = $("mm-tip").value === "VANZARE" ? "vz" : ""; const v = $("mm-vz"); if(v) v.style.display = $("mm-tip").value === "VANZARE" ? "" : "none"; }
+function mmFel(){ const m = $("mod-m"); if(m){ m.dataset.fel = $("mm-tip").value === "VANZARE" ? "vz" : ""; m.dataset.tipc = $("mm-tip").value || ""; } const v = $("mm-vz"); if(v) v.style.display = $("mm-tip").value === "VANZARE" ? "" : "none"; }
 $("mm-tip").addEventListener("change", mmFel);
 const MM_VZ_RE = /^VANZARE:[^\n]*\n?/;
 function mmVzText(){
@@ -5700,7 +5705,7 @@ function mmPasiOk(){
     3: !!(tip && v("mm-data")),
     4: !!(Math.abs(+v("mm-buc") || 0) > 0 && v("mm-prod")),
     5: !!(v("mm-loc") || v("mm-sat") || svl),
-    6: !!(v("mm-frecv") || evSv || /RIDICARE|REDUCERE|-R$/.test(tip)),
+    6: !!(v("mm-frecv") || evSv || /RIDICARE|REDUCERE|-R$|^(DAUNA|FURT)$/.test(tip)),   // v9.80: la daună / furt servisarea e ascunsă
     7: !!(v("mm-anexa") || ext || svl || tip === "VANZARE" || ($("mm-act-da") && $("mm-act-da").checked && $("mm-act").style.display !== "none"))
   };
 }
