@@ -139,11 +139,11 @@ function deseneaza(){
     + camp("notif_adresa", "Adresa", { tot: 1, ta: 1 }) + camp("notif_atentie", "În atenția (nume)", { tot: 1 });
   h += `</div></div><div class="card"><h2>Livrare</h2><p class="n">Dacă sunteți acum la locul livrării, apăsați „📍 Locația mea” — adresa se completează singură; verificați-o.</p><div class="rand">`
     + camp("livrare_gps", "Coordonate GPS (opțional)", { tot: 1, btn: `<div class="cu-btn"><input id="livrare_gps_v" value="${esc(P.livrare_gps || "")}" placeholder="ex. 45.7512, 22.9034"><button type="button" class="btn sec" id="b_gps">📍 Locația mea</button></div>` })
-    + camp("liv_jud", "Județul", { ob: 1, btn: `<select id="liv_jud" name="liv_jud" data-ob><option value="">— alegeți —</option>${Object.entries(JUD).map(([c, n]) => `<option value="${c}" ${c === (P.liv_jud || "") ? "selected" : ""}>${esc(n)}</option>`).join("")}</select>` })
+    + camp("liv_jud", "Județul", { ob: 1, btn: `<select id="liv_jud" name="liv_jud" data-ob><option value="">— alegeți —</option>${Object.entries(JUD).map(([c, n]) => `<option value="${c}" data-n="${esc(c + " – " + n)}" ${c === (P.liv_jud || "") ? "selected" : ""}>${esc(c)}</option>`).join("")}</select>` })
     + camp("liv_loc", "Localitatea (oraș / comună)", { ob: 1, extra: 'list="dl_loc" autocomplete="off"' })
     + camp("liv_sat", "Satul (dacă e cazul)", { extra: 'list="dl_sat" autocomplete="off"' })
-    + camp("liv_str", "Strada (sau un reper)", { ob: 1, ph: "ex. Str. Libertății / lângă Căminul Cultural" })
-    + camp("liv_nr", "Nr.", { ph: "ex. 12" })
+    + camp("liv_str", "Strada, nr. și alte informații", { ob: 1, ph: "ex. Str. Dacia nr. 12, bl. A3, sc. 2" })
+    + camp("liv_reper", "Reper locație", { ph: "ex. lângă Căminul Cultural / poarta din spate" })
     + `<div class="tot ajut" id="liv_vez"></div><datalist id="dl_loc"></datalist><datalist id="dl_sat"></datalist>`
     + camp("contact_nume", "Persoana de contact la locație", { ob: 1 }) + camp("contact_tel", "Telefonul ei", { ob: 1, tip: "tel" })
     + `<div class="tot"><div id="contacte"></div><button type="button" class="btn sec" id="b_cont">+ Adaugă încă o persoană de contact</button></div>`;
@@ -174,8 +174,12 @@ function deseneaza(){
   if($("iban")) $("iban").addEventListener("input", () => { const b = bancaDinIban($("iban").value); if(b && !$("banca").value.trim()) $("banca").value = b; });
   $("b_cont").onclick = () => adCont("", ""); (Array.isArray(P.contacte_extra) ? P.contacte_extra : []).forEach(c => adCont(c.nume, c.telefon));
   if($("b_prod")){ $("b_prod").onclick = () => adProd({}); (Array.isArray(P.produse_lista) && P.produse_lista.length ? P.produse_lista : [{}]).forEach(adProd); }
-  ["liv_jud", "liv_loc", "liv_sat", "liv_str", "liv_nr"].forEach(i => $(i).addEventListener("input", livActual));
+  ["liv_jud", "liv_loc", "liv_sat", "liv_str", "liv_reper"].forEach(i => $(i).addEventListener("input", livActual));
   $("liv_jud").addEventListener("change", livActual); livActual();
+  // v9.78 (cerut de Ovidiu, 20.11): județul se vede prescurtat (HD); în lista deschisă apare „HD – Hunedoara”, ca să-l găsească ușor
+  const jA = full => [...$("liv_jud").options].forEach(o => { if(o.value) o.textContent = full ? o.dataset.n : o.value; });
+  ["mousedown", "focus", "keydown", "touchstart"].forEach(e => $("liv_jud").addEventListener(e, () => jA(1)));
+  ["change", "blur"].forEach(e => $("liv_jud").addEventListener(e, () => jA(0)));
   if(ev){ EV_SERV = new Set(Array.isArray(P.ev_servisare) ? P.ev_servisare : []); ["ev_de", "ev_pana"].forEach(i => $(i).addEventListener("change", evZile)); evZile(); }
   $("f").onsubmit = trimite;
 }
@@ -197,14 +201,14 @@ async function livActual(){
     const sig = j + "|" + L.length; if($("dl_loc").dataset.s !== sig){ $("dl_loc").dataset.s = sig; $("dl_loc").innerHTML = L.map(u => `<option value="${esc(tit(u[0]))}">${KN[u[1]] || ""}</option>`).join(""); }
     const ui = livUat(), S = ui == null ? [] : LOC.l.filter(l => l[1] === ui);
     const s2 = String(ui); if($("dl_sat").dataset.s !== s2){ $("dl_sat").dataset.s = s2; $("dl_sat").innerHTML = S.map(l => `<option value="${esc(tit(l[0]))}">`).join(""); } }
-  const t = livText(); $("liv_vez").innerHTML = t ? "Adresa: <b>" + esc(t) + "</b>" : "";
+  const t = livText(), rp = $("liv_reper").value.trim(); $("liv_vez").innerHTML = (t ? "Adresa: <b>" + esc(t) + "</b>" : "") + (rp ? (t ? " · " : "") + "Reper: <b>" + esc(rp) + "</b>" : "");
 }
-// „Com. Peștișu Mic, Sat Peștișu Mare, Str. Principală nr. 12, Jud. HD”
+// „Com. Peștișu Mic, Sat Peștișu Mare, Str. Principală nr. 12, Jud. HD” (v9.78: nr. și restul se scriu în căsuța Strada; reperul e separat)
 function livText(){
-  const j = $("liv_jud").value, loc = $("liv_loc").value.trim(), sat = $("liv_sat").value.trim(), str = $("liv_str").value.trim(), nr = $("liv_nr").value.trim();
+  const j = $("liv_jud").value, loc = $("liv_loc").value.trim(), sat = $("liv_sat").value.trim(), str = $("liv_str").value.trim();
   if(!loc && !str) return "";
   const ui = livUat(), com = ui != null && LOC.u[ui][1] === "C";
-  return [loc && (com && !/^com/i.test(loc) ? "Com. " + loc : loc), sat && (/^sat\b/i.test(sat) ? sat : "Sat " + sat), [str, nr && "nr. " + nr].filter(Boolean).join(" "), j && "Jud. " + j].filter(Boolean).join(", ");
+  return [loc && (com && !/^com/i.test(loc) ? "Com. " + loc : loc), sat && (/^sat\b/i.test(sat) ? sat : "Sat " + sat), str, j && "Jud. " + j].filter(Boolean).join(", ");
 }
 // ---------- eveniment: zilele cu servisare ----------
 let EV_SERV = new Set();
@@ -295,7 +299,7 @@ function gps(){
     const adr = await adresaDinGps(la, lo); b.disabled = false; b.textContent = "📍 Locația mea";
     if(adr && adr.jud){ const are = $("liv_loc").value.trim() || $("liv_str").value.trim();
       if(!are || confirm("Am găsit adresa:\n" + adr.text + "\n\nO trec la livrare în locul celei scrise?")){
-        $("liv_jud").value = adr.jud; $("liv_loc").value = adr.loc; $("liv_sat").value = adr.sat; $("liv_str").value = adr.str; $("liv_nr").value = adr.nr; await livActual(); }
+        $("liv_jud").value = adr.jud; $("liv_loc").value = adr.loc; $("liv_sat").value = adr.sat; $("liv_str").value = [adr.str, adr.nr && "nr. " + adr.nr].filter(Boolean).join(" "); $("liv_jud").dispatchEvent(new Event("change")); await livActual(); }
       let n = $("adr_gasit"); if(!n){ n = document.createElement("div"); n.id = "adr_gasit"; n.className = "adr-gasit tot"; $("liv_vez").after(n); }
       n.textContent = "✓ Adresa găsită după locație — verificați-o și completați ce lipsește (ex. numărul sau un reper)."; } },
     () => { b.disabled = false; b.textContent = "📍 Locația mea"; alert("Nu am putut afla locația (permisiunea a fost refuzată?)"); }, { enableHighAccuracy: true, timeout: 15000 });
@@ -343,7 +347,7 @@ async function trimite(ev){
   if($("livrare_gps_v")) R.livrare_gps = $("livrare_gps_v").value.trim();
   if($("contacte")) R.contacte_extra = [...$("contacte").children].map(d => { const i = d.querySelectorAll("input"); return { nume: i[0].value.trim(), telefon: i[1].value.trim() }; }).filter(c => c.nume || c.telefon);
   // v8.81: adresa de livrare compusă din căsuțe (+ părțile, pentru comanda din aplicație); evenimentul compus din zile / servisări / amplasare / ridicare
-  R.livrare_adresa = livText(); R.livrare = { jud: R.liv_jud, loc: R.liv_loc, sat: R.liv_sat, str: R.liv_str, nr: R.liv_nr, uat_tip: livUat() != null ? LOC.u[livUat()][1] : "" };
+  R.livrare_adresa = livText(); R.livrare = { jud: R.liv_jud, loc: R.liv_loc, sat: R.liv_sat, str: R.liv_str, nr: "", reper: R.liv_reper || "", uat_tip: livUat() != null ? LOC.u[livUat()][1] : "" };
   if(C.felul === "eveniment"){ R.ev_servisare = [...$("ev_serv").querySelectorAll("input:checked")].map(i => i.value);
     R.eveniment = ["Eveniment " + dRo(R.ev_de) + (R.ev_pana && R.ev_pana !== R.ev_de ? " – " + dRo(R.ev_pana) : ""),
       "servisare: " + (R.ev_servisare.length ? R.ev_servisare.map(z => z.slice(8) + "." + z.slice(5, 7)).join(", ") : "fără"),
