@@ -1116,7 +1116,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
   <span id="rz-w"><button id="rz-reset" class="pictograma" title="Lățimi implicite — pune coloanele din tabelele acestei file înapoi cum erau">↺ Reset layout</button><i class="rz-sep">|</i></span>
   <span id="tz-w" title="Mărimea tabelului (doar tabelul, restul rămâne la fel), din 5 în 5%. Merge și cu Ctrl + rotița mausului, Ctrl + / Ctrl − / Ctrl 0. Dublu clic pe procent = scrii tu valoarea."><button class="pictograma" onclick="tzPas(-1)" aria-label="Micșorează tabelul">−</button><b id="tz-v" ondblclick="tzScrie()" title="Dublu clic = scrii mărimea (ex. 87), Enter">100%</b><input id="tz-in" type="number" min="30" max="300" step="5" style="display:none"><button class="pictograma" onclick="tzPas(1)" aria-label="Mărește tabelul">+</button></span>
-  <span class="ver">v9.78</span>
+  <span class="ver">v9.79</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -1334,8 +1334,9 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
       <div style="flex:0;min-width:170px"><label>Șofer</label><select id="lag-sof" onchange="lagRender()"><option value="">toți</option></select></div>
       <div style="flex:0;min-width:150px"><label>Contract</label><select id="lag-ctr" onchange="lagRender()"><option value="">toate</option></select></div>
       <div style="flex:0"><button class="btn sec" onclick="lagLoad()">↻ Reîncarcă</button></div>
+      <div style="flex:0"><button class="btn sec" onclick="lagArhDeschide()" title="Mută fișele și pozele vechi în folderul de pe PC sincronizat cu Google Drive">🗄 Arhivare</button></div>
     </div>
-    <p class="muted" style="margin:8px 0 0">Dovezile trimise de șoferi din aplicația de rută la „Lipsă acces” (poze + date + GPS). 📄 deschide fișa PDF (pe GPS apeși → Google Maps), 🖼 arată pozele. Fișierele stau 6 luni în bază, apoi se arhivează în Drive.</p>
+    <p class="muted" style="margin:8px 0 0">Dovezile trimise de șoferi din aplicația de rută la „Lipsă acces” (poze + date + GPS). 📄 deschide fișa PDF (pe GPS apeși → Google Maps), 🖼 arată pozele (P1 = poza din fișă, P2–P5 în plus). Fișierele stau 6 luni în bază (în luna a 7-a se arhivează luna 1) sau până trec de 200 MB; 🗄 Arhivare le mută în folderul de pe PC sincronizat cu Drive (+ Excel-ul lunii) și le șterge din bază — textul rămâne.</p>
   </div>
   <div class="card" id="lag-card"><p class="muted">Se încarcă…</p></div>
 </section>
@@ -2967,12 +2968,16 @@ function lagRender(){
         <td style="white-space:nowrap">${ar ? `<span class="muted" title="${esc(r.arhiva_cale || "")}">în Drive</span>` : nf ? `<span class="lag-g"><button class="lag-b" onclick="lagFisa(${r.id})" title="Fișa PDF — salvezi, tipărești, trimiți">📄 Fișa</button>${nf > 1 ? `<button class="lag-b2" onclick="lagPoze(${r.id})" title="Pozele mari">🖼 Poze ${nf - 1}</button>` : ""}</span>` : "—"}</td>
         <td><button class="lag-del" onclick="lagSterge(${r.id})" title="Șterge (cu fișierele) — ex. probele" aria-label="Șterge"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/></svg></button></td></tr>`; }).join("") + "</tbody></table></div>";
 }
+// v9.79 (cerut de Ovidiu, 20.11): numele fișierelor din datele fișei — LA_CLIENT_LOCALITATE_LOCATIE_2026-11-18_1119_P2.jpg (la fel în aplicația de rută și în arhivă)
+const lagCurat = (x, m) => faraDiac(String(x || "")).toUpperCase().replace(/[^A-Z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, m);
+function lagNume(r, suf){ const d = new Date(r.creat);
+  return ["LA", lagCurat(r.client, 30) || "PUNCT", lagCurat(r.localitate, 20), lagCurat(r.locatie, 25), d.getFullYear() + "-" + zi2(d.getMonth() + 1) + "-" + zi2(d.getDate()), zi2(d.getHours()) + zi2(d.getMinutes()), suf].filter(Boolean).join("_"); }
 async function lagUrl(cale){ const { data, error } = await db.storage.from("lipsa-acces").createSignedUrl(cale, 600); if(error){ toast(error.message, true); return null; } return data.signedUrl; }
 // v9.49 (cerut de Ovidiu, 18.11): fișa se deschide ÎN aplicație ca un PDF obișnuit (nu ca pagină web) → Salvează PDF / Tipărește / Trimite (e-mail, WhatsApp…)
 async function lagFisa(id){
   const r = LAG.L.find(x => x.id === id); if(!r || !(r.poze || []).length) return;
   const t = lagZiOra(r.creat), zi = t.zi.replace(/<[^>]+>/g, "").replace(/^\S+\s*-\s*/, "").trim();
-  const ext = /\.pdf$/i.test(r.poze[0]) ? "pdf" : "jpg", nume = ("Lipsa acces - " + faraDiac(r.client || "").replace(/[\\/:*?"<>|]+/g, " ").trim() + " - " + zi + "." + ext);
+  const ext = /\.pdf$/i.test(r.poze[0]) ? "pdf" : "jpg", nume = lagNume(r, "FISA") + "." + ext; LAG.r = r;
   document.getElementById("mod-lagp")?.remove();
   const w = document.createElement("div"); w.className = "modal on"; w.id = "mod-lagp";
   w.innerHTML = `<div class="box" style="max-width:1100px;width:96vw;padding:0"><h3 class="lux-cap cap-mut" style="margin:0">${esc(nume)}</h3>
@@ -2998,7 +3003,7 @@ async function lagFisaAct(ce){
   const file = new File([LAG.blob], LAG.nume, { type: LAG.blob.type });
   if(ce === "mail"){   // v9.52: PDF-ul se salvează, apoi se deschide e-mailul (din contul hunedoara@eurowc.ro din programul de e-mail) cu subiectul și textul gata scrise
     const a = document.createElement("a"); a.href = URL.createObjectURL(file); a.download = LAG.nume; document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 4000);
-    const r = LAG.L.find(x => LAG.nume.includes(faraDiac(x.client || "").trim())) || {}, subiect = LAG.nume.replace(/\.(pdf|jpg)$/i, "");
+    const r = LAG.r || {}, subiect = "Lipsa acces - " + faraDiac(r.client || "").trim() + (r.localitate ? " - " + faraDiac(r.localitate) : "") + " - " + lagZiOra(r.creat).zi.replace(/<[^>]+>/g, "").replace(/^\S+\s*-\s*/, "").trim() + " ora " + lagZiOra(r.creat).ora;
     const corp = ["Buna ziua,", "", "Va transmitem in atasament dovada de lipsa acces" + (r.client ? " la " + r.client : "") + (r.localitate ? ", " + r.localitate : "") + ".",
       r.motive && r.motive.length ? "Motiv: " + r.motive.join(", ") + "." : "", r.observatii ? "Observatii: " + r.observatii : "", r.lat != null ? "Locatia (GPS): https://maps.google.com/?q=" + r.lat + "," + r.lon : "",
       "", "Cu stima,", "Euro Ecologic - Punct de lucru Hunedoara", "hunedoara@eurowc.ro · 0735 214 762"].filter((x, i, A) => x !== "" || A[i - 1] !== "").join("\n");
@@ -3014,8 +3019,112 @@ async function lagPoze(id){
     <div id="lag-poze" style="display:flex;flex-wrap:wrap;gap:10px;margin:10px 0"><p class="muted">Se încarcă…</p></div>
     <div class="row" style="justify-content:flex-end"><div style="flex:0"><button class="btn sec" onclick="lagFisa(${id})">📄 Fișa PDF</button></div><div style="flex:0"><button class="btn" onclick="this.closest('.modal').remove()">Închide</button></div></div></div>`;
   document.body.appendChild(w); if(typeof feFereastra === "function") feFereastra(w);
-  const U = []; for(const c of P) U.push(await lagUrl(c));
-  $("lag-poze").innerHTML = U.filter(Boolean).map((u, i) => `<a href="${u}" target="_blank" rel="noopener" title="Poza ${i + 1} — clic = mărime reală"><img src="${u}" alt="" style="max-height:420px;max-width:100%;border-radius:10px;border:1px solid var(--bd)"></a>`).join("") || '<p class="muted">Fără poze.</p>';
+  // v9.79: fiecare poză cu numele ei (P1 = cea din fișă) → Salvează / Trimite (WhatsApp, e-mail… din fereastra de partajare)
+  LAG.pz = [];
+  for(let i = 0; i < P.length; i++){ const { data } = await db.storage.from("lipsa-acces").download(P[i]); if(!data) continue;
+    const nume = lagNume(r, "P" + (i + 1)) + ".jpg"; LAG.pz.push({ file: new File([data], nume, { type: "image/jpeg" }), url: URL.createObjectURL(data), nume, p: i + 1 }); }
+  if(!$("lag-poze")) return;
+  $("lag-poze").innerHTML = LAG.pz.map((z, i) => `<div style="border:1px solid var(--bd);border-radius:12px;padding:8px;background:var(--card);max-width:100%">
+      <a href="${z.url}" target="_blank" rel="noopener" title="Clic = mărime reală"><img src="${z.url}" alt="" style="max-height:380px;max-width:100%;border-radius:8px;display:block"></a>
+      <div style="display:flex;align-items:center;gap:6px;margin-top:6px;flex-wrap:wrap"><b style="color:#b42318">P${z.p}</b>${z.p === 1 ? '<span class="muted" style="font-size:11px">în fișă</span>' : ""}<span class="muted" style="font-size:11px;flex:1;word-break:break-all">${esc(z.nume)}</span>
+        <button class="btn sm sec" onclick="lagPozaAct(${i},'sal')">💾 Salvează</button><button class="btn sm" onclick="lagPozaAct(${i},'trim')" title="Fereastra de partajare (WhatsApp, e-mail…); dacă nu există, se salvează">📤 Trimite</button></div></div>`).join("") || '<p class="muted">Fără poze.</p>';
+  if(LAG.pz.length > 1) $("lag-poze").insertAdjacentHTML("beforeend", `<div style="width:100%;text-align:right"><button class="btn sm sec" onclick="lagPozaAct(-1,'sal')">💾 Salvează toate (${LAG.pz.length})</button></div>`);
+}
+async function lagPozaAct(i, ce){
+  const L = i < 0 ? LAG.pz : [LAG.pz[i]]; if(!L[0]) return;
+  if(ce === "trim" && navigator.canShare && navigator.canShare({ files: L.map(z => z.file) })){ try{ await navigator.share({ files: L.map(z => z.file), title: L[0].nume }); }catch(e){} return; }
+  L.forEach((z, k) => setTimeout(() => { const a = document.createElement("a"); a.href = z.url; a.download = z.nume; document.body.appendChild(a); a.click(); a.remove(); }, k * 400));
+  if(ce === "trim") toast("Calculatorul nu are fereastră de partajare — poza s-a salvat în Descărcări, o atașezi tu");
+}
+// ===== v9.79 (cerut de Ovidiu, 20.11): ARHIVAREA Lipsă acces — etapa 3 =====
+// Se arhivează lunile mai vechi de 6 luni (în luna a 7-a luna 1) sau, dacă fișierele trec de 200 MB, cele mai vechi luni până rămân sub 150 MB
+// (niciodată luna curentă). Fișierele (FISA + P1…P5, cu numele din fișă) se scriu în folderul ales O DATĂ pe PC (sincronizat cu Google Drive),
+// în „01. IANUARIE 2026 - LA”, + Excel-ul lunii; după ce fiecare fișier e verificat pe disc, se șterge din bază. Rândul rămâne (arhivat_la, arhiva_cale).
+const LAG_ARH_LUNI = 6, LAG_ARH_MB = 200, LAG_ARH_TINTA = 150, LAG_LUNI_MARI = ["IANUARIE","FEBRUARIE","MARTIE","APRILIE","MAI","IUNIE","IULIE","AUGUST","SEPTEMBRIE","OCTOMBRIE","NOIEMBRIE","DECEMBRIE"];
+const lagMb = b => (b / 1048576).toFixed(b < 10485760 ? 2 : 0) + " MB";
+async function lagArhStoc(){   // octeții pe lună (din dosarele AAAA/LL ale stocării) + totalul
+  const st = db.storage.from("lipsa-acces"), M = {}; let tot = 0;
+  const { data: ani } = await st.list("", { limit: 1000 });
+  for(const a of ani || []){ if(a.id) continue;
+    const { data: luni } = await st.list(a.name, { limit: 1000 });
+    for(const l of luni || []){ if(l.id) continue;
+      for(let off = 0; ; off += 1000){ const { data: f } = await st.list(a.name + "/" + l.name, { limit: 1000, offset: off });
+        (f || []).forEach(x => { const b = +((x.metadata || {}).size) || 0; M[a.name + "-" + l.name] = (M[a.name + "-" + l.name] || 0) + b; tot += b; });
+        if(!f || f.length < 1000) break; } } }
+  return { M, tot };
+}
+async function lagArhDeFacut(){
+  const { data, error } = await db.from("lipsa_acces").select("*").is("arhivat_la", null).order("creat").limit(5000); if(error) throw error;
+  const { M, tot } = await lagArhStoc(), ix = d => d.getFullYear() * 12 + d.getMonth(), azi = ix(new Date()), G = {};
+  (data || []).filter(r => (r.poze || []).length).forEach(r => { const d = new Date(r.creat), k = d.getFullYear() + "-" + zi2(d.getMonth() + 1);
+    (G[k] = G[k] || { k, an: d.getFullYear(), luna: d.getMonth(), i: ix(d), R: [] }).R.push(r); });
+  const L = Object.values(G).sort((a, b) => a.i - b.i), out = []; let rest = tot;
+  L.forEach(g => { g.b = M[g.k] || 0; if(azi - g.i >= LAG_ARH_LUNI){ g.motiv = "mai veche de 6 luni"; out.push(g); rest -= g.b; } });
+  if(tot >= LAG_ARH_MB * 1048576) L.forEach(g => { if(!g.motiv && g.i < azi && rest > LAG_ARH_TINTA * 1048576){ g.motiv = "fișierele au trecut de " + LAG_ARH_MB + " MB"; out.push(g); rest -= g.b; } });
+  return { luni: out, tot, toate: L };
+}
+async function lagArhRad(alege){
+  if(!window.showDirectoryPicker) return null;
+  let h = null; try{ const d = await ARH_DB(); h = await new Promise(ok => { const q = d.transaction("h").objectStore("h").get("la-rad"); q.onsuccess = () => ok(q.result || null); q.onerror = () => ok(null); }); }catch(e){}
+  if(h && !alege){ let p = await h.queryPermission({ mode: "readwrite" }); if(p !== "granted") p = await h.requestPermission({ mode: "readwrite" }); if(p === "granted") return h; }
+  if(!alege && !confirm("Alege O SINGURĂ DATĂ folderul arhivei Lipsă acces, de pe PC, sincronizat cu Google Drive\n(ex. un folder „LIPSA ACCES” în contul euroecologic.hunedoara).\n\nAcolo se fac singure folderele lunilor: „01. IANUARIE 2026 - LA”.")) return null;
+  try{ h = await showDirectoryPicker({ id: "ee-la-arhiva", mode: "readwrite" }); }catch(e){ return null; }
+  const d = await ARH_DB(); await new Promise(ok => { const t = d.transaction("h", "readwrite"); t.objectStore("h").put(h, "la-rad"); t.oncomplete = ok; t.onerror = ok; });
+  toast("Folderul arhivei Lipsă acces: " + h.name); return h;
+}
+async function lagArhDeschide(){
+  document.getElementById("mod-laarh")?.remove();
+  const w = document.createElement("div"); w.className = "modal on"; w.id = "mod-laarh";
+  w.innerHTML = `<div class="box" style="max-width:760px"><h3 class="lux-cap cap-mut">🗄 Arhivare Lipsă acces</h3><div id="laarh-b"><p class="muted">Calculez ce e de arhivat…</p></div>
+    <div class="row" style="justify-content:flex-end;gap:8px;margin-top:12px"><div style="flex:0"><button class="btn sec" onclick="lagArhRad(true).then(()=>lagArhDeschide())">📁 Folderul arhivei…</button></div>
+    <div style="flex:0"><button class="btn" id="laarh-go" disabled onclick="lagArhiveaza()">🗄 Arhivează acum</button></div><div style="flex:0"><button class="btn sec" onclick="this.closest('.modal').remove()">Închide</button></div></div></div>`;
+  document.body.appendChild(w); if(typeof feFereastra === "function") feFereastra(w);
+  let S; try{ S = await lagArhDeFacut(); }catch(e){ $("laarh-b").innerHTML = '<p style="color:var(--red)">Nu pot calcula: ' + esc(e.message || e) + "</p>"; return; }
+  LAG.arh = S; const nf = g => g.R.length, h = await (async () => { try{ const d = await ARH_DB(); return await new Promise(ok => { const q = d.transaction("h").objectStore("h").get("la-rad"); q.onsuccess = () => ok(q.result || null); q.onerror = () => ok(null); }); }catch(e){ return null; } })();
+  $("laarh-b").innerHTML = `<p style="margin:0 0 8px">Fișierele Lipsă acces din bază: <b>${lagMb(S.tot)}</b> (prag ${LAG_ARH_MB} MB). Folderul arhivei: ${h ? "<b>" + esc(h.name) + "</b>" : '<span style="color:var(--red)">neales — îl alegi la primul „Arhivează”</span>'}</p>` +
+    `<table class="tbl" style="width:100%"><thead><tr><th>Luna</th><th>Fișe</th><th>Mărime</th><th>Se arhivează?</th></tr></thead><tbody>` +
+    (S.toate.length ? S.toate.map(g => `<tr><td>${zi2(g.luna + 1)}. ${LAG_LUNI_MARI[g.luna]} ${g.an}</td><td>${nf(g)}</td><td>${lagMb(g.b)}</td><td>${g.motiv ? '<b style="color:#b42318">DA</b> — ' + esc(g.motiv) : '<span class="muted">nu încă</span>'}</td></tr>`).join("") : '<tr><td colspan="4" class="muted">Nicio fișă nearhivată.</td></tr>') + "</tbody></table>" +
+    `<p class="muted" style="margin:8px 0 0">La „Arhivează”: fișierele se scriu în „${zi2(1)}. IANUARIE 2026 - LA” (luna lor), cu numele LA_CLIENT_…_FISA.pdf / _P1.jpg…, plus LA_AAAA-LL_LISTA.xlsx. Fiecare fișier se verifică pe disc și abia apoi se șterge din bază. Textul fișelor rămâne în GestiuneEE („în Drive”).</p>`;
+  $("laarh-go").disabled = !S.luni.length; if(!S.luni.length) $("laarh-go").title = "Nu e nimic de arhivat acum";
+}
+async function lagArhiveaza(){
+  const S = LAG.arh; if(!S || !S.luni.length) return;
+  if(!window.showDirectoryPicker){ toast("Arhivarea merge doar în Chrome / Edge pe calculator", true); return; }
+  const rad = await lagArhRad(false); if(!rad) return;
+  const nF = S.luni.reduce((t, g) => t + g.R.length, 0), mb = S.luni.reduce((t, g) => t + g.b, 0);
+  if(!confirm(`Arhivez ${S.luni.length === 1 ? "luna" : S.luni.length + " luni"} ${S.luni.map(g => zi2(g.luna + 1) + "." + g.an).join(", ")} — ${nF} fișe, ${lagMb(mb)} — în folderul „${rad.name}”?\n\nFișierele se scriu pe PC, se verifică, apoi se ȘTERG din bază (textul fișelor rămâne).`)) return;
+  const b = $("laarh-b"), go = $("laarh-go"); if(go) go.disabled = true; let ok = 0, err = [];
+  const pas = t => { if(b) b.innerHTML = '<p><b>' + esc(t) + "</b></p><p class=\"muted\">Nu închide fereastra până nu termină.</p>"; };
+  for(const g of S.luni){
+    const fol = zi2(g.luna + 1) + ". " + LAG_LUNI_MARI[g.luna] + " " + g.an + " - LA";
+    let dir; try{ dir = await rad.getDirectoryHandle(fol, { create: true }); }catch(e){ err.push(fol + ": " + (e.message || e)); continue; }
+    for(const r of g.R){
+      pas(`${fol} — ${ok + 1} / ${nF}: ${r.client || ""}`);
+      try{
+        for(let i = 0; i < r.poze.length; i++){
+          const c = r.poze[i], ext = /\.pdf$/i.test(c) ? "pdf" : "jpg", nume = lagNume(r, i ? "P" + i : "FISA") + "." + ext;
+          const { data, error } = await db.storage.from("lipsa-acces").download(c); if(error || !data) throw new Error("nu pot descărca " + c);
+          const fh = await dir.getFileHandle(nume, { create: true }), wr = await fh.createWritable(); await wr.write(data); await wr.close();
+          if((await fh.getFile()).size !== data.size) throw new Error("fișierul " + nume + " nu s-a scris întreg");
+        }
+        const { error: e1 } = await db.storage.from("lipsa-acces").remove(r.poze); if(e1) throw e1;
+        const { error: e2 } = await db.from("lipsa_acces").update({ arhivat_la: new Date().toISOString(), arhiva_cale: rad.name + "/" + fol }).eq("id", r.id); if(e2) throw e2;
+        ok++;
+      }catch(e){ err.push((r.client || "#" + r.id) + ": " + (e.message || e)); }
+    }
+    try{   // Excel-ul lunii — toate fișele lunii (și cele arhivate înainte)
+      const de = new Date(g.an, g.luna, 1), pana = new Date(g.an, g.luna + 1, 1);
+      const { data: T } = await db.from("lipsa_acces").select("*").gte("creat", de.toISOString()).lt("creat", pana.toISOString()).order("creat");
+      const rows = (T || []).map(r => { const t = lagZiOra(r.creat); return { DATA: t.zi.replace(/<[^>]+>/g, "").replace(/^\S+\s*-\s*/, "").trim(), ORA: t.ora, CLIENT: r.client || "", JUD: r.jud || "", LOCALITATE: r.localitate || "", LOCATIE: r.locatie || "",
+        SOFER: [r.sofer, r.sofer2].filter(Boolean).join(" + "), MASINA: r.masina || "", TRASEU: [r.traseu, r.ziua].filter(Boolean).join(" · "), CONTRACT: r.contract || "", MOTIV: (r.motive || []).join(", "), OBSERVATII: r.observatii || "",
+        GPS: r.lat != null ? "https://maps.google.com/?q=" + r.lat + "," + r.lon : "", "DE LA PUNCT (m)": r.dist_m ?? "", FISIERE: (r.poze || []).map((c, i) => lagNume(r, i ? "P" + i : "FISA") + (/\.pdf$/i.test(c) ? ".pdf" : ".jpg")).join(", "), ARHIVAT: r.arhivat_la ? "DA" : "NU" }; });
+      const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(rows), "LIPSA ACCES");
+      const fh = await dir.getFileHandle("LA_" + g.k + "_LISTA.xlsx", { create: true }), wr = await fh.createWritable(); await wr.write(new Blob([XLSX.write(wb, { type: "array", bookType: "xlsx" })])); await wr.close();
+    }catch(e){ err.push("Excel " + fol + ": " + (e.message || e)); }
+  }
+  if(b) b.innerHTML = `<p><b>✓ Arhivate: ${ok} din ${nF} fișe</b> în „${esc(rad.name)}”.</p>` + (err.length ? '<p style="color:var(--red)">Probleme (fișele astea au rămas în bază, se pot arhiva din nou):<br>' + err.map(esc).join("<br>") + "</p>" : "");
+  toast("Arhivare: " + ok + " din " + nF + " fișe" + (err.length ? " — " + err.length + " probleme" : ""), !!err.length);
+  if(typeof lagLoad === "function" && $("lag-card")) lagLoad();
 }
 async function lagSterge(id){
   const r = LAG.L.find(x => x.id === id); if(!r) return;
@@ -12390,6 +12499,13 @@ async function loadAtentie(){
     add("rid_de_inchis", "Ridicări de închis (după PV)",
       "Șoferul a făcut PV-ul în aplicație. „✓ Închide” deschide fereastra în care confirmi dintr-un pas: PV = V, punctul de rută scăzut + RT, seriile din PV legate de comandă (ce rămâne la client se vede acolo).",
       ["Comanda", "Data", "Tip", "Client", "Locație", "Buc.", "PV făcut de", "De făcut"], rand.sort((a, b) => b.ri - a.ri)); }
+
+  // v9.79 (cerut de Ovidiu, 20.11): Lipsă acces de arhivat (mai vechi de 6 luni sau fișierele peste 200 MB) → 🗄 Arhivare
+  try{ const S = await lagArhDeFacut(); LAG.arh = S;
+    add("la_arhiva", "Lipsă acces — de arhivat în Drive",
+      "Fișierele stau în bază 6 luni (în luna a 7-a se arhivează luna 1) sau până trec de " + LAG_ARH_MB + " MB (acum: " + lagMb(S.tot) + "). Clic pe lună → fereastra de arhivare: se scriu în folderul de pe PC sincronizat cu Drive, apoi se șterg din bază.",
+      ["Luna", "Fișe", "Mărime", "De ce"], S.luni.map(g => ({ id: "la" + g.k, go: "lagArhDeschide()", ctx: g.k + "/" + g.R.length, v: [zi2(g.luna + 1) + ". " + LAG_LUNI_MARI[g.luna] + " " + g.an, g.R.length, lagMb(g.b), g.motiv] }))); }
+  catch(e){ console.warn("arhiva LA:", e); }
 
   add("ctr_expirate", "Contracte expirate, încă marcate ACTIV",
       "Au trecut de data de expirare, dar în aplicație figurează active. Ori se prelungesc, ori se trec pe INACTIV.",

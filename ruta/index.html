@@ -573,6 +573,12 @@ html.ee-deschis .ctr-tag,html.ee-deschis .dep-tag{color:#111827}
 #laPage .la-poze{display:flex;gap:8px;flex-wrap:wrap}#laPage .la-poze div{position:relative}
 #laPage .la-poze img{width:140px;height:105px;object-fit:cover;border-radius:8px;display:block}
 #laPage .la-poze span{position:absolute;top:4px;right:4px;background:rgba(0,0,0,.6);color:#fff;border-radius:6px;padding:1px 7px;cursor:pointer}
+/* v50: P1 = poza din fișă (orizontală, cu previzualizarea decupajului), P2–P5 doar ca dovadă */
+#laPage .la-poze b{position:absolute;left:4px;bottom:4px;background:#fff;color:#b42318;border:1.5px solid #b42318;border-radius:8px;padding:0 6px;font-size:.72rem}
+#laPage .la-poze div.p1 img{outline:3px solid #16a34a;outline-offset:-3px}
+#laPage #laCrop{width:100%;display:block;border-radius:8px;background:#111}
+#laPage .la-2{display:flex;gap:8px;margin-top:8px}#laPage .la-2>*{flex:1;margin:0}
+#laPage .la-ok{color:#15803d;font-weight:700;font-size:.88rem}
 #laPage .la-st{font-size:.85rem;padding:8px 10px;border-radius:10px;background:#eef2ff}
 #laPage .la-st.err{background:#fde8e8;color:#9b1c1c}
 </style>
@@ -1109,7 +1115,7 @@ let dayStart = {}; // {brand, plate, kmStart, driver1, driver2, startTime}
 let lastRouteRows = [];
 
 // --- Șofer EE: aplicatia ruleaza in fila „Rută” (../sofer/), care trimite datele zilei ---
-const EE_RUTA_VERSION = 'v49'; // aceeasi cu VERSIUNE din sw.js; Șofer EE o arata langa rotita
+const EE_RUTA_VERSION = 'v50'; // aceeasi cu VERSIUNE din sw.js; Șofer EE o arata langa rotita
 const SOFER_MODE = new URLSearchParams(location.search).get('sofer') === '1';
 let multiZile = null;   // mai multe zile bifate (ruta complementara), altfel null
 let multiTrasee = null; // mai multe trasee bifate, altfel null
@@ -3268,31 +3274,39 @@ function laDeseneaza(){
   const el = document.getElementById('laPage'); if(!el || !LA) return; const r = LA.r, c = LA.ctr;
   const dest = !c ? 'caut agentul contractului…' : !c.contract ? '<span style="color:#9b1c1c">nu găsesc contractul punctului — alegi tu contactul</span>'
     : `Contract <b>${escapeHtml(c.contract)}</b> → ${c.agent ? '<b>' + escapeHtml(agentScurt(c.agent)) + '</b> · ' : ''}${c.telefon ? '<span style="white-space:nowrap">' + escapeHtml(c.telefon) + '</span>' : '<span style="color:#9b1c1c">fără telefon la depozit</span>'}`;
-  const gata = LA.poze.length > 0 && !LA.merge;
+  const gata = laP1Ok() && LA.ok1 && !LA.merge, n = LA.poze.length;
+  if(n && !laP1Ok() && !LA.stErr){ LA.st = '⚠️ Prima poză (P1) trebuie să fie orizontală — șterge-o (✖) și fă alta cu telefonul culcat.'; LA.stErr = true; }
   el.innerHTML = `<div class="la-h"><b>⚠️ Lipsă acces — dovadă</b><span class="la-x" data-la="x">✖</span></div>
   <div class="la-b">
     <div class="la-card"><div style="font-weight:700">${escapeHtml(r.client)}</div><div class="la-mut">${escapeHtml(r.localitate || '')}${r.jud ? ' · ' + escapeHtml(r.jud) : ''}${r.locatie ? ' — ' + escapeHtml(r.locatie) : ''}</div>
       <div class="la-mut" style="margin-top:4px">${laDataTxt(LA.t)}, ora ${laOraTxt(LA.t)} · ${laGpsTxt()}</div>
       <div style="margin-top:6px;font-size:.88rem">📨 ${dest}</div></div>
-    <div class="la-poze">${LA.poze.map((p, i) => `<div><img src="${p.url}" alt=""><span data-la="del" data-i="${i}">✖</span></div>`).join('')}</div>
-    ${LA.poze.length < 3 ? `<div class="la-mut" style="margin-bottom:-6px">📸 Ține telefonul <b>pe orizontală (culcat)</b> — poza umple toată pagina fișei; fiecare poză are pagina ei.</div><label class="la-btn cam">📷 ${LA.poze.length ? 'Încă o poză (opțional, max. 3)' : 'Fă poza'}<input type="file" accept="image/*" capture="environment" style="display:none" id="laFile"></label>` : ''}
+    <div class="la-poze">${LA.poze.map((p, i) => `<div class="${i ? '' : 'p1'}"><img src="${p.url}" alt=""><span data-la="del" data-i="${i}">✖</span><b>P${i + 1}${i ? '' : ' · în fișă'}</b></div>`).join('')}</div>
+    ${n < LA_MAX ? `<div class="la-mut" style="margin-bottom:-6px">${n ? '📸 P2–P5 sunt opționale, în orice poziție — nu intră în fișă, rămân ca dovadă în GestiuneEE (le trimite biroul dacă le cere clientul).' : '📸 <b>P1 intră în fișă</b> — ține telefonul <b>CULCAT (orizontal)</b>.'}</div><label class="la-btn cam">📷 ${n ? 'Poză în plus — P' + (n + 1) + ' (opțional, max. ' + LA_MAX + ')' : 'Fă poza P1 (telefon culcat)'}<input type="file" accept="image/*" capture="environment" style="display:none" id="laFile"></label>` : ''}
     <div class="la-card"><div class="la-mut" style="margin-bottom:6px">Motiv (atingi unul sau mai multe)</div><div class="la-chips">${LA_MOTIVE.map(m => `<span class="la-chip ${LA.motive.has(m) ? 'on' : ''}" data-la="mot">${escapeHtml(m)}</span>`).join('')}</div></div>
     <div class="la-card"><div class="la-mut" style="margin-bottom:6px">Observații</div><textarea id="laObs" placeholder="ex. discutat pe șantier, revin săptămâna viitoare">${escapeHtml(LA.obs || '')}</textarea></div>
-    ${LA.poze.length ? `<div class="la-card"><div class="la-mut" style="margin-bottom:6px">Așa arată dovada trimisă</div><img id="laPrev" alt="" style="width:100%;border-radius:8px;display:block;background:#e5e9f0;min-height:120px"${LA.prevUrl ? ` src="${LA.prevUrl}"` : ''}></div>` : ''}
+    ${laP1Ok() ? `<div class="la-card"><div class="la-mut" style="margin-bottom:6px">Previzualizare P1 — <b>ce e întunecat se taie</b> din fișă</div><canvas id="laCrop"></canvas>
+      <div class="la-mut" style="margin:10px 0 6px">Așa arată fișa trimisă</div><img id="laPrev" alt="" style="width:100%;border-radius:8px;display:block;background:#e5e9f0;min-height:120px"${LA.prevUrl ? ` src="${LA.prevUrl}"` : ''}>
+      ${LA.ok1 ? `<div class="la-2" style="align-items:center"><span class="la-ok">✓ P1 acceptată</span><label class="la-btn" style="padding:9px">↺ Refac P1<input type="file" accept="image/*" capture="environment" style="display:none" id="laFile1"></label></div>`
+        : `<div class="la-2"><div class="la-btn prim" data-la="ok1">✓ E bună</div><label class="la-btn" style="border-color:#b42318;color:#b42318">↺ Refac P1<input type="file" accept="image/*" capture="environment" style="display:none" id="laFile1"></label></div>`}</div>` : ''}
     ${LA.st ? `<div class="la-st ${LA.stErr ? 'err' : ''}">${LA.st}</div>` : ''}
     <div class="la-btn prim ${gata ? '' : 'dis'}" data-la="pdf">📤 Trimite PDF pe WhatsApp</div>
+    ${laP1Ok() && !LA.ok1 ? '<div class="la-mut" style="margin-top:-6px;color:#b42318;font-weight:600">Apasă întâi „✓ E bună” la previzualizarea P1.</div>' : ''}
     <div class="la-mut" style="margin-top:-4px">Se deschide fereastra de trimitere → alegi <b>WhatsApp</b> → contactul ${c && c.agent ? '<b>' + escapeHtml(agentScurt(c.agent)) + '</b>' : 'agentului'}${c && c.telefon ? ' (' + escapeHtml(c.telefon) + ')' : ''}. Fișa se salvează și în GestiuneEE.</div>
     <div class="la-btn" data-la="x">${LA.id ? '✔ Gata' : 'Închide fără dovadă'}</div>
     <div class="la-mut">„Lipsă acces” e deja înregistrat la punct. Pozele se pun într-o fișă cu data, ora, GPS-ul, mașina, traseul, clientul și contractul.</div>
   </div>`;
   const fi = document.getElementById('laFile'); if(fi) fi.onchange = () => { const f = fi.files && fi.files[0]; if(f) laPoza(f); };
+  const f1 = document.getElementById('laFile1'); if(f1) f1.onchange = () => { const f = f1.files && f1.files[0]; if(f) laPoza(f, true); };
+  laCropDeseneaza();
   const ob = document.getElementById('laObs'); if(ob) ob.oninput = () => { LA.obs = ob.value; laPrevizualizare(); };
   laPrevizualizare();
 }
 document.addEventListener('click', e => {
   const t = e.target.closest('#laPage [data-la]'); if(!t || !LA) return; const a = t.dataset.la;
   if(a === 'x'){ if(!LA.id && LA.poze.length && !confirm('Închizi fără să salvezi poza?')) return; laInchide(); }
-  else if(a === 'del'){ const p = LA.poze.splice(+t.dataset.i, 1)[0]; if(p) URL.revokeObjectURL(p.url); laDeseneaza(); }
+  else if(a === 'del'){ const i = +t.dataset.i, p = LA.poze.splice(i, 1)[0]; if(p) URL.revokeObjectURL(p.url); if(i === 0){ LA.ok1 = false; LA.st = ''; LA.stErr = false; } laDeseneaza(); }
+  else if(a === 'ok1'){ LA.ok1 = true; LA.st = ''; LA.stErr = false; laDeseneaza(); }
   else if(a === 'mot'){ const m = t.textContent; LA.motive.has(m) ? LA.motive.delete(m) : LA.motive.add(m); laDeseneaza(); }
   else if(a === 'pdf') laTrimitePdf();
 });
@@ -3308,12 +3322,30 @@ function laLiniiChenar(){
   return L;
 }
 function laIncarcaImg(file){ return new Promise((res, rej) => { const u = URL.createObjectURL(file), im = new Image(); im.onload = () => { URL.revokeObjectURL(u); res(im); }; im.onerror = () => { URL.revokeObjectURL(u); rej(new Error('poza nu se poate citi')); }; im.src = u; }); }
-async function laPoza(file){
+// v50 (cerut de Ovidiu, 20.11): P1 = poza din fișă, OBLIGATORIU orizontală (umple zona, se taie puțin din margini — șoferul vede
+// decupajul și apasă „E bună” sau „Refac P1”); P2–P5 = poze în plus, orice poziție, doar ca dovadă în GestiuneEE. Pozele se salvează la 2048 px.
+const LA_MAX = 5;
+const laP1Ok = () => !!(LA && LA.poze[0] && LA.poze[0].img.naturalWidth > LA.poze[0].img.naturalHeight);
+async function laPoza(file, inloc){
   try{ LA.st = '⏳ pregătesc poza…'; LA.stErr = false; laDeseneaza();
-    const im = await laIncarcaImg(file), k = Math.min(1, 1600 / Math.max(im.naturalWidth, im.naturalHeight));
-    LA.poze.push({ img: im, k, url: URL.createObjectURL(file), orig: file });
-    LA.st = im.naturalHeight > im.naturalWidth ? '⚠️ Poza e pe verticală — în fișă se taie sus și jos. Dacă vrei tot terenul, ștearg-o (✖) și refă-o cu telefonul culcat.' : ''; LA.stErr = false; laDeseneaza();
+    const im = await laIncarcaImg(file), k = Math.min(1, 2048 / Math.max(im.naturalWidth, im.naturalHeight));
+    const prima = inloc || !LA.poze.length;
+    if(prima && im.naturalHeight >= im.naturalWidth){ LA.st = '⚠️ Poza P1 (cea din fișă) se face cu telefonul <b>CULCAT</b> (orizontal). Întoarce telefonul și refă poza.'; LA.stErr = true; laDeseneaza(); return; }
+    const p = { img: im, k, url: URL.createObjectURL(file), orig: file };
+    if(inloc && LA.poze.length){ URL.revokeObjectURL(LA.poze[0].url); LA.poze[0] = p; } else LA.poze.push(p);
+    if(prima) LA.ok1 = false;
+    LA.st = prima ? '👀 Verifică mai jos cum intră P1 în fișă, apoi apasă „✓ E bună” sau „↺ Refac P1”.' : ''; LA.stErr = false; laDeseneaza();
   }catch(e){ LA.st = '⚠️ ' + e.message; LA.stErr = true; laDeseneaza(); }
+}
+function laCropDeseneaza(){   // P1 întreagă; ce iese din cadrul fișei e întunecat
+  const cv = document.getElementById('laCrop'); if(!cv || !LA || !LA.poze[0]) return; const im = LA.poze[0].img;
+  const W = 900, H = Math.round(W * im.naturalHeight / im.naturalWidth); cv.width = W; cv.height = H; const g = cv.getContext('2d');
+  g.drawImage(im, 0, 0, W, H); const zr = (1280 - 68) / (1080 - 68);   // zona pozei din fișă (laFisa)
+  let cw = W, ch = H; if(W / H > zr) cw = H * zr; else ch = W / zr; const cx = (W - cw) / 2, cy = (H - ch) / 2;
+  g.fillStyle = 'rgba(0,0,0,.62)'; g.fillRect(0, 0, W, cy); g.fillRect(0, cy + ch, W, H - cy - ch); g.fillRect(0, cy, cx, ch); g.fillRect(cx + cw, cy, W - cx - cw, ch);
+  g.strokeStyle = '#fff'; g.lineWidth = 4; g.strokeRect(cx, cy, cw, ch);
+  const pr = Math.round((1 - (cw * ch) / (W * H)) * 100); g.font = '700 26px Roboto, Arial, sans-serif'; const t = pr > 1 ? 'se taie ~' + pr + '%' : 'nu se taie';
+  const tw = g.measureText(t).width + 24; g.fillStyle = 'rgba(17,24,39,.85)'; g.fillRect(cx + cw - tw - 10, cy + ch - 46, tw, 36); g.fillStyle = '#fff'; g.fillText(t, cx + cw - tw + 2, cy + ch - 19);
 }
 // v45b (cerut de Ovidiu): în loc de chenar peste poză — o FIȘĂ: antet, pozele întregi în chenare (1 / 2 / 3 aranjate), zonă de date separată
 function laRR(g, x, y, w, h, r){ g.beginPath(); g.moveTo(x + r, y); g.arcTo(x + w, y, x + w, y + h, r); g.arcTo(x + w, y + h, x, y + h, r); g.arcTo(x, y + h, x, y, r); g.arcTo(x, y, x + w, y, r); g.closePath(); }
@@ -3347,7 +3379,7 @@ function laQr(g, lib, txt, x, y, sz){ try{ const q = lib(0, 'M'); q.addData(txt)
 // v49 (cerut de Ovidiu, 18.11 15:49): ca la PV-uri — o PAGINĂ pentru fiecare poză, poza umple tot cadrul (decupată centrat, fără benzi albe);
 // coloana cu datele se repetă pe fiecare pagină. laFisa(i) = pagina pozei i.
 async function laFisa(idx){
-  idx = idx || 0; const W = 1920, H = 1080, SW = 640, X0 = W - SW, PAD = 34, F = 'Roboto, Arial, sans-serif', NP = Math.min(3, LA.poze.length), P = LA.poze.slice(idx, idx + 1);
+  idx = idx || 0; const W = 1920, H = 1080, SW = 640, X0 = W - SW, PAD = 34, F = 'Roboto, Arial, sans-serif', NP = 1, P = LA.poze.slice(0, 1);   // v50: doar P1 în fișă
   const r = LA.r, f = LA.fix, c = LA.ctr || {}, ok = f && !f.err, dist = ok && r.lat && r.lon ? Math.round(gpsDistM(f, { lat: +r.lat, lon: +r.lon })) : null;
   const RED = '#D7000F', NAV = '#1b2550', TXT = '#111827', MUT = '#6b7591', LIN = '#d5dbe6';
   const qrLib = ok ? await laQrLib() : null;
@@ -3410,7 +3442,7 @@ async function laFisa(idx){
 // v46c (cerut de Ovidiu, 18.11 10:19): fișa se trimite ca PDF (ca raportul de rută pentru STRABAG) — GPS-ul și QR-ul se apasă → Google Maps
 function laBlobDataUrl(b){ return new Promise(res => { const fr = new FileReader(); fr.onload = () => res(fr.result); fr.readAsDataURL(b); }); }
 async function laFisaPdf(jpg){
-  if(!window.jspdf) return null; const f = LA.fix, n = Math.max(1, Math.min(3, LA.poze.length));
+  if(!window.jspdf) return null; const f = LA.fix, n = 1;   // v50: o singură pagină (P1)
   const { jsPDF } = window.jspdf, PW = 297, PH = 297 * 1080 / 1920, k = PW / 1920;
   const d = new jsPDF({ orientation: 'landscape', unit: 'mm', format: [PW, PH] });
   for(let i = 0; i < n; i++){   // v49: o pagină pentru fiecare poză
@@ -3421,7 +3453,8 @@ async function laFisaPdf(jpg){
   d.setProperties({ title: 'Lipsă acces — ' + (LA.r.client || '') + ' — ' + laDataTxt(LA.t) + ' ' + laOraTxt(LA.t), author: 'Euro Ecologic' });
   return d.output('blob');
 }
-function laPozaMica(p){ const W = Math.round(p.img.naturalWidth * p.k), H = Math.round(p.img.naturalHeight * p.k), cv = document.createElement('canvas'); cv.width = W; cv.height = H; cv.getContext('2d').drawImage(p.img, 0, 0, W, H); return new Promise(res => cv.toBlob(b => res(b), 'image/jpeg', 0.72)); }
+function laPozaMica(p){ const W = Math.round(p.img.naturalWidth * p.k), H = Math.round(p.img.naturalHeight * p.k), cv = document.createElement('canvas'); cv.width = W; cv.height = H; cv.getContext('2d').drawImage(p.img, 0, 0, W, H);
+  const jp = q => new Promise(res => cv.toBlob(b => res(b), 'image/jpeg', q)); return jp(0.85).then(b => b && b.size > 1.9 * 1048576 ? jp(0.72) : b); }   // v50: 2048 px, 85% (sub limita de 2 MB)
 // v47 (cerut de Ovidiu, 18.11 10:45): se trimite DOAR PDF-ul (fără mesajul lung cu link). PDF-ul se pregătește odată cu previzualizarea,
 // ca butonul să deschidă imediat fereastra de partajare (Android cere ca ea să pornească direct din apăsare); șoferul alege WhatsApp → contactul agentului.
 // În același timp fișa + pozele se salvează în bază (GestiuneEE). Fără partajare (calculator) → PDF-ul se descarcă.
@@ -3430,12 +3463,16 @@ function laPrevizualizare(){ if(!LA) return; LA.ver = (LA.ver || 0) + 1; const v
   const jpg = await laFisa(); if(!LA || LA.ver !== v) return;
   if(LA.prevUrl) URL.revokeObjectURL(LA.prevUrl); LA.prevUrl = URL.createObjectURL(jpg); const im = document.getElementById('laPrev'); if(im) im.src = LA.prevUrl;
   const pdf = await laFisaPdf(jpg); if(LA && LA.ver === v){ LA.pdf = pdf; LA.pdfVer = v; } }, 350); }
-function laNumeFisier(){ return 'lipsa-acces-' + String(LA.r.client || 'punct').replace(/[^A-Za-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 40) + '-' + laDataTxt(LA.t).slice(-10).replace(/\./g, '-'); }
+// v50: același nume ca în GestiuneEE — LA_CLIENT_LOCALITATE_LOCATIE_2026-11-18_1119 (+ _FISA / _P1…P5)
+const laCurat = (x, m) => String(x || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase().replace(/[^A-Z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, m);
+function laNumeBaza(){ const r = LA.r, d = LA.t;
+  return ['LA', laCurat(r.client, 30) || 'PUNCT', laCurat(r.localitate, 20), laCurat(r.locatie, 25), d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate()), pad2(d.getHours()) + pad2(d.getMinutes())].filter(Boolean).join('_'); }
+function laNumeFisier(){ return laNumeBaza() + '_FISA'; }
 async function laSalveaza(fisa){   // fișa (PDF sau JPEG) + pozele simple în stocare, rândul în lipsa_acces
   const r = LA.r, f = LA.fix, d = LA.t, c = LA.ctr || {}, cale = [];
-  const baza = d.getFullYear() + '/' + pad2(d.getMonth() + 1) + '/' + d.getFullYear() + pad2(d.getMonth() + 1) + pad2(d.getDate()) + '_' + pad2(d.getHours()) + pad2(d.getMinutes()) + '_' + String(r.clientKey || 'punct').replace(/[^A-Za-z0-9-]/g, '') + '_' + Math.random().toString(36).slice(2, 7);
+  const baza = d.getFullYear() + '/' + pad2(d.getMonth() + 1) + '/' + laNumeBaza() + '_' + Math.random().toString(36).slice(2, 7);
   const fis = [[baza + (fisa.type === 'application/pdf' ? '_fisa.pdf' : '_fisa.jpg'), fisa]];
-  for(let i = 0; i < LA.poze.length; i++) fis.push([baza + '_' + (i + 1) + '.jpg', await laPozaMica(LA.poze[i])]);
+  for(let i = 0; i < LA.poze.length; i++) fis.push([baza + '_P' + (i + 1) + '.jpg', await laPozaMica(LA.poze[i])]);
   for(const [pth, b] of fis){ const up = await sb.storage.from('lipsa-acces').upload(pth, b, { contentType: pth.endsWith('.pdf') ? 'application/pdf' : 'image/jpeg', upsert: false }); if(up.error) throw up.error; cale.push(pth); }
   const rand = { session_id: currentSessionId || null, client_key: r.clientKey || null, client: r.client || null, jud: r.jud || null, localitate: r.localitate || null, locatie: r.locatie || null,
     sofer: dayStart.driver1 || null, sofer2: dayStart.driver2 || null, masina: dayStart.plate || null, traseu: r.masina || null, ziua: r.ziua || null,
@@ -3447,7 +3484,7 @@ async function laSalveaza(fisa){   // fișa (PDF sau JPEG) + pozele simple în s
   return ins.data.id;
 }
 async function laTrimitePdf(){
-  if(!LA || !LA.poze.length || LA.merge) return;
+  if(!LA || !laP1Ok() || !LA.ok1 || LA.merge) return;
   const ob = document.getElementById('laObs'); if(ob && ob.value !== (LA.obs || '')){ LA.obs = ob.value; }
   let fisa = LA.pdf && LA.pdfVer === LA.ver ? LA.pdf : null, intarziat = false;
   if(!fisa){ intarziat = true; const jpg = await laFisa(); fisa = (await laFisaPdf(jpg)) || jpg; LA.pdf = fisa; LA.pdfVer = LA.ver; }
