@@ -1116,7 +1116,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
   <span id="rz-w"><button id="rz-reset" class="pictograma" title="Lățimi implicite — pune coloanele din tabelele acestei file înapoi cum erau">↺ Reset layout</button><i class="rz-sep">|</i></span>
   <span id="tz-w" title="Mărimea tabelului (doar tabelul, restul rămâne la fel), din 5 în 5%. Merge și cu Ctrl + rotița mausului, Ctrl + / Ctrl − / Ctrl 0. Dublu clic pe procent = scrii tu valoarea."><button class="pictograma" onclick="tzPas(-1)" aria-label="Micșorează tabelul">−</button><b id="tz-v" ondblclick="tzScrie()" title="Dublu clic = scrii mărimea (ex. 87), Enter">100%</b><input id="tz-in" type="number" min="30" max="300" step="5" style="display:none"><button class="pictograma" onclick="tzPas(1)" aria-label="Mărește tabelul">+</button></span>
-  <span class="ver">v9.76</span>
+  <span class="ver">v9.77</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -5623,10 +5623,27 @@ function mmCaz(){
   const r = (a, b) => `<div class="cz-r"><span>${a}</span><span>${b}</span></div>`;
   const T = { A: "comanda gestiunii " + P + ", marfa din depozitul " + P, B: "comanda gestiunii " + P + ", marfa din depozitul " + d,
               C: "comanda gestiunii " + g + ", marfa din depozitul " + P, D: "comanda gestiunii " + g + ", marfa din depozitul " + d };
+  // v9.77 (cerut de Ovidiu, 20.11 — DOMARCONS, servisare la toaleta proprie): textul urmează regula de stoc a tipului (Nomenclatoare → efect stoc),
+  // aceeași cu care se calculează stocul — la SERVISARE / act adițional nu mai scrie „se mișcă”
+  const tip = $("mm-tip").value, ef = tip === MM_MODIF ? "niciun" : (((NOM.tip_miscare || []).find(x => x.valoare === tip) || {}).efect_stoc || "niciun"), prop = /PROPRI/i.test($("mm-model").value || "");
+  const aid = +$("mm-anexa").value || 0;
+  let rS, rI, rA;
+  if(ef === "niciun"){
+    rS = "<b>nu se mișcă</b>"; rI = "<b>nu</b> — nu se schimbă";
+    rA = tip === MM_MODIF ? "act adițional la anexa aleasă (aceleași bucăți)" : tip === "SERVISARE" ? "<b>doar pe rută</b> (servisare)" + (prop ? " · <b>toaleta clientului</b> (proprie)" : "") + (aid ? " · pe anexa aleasă" : " · fără anexă") : "fără efect în stoc";
+  } else if(ef === "depozit_in" || ef === "depozit_out"){
+    rS = dH ? "<b>se mișcă</b> — " + (ef === "depozit_in" ? "crește (intră în depozit)" : "scade (iese din depozit)") : "<b>neatins</b> — marfa e a depozitului " + esc(d);
+    rI = "<b>nu</b> — nu e închiriere"; rA = "fără anexă";
+  } else if(ef === "pierdere"){
+    rS = "<b>nu se mișcă</b> — produsul nu se întoarce în depozit"; rI = gH ? "<b>scad</b> — produsul pierdut iese din cele închiriate" : "<b>nu</b> — sunt ale gestiunii " + esc(g);
+    rA = gH ? "act -R pe anexa clientului" : "fără anexă a noastră";
+  } else {
+    rS = dH ? "<b>se mișcă</b> (scade la amplasare / suplimentare, crește la reducere / ridicare)" : "<b>neatins</b> — marfa e a depozitului " + esc(d);
+    rI = gH ? "<b>da</b> — contractul e al nostru" : "<b>nu</b> — sunt ale gestiunii " + esc(g);
+    rA = gH ? "a noastră, la contractul " + esc(P) + " (facturăm noi)" : "fără anexă a noastră" + (z === "D" ? " (servisările preluate le discutăm separat)" : "");
+  }
   const html = `<div><b class="cz">${z}</b><b>${esc(T[z])}</b></div>` +
-    r("Stoc " + P + ":", dH ? "<b>se mișcă</b> (scade la amplasare / suplimentare, crește la reducere / ridicare)" : "<b>neatins</b> — marfa e a depozitului " + esc(d)) +
-    r("Închiriate " + P + ":", gH ? "<b>da</b> — contractul e al nostru" : "<b>nu</b> — sunt ale gestiunii " + esc(g)) +
-    r("Anexa:", gH ? "a noastră, la contractul " + esc(P) + " (facturăm noi)" : "fără anexă a noastră" + (z === "D" ? " (servisările preluate le discutăm separat)" : ""));
+    r("Stoc " + P + ":", rS) + r("Închiriate " + P + ":", rI) + r(ef === "niciun" ? "Ce face:" : "Anexa:", rA);
   if(el.innerHTML !== html) el.innerHTML = html;
 }
 // ── v7.99 (cerut de Ovidiu, 07.11): tipul MODIFICARE ANEXĂ — la capătul listei, NU e mișcare de marfă și NU se salvează ca o comandă.
