@@ -1116,7 +1116,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
   <span id="rz-w"><button id="rz-reset" class="pictograma" title="Lățimi implicite — pune coloanele din tabelele acestei file înapoi cum erau">↺ Reset layout</button><i class="rz-sep">|</i></span>
   <span id="tz-w" title="Mărimea tabelului (doar tabelul, restul rămâne la fel), din 5 în 5%. Merge și cu Ctrl + rotița mausului, Ctrl + / Ctrl − / Ctrl 0. Dublu clic pe procent = scrii tu valoarea."><button class="pictograma" onclick="tzPas(-1)" aria-label="Micșorează tabelul">−</button><b id="tz-v" ondblclick="tzScrie()" title="Dublu clic = scrii mărimea (ex. 87), Enter">100%</b><input id="tz-in" type="number" min="30" max="300" step="5" style="display:none"><button class="pictograma" onclick="tzPas(1)" aria-label="Mărește tabelul">+</button></span>
-  <span class="ver">v9.80</span>
+  <span class="ver">v9.81</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -2970,12 +2970,14 @@ function lagRender(){
         <td>${esc(r.contract || "—")}</td><td style="color:#b42318;font-size:13px">${esc((r.motive || []).join(", ") || "—")}</td>
         <td style="font-size:13px;max-width:260px">${esc(r.observatii || "")}</td>
         <td style="white-space:nowrap">${r.lat != null ? `<a href="https://maps.google.com/?q=${r.lat},${r.lon}" target="_blank" rel="noopener">📍 hartă</a><div class="muted" style="font-size:12px">±${Math.round(r.gps_acc || 0)} m${r.dist_m != null ? " · " + r.dist_m + " m de punct" : ""}</div>` : "—"}</td>
-        <td style="white-space:nowrap">${ar ? `<span class="muted" title="${esc(r.arhiva_cale || "")}">în Drive</span>` : nf ? `<span class="lag-g"><button class="lag-b" onclick="lagFisa(${r.id})" title="Fișa PDF — salvezi, tipărești, trimiți">📄 Fișa</button>${nf > 1 ? `<button class="lag-b2" onclick="lagPoze(${r.id})" title="Pozele mari">🖼 Poze ${nf - 1}</button>` : ""}</span>` : "—"}</td>
+        <td style="white-space:nowrap">${ar ? `<span class="muted" title="${esc(r.arhiva_cale || "")}">în Drive</span>` : nf ? `<span class="lag-g"><button class="lag-b" onclick="lagFisa(${r.id})" title="Fișa PDF — salvezi, tipărești, trimiți">📄 Fișa</button>${nf > 1 ? `<button class="lag-b2" onclick="lagPoze(${r.id})" title="Pozele mari">🖼 Poze ${nf - 1}</button><button class="lag-b2" onclick="lagTrimiteTot(${r.id})" title="Fișa PDF + toate pozele, într-o singură trimitere (WhatsApp, e-mail…)">📤 Trimite tot</button>` : ""}</span>` : "—"}</td>
         <td><button class="lag-del" onclick="lagSterge(${r.id})" title="Șterge (cu fișierele) — ex. probele" aria-label="Șterge"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/></svg></button></td></tr>`; }).join("") + "</tbody></table></div>";
 }
 // v9.79 (cerut de Ovidiu, 20.11): numele fișierelor din datele fișei — LA_CLIENT_LOCALITATE_LOCATIE_2026-11-18_1119_P2.jpg (la fel în aplicația de rută și în arhivă)
 const lagCurat = (x, m) => faraDiac(String(x || "")).toUpperCase().replace(/[^A-Z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, m);
-function lagNume(r, suf){ const d = new Date(r.creat);
+// v9.81 (găsit 21.11): numele se ia din fișierul salvat de rută (ora din fișă, ex. 14:29) — nu din ora salvării în bază (14:32)
+function lagNume(r, suf){ const m = /(LA_[^/]*?_\d{4}-\d\d-\d\d_\d{4})_[a-z0-9]{5}_/i.exec((r.poze || [])[0] || ""); if(m) return m[1] + (suf ? "_" + suf : "");
+  const d = new Date(r.creat);
   return ["LA", lagCurat(r.client, 30) || "PUNCT", lagCurat(r.localitate, 20), lagCurat(r.locatie, 40), d.getFullYear() + "-" + zi2(d.getMonth() + 1) + "-" + zi2(d.getDate()), zi2(d.getHours()) + zi2(d.getMinutes()), suf].filter(Boolean).join("_"); }
 async function lagUrl(cale){ const { data, error } = await db.storage.from("lipsa-acces").createSignedUrl(cale, 600); if(error){ toast(error.message, true); return null; } return data.signedUrl; }
 // v9.49 (cerut de Ovidiu, 18.11): fișa se deschide ÎN aplicație ca un PDF obișnuit (nu ca pagină web) → Salvează PDF / Tipărește / Trimite (e-mail, WhatsApp…)
@@ -3016,6 +3018,20 @@ async function lagFisaAct(ce){
     toast("PDF-ul s-a salvat în Descărcări — atașează-l în e-mailul care se deschide (trimis din hunedoara@eurowc.ro)"); return;
   }
   const a = document.createElement("a"); a.href = URL.createObjectURL(file); a.download = LAG.nume; document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 4000);
+}
+// v9.81 (cerut de Ovidiu, 21.11): „Trimite tot” — fișa + toate pozele, cu numele lor, într-o singură fereastră de partajare
+async function lagTrimiteTot(id){
+  const r = LAG.L.find(x => x.id === id); if(!r || !(r.poze || []).length) return; LAG.tot = LAG.tot || {};
+  let F = LAG.tot[id];
+  if(!F){ toast("Pregătesc fișa și pozele…"); F = [];
+    for(let i = 0; i < r.poze.length; i++){ const c = r.poze[i], { data } = await db.storage.from("lipsa-acces").download(c); if(!data) continue;
+      const pdf = /\.pdf$/i.test(c); F.push(new File([data], lagNume(r, i ? "P" + i : "FISA") + (pdf ? ".pdf" : ".jpg"), { type: pdf ? "application/pdf" : "image/jpeg" })); }
+    if(!F.length){ toast("Fișierele nu s-au putut încărca", true); return; } LAG.tot[id] = F; }
+  if(navigator.canShare && navigator.canShare({ files: F })){
+    try{ await navigator.share({ files: F, title: "Lipsa acces - " + faraDiac(r.client || "") }); }
+    catch(e){ if(e && e.name === "NotAllowedError") toast("Fișierele sunt gata — apasă încă o dată „📤 Trimite tot”"); } return; }
+  F.forEach((f, k) => setTimeout(() => { const a = document.createElement("a"); a.href = URL.createObjectURL(f); a.download = f.name; document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 4000); }, k * 400));
+  toast("Fără fereastră de partajare — cele " + F.length + " fișiere s-au salvat în Descărcări");
 }
 async function lagPoze(id){
   const r = LAG.L.find(x => x.id === id); if(!r) return; const P = (r.poze || []).slice(1);

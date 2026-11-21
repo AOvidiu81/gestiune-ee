@@ -1115,7 +1115,7 @@ let dayStart = {}; // {brand, plate, kmStart, driver1, driver2, startTime}
 let lastRouteRows = [];
 
 // --- Șofer EE: aplicatia ruleaza in fila „Rută” (../sofer/), care trimite datele zilei ---
-const EE_RUTA_VERSION = 'v51'; // aceeasi cu VERSIUNE din sw.js; Șofer EE o arata langa rotita
+const EE_RUTA_VERSION = 'v52'; // aceeasi cu VERSIUNE din sw.js; Șofer EE o arata langa rotita
 const SOFER_MODE = new URLSearchParams(location.search).get('sofer') === '1';
 let multiZile = null;   // mai multe zile bifate (ruta complementara), altfel null
 let multiTrasee = null; // mai multe trasee bifate, altfel null
@@ -1829,7 +1829,7 @@ window.addEventListener('scroll', ()=>{
 
 listEl.addEventListener('click', (e)=>{
   const ctrT = e.target.closest('.ctr-tag');   // v44: CTR. atins → agentul și telefonul (al doilea atins le ascunde)
-  if(ctrT){ const pop = ctrT.closest('.card') && ctrT.closest('.card').querySelector('.ctr-pop'); if(pop) pop.classList.toggle('on'); return; }
+  if(ctrT) return;   // v52 (cerut de Ovidiu, 21.11): CTR. e doar informație — fără agent / telefon
   const nameToggle = e.target.closest('.cartela-badge') ? null : e.target.closest('.card-name-toggle');
   const arriveBtn = e.target.closest('.visit-btn.arrive');
   const leaveBtn = e.target.closest('.visit-btn.leave');
@@ -1922,7 +1922,7 @@ listEl.addEventListener('click', (e)=>{
     eeEcranAprins();
     delete cardOverrides[key];
     finalizeCardVisually(key, 700);
-    if(type === 'LA' && TEST_LA && r) laDeschide(r);   // v45: dovada cu poză (test)
+    if(type === 'LA' && TEST_LA && r) laIntreaba(r);   // v45: dovada cu poză (test); v52: OPȚIONALĂ — întâi întrebarea
   } else if(obsCancel){
     const key = obsCancel.dataset.key;
     if(visitLog[key]) delete visitLog[key]._obsOpen;
@@ -3254,11 +3254,28 @@ async function ctrIncarca(){
 // mesajul are linkuri semnate (210 zile — pozele se arhivează în Drive după 6 luni). „LA” se înregistrează ca înainte.
 let TEST_LA = false;
 async function laFlagIncarca(){ if(!sb) return; try{ const { data } = await sb.rpc('eu_test_la'); TEST_LA = data === true; }catch(e){} }
-const LA_MOTIVE = ['Poartă închisă', 'Nu e nimeni pe locație', 'Acces blocat (utilaje / mașini)', 'Drum impracticabil', 'Toaleta negăsită / mutată', 'Câine liber', 'Lucrare oprită'];
+// v52 (cerut de Ovidiu, 21.11): scos „Câine liber”, adăugate alte situații des întâlnite
+const LA_MOTIVE = ['Poartă închisă', 'Nu e nimeni pe locație', 'Acces blocat (utilaje / mașini)', 'Drum impracticabil', 'Toaleta negăsită / mutată', 'Lucrare oprită',
+  'Toaleta încuiată (lacăt)', 'Paza nu permite accesul', 'Zonă de lucru periculoasă', 'Șantier închis (weekend / sărbătoare)'];
+const LA_OBS_IMPLICIT = 'Discutat pe șantier, revin data viitoare.';   // v52: câmpul gol → textul acesta în fișă și în GestiuneEE
 const LA_ZILE = ['DUM.', 'LUN.', 'MAR.', 'MIE.', 'JOI', 'VIN.', 'SÂM.'];
 let LA = null;   // { r, poze:[{blob,url}], motive:Set, fix, ctr, id, linkuri }
 function laDataTxt(d){ return LA_ZILE[d.getDay()] + ' ' + pad2(d.getDate()) + '.' + pad2(d.getMonth() + 1) + '.' + d.getFullYear(); }
 function laOraTxt(d){ return pad2(d.getHours()) + ':' + pad2(d.getMinutes()); }
+// v52 (cerut de Ovidiu, 21.11): dovada e opțională — „Lipsă acces” e deja înregistrat și cardul trecut la final, ca înainte;
+// șoferul alege dacă face și poza. „Nu” = exact ca până acum.
+function laIntreaba(r){
+  let el = document.getElementById('laAsk'); if(el) el.remove();
+  el = document.createElement('div'); el.id = 'laAsk';
+  el.style.cssText = 'position:fixed;inset:0;z-index:9998;background:rgba(10,15,30,.55);display:flex;align-items:flex-end;justify-content:center';
+  el.innerHTML = `<div style="background:#fff;color:#1a2233;width:100%;max-width:520px;border-radius:16px 16px 0 0;padding:16px 16px 22px;box-sizing:border-box;font-size:15px">
+    <div style="font-weight:800;font-size:1.05rem;margin-bottom:4px">⚠️ Lipsă acces — înregistrat</div>
+    <div style="color:#5b6578;font-size:.88rem;margin-bottom:14px">${escapeHtml(r.client || '')}${r.localitate ? ' · ' + escapeHtml(r.localitate) : ''}<br>Faci și dovada cu poză?</div>
+    <div data-laq="da" style="text-align:center;border-radius:12px;padding:14px;font-weight:700;background:#1b2550;color:#fff;cursor:pointer;margin-bottom:10px">📷 Da, fac dovada cu poză</div>
+    <div data-laq="nu" style="text-align:center;border-radius:12px;padding:13px;font-weight:700;border:1px solid #cfd6e2;cursor:pointer">Nu — doar Lipsă acces</div></div>`;
+  el.onclick = e => { const b = e.target.closest('[data-laq]'); if(!b && e.target !== el) return; el.remove(); if(b && b.dataset.laq === 'da') laDeschide(r); };
+  document.body.appendChild(el);
+}
 async function laDeschide(r){
   LA = { r, poze: [], motive: new Set(), fix: null, ctr: null, t: new Date() };
   let el = document.getElementById('laPage'); if(el) el.remove();
@@ -3272,27 +3289,27 @@ function laGpsTxt(){ const f = LA.fix; if(!f) return '📡 caut GPS…'; if(f.er
   return `📡 ${f.lat.toFixed(6)}, ${f.lon.toFixed(6)} · ±${Math.round(f.acc)} m${d != null ? ' · la ' + d + ' m de punct' : ''}`; }
 function laDeseneaza(){
   const el = document.getElementById('laPage'); if(!el || !LA) return; const r = LA.r, c = LA.ctr;
-  const dest = !c ? 'caut agentul contractului…' : !c.contract ? '<span style="color:#9b1c1c">nu găsesc contractul punctului — alegi tu contactul</span>'
-    : `Contract <b>${escapeHtml(c.contract)}</b> → ${c.agent ? '<b>' + escapeHtml(agentScurt(c.agent)) + '</b> · ' : ''}${c.telefon ? '<span style="white-space:nowrap">' + escapeHtml(c.telefon) + '</span>' : '<span style="color:#9b1c1c">fără telefon la depozit</span>'}`;
+  const dest = !c ? 'caut contractul…' : !c.contract ? '<span style="color:#9b1c1c">nu găsesc contractul punctului</span>'
+    : `Contract <b>${escapeHtml(c.contract)}</b>`;   // v52: fără agent / telefon
   const gata = laP1Ok() && LA.ok1 && !LA.merge, n = LA.poze.length;
   if(n && !laP1Ok() && !LA.stErr){ LA.st = '⚠️ Prima poză (P1) trebuie să fie orizontală — șterge-o (✖) și fă alta cu telefonul culcat.'; LA.stErr = true; }
   el.innerHTML = `<div class="la-h"><b>⚠️ Lipsă acces — dovadă</b><span class="la-x" data-la="x">✖</span></div>
   <div class="la-b">
     <div class="la-card"><div style="font-weight:700">${escapeHtml(r.client)}</div><div class="la-mut">${escapeHtml(r.localitate || '')}${r.jud ? ' · ' + escapeHtml(r.jud) : ''}${r.locatie ? ' — ' + escapeHtml(r.locatie) : ''}</div>
       <div class="la-mut" style="margin-top:4px">${laDataTxt(LA.t)}, ora ${laOraTxt(LA.t)} · ${laGpsTxt()}</div>
-      <div style="margin-top:6px;font-size:.88rem">📨 ${dest}</div></div>
+      <div style="margin-top:6px;font-size:.88rem">📄 ${dest}</div></div>
     <div class="la-poze">${LA.poze.map((p, i) => `<div class="${i ? '' : 'p1'}"><img src="${p.url}" alt=""><span data-la="del" data-i="${i}">✖</span><b>P${i + 1}${i ? '' : ' · în fișă'}</b></div>`).join('')}</div>
     ${n < LA_MAX ? `<div class="la-mut" style="margin-bottom:-6px">${n ? '📸 P2–P5 sunt opționale, în orice poziție — nu intră în fișă, rămân ca dovadă în GestiuneEE (le trimite biroul dacă le cere clientul).' : '📸 <b>P1 intră în fișă</b> — ține telefonul <b>CULCAT (orizontal)</b>.'}</div><label class="la-btn cam">📷 ${n ? 'Poză în plus — P' + (n + 1) + ' (opțional, max. ' + LA_MAX + ')' : 'Fă poza P1 (telefon culcat)'}<input type="file" accept="image/*" capture="environment" style="display:none" id="laFile"></label>` : ''}
     <div class="la-card"><div class="la-mut" style="margin-bottom:6px">Motiv (atingi unul sau mai multe)</div><div class="la-chips">${LA_MOTIVE.map(m => `<span class="la-chip ${LA.motive.has(m) ? 'on' : ''}" data-la="mot">${escapeHtml(m)}</span>`).join('')}</div></div>
-    <div class="la-card"><div class="la-mut" style="margin-bottom:6px">Observații</div><textarea id="laObs" placeholder="ex. discutat pe șantier, revin săptămâna viitoare">${escapeHtml(LA.obs || '')}</textarea></div>
-    ${laP1Ok() ? `<div class="la-card"><div class="la-mut" style="margin-bottom:6px">Previzualizare P1 — <b>ce e întunecat se taie</b> din fișă</div><canvas id="laCrop"></canvas>
+    <div class="la-card"><div class="la-mut" style="margin-bottom:6px">Observații</div><textarea id="laObs" placeholder="gol = „${LA_OBS_IMPLICIT}”">${escapeHtml(LA.obs || '')}</textarea></div>
+    ${laP1Ok() ? `<div class="la-card"><div class="la-mut" style="margin-bottom:6px">Previzualizare P1 — <b>ce e întunecat se taie</b> din fișă · <b>↔ trage cu degetul</b> pe poză ca să alegi ce intră</div><canvas id="laCrop" style="width:100%;display:block;border-radius:8px"></canvas>
       <div class="la-mut" style="margin:10px 0 6px">Așa arată fișa trimisă</div><img id="laPrev" alt="" style="width:100%;border-radius:8px;display:block;background:#e5e9f0;min-height:120px"${LA.prevUrl ? ` src="${LA.prevUrl}"` : ''}>
       ${LA.ok1 ? `<div class="la-2" style="align-items:center"><span class="la-ok">✓ P1 acceptată</span><label class="la-btn" style="padding:9px">↺ Refac P1<input type="file" accept="image/*" capture="environment" style="display:none" id="laFile1"></label></div>`
         : `<div class="la-2"><div class="la-btn prim" data-la="ok1">✓ E bună</div><label class="la-btn" style="border-color:#b42318;color:#b42318">↺ Refac P1<input type="file" accept="image/*" capture="environment" style="display:none" id="laFile1"></label></div>`}</div>` : ''}
     ${LA.st ? `<div class="la-st ${LA.stErr ? 'err' : ''}">${LA.st}</div>` : ''}
     <div class="la-btn prim ${gata ? '' : 'dis'}" data-la="pdf">📤 Trimite PDF pe WhatsApp</div>
     ${laP1Ok() && !LA.ok1 ? '<div class="la-mut" style="margin-top:-6px;color:#b42318;font-weight:600">Apasă întâi „✓ E bună” la previzualizarea P1.</div>' : ''}
-    <div class="la-mut" style="margin-top:-4px">Se deschide fereastra de trimitere → alegi <b>WhatsApp</b> → contactul ${c && c.agent ? '<b>' + escapeHtml(agentScurt(c.agent)) + '</b>' : 'agentului'}${c && c.telefon ? ' (' + escapeHtml(c.telefon) + ')' : ''}. Fișa se salvează și în GestiuneEE.</div>
+    <div class="la-mut" style="margin-top:-4px">Se deschide fereastra de trimitere → alegi <b>WhatsApp</b> și contactul. Fișa se salvează și în GestiuneEE.</div>
     <div class="la-btn" data-la="x">${LA.id ? '✔ Gata' : 'Închide fără dovadă'}</div>
     <div class="la-mut">„Lipsă acces” e deja înregistrat la punct. Pozele se pun într-o fișă cu data, ora, GPS-ul, mașina, traseul, clientul și contractul.</div>
   </div>`;
@@ -3331,7 +3348,7 @@ async function laPoza(file, inloc){
     const im = await laIncarcaImg(file), k = Math.min(1, 2048 / Math.max(im.naturalWidth, im.naturalHeight));
     const prima = inloc || !LA.poze.length;
     if(prima && im.naturalHeight >= im.naturalWidth){ LA.st = '⚠️ Poza P1 (cea din fișă) se face cu telefonul <b>CULCAT</b> (orizontal). Întoarce telefonul și refă poza.'; LA.stErr = true; laDeseneaza(); return; }
-    const p = { img: im, k, url: URL.createObjectURL(file), orig: file };
+    const p = { img: im, k, url: URL.createObjectURL(file), orig: file, ox: .5, oy: .5 };   // v52: ox/oy = unde stă cadrul fișei pe poză (0…1)
     if(inloc && LA.poze.length){ URL.revokeObjectURL(LA.poze[0].url); LA.poze[0] = p; } else LA.poze.push(p);
     if(prima) LA.ok1 = false;
     LA.st = prima ? '👀 Verifică mai jos cum intră P1 în fișă, apoi apasă „✓ E bună” sau „↺ Refac P1”.' : ''; LA.stErr = false; laDeseneaza();
@@ -3339,9 +3356,15 @@ async function laPoza(file, inloc){
 }
 function laCropDeseneaza(){   // P1 întreagă; ce iese din cadrul fișei e întunecat
   const cv = document.getElementById('laCrop'); if(!cv || !LA || !LA.poze[0]) return; const im = LA.poze[0].img;
-  const W = 900, H = Math.round(W * im.naturalHeight / im.naturalWidth); cv.width = W; cv.height = H; const g = cv.getContext('2d');
+  const p0 = LA.poze[0], W = 900, H = Math.round(W * im.naturalHeight / im.naturalWidth); cv.width = W; cv.height = H; const g = cv.getContext('2d');
   g.drawImage(im, 0, 0, W, H); const zr = (1280 - 68) / (1080 - 68);   // zona pozei din fișă (laFisa)
-  let cw = W, ch = H; if(W / H > zr) cw = H * zr; else ch = W / zr; const cx = (W - cw) / 2, cy = (H - ch) / 2;
+  let cw = W, ch = H; if(W / H > zr) cw = H * zr; else ch = W / zr; const cx = (W - cw) * (p0.ox ?? .5), cy = (H - ch) * (p0.oy ?? .5);
+  if(!cv._drag){ cv._drag = true; cv.style.touchAction = cw < W ? 'pan-y' : 'pan-x'; let st = null;   // v52 (cerut de Ovidiu, 21.11): cadrul se mută cu degetul
+    cv.addEventListener('pointerdown', e => { const q = LA && LA.poze[0]; if(!q) return; st = { x: e.clientX, y: e.clientY, ox: q.ox ?? .5, oy: q.oy ?? .5 }; try{ cv.setPointerCapture(e.pointerId); }catch(_){} });
+    cv.addEventListener('pointermove', e => { const q = LA && LA.poze[0]; if(!st || !q) return; const k = W / (cv.getBoundingClientRect().width || W);
+      if(W - cw > 1) q.ox = Math.min(1, Math.max(0, st.ox + (e.clientX - st.x) * k / (W - cw)));
+      if(H - ch > 1) q.oy = Math.min(1, Math.max(0, st.oy + (e.clientY - st.y) * k / (H - ch))); laCropDeseneaza(); });
+    const gata = () => { if(!st) return; st = null; laPrevizualizare(); }; cv.addEventListener('pointerup', gata); cv.addEventListener('pointercancel', gata); }
   g.fillStyle = 'rgba(0,0,0,.62)'; g.fillRect(0, 0, W, cy); g.fillRect(0, cy + ch, W, H - cy - ch); g.fillRect(0, cy, cx, ch); g.fillRect(cx + cw, cy, W - cx - cw, ch);
   g.strokeStyle = '#fff'; g.lineWidth = 4; g.strokeRect(cx, cy, cw, ch);
   const pr = Math.round((1 - (cw * ch) / (W * H)) * 100); g.font = '700 26px Roboto, Arial, sans-serif'; const t = pr > 1 ? 'se taie ~' + pr + '%' : 'nu se taie';
@@ -3388,7 +3411,7 @@ async function laFisa(idx){
   // stânga: pozele, pe alb, cu chenar subțire
   if(P.length){
     const im = P[0].img, x = PAD, y = PAD, w = X0 - 2 * PAD, h = H - 2 * PAD, k = Math.max(w / im.naturalWidth, h / im.naturalHeight), sw = w / k, sh = h / k;
-    g.save(); laRR(g, x, y, w, h, 12); g.clip(); g.drawImage(im, (im.naturalWidth - sw) / 2, (im.naturalHeight - sh) / 2, sw, sh, x, y, w, h); g.restore();   // umple cadrul (cover)
+    g.save(); laRR(g, x, y, w, h, 12); g.clip(); g.drawImage(im, (im.naturalWidth - sw) * (P[0].ox ?? .5), (im.naturalHeight - sh) * (P[0].oy ?? .5), sw, sh, x, y, w, h); g.restore();   // umple cadrul (cover); v52: unde a mutat șoferul cadrul
     g.strokeStyle = LIN; g.lineWidth = 2; laRR(g, x, y, w, h, 12); g.stroke();
     if(NP > 1){ const t = 'Poza ' + (idx + 1) + ' din ' + NP; g.font = `800 24px ${F}`; const tw0 = g.measureText(t).width + 32;
       g.fillStyle = 'rgba(255,255,255,.92)'; laRR(g, x + 18, y + 18, tw0, 44, 22); g.fill(); g.strokeStyle = RED; g.lineWidth = 3; laRR(g, x + 18, y + 18, tw0, 44, 22); g.stroke();
@@ -3424,7 +3447,7 @@ async function laFisa(idx){
       g.strokeStyle = RED; g.lineWidth = 2; laRR(g, mx, y, mw, 38, 6); g.stroke(); g.fillStyle = '#b42318'; g.fillText(m, mx + 13, y + 26); mx += mw + 10; }); y += 62; }
   // jos: QR cu locul (Google Maps) + nota; deasupra lui, observațiile
   const QS = 150, yFoot = H - 24 - 56, yQr = yFoot - 18 - QS, areQr = !!(ok && qrLib);
-  const ob = (LA.obs || '').trim(), yMax = (areQr ? yQr : yFoot) - 18;
+  const ob = (LA.obs || '').trim() || LA_OBS_IMPLICIT, yMax = (areQr ? yQr : yFoot) - 18;
   // v51 (cerut de Ovidiu, 20.11): cu 3 motive nu mai era loc deasupra QR-ului și observațiile lipseau din fișă → atunci merg lângă QR (în locul notei „Locul pe hartă”)
   const xQr = X0 + SW - 44 - QS - 6; let obJos = false, bw = tw + 24, yMaxO = yMax;
   if(ob && !(y < yMax - 70) && areQr){ obJos = true; yMaxO = yFoot - 18; bw = xQr - 16 - (tx - 12); }
@@ -3456,7 +3479,14 @@ async function laFisaPdf(jpg){
   d.setProperties({ title: 'Lipsă acces — ' + (LA.r.client || '') + ' — ' + laDataTxt(LA.t) + ' ' + laOraTxt(LA.t), author: 'Euro Ecologic' });
   return d.output('blob');
 }
-function laPozaMica(p){ const W = Math.round(p.img.naturalWidth * p.k), H = Math.round(p.img.naturalHeight * p.k), cv = document.createElement('canvas'); cv.width = W; cv.height = H; cv.getContext('2d').drawImage(p.img, 0, 0, W, H);
+// v52 (cerut de Ovidiu, 21.11): sub fiecare poză (P1…P5) o bandă albă cu numele fișierului (fără .jpg), scris mare —
+// rămâne în poză și pe WhatsApp / e-mail, chiar dacă fișierul se redenumește.
+function laPozaMica(p, nume){ const W = Math.round(p.img.naturalWidth * p.k), H = Math.round(p.img.naturalHeight * p.k), cv = document.createElement('canvas'), F = 'Roboto, Arial, sans-serif';
+  const fs = Math.max(26, Math.round(Math.min(W, H) * 0.032)), pad = Math.round(fs * 0.6), g0 = document.createElement('canvas').getContext('2d'); g0.font = `700 ${fs}px ${F}`;
+  const L = []; let lin = ''; String(nume || '').split('_').forEach((b, i) => { const n = lin ? lin + '_' + b : b; if(lin && g0.measureText(n).width > W - 2 * pad){ L.push(lin + '_'); lin = b; } else lin = n; }); if(lin) L.push(lin);
+  const bh = L.length ? pad * 2 + Math.round(L.length * fs * 1.25) : 0; cv.width = W; cv.height = H + bh; const g = cv.getContext('2d'); g.drawImage(p.img, 0, 0, W, H);
+  if(bh){ g.fillStyle = '#fff'; g.fillRect(0, H, W, bh); g.fillStyle = '#1b2550'; g.fillRect(0, H, W, Math.max(3, Math.round(fs / 10)));
+    g.fillStyle = '#111827'; g.font = `700 ${fs}px ${F}`; g.textBaseline = 'top'; L.forEach((t, j) => g.fillText(t, pad, H + pad + Math.round(j * fs * 1.25))); }
   const jp = q => new Promise(res => cv.toBlob(b => res(b), 'image/jpeg', q)); return jp(0.85).then(b => b && b.size > 1.9 * 1048576 ? jp(0.72) : b); }   // v50: 2048 px, 85% (sub limita de 2 MB)
 // v47 (cerut de Ovidiu, 18.11 10:45): se trimite DOAR PDF-ul (fără mesajul lung cu link). PDF-ul se pregătește odată cu previzualizarea,
 // ca butonul să deschidă imediat fereastra de partajare (Android cere ca ea să pornească direct din apăsare); șoferul alege WhatsApp → contactul agentului.
@@ -3475,13 +3505,13 @@ async function laSalveaza(fisa){   // fișa (PDF sau JPEG) + pozele simple în s
   const r = LA.r, f = LA.fix, d = LA.t, c = LA.ctr || {}, cale = [];
   const baza = d.getFullYear() + '/' + pad2(d.getMonth() + 1) + '/' + laNumeBaza() + '_' + Math.random().toString(36).slice(2, 7);
   const fis = [[baza + (fisa.type === 'application/pdf' ? '_fisa.pdf' : '_fisa.jpg'), fisa]];
-  for(let i = 0; i < LA.poze.length; i++) fis.push([baza + '_P' + (i + 1) + '.jpg', await laPozaMica(LA.poze[i])]);
+  for(let i = 0; i < LA.poze.length; i++) fis.push([baza + '_P' + (i + 1) + '.jpg', await laPozaMica(LA.poze[i], laNumeBaza() + '_P' + (i + 1))]);
   for(const [pth, b] of fis){ const up = await sb.storage.from('lipsa-acces').upload(pth, b, { contentType: pth.endsWith('.pdf') ? 'application/pdf' : 'image/jpeg', upsert: false }); if(up.error) throw up.error; cale.push(pth); }
   const rand = { session_id: currentSessionId || null, client_key: r.clientKey || null, client: r.client || null, jud: r.jud || null, localitate: r.localitate || null, locatie: r.locatie || null,
     sofer: dayStart.driver1 || null, sofer2: dayStart.driver2 || null, masina: dayStart.plate || null, traseu: r.masina || null, ziua: r.ziua || null,
     lat: f && !f.err ? f.lat : null, lon: f && !f.err ? f.lon : null, gps_acc: f && !f.err ? Math.round(f.acc * 10) / 10 : null,
     dist_m: f && !f.err && r.lat && r.lon ? Math.round(gpsDistM(f, { lat: +r.lat, lon: +r.lon })) : null,
-    motive: [...LA.motive], observatii: (LA.obs || '').trim() || null, contract: c.contract || null, depozit: c.depozit || null, agent: c.agent || null, telefon: c.telefon || null,
+    motive: [...LA.motive], observatii: (LA.obs || '').trim() || LA_OBS_IMPLICIT, contract: c.contract || null, depozit: c.depozit || null, agent: c.agent || null, telefon: c.telefon || null,
     poze: cale, whatsapp_la: new Date().toISOString() };
   const ins = await sb.from('lipsa_acces').insert(rand).select('id').single(); if(ins.error) throw ins.error;
   return ins.data.id;
@@ -3506,8 +3536,9 @@ async function laTrimitePdf(){
 }
 function agentScurt(n){ const p = String(n || '').trim().split(/\s+/).filter(Boolean); return p.length > 1 ? p[0][0] + '. ' + p.slice(1).join(' ') : p.join(' '); }
 function ctrTagHtml(r){ const k = r.clientKey && CTR[r.clientKey]; if(!k || !k.contract) return '';
-  return `<span class="ctr-tag${k.telefon || k.agent ? ' tel' : ''}" data-ctr="${escapeHtml(r.clientKey)}">CTR. ${escapeHtml(k.contract)}</span>`; }   // v48b: doar contractul, fără DEP. (cerut 18.11)
-function ctrPopHtml(r){ const k = r.clientKey && CTR[r.clientKey]; if(!k || !k.contract || !(k.telefon || k.agent)) return '';   // v48: agentul + telefonul doar cu bifa
+  return `<span class="ctr-tag" data-ctr="${escapeHtml(r.clientKey)}">CTR. ${escapeHtml(k.contract)}</span>`; }   // v48b: doar contractul, fără DEP. (cerut 18.11)
+function ctrPopHtml(r){ return '';   // v52 (cerut de Ovidiu, 21.11): scos agentul + telefonul (rămâne doar CTR. pe card)
+  const k = r.clientKey && CTR[r.clientKey]; if(!k || !k.contract || !(k.telefon || k.agent)) return '';   // v48: agentul + telefonul doar cu bifa
   const tel = String(k.telefon || '').trim();
   return `<div class="ctr-pop">Contract <b>${escapeHtml(k.contract)}</b>${k.agent ? ` · agent <b>${escapeHtml(agentScurt(k.agent))}</b>` : ''}<br>${tel ? `<a href="${telUrl(tel)}">📞 ${escapeHtml(tel)}</a>` : '<span style="opacity:.7">fără telefon trecut la depozit</span>'}</div>`; }
 function qtyLabel(r){
