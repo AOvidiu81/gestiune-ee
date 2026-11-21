@@ -1115,7 +1115,7 @@ let dayStart = {}; // {brand, plate, kmStart, driver1, driver2, startTime}
 let lastRouteRows = [];
 
 // --- Șofer EE: aplicatia ruleaza in fila „Rută” (../sofer/), care trimite datele zilei ---
-const EE_RUTA_VERSION = 'v53'; // aceeasi cu VERSIUNE din sw.js; Șofer EE o arata langa rotita
+const EE_RUTA_VERSION = 'v54'; // aceeasi cu VERSIUNE din sw.js; Șofer EE o arata langa rotita
 const SOFER_MODE = new URLSearchParams(location.search).get('sofer') === '1';
 let multiZile = null;   // mai multe zile bifate (ruta complementara), altfel null
 let multiTrasee = null; // mai multe trasee bifate, altfel null
@@ -2213,7 +2213,7 @@ async function loadClientsFromSupabase(){
     DATA.length = 0; DATA.push(...newData);
     assignIds(DATA);
     rebuildDataById();
-    ctrIncarca(); laFlagIncarca();   // v44 / v45
+    ctrIncarca(); laFlagIncarca(); laQProceseaza();   // v44 / v45 / v53: dovezile rămase pe telefon pleacă la pornire
     return true;
   }catch(err){
     console.error('Eroare la încărcarea clienților din Supabase:', err);
@@ -3310,7 +3310,7 @@ function laDeseneaza(){
     <div class="la-btn prim ${gata ? '' : 'dis'}" data-la="pdf">📤 Trimite PDF pe WhatsApp</div>
     ${laP1Ok() && !LA.ok1 ? '<div class="la-mut" style="margin-top:-6px;color:#b42318;font-weight:600">Apasă întâi „✓ E bună” la previzualizarea P1.</div>' : ''}
     <div class="la-mut" style="margin-top:-4px">Se deschide fereastra de trimitere → alegi <b>WhatsApp</b> și contactul. Fișa se salvează și în GestiuneEE.</div>
-    <div class="la-btn" data-la="x">${LA.id ? '✔ Gata' : 'Închide fără dovadă'}</div>
+    <div class="la-btn" data-la="x">${LA.id || LA.inCoada ? '✔ Gata' : 'Închide fără dovadă'}</div>
     <div class="la-mut">„Lipsă acces” e deja înregistrat la punct. Pozele se pun într-o fișă cu data, ora, GPS-ul, mașina, traseul, clientul și contractul.</div>
   </div>`;
   const fi = document.getElementById('laFile'); if(fi) fi.onchange = () => { const f = fi.files && fi.files[0]; if(f) laPoza(f); };
@@ -3321,7 +3321,7 @@ function laDeseneaza(){
 }
 document.addEventListener('click', e => {
   const t = e.target.closest('#laPage [data-la]'); if(!t || !LA) return; const a = t.dataset.la;
-  if(a === 'x'){ if(!LA.id && LA.poze.length && !confirm('Închizi fără să salvezi poza?')) return; laInchide(); }
+  if(a === 'x'){ if(!LA.id && !LA.inCoada && LA.poze.length && !confirm('Închizi fără să salvezi poza?')) return; laInchide(); }
   else if(a === 'del'){ const i = +t.dataset.i, p = LA.poze.splice(i, 1)[0]; if(p) URL.revokeObjectURL(p.url); if(i === 0){ LA.ok1 = false; LA.st = ''; LA.stErr = false; } laDeseneaza(); }
   else if(a === 'ok1'){ LA.ok1 = true; LA.st = ''; LA.stErr = false; laDeseneaza(); }
   else if(a === 'mot'){ const m = t.textContent; LA.motive.has(m) ? LA.motive.delete(m) : LA.motive.add(m); laDeseneaza(); }
@@ -3501,20 +3501,53 @@ const laCurat = (x, m) => String(x || '').normalize('NFD').replace(/[\u0300-\u03
 function laNumeBaza(){ const r = LA.r, d = LA.t;
   return ['LIPSA-ACCES', laCurat(r.client, 30) || 'PUNCT', laCurat(r.localitate, 20), laCurat(r.locatie, 40), d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate()), pad2(d.getHours()) + pad2(d.getMinutes())].filter(Boolean).join('_'); }
 function laNumeFisier(){ return laNumeBaza() + '_FISA'; }
-async function laSalveaza(fisa){   // fișa (PDF sau JPEG) + pozele simple în stocare, rândul în lipsa_acces
-  const r = LA.r, f = LA.fix, d = LA.t, c = LA.ctr || {}, cale = [];
-  const baza = d.getFullYear() + '/' + pad2(d.getMonth() + 1) + '/' + laNumeBaza() + '_' + Math.random().toString(36).slice(2, 7);
+// v53 (cerut de Ovidiu, 21.11): COADA OFFLINE pentru dovadă. Fișa + pozele + rândul se pun ÎNTÂI pe telefon (IndexedDB „ruta-la”),
+// apoi se trimit. Fără semnal rămân acolo și pleacă singure: la revenirea internetului, la deschiderea aplicației și la fiecare 3 minute.
+// uid unic (coloana lipsa_acces.uid) → o reîncercare după o trimitere „pe jumătate” nu face dubluri; creat = ora din fișă, nu ora trimiterii.
+function laQDb(){ return new Promise((ok, no) => { const q = indexedDB.open('ruta-la', 1); q.onupgradeneeded = () => q.result.createObjectStore('q', { keyPath: 'uid' }); q.onsuccess = () => ok(q.result); q.onerror = () => no(q.error); }); }
+async function laQOp(mod, fn){ const d = await laQDb(); return new Promise((ok, no) => { const t = d.transaction('q', mod), st = t.objectStore('q'); let r; const q = fn(st); if(q) q.onsuccess = () => { r = q.result; }; t.oncomplete = () => ok(r); t.onerror = () => no(t.error); }); }
+const laQPune = it => laQOp('readwrite', st => st.put(it)), laQScoate = uid => laQOp('readwrite', st => st.delete(uid)), laQToate = () => laQOp('readonly', st => st.getAll());
+async function laQTrimite(it){   // urcă fișierele + rândul; ce există deja (reîncercare) se sare
+  for(const [pth, b] of it.fis){ const up = await sb.storage.from('lipsa-acces').upload(pth, b, { contentType: pth.endsWith('.pdf') ? 'application/pdf' : 'image/jpeg', upsert: false });
+    if(up.error && !/exist|duplicate|409/i.test((up.error.message || '') + ' ' + (up.error.statusCode || ''))) throw up.error; }
+  const ins = await sb.from('lipsa_acces').insert(it.rand).select('id').single();
+  if(!ins.error) return ins.data.id;
+  if(ins.error.code === '23505'){ const { data } = await sb.from('lipsa_acces').select('id').eq('uid', it.rand.uid).maybeSingle(); if(data) return data.id; }
+  throw ins.error;
+}
+let laQMerge = false;
+async function laQProceseaza(){
+  if(laQMerge || !sb || !window.indexedDB) return; laQMerge = true;
+  try{ const L = (await laQToate()) || [];
+    for(const it of L){ if(LA && LA.uid === it.uid && LA.inLucru) continue;
+      try{ const id = await laQTrimite(it); await laQScoate(it.uid); if(LA && LA.uid === it.uid){ LA.id = id; LA.inCoada = false; LA.st = '✅ Salvat în GestiuneEE.'; LA.stErr = false; laDeseneaza(); } }
+      catch(e){ break; } } }   // fără semnal — se reîncearcă mai târziu
+  catch(e){} finally{ laQMerge = false; laQBadge(); }
+}
+async function laQBadge(){ let n = 0; try{ n = ((await laQToate()) || []).length; }catch(e){}
+  let el = document.getElementById('laQBadge');
+  if(!n){ if(el) el.remove(); return; }
+  if(!el){ el = document.createElement('div'); el.id = 'laQBadge'; el.style.cssText = 'position:fixed;left:10px;bottom:10px;z-index:9000;background:#fff7ed;color:#9a3412;border:1px solid #fdba74;border-radius:12px;padding:6px 11px;font-size:.78rem;font-weight:700;box-shadow:0 2px 8px rgba(0,0,0,.15)'; document.body.appendChild(el); }
+  el.textContent = '📦 ' + n + (n === 1 ? ' dovadă Lipsă acces' : ' dovezi Lipsă acces') + ' în așteptare — pleacă singur' + (n === 1 ? 'ă' : 'e') + ' când ai semnal';
+}
+window.addEventListener('online', () => setTimeout(laQProceseaza, 1500));
+setInterval(laQProceseaza, 180000);
+async function laSalveaza(fisa){   // pregătește tot pe telefon → coadă → încearcă trimiterea; întoarce id-ul sau null (rămas în coadă)
+  const r = LA.r, f = LA.fix, d = LA.t, c = LA.ctr || {};
+  const uid = LA.uid || (LA.uid = Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 10));
+  const baza = d.getFullYear() + '/' + pad2(d.getMonth() + 1) + '/' + laNumeBaza() + '_' + uid.slice(-5);
   const fis = [[baza + (fisa.type === 'application/pdf' ? '_fisa.pdf' : '_fisa.jpg'), fisa]];
   for(let i = 0; i < LA.poze.length; i++) fis.push([baza + '_P' + (i + 1) + '.jpg', await laPozaMica(LA.poze[i], laNumeBaza() + '_P' + (i + 1))]);
-  for(const [pth, b] of fis){ const up = await sb.storage.from('lipsa-acces').upload(pth, b, { contentType: pth.endsWith('.pdf') ? 'application/pdf' : 'image/jpeg', upsert: false }); if(up.error) throw up.error; cale.push(pth); }
-  const rand = { session_id: currentSessionId || null, client_key: r.clientKey || null, client: r.client || null, jud: r.jud || null, localitate: r.localitate || null, locatie: r.locatie || null,
+  const rand = { uid, creat: d.toISOString(), session_id: currentSessionId || null, client_key: r.clientKey || null, client: r.client || null, jud: r.jud || null, localitate: r.localitate || null, locatie: r.locatie || null,
     sofer: dayStart.driver1 || null, sofer2: dayStart.driver2 || null, masina: dayStart.plate || null, traseu: r.masina || null, ziua: r.ziua || null,
     lat: f && !f.err ? f.lat : null, lon: f && !f.err ? f.lon : null, gps_acc: f && !f.err ? Math.round(f.acc * 10) / 10 : null,
     dist_m: f && !f.err && r.lat && r.lon ? Math.round(gpsDistM(f, { lat: +r.lat, lon: +r.lon })) : null,
-    motive: [...LA.motive], observatii: (LA.obs || '').trim() || LA_OBS_IMPLICIT, contract: c.contract || null, depozit: c.depozit || null, agent: c.agent || null, telefon: c.telefon || null,
-    poze: cale, whatsapp_la: new Date().toISOString() };
-  const ins = await sb.from('lipsa_acces').insert(rand).select('id').single(); if(ins.error) throw ins.error;
-  return ins.data.id;
+    motive: [...LA.motive], observatii: (LA.obs || '').trim() || LA_OBS_IMPLICIT, contract: c.contract || null, depozit: c.depozit || null, agent: null, telefon: null,
+    poze: fis.map(x => x[0]), whatsapp_la: new Date().toISOString() };
+  const it = { uid, rand, fis, pus: Date.now() };
+  let inCoada = false; try{ if(window.indexedDB){ await laQPune(it); inCoada = true; } }catch(e){}
+  try{ const id = await laQTrimite(it); if(inCoada) try{ await laQScoate(uid); }catch(e){} laQBadge(); return id; }
+  catch(e){ if(!inCoada) throw e; laQBadge(); return null; }   // fără semnal → rămâne pe telefon
 }
 async function laTrimitePdf(){
   if(!LA || !laP1Ok() || !LA.ok1 || LA.merge) return;
@@ -3523,8 +3556,11 @@ async function laTrimitePdf(){
   if(!fisa){ intarziat = true; const jpg = await laFisa(); fisa = (await laFisaPdf(jpg)) || jpg; LA.pdf = fisa; LA.pdfVer = LA.ver; }
   const pdf = fisa.type === 'application/pdf', file = new File([fisa], laNumeFisier() + (pdf ? '.pdf' : '.jpg'), { type: fisa.type });
   if(!LA.id && !LA.salvare && sb){   // salvarea pornește odată cu partajarea, nu o așteaptă
-    LA.salvare = laSalveaza(fisa).then(id => { LA.id = id; LA.st = '✅ Salvat în GestiuneEE.' + (LA.trimis ? ' PDF-ul a plecat.' : ''); LA.stErr = false; laDeseneaza(); })
-      .catch(e => { LA.salvare = null; LA.st = '⚠️ Nu s-a salvat în GestiuneEE (' + escapeHtml(e.message || 'fără semnal') + ') — apasă din nou când ai semnal.'; LA.stErr = true; laDeseneaza(); });
+    const la = LA; la.inLucru = true;
+    LA.salvare = laSalveaza(fisa).then(id => { la.inLucru = false; if(id){ la.id = id; la.inCoada = false; la.st = '✅ Salvat în GestiuneEE.' + (la.trimis ? ' PDF-ul a plecat.' : ''); }
+        else { la.inCoada = true; la.st = '📦 Fără semnal — dovada e salvată pe telefon și pleacă singură în GestiuneEE când ai semnal. Poți apăsa „Gata”.'; }
+        la.stErr = false; if(LA === la) laDeseneaza(); })
+      .catch(e => { la.inLucru = false; if(LA !== la) return; LA.salvare = null; LA.st = '⚠️ Nu s-a salvat în GestiuneEE (' + escapeHtml(e.message || 'fără semnal') + ') — apasă din nou când ai semnal.'; LA.stErr = true; laDeseneaza(); });
   }
   if(navigator.canShare && navigator.canShare({ files: [file] })){
     try{ await navigator.share({ files: [file], title: 'Lipsă acces — ' + (LA.r.client || '') }); LA.trimis = true; if(LA.id){ LA.st = '✅ Salvat în GestiuneEE. PDF-ul a plecat.'; LA.stErr = false; laDeseneaza(); } }
