@@ -1115,7 +1115,7 @@ let dayStart = {}; // {brand, plate, kmStart, driver1, driver2, startTime}
 let lastRouteRows = [];
 
 // --- Șofer EE: aplicatia ruleaza in fila „Rută” (../sofer/), care trimite datele zilei ---
-const EE_RUTA_VERSION = 'v52'; // aceeasi cu VERSIUNE din sw.js; Șofer EE o arata langa rotita
+const EE_RUTA_VERSION = 'v53'; // aceeasi cu VERSIUNE din sw.js; Șofer EE o arata langa rotita
 const SOFER_MODE = new URLSearchParams(location.search).get('sofer') === '1';
 let multiZile = null;   // mai multe zile bifate (ruta complementara), altfel null
 let multiTrasee = null; // mai multe trasee bifate, altfel null
@@ -3496,10 +3496,10 @@ function laPrevizualizare(){ if(!LA) return; LA.ver = (LA.ver || 0) + 1; const v
   const jpg = await laFisa(); if(!LA || LA.ver !== v) return;
   if(LA.prevUrl) URL.revokeObjectURL(LA.prevUrl); LA.prevUrl = URL.createObjectURL(jpg); const im = document.getElementById('laPrev'); if(im) im.src = LA.prevUrl;
   const pdf = await laFisaPdf(jpg); if(LA && LA.ver === v){ LA.pdf = pdf; LA.pdfVer = v; } }, 350); }
-// v50: același nume ca în GestiuneEE — LA_CLIENT_LOCALITATE_LOCATIE_2026-11-18_1119 (+ _FISA / _P1…P5)
+// v53 (cerut de Ovidiu, 21.11): „LIPSA-ACCES” în loc de „LA” la începutul numelui. v50: același nume ca în GestiuneEE — LA_CLIENT_LOCALITATE_LOCATIE_2026-11-18_1119 (+ _FISA / _P1…P5)
 const laCurat = (x, m) => String(x || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase().replace(/[^A-Z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, m);
 function laNumeBaza(){ const r = LA.r, d = LA.t;
-  return ['LA', laCurat(r.client, 30) || 'PUNCT', laCurat(r.localitate, 20), laCurat(r.locatie, 40), d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate()), pad2(d.getHours()) + pad2(d.getMinutes())].filter(Boolean).join('_'); }
+  return ['LIPSA-ACCES', laCurat(r.client, 30) || 'PUNCT', laCurat(r.localitate, 20), laCurat(r.locatie, 40), d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate()), pad2(d.getHours()) + pad2(d.getMinutes())].filter(Boolean).join('_'); }
 function laNumeFisier(){ return laNumeBaza() + '_FISA'; }
 async function laSalveaza(fisa){   // fișa (PDF sau JPEG) + pozele simple în stocare, rândul în lipsa_acces
   const r = LA.r, f = LA.fix, d = LA.t, c = LA.ctr || {}, cale = [];
