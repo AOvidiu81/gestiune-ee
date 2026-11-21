@@ -1116,7 +1116,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
   <span id="rz-w"><button id="rz-reset" class="pictograma" title="Lățimi implicite — pune coloanele din tabelele acestei file înapoi cum erau">↺ Reset layout</button><i class="rz-sep">|</i></span>
   <span id="tz-w" title="Mărimea tabelului (doar tabelul, restul rămâne la fel), din 5 în 5%. Merge și cu Ctrl + rotița mausului, Ctrl + / Ctrl − / Ctrl 0. Dublu clic pe procent = scrii tu valoarea."><button class="pictograma" onclick="tzPas(-1)" aria-label="Micșorează tabelul">−</button><b id="tz-v" ondblclick="tzScrie()" title="Dublu clic = scrii mărimea (ex. 87), Enter">100%</b><input id="tz-in" type="number" min="30" max="300" step="5" style="display:none"><button class="pictograma" onclick="tzPas(1)" aria-label="Mărește tabelul">+</button></span>
-  <span class="ver">v9.84</span>
+  <span class="ver">v9.85</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -12429,9 +12429,39 @@ async function exportFactTrimis(){
   document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(url), 4000);
   return true;
 }
+// v9.85 (găsit de Ovidiu, 21.11): „Export Excel” scotea tabelul simplu (fără formatare) — la Raport lună ia acum Excel-ul formatat
+// (același ca „📊 Excel + Word”, fără Word), iar celelalte rapoarte ies aranjate: antet bleumarin, Arial 12, chenare, lățimi, antet înghețat, filtre.
+async function exportRaportFormatat(){
+  let EJ; try{ EJ = await expLib("exceljs"); }catch(e){ return false; }
+  const fAcc = (R_NUME === "Facturare" || R_NUME === "Raport_luna") && R_ACC.length === R_RANDURI.length;
+  const ant = fAcc ? R_ANTET.concat(["ACCESORII"]) : R_ANTET.slice(), rand = fAcc ? R_RANDURI.map((f, j) => f.concat([R_ACC[j] || ""])) : R_RANDURI;
+  const O = 2, H = 4, n = ant.length, NAVY = "FF17275A", GRI = "FFC9D3E8";
+  const wb = new EJ.Workbook(); wb.creator = "GestiuneEE";
+  const ws = wb.addWorksheet(R_NUME.replace(/_/g, " ").slice(0, 28), { views: [{ state: "frozen", ySplit: H, zoomScale: 90 }],
+    pageSetup: { paperSize: 9, orientation: "landscape", fitToPage: true, fitToWidth: 1, fitToHeight: 0, printTitlesRow: `${H}:${H}`, margins: { left: .3, right: .3, top: .4, bottom: .4, header: .2, footer: .2 } } });
+  ws.getColumn(1).width = 3;
+  const t = ws.getCell(2, O); t.value = R_NUME.replace(/_/g, " ").toUpperCase() + " — " + zi2(+$("r-luna").value) + "." + $("r-an").value; t.font = { name: "Arial", size: 14, bold: true, color: { argb: NAVY } };
+  const bord = { top: { style: "thin", color: { argb: GRI } }, left: { style: "thin", color: { argb: GRI } }, bottom: { style: "thin", color: { argb: GRI } }, right: { style: "thin", color: { argb: GRI } } };
+  ant.forEach((h, c) => { const x = ws.getCell(H, O + c); x.value = h; x.font = { name: "Arial", size: 12, bold: true, color: { argb: "FFFFFFFF" } };
+    x.fill = { type: "pattern", pattern: "solid", fgColor: { argb: NAVY } }; x.alignment = { horizontal: "center", vertical: "middle", wrapText: true }; x.border = bord; });
+  ws.getRow(H).height = 32;
+  rand.forEach((f, r) => { const row = ws.getRow(H + 1 + r);
+    f.forEach((v, c) => { const x = row.getCell(O + c); x.value = v === undefined ? null : v; x.font = { name: "Arial", size: 12 }; x.border = bord;
+      x.alignment = { vertical: "middle", horizontal: typeof v === "number" ? "right" : "left" };
+      if(typeof v === "number" && R_FMT2.has(c)) x.numFmt = "0.00";
+      if(r % 2) x.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFF4F6FB" } }; }); });
+  ant.forEach((h, c) => { let w = String(h).length + 2; rand.forEach(f => { const v = f[c]; if(v != null) w = Math.max(w, String(v).length + 2); });
+    ws.getColumn(O + c).width = Math.min(Math.max(w * 1.1, 7), 60); });
+  ws.autoFilter = { from: { row: H, column: O }, to: { row: H + rand.length, column: O + n - 1 } };
+  const buf = await wb.xlsx.writeBuffer();
+  expDescarca(new Blob([buf], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" }), `${R_NUME}_${$("r-an").value}-${zi2(+$("r-luna").value)}.xlsx`);
+  return true;
+}
 async function exportRaport(){
   if(!R_RANDURI.length){ toast("Nu e nimic de exportat", true); return; }
   if(R_NUME === "Facturare_de_trimis" && await exportFactTrimis()) return;   // v7.83
+  if(R_NUME === "Raport_luna" && $("r-tip").value === "luna") return exportLunaComplet("excel");   // v9.85: Excel-ul formatat
+  try{ if(await exportRaportFormatat()) return; }catch(e){ console.warn("export formatat:", e); }   // v9.85; dacă nu merge → simplu, ca înainte
   const fAcc = (R_NUME === "Facturare" || R_NUME === "Raport_luna") && R_ACC.length === R_RANDURI.length;   // v6.89: accesoriile ca ultimă coloană (doar „În lucru”)
   const ws = XLSX.utils.aoa_to_sheet(fAcc ? [R_ANTET.concat(["ACCESORII"]), ...R_RANDURI.map((f, j) => f.concat([R_ACC[j] || ""]))] : [R_ANTET, ...R_RANDURI]);
   // coloanele cu două zecimale (prețul 10.00) rămân numere în Excel, doar afișate cu două zecimale
@@ -20111,6 +20141,9 @@ async function expWord(D, an, luna, lunaT, sufix){
     // v7.46: comanda cu mai multe produse (grup, ex. DRAMIROM 155–158) — toate produsele, fiecare cu accesoriile lui
     const ext = m.grup_id === m.id ? lun.filter(x => x.grup_id === m.id && x.id !== m.id).sort((x, y) => x.id - y.id) : [];
     [m, ...ext].forEach(x => prodL(x).split("\n").forEach(l => L.push(l)));
+    // v9.85 (cerut de Ovidiu, 21.11): la TRANSFER doar produsele, „TRANSFER DIN → ÎN” și șoferul cu telefonul — fără NUME CLIENT / CTR. / DEP.
+    if(/^Transfer/i.test(m.tip_miscare || "")){ L.push("   *" + ((m.client || "").trim() || "TRANSFER") + "*");
+      const st = [m.pers_resp && "Sofer  :  " + m.pers_resp, m.telefon && "TEL.  :  " + m.telefon].filter(Boolean).join(sp); if(st) L.push(st); return L; }
     L.push("  NUME CLIENT:  *" + ((m.client || "").trim() || "—") + "*");
     const loc = (j, l, s, p, t) => [j && "JUD.  : " + j, l && "LOC.  : " + l, s, p && "PERS. RES.  :  " + p, t && "TEL.  :  " + t].filter(Boolean).join(sp);
     const ls = Array.isArray(m.locatii) && m.locatii.length > 1 ? m.locatii.filter(l => !(l.sv && l.stare === "N")) : null;
