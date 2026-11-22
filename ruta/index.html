@@ -1115,7 +1115,7 @@ let dayStart = {}; // {brand, plate, kmStart, driver1, driver2, startTime}
 let lastRouteRows = [];
 
 // --- Șofer EE: aplicatia ruleaza in fila „Rută” (../sofer/), care trimite datele zilei ---
-const EE_RUTA_VERSION = 'v54'; // aceeasi cu VERSIUNE din sw.js; Șofer EE o arata langa rotita
+const EE_RUTA_VERSION = 'v55'; // aceeasi cu VERSIUNE din sw.js; Șofer EE o arata langa rotita
 const SOFER_MODE = new URLSearchParams(location.search).get('sofer') === '1';
 let multiZile = null;   // mai multe zile bifate (ruta complementara), altfel null
 let multiTrasee = null; // mai multe trasee bifate, altfel null
@@ -3259,6 +3259,7 @@ const LA_MOTIVE = ['Poartă închisă', 'Nu e nimeni pe locație', 'Acces blocat
   'Toaleta încuiată (lacăt)', 'Paza nu permite accesul', 'Zonă de lucru periculoasă', 'Șantier închis (weekend / sărbătoare)'];
 const LA_OBS_IMPLICIT = 'Discutat pe șantier, revin data viitoare.';   // v52: câmpul gol → textul acesta în fișă și în GestiuneEE
 const LA_ZILE = ['DUM.', 'LUN.', 'MAR.', 'MIE.', 'JOI', 'VIN.', 'SÂM.'];
+const LA_ZI_BAZA = ['Duminica', 'Luni', 'Marti', 'Miercuri', 'Joi', 'Vineri', 'Sambata'];   // v55: ziua reală în lipsa_acces.ziua (format ca la clients.ziua)
 let LA = null;   // { r, poze:[{blob,url}], motive:Set, fix, ctr, id, linkuri }
 function laDataTxt(d){ return LA_ZILE[d.getDay()] + ' ' + pad2(d.getDate()) + '.' + pad2(d.getMonth() + 1) + '.' + d.getFullYear(); }
 function laOraTxt(d){ return pad2(d.getHours()) + ':' + pad2(d.getMinutes()); }
@@ -3434,7 +3435,7 @@ async function laFisa(idx){
   g.fillStyle = '#5b6578'; g.font = `500 22px ${F}`; laRupe(g, (r.localitate || '') + (r.jud ? ' · ' + r.jud : '') + (r.locatie ? ' — ' + r.locatie : ''), tw).slice(0, 2).forEach(t => { g.fillText(t, tx, y); y += 28; });
   y += 10;
   const rows = [['GPS', ok ? f.lat.toFixed(5) + ', ' + f.lon.toFixed(5) + '  ±' + Math.round(f.acc) + ' m' : 'indisponibil'], ['DE LA PUNCT', dist != null ? dist + ' m' : '—'],
-    ['MAȘINA', [dayStart.plate, r.masina, r.ziua].filter(Boolean).join(' · ') || '—'], ['ȘOFER', [dayStart.driver1, dayStart.driver2].filter(Boolean).join(' + ') || '—'], ['CONTRACT', c.contract || '—']];
+    ['MAȘINA', [dayStart.plate, r.masina, DAY_NAMES_RO[LA.t.getDay()]].filter(Boolean).join(' · ') || '—']   /* v55: ziua reală, nu a rutei */, ['ȘOFER', [dayStart.driver1, dayStart.driver2].filter(Boolean).join(' + ') || '—'], ['CONTRACT', c.contract || '—']];
   LA._zone = [];
   rows.forEach(([et, v]) => { if(et === 'GPS' && ok) LA._zone.push([tx - 8, y, tw + 16, 44]); g.fillStyle = LIN; g.fillRect(tx, y + 43, tw, 1);
     g.fillStyle = MUT; g.font = `700 16px ${F}`; g.fillText(et, tx, y + 28);
@@ -3539,7 +3540,7 @@ async function laSalveaza(fisa){   // pregătește tot pe telefon → coadă →
   const fis = [[baza + (fisa.type === 'application/pdf' ? '_fisa.pdf' : '_fisa.jpg'), fisa]];
   for(let i = 0; i < LA.poze.length; i++) fis.push([baza + '_P' + (i + 1) + '.jpg', await laPozaMica(LA.poze[i], laNumeBaza() + '_P' + (i + 1))]);
   const rand = { uid, creat: d.toISOString(), session_id: currentSessionId || null, client_key: r.clientKey || null, client: r.client || null, jud: r.jud || null, localitate: r.localitate || null, locatie: r.locatie || null,
-    sofer: dayStart.driver1 || null, sofer2: dayStart.driver2 || null, masina: dayStart.plate || null, traseu: r.masina || null, ziua: r.ziua || null,
+    sofer: dayStart.driver1 || null, sofer2: dayStart.driver2 || null, masina: dayStart.plate || null, traseu: r.masina || null, ziua: LA_ZI_BAZA[d.getDay()],   /* v55: ziua reală din fișă */
     lat: f && !f.err ? f.lat : null, lon: f && !f.err ? f.lon : null, gps_acc: f && !f.err ? Math.round(f.acc * 10) / 10 : null,
     dist_m: f && !f.err && r.lat && r.lon ? Math.round(gpsDistM(f, { lat: +r.lat, lon: +r.lon })) : null,
     motive: [...LA.motive], observatii: (LA.obs || '').trim() || LA_OBS_IMPLICIT, contract: c.contract || null, depozit: c.depozit || null, agent: null, telefon: null,

@@ -1116,7 +1116,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
   <span id="rz-w"><button id="rz-reset" class="pictograma" title="Lățimi implicite — pune coloanele din tabelele acestei file înapoi cum erau">↺ Reset layout</button><i class="rz-sep">|</i></span>
   <span id="tz-w" title="Mărimea tabelului (doar tabelul, restul rămâne la fel), din 5 în 5%. Merge și cu Ctrl + rotița mausului, Ctrl + / Ctrl − / Ctrl 0. Dublu clic pe procent = scrii tu valoarea."><button class="pictograma" onclick="tzPas(-1)" aria-label="Micșorează tabelul">−</button><b id="tz-v" ondblclick="tzScrie()" title="Dublu clic = scrii mărimea (ex. 87), Enter">100%</b><input id="tz-in" type="number" min="30" max="300" step="5" style="display:none"><button class="pictograma" onclick="tzPas(1)" aria-label="Mărește tabelul">+</button></span>
-  <span class="ver">v9.85</span>
+  <span class="ver">v9.86</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -2977,7 +2977,7 @@ function lagRender(){
     L.map(r => { const t = lagZiOra(r.creat), nf = (r.poze || []).length, ar = !!r.arhivat_la;
       return `<tr><td style="white-space:nowrap">${t.zi}</td><td>${t.ora}</td>
         <td><b>${esc(r.client || "")}</b><div class="muted" style="font-size:12px">${esc([r.localitate, r.jud].filter(Boolean).join(" · "))}${r.locatie ? " — " + esc(r.locatie) : ""}</div></td>
-        <td>${esc(r.sofer || "")}${r.sofer2 ? " + " + esc(r.sofer2) : ""}<div class="muted" style="font-size:12px">${esc([r.masina, r.traseu, r.ziua].filter(Boolean).join(" · "))}</div></td>
+        <td>${esc(r.sofer || "")}${r.sofer2 ? " + " + esc(r.sofer2) : ""}<div class="muted" style="font-size:12px">${esc([r.masina, r.traseu, laZiReala(r)].filter(Boolean).join(" · "))}</div></td>
         <td>${esc(r.contract || "—")}</td><td style="color:#b42318;font-size:13px">${esc((r.motive || []).join(", ") || "—")}</td>
         <td style="font-size:13px;max-width:260px">${esc(r.observatii || "")}</td>
         <td style="white-space:nowrap">${r.lat != null ? `<a href="https://maps.google.com/?q=${r.lat},${r.lon}" target="_blank" rel="noopener">📍 hartă</a><div class="muted" style="font-size:12px">±${Math.round(r.gps_acc || 0)} m${r.dist_m != null ? " · " + r.dist_m + " m de punct" : ""}</div>` : "—"}</td>
@@ -3158,7 +3158,7 @@ async function lagArhiveaza(S0){
       const de = new Date(g.an, g.luna, 1), pana = new Date(g.an, g.luna + 1, 1);
       const { data: T } = await db.from("lipsa_acces").select("*").gte("creat", de.toISOString()).lt("creat", pana.toISOString()).order("creat");
       const rows = (T || []).map(r => { const t = lagZiOra(r.creat); return { DATA: t.zi.replace(/<[^>]+>/g, "").replace(/^\S+\s*-\s*/, "").trim(), ORA: t.ora, CLIENT: r.client || "", JUD: r.jud || "", LOCALITATE: r.localitate || "", LOCATIE: r.locatie || "",
-        SOFER: [r.sofer, r.sofer2].filter(Boolean).join(" + "), MASINA: r.masina || "", TRASEU: [r.traseu, r.ziua].filter(Boolean).join(" · "), CONTRACT: r.contract || "", MOTIV: (r.motive || []).join(", "), OBSERVATII: r.observatii || "",
+        SOFER: [r.sofer, r.sofer2].filter(Boolean).join(" + "), MASINA: r.masina || "", TRASEU: [r.traseu, laZiReala(r)].filter(Boolean).join(" · "), CONTRACT: r.contract || "", MOTIV: (r.motive || []).join(", "), OBSERVATII: r.observatii || "",
         GPS: r.lat != null ? "https://maps.google.com/?q=" + r.lat + "," + r.lon : "", "DE LA PUNCT (m)": r.dist_m ?? "", FISIERE: (r.poze || []).map((c, i) => lagNume(r, i ? "P" + i : "FISA") + (/\.pdf$/i.test(c) ? ".pdf" : ".jpg")).join(", "), ARHIVAT: r.arhivat_la ? "DA" : "NU" }; });
       const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(rows), "LIPSA ACCES");
       const fh = await dir.getFileHandle("LA_" + g.k + "_LISTA.xlsx", { create: true }), wr = await fh.createWritable(); await wr.write(new Blob([XLSX.write(wb, { type: "array", bookType: "xlsx" })])); await wr.close();
@@ -14368,6 +14368,8 @@ function pdFoaie(){
 let FP = { ses:[], vis:[], cl:[] }, FP_GATA = false, FP_ROWS = [], FP_VIZ = {}, FP_CL = {};
 const FP_LUNI = ["Ianuarie","Februarie","Martie","Aprilie","Mai","Iunie","Iulie","August","Septembrie","Octombrie","Noiembrie","Decembrie"];
 const FP_ZILE = ["Duminica","Luni","Marti","Miercuri","Joi","Vineri","Sambata"];
+// v9.86 (cerut de Ovidiu, 22.11): la Lipsă acces arată ziua reală (din ora fișei), nu ziua rutei deschise — merge și pe fișele vechi
+function laZiReala(r){ const d = r && r.creat ? new Date(r.creat) : null; return d && !isNaN(d) ? FP_ZILE[d.getDay()] : (r && r.ziua) || ""; }
 const fpFaraDiac = t => String(t == null ? "" : t).normalize("NFD").replace(/[\u0300-\u036f]/g, "");
 // Ce PDF-uri au fost deja generate se ține minte în bază (route_sessions.pdf_generat_at), ca să se vadă de pe orice PC.
 // FP_PDF = ce s-a generat din acest browser înainte de coloana din bază (v4.31 de probă) sau când salvarea în bază nu a mers.
