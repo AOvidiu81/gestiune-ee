@@ -3991,7 +3991,7 @@ const TIP_PIERD = /^(DAUNA|FURT)$/;
 // nu intră în „Gata de trimis”, apare în Verificare; ✓ acolo → FACTURAT.
 const FACT_STARI = ["ACTIV","IN ASTEPTARE FACTURA","FACTURAT","FACTURA AVANS","FACTURA PROFORMA","INACTIV","NU FACTURAM"];
 const FACT_VAL = st => ["ACTIV","IN ASTEPTARE FACTURA","FACTURAT","FACTURA AVANS","FACTURA PROFORMA"].includes(st);
-let R_ACC = [];   // v6.89: accesoriile pe rândurile din Facturare (coloana ACC., doar la „În lucru”)
+let R_ACC = [], R_TIPB = [];   // v9.87: R_TIPB = tipul simplu (fără model) pe rândurile din Raport lună, pentru totaluri   // v6.89: accesoriile pe rândurile din Facturare (coloana ACC., doar la „În lucru”)
 // v6.89: lățimile coloanelor din Facturare „În lucru” (cele 28 de coloane; ACC. după TIP; FAC la final)
 // v6.91: lățimile din Raport lună (NR. CTR … „0”; ACC. după TIP), apoi zilele și Rpt
 let A_COLG = "";
@@ -11919,7 +11919,7 @@ async function raportLuna(){
   const zL = rlZiLimita(an, luna, nz);
   // v5.08: locația la care nu mai e nimic de la începutul lunii și nu se schimbă nimic în lună nu mai apare
   [...grupe.keys()].forEach(ch => { const g = grupe.get(ch); if(!g.reduce((t, p) => t + p.col0, 0) && !g.some(p => p.zile.some(Boolean))) grupe.delete(ch); });
-  R_ACC = []; R_RANDURI = [...grupe.values()].map(g => {   // v6.91: R_ACC = accesoriile pe rândurile din Raport lună (coloana ACC.)
+  R_ACC = []; R_TIPB = []; R_RANDURI = [...grupe.values()].map(g => {   // v6.91: R_ACC = accesoriile pe rândurile din Raport lună (coloana ACC.)
     const baza = g.find(p => !(p.nx && p.nx.tip)) || g[0];
     const vig = g.filter(p => p.em && p.em <= ref).sort((p, q) => (p.em - q.em) || (p.x.a.id - q.x.a.id)).pop() || baza;
     let acum = g.reduce((t, p) => t + p.col0, 0);
@@ -11932,7 +11932,7 @@ async function raportLuna(){
     R_RIDS.push({ anx: ids, mis: ms.map(m => m.id) });
     R_EXTRA.push(ms.length ? `<span class="fl-grup">${ms.map(m => flagBtn(m, "rpt")).join("")}</span>` : '<span class="muted">—</span>');
     const dep = g.map(p => p.dep).filter(Boolean).pop() || "", ret = g.map(p => p.ret).filter(Boolean).pop() || "";
-    const x = baza.x; R_ACC.push(x.a.accesorii || "");
+    const x = baza.x; R_ACC.push(x.a.accesorii || ""); R_TIPB.push(x.a.model || "");
     return [ x.c.nr_ctr || "", x.k.nume || "", [x.a.loc, x.a.sat].filter(Boolean).join(", "),
              vig.x.a.anexa || "", dRO(baza.em), prodN(x.a.produs || "", acum), rlTip(x.a), dep, ret, col0, ...zile ];   // v7.49 (cerut de Ovidiu, 01.11): TIP fără modelul fizic (ARMAL, SATELIT…)   // v6.91: TIP fără accesorii
   });
@@ -11943,7 +11943,7 @@ async function raportLuna(){
   if(ramase.length){
     const gr = {};
     for(const m of ramase){
-      const cheie = [m.contract || "", m.client || "", m.loc || "", m.sat || "", m.produs || "", rlTip(m)].join("\u0001");
+      const cheie = [m.contract || "", m.client || "", m.loc || "", m.sat || "", m.produs || "", m.model || ""].join("\u0001");
       (gr[cheie] = gr[cheie] || []).push(m);
     }
     for(const cheie of Object.keys(gr).sort()){
@@ -11955,7 +11955,7 @@ async function raportLuna(){
         zile[i] = (+zile[i] || 0) + b;
         if(b >= 0) dep = m.depozit || dep; else ret = m.depozit || ret;
       }
-      R_RANDURI.push([ ctr, cl, [lo, sa].filter(Boolean).join(", "), "— fără anexă —", "", pr, mo, dep, ret, "", ...zile ]);
+      R_RANDURI.push([ ctr, cl, [lo, sa].filter(Boolean).join(", "), "— fără anexă —", "", pr, rlTip(gr[cheie].find(m => m.model_fizic) || gr[cheie][0]), dep, ret, "", ...zile ]); R_TIPB.push(mo);   // v9.87: TIP afișat cu modelul la containere, totalurile pe tipul simplu
       R_ACC.push((gr[cheie].find(m => m.accesorii) || {}).accesorii || "");   // v6.91
       R_CEL.push(Object.fromEntries(zile.map((v, i) => [10 + i, v === "" ? "" : (+v > 0 ? "up" : "down")]).filter(e => e[1])));
       R_EXTRA.push(`<span class="fl-grup">${gr[cheie].map(m => flagBtn(m, "rpt")).join("")}</span>`);
@@ -19956,7 +19956,7 @@ async function expExcel(D, an, luna, nz, lunaT, ultima, sufix){
   // v7.52 (hotărât de Ovidiu, 01.11): servisările nu mută produse (nici la client, nici în depozit) → nu intră în SUMAR
   const lunHD = (D.lun || []).filter(m => !ctrExterior(m) && m.tip_miscare !== "SERVISARE"), unu = m => !(m.grup_id && m.grup_id !== m.id), nCmd = lunHD.filter(unu).length;
   const PP = new Map(), pp = (p, t) => { const k = p + "\u0001" + t; if(!PP.has(k)) PP.set(k, { p, t, a: 0, l: 0, r: 0, z: 0 }); return PP.get(k); };
-  const modR = j => { const a = ANX.find(z => z.id === ((R_RIDS[j] || {}).anx || [])[0]); return a ? (a.model || "") : (R_RANDURI[j][6] || ""); };
+  const modR = j => { const a = ANX.find(z => z.id === ((R_RIDS[j] || {}).anx || [])[0]); return a ? (a.model || "") : (R_TIPB[j] ?? R_RANDURI[j][6] ?? ""); };   // v9.87: tipul fără model, ca totalurile să nu se spargă
   R_RANDURI.forEach((f, j) => { const x = pp(sing(f[5]) || "—", modR(j)); x.a += +f[9] || 0; x.z += zL ? (+f[9 + zL] || 0) : (+f[9] || 0); });
   lunHD.filter(m => m.tip_miscare !== "SERVISARE" && !SP_TIP.test(m.tip_miscare || "")).forEach(m => { const x = pp(sing(m.produs) || "—", m.model || ""); const b = +m.buc || 0; if(b >= 0) x.l += b; else x.r += -b; });
   // v7.53 (cerut de Ovidiu, 01.11): categoriile și tipurile în ordinea din Stoc → Produse (↑ ↓), nu alfabetic
