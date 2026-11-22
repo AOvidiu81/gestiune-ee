@@ -176,6 +176,9 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   .subtab button.on{background:var(--g);border-color:var(--g);color:#fff}
   /* v8.58: filele din Angajați / Flotă (separate de .subtab, pe care îl comută subStoc) */
   .tabz{display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap}
+  /* v9.89 (cerut de Ovidiu, 22.11): Angajați — rândul cu Dashboard + numele angajaților rămâne sus la derulare */
+  #ang-tabs,#ang-tabs-foi,#ang-tabs-pv{position:sticky;top:var(--hdr,44px);z-index:15;background:var(--bg);padding:8px 0;margin-top:-8px;box-shadow:0 6px 8px -8px rgba(27,37,80,.35)}
+  @media screen and (min-width:900px){#ang-tabs,#ang-tabs-foi,#ang-tabs-pv{top:-14px;padding-top:14px;margin-top:-14px}}
   .tabz button{padding:7px 14px;border-radius:8px;border:1px solid var(--bd);background:none;color:inherit;cursor:pointer;font:inherit;font-size:14px}
   .tabz button.on{background:var(--g);border-color:var(--g);color:#fff}
   .an-det>summary::-webkit-details-marker{display:none}
@@ -1116,7 +1119,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
   <span id="rz-w"><button id="rz-reset" class="pictograma" title="Lățimi implicite — pune coloanele din tabelele acestei file înapoi cum erau">↺ Reset layout</button><i class="rz-sep">|</i></span>
   <span id="tz-w" title="Mărimea tabelului (doar tabelul, restul rămâne la fel), din 5 în 5%. Merge și cu Ctrl + rotița mausului, Ctrl + / Ctrl − / Ctrl 0. Dublu clic pe procent = scrii tu valoarea."><button class="pictograma" onclick="tzPas(-1)" aria-label="Micșorează tabelul">−</button><b id="tz-v" ondblclick="tzScrie()" title="Dublu clic = scrii mărimea (ex. 87), Enter">100%</b><input id="tz-in" type="number" min="30" max="300" step="5" style="display:none"><button class="pictograma" onclick="tzPas(1)" aria-label="Mărește tabelul">+</button></span>
-  <span class="ver">v9.88</span>
+  <span class="ver">v9.89</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
