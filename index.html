@@ -1116,7 +1116,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
   <span id="rz-w"><button id="rz-reset" class="pictograma" title="Lățimi implicite — pune coloanele din tabelele acestei file înapoi cum erau">↺ Reset layout</button><i class="rz-sep">|</i></span>
   <span id="tz-w" title="Mărimea tabelului (doar tabelul, restul rămâne la fel), din 5 în 5%. Merge și cu Ctrl + rotița mausului, Ctrl + / Ctrl − / Ctrl 0. Dublu clic pe procent = scrii tu valoarea."><button class="pictograma" onclick="tzPas(-1)" aria-label="Micșorează tabelul">−</button><b id="tz-v" ondblclick="tzScrie()" title="Dublu clic = scrii mărimea (ex. 87), Enter">100%</b><input id="tz-in" type="number" min="30" max="300" step="5" style="display:none"><button class="pictograma" onclick="tzPas(1)" aria-label="Mărește tabelul">+</button></span>
-  <span class="ver">v9.86</span>
+  <span class="ver">v9.87</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -11858,6 +11858,9 @@ function rlZiLimita(an, luna, nz){
   const azi = dtz(today());
   if(azi > pN) return nz; if(azi < p1) return 0; return azi.getDate();
 }
+// v9.87 (cerut de Ovidiu, 22.11): la Raport lună TIP rămâne fără modelul bucății (v7.49), DOAR la containere se adaugă modelul (SANITAR 6 WC, BIROU STANDARD)
+const RL_TIP_CU_MODEL = /^CONTAINER/i;
+function rlTip(a){ return [a.model || "", RL_TIP_CU_MODEL.test(a.produs || "") ? a.model_fizic || "" : ""].filter(Boolean).join(" "); }
 async function raportLuna(){
   await rlPanaIncarca();
   const r = randuriRaport();
@@ -11931,7 +11934,7 @@ async function raportLuna(){
     const dep = g.map(p => p.dep).filter(Boolean).pop() || "", ret = g.map(p => p.ret).filter(Boolean).pop() || "";
     const x = baza.x; R_ACC.push(x.a.accesorii || "");
     return [ x.c.nr_ctr || "", x.k.nume || "", [x.a.loc, x.a.sat].filter(Boolean).join(", "),
-             vig.x.a.anexa || "", dRO(baza.em), prodN(x.a.produs || "", acum), x.a.model || "", dep, ret, col0, ...zile ];   // v7.49 (cerut de Ovidiu, 01.11): TIP fără modelul fizic (ARMAL, SATELIT…)   // v6.91: TIP fără accesorii
+             vig.x.a.anexa || "", dRO(baza.em), prodN(x.a.produs || "", acum), rlTip(x.a), dep, ret, col0, ...zile ];   // v7.49 (cerut de Ovidiu, 01.11): TIP fără modelul fizic (ARMAL, SATELIT…)   // v6.91: TIP fără accesorii
   });
   // mișcările care nu se potrivesc cu nicio anexă nu trebuie să dispară din raport
   // v9.19 (cerut de Ovidiu, 17.11): rândurile „fără anexă” respectă și ele filtrele de sus (client, județ) — la PRISMA PLAZA apăreau toate
@@ -11940,7 +11943,7 @@ async function raportLuna(){
   if(ramase.length){
     const gr = {};
     for(const m of ramase){
-      const cheie = [m.contract || "", m.client || "", m.loc || "", m.sat || "", m.produs || "", m.model || ""].join("\u0001");
+      const cheie = [m.contract || "", m.client || "", m.loc || "", m.sat || "", m.produs || "", rlTip(m)].join("\u0001");
       (gr[cheie] = gr[cheie] || []).push(m);
     }
     for(const cheie of Object.keys(gr).sort()){
