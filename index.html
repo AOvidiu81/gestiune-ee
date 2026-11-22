@@ -1116,7 +1116,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
   <span id="rz-w"><button id="rz-reset" class="pictograma" title="Lățimi implicite — pune coloanele din tabelele acestei file înapoi cum erau">↺ Reset layout</button><i class="rz-sep">|</i></span>
   <span id="tz-w" title="Mărimea tabelului (doar tabelul, restul rămâne la fel), din 5 în 5%. Merge și cu Ctrl + rotița mausului, Ctrl + / Ctrl − / Ctrl 0. Dublu clic pe procent = scrii tu valoarea."><button class="pictograma" onclick="tzPas(-1)" aria-label="Micșorează tabelul">−</button><b id="tz-v" ondblclick="tzScrie()" title="Dublu clic = scrii mărimea (ex. 87), Enter">100%</b><input id="tz-in" type="number" min="30" max="300" step="5" style="display:none"><button class="pictograma" onclick="tzPas(1)" aria-label="Mărește tabelul">+</button></span>
-  <span class="ver">v9.87</span>
+  <span class="ver">v9.88</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -4875,7 +4875,7 @@ function ctrArticole(o){   // o: { fel, pf, P (Set), obiect, durata, data_start,
       "Toalete - numarul. Recomandarea Prestatorului este o toaleta la 10 persoane pe zi, cu servisare saptamanala; la evenimente, o toaleta la 50-100 de persoane pe zi, cu servisare zilnica. Beneficiarul raspunde daca alege mai putine toalete sau servisari decat necesarul.",
       { id: "nuarunca", t: "Toalete - in toaleta nu se arunca deseuri solide, resturi de constructii, materiale textile, scutece, ambalaje, uleiuri, carburanti, chimicale, vopsele, ciment sau pamant. Costul curatarii, al desfundarii sau al reparatiei cuvei se factureaza Beneficiarului." },
       "Toalete - pe vreme de inghet, servisarea se face cand conditiile o permit; continutul inghetat nu poate fi absorbit. In interiorul toaletei nu se folosesc foc, surse de caldura sau sare.",
-      "Toalete - accesoriile (lavoar interior, dozator de sapun, dispenser de prosoape, spalator, hartie) sunt cele din anexa si se consemneaza in procesul-verbal; cele lipsa la ridicare se factureaza. Pe vant puternic sau pe teren in panta, Beneficiarul asigura toaletele (ancorare sau sprijin), la indicatia Prestatorului.");
+      "Toalete - accesoriile (dozator de sapun, dispenser de prosoape, hartie igienica jumbo) si lavoarul interior (la toaleta cu lavoar interior) sunt cele din anexa si se consemneaza in procesul-verbal; cele lipsa la ridicare se factureaza. Pe vant puternic sau pe teren in panta, Beneficiarul asigura toaletele (ancorare sau sprijin), la indicatia Prestatorului.");
     if(P.has("L")) M.push("Lavoare - rezervorul de apa curata se umple si cel de apa uzata se goleste la servisare, la frecventa din anexa; sapunul si prosoapele se completeaza tot atunci. Beneficiarul nu leaga lavoarul la alta sursa de apa fara acordul Prestatorului. Pe inghet, lavoarul se goleste si poate fi scos din uz pana la incalzirea vremii" + (ev ? "." : ", chiria curgand in continuare."));
     if(P.has("C") || P.has("CP")){ const ce = P.has("C") && P.has("CP") ? "Containere si cabine" : P.has("C") ? "Containere" : "Cabine de paza";
       M.push(ce + " - manipularile cu macara se factureaza la pretul din anexa. Beneficiarul asigura teren plan si compactat, care suporta greutatea produsului, sau fundatie (blocuri, placa).",
