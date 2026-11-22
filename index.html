@@ -1177,8 +1177,8 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <button id="btn-mob" class="btn sec" style="padding:5px 10px;font-size:12px" onclick="mobPC(false)" title="Înapoi la varianta de telefon">📱 Telefon</button>
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
   <span id="rz-w"><button id="rz-reset" class="pictograma" title="Lățimi implicite — pune coloanele din tabelele acestei file înapoi cum erau">↺ Reset layout</button><i class="rz-sep">|</i></span>
-  <span id="tz-w" title="Mărimea tabelului (doar tabelul, restul rămâne la fel), din 5 în 5%. Merge și cu Ctrl + rotița mausului, Ctrl + / Ctrl − / Ctrl 0. Dublu clic pe procent = scrii tu valoarea."><button class="pictograma" onclick="tzPas(-1)" aria-label="Micșorează tabelul">−</button><b id="tz-v" ondblclick="tzScrie()" title="Dublu clic = scrii mărimea (ex. 87), Enter">100%</b><input id="tz-in" type="number" min="30" max="300" step="5" style="display:none"><button class="pictograma" onclick="tzPas(1)" aria-label="Mărește tabelul">+</button></span>
-  <span class="ver">v9.95</span>
+  <span id="tz-w" title="Mărimea tabelului (doar tabelul, restul rămâne la fel), din 5 în 5%. Fiecare meniu își ține minte mărimea lui. Merge și cu Ctrl + rotița mausului, Ctrl + / Ctrl − / Ctrl 0. Dublu clic pe procent = scrii tu valoarea."><button class="pictograma" onclick="tzPas(-1)" aria-label="Micșorează tabelul">−</button><b id="tz-v" ondblclick="tzScrie()" title="Dublu clic = scrii mărimea (ex. 87), Enter">100%</b><input id="tz-in" type="number" min="30" max="300" step="5" style="display:none"><button class="pictograma" onclick="tzPas(1)" aria-label="Mărește tabelul">+</button></span>
+  <span class="ver">v9.96</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -19488,11 +19488,19 @@ document.addEventListener("keydown", e => { if(e.key === "Escape"){ const m = do
 })();
 let TZ = 1;
 try { TZ = +localStorage.getItem("tz") || 1; } catch(e){}
+// v9.96 (cerut de Ovidiu, 22.11): zoom-ul se ține minte PE FIECARE meniu (Comenzi 105%, Calendar 120% …), pe calculatorul respectiv.
+// Meniul care n-a fost reglat încă pornește de la ultimul zoom comun (cheia veche „tz”), apoi are valoarea lui.
+const tzPag = () => { const p = document.querySelector("main section.page.on"); return p ? p.id : ""; };
+function tzPagina(){
+  let v = 0; try { v = +localStorage.getItem("tz:" + tzPag()) || +localStorage.getItem("tz") || 1; } catch(e){ v = 1; }
+  TZ = v; document.documentElement.style.setProperty("--tz", TZ);
+  const e = document.getElementById("tz-v"); if(e) e.textContent = Math.round(TZ * 100) + "%";
+}
 function tzPune(v){
   TZ = Math.min(3, Math.max(.3, Math.round(v * 100) / 100));   // v6.70: orice procent între 30 și 300
   document.documentElement.style.setProperty("--tz", TZ);
   const e = document.getElementById("tz-v"); if(e) e.textContent = Math.round(TZ * 100) + "%";
-  try { localStorage.setItem("tz", TZ); } catch(e){}
+  try { const k = tzPag(); localStorage.setItem(k ? "tz:" + k : "tz", TZ); } catch(e){}
 }
 function tzPas(d){ tzPune(Math.round((TZ * 100 + d * 5) / 5) * 5 / 100); }   // v6.70 (cerut de Ovidiu, 23.10): din 5 în 5%
 // v6.70: dublu clic pe procent → casetă în care scrii valoarea (Enter / clic în altă parte = aplică, Esc = renunți)
@@ -19504,8 +19512,9 @@ function tzScrie(){
   i.onkeydown = e => { if(e.key === "Enter"){ e.preventDefault(); gata(true); } else if(e.key === "Escape"){ e.preventDefault(); e.stopPropagation(); gata(false); } };
   i.onblur = () => gata(true);
 }
-tzPune(TZ);
-const tzAre = () => window.innerWidth >= 900 && !!document.querySelector("main .page.on .tw > table");
+tzPagina();
+document.querySelectorAll("main section.page").forEach(pg => new MutationObserver(() => { if(pg.classList.contains("on")) tzPagina(); }).observe(pg, { attributes: true, attributeFilter: ["class"] }));   // v9.96
+const tzAre = () => window.innerWidth >= 900 && (!!document.querySelector("main .page.on .tw > table") || tzPag() === "p-calendar");   // v9.96: și pe Calendar
 // v8.97 (cerut de Ovidiu, 16.11): rotița mouse-ului nu mai schimbă valorile din căsuțele cu numere — se derulează pagina, valoarea rămâne
 document.addEventListener("wheel", e => { const t = e.target; if(t && t.tagName === "INPUT" && t.type === "number" && document.activeElement === t) t.blur(); }, { passive: true, capture: true });
 window.addEventListener("wheel", e => {
