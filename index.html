@@ -335,6 +335,37 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
     #p-calendar .card{box-shadow:none;break-inside:avoid}
     #p-calendar .kal-ani{grid-template-columns:repeat(6,minmax(0,1fr))!important}
   }
+  /* v9.91 (cerut de Ovidiu, 22.11): Printează pe An = calendarul de perete după modelul lui (A4 landscape, 3 × 4 luni,
+     nr. săptămânii în stânga, weekend kaki, sărbători roșu-maro, zilele altor luni gri, sărbătorile jos pe 3 coloane) */
+  #kal-print{display:none}
+  @page kalan{size:A4 landscape;margin:6mm 8mm}
+  @media print{
+    body.kal-pr-an #p-calendar{page:kalan;width:auto;zoom:1}
+    body.kal-pr-an #p-calendar > .card{display:none!important}
+    body.kal-pr-an #kal-print{display:block}
+  }
+  .kp{font-family:Calibri,"Segoe UI",Arial,sans-serif;color:#1c1c1c;width:281mm;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  .kp *{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  .kp-ani{display:grid;grid-template-columns:repeat(3,1fr);column-gap:7mm;row-gap:2.2mm}
+  .kp-l{position:relative}
+  .kp-rom{position:absolute;left:0;top:.2mm;font:italic 600 8.5pt Georgia,serif;color:#6d6455}
+  .kp-t{width:100%;border-collapse:collapse;table-layout:fixed}
+  .kp-t col.nr{width:7.5mm}
+  .kp-t caption{font-size:9pt;font-weight:600;letter-spacing:.04em;color:#3a3226;padding:0 0 .6mm 7.5mm;border-bottom:.5mm solid #8b6f4e}
+  .kp-t th{font-size:8pt;font-weight:700;color:#222;height:4.3mm;padding:0;text-align:center;border-bottom:.25mm solid #8b6f4e;text-transform:none;letter-spacing:0;background:none;position:static}
+  .kp-t td{vertical-align:middle}
+  .kp-t td{height:4.75mm;padding:0;text-align:center;font-size:9pt;font-weight:700;border:.2mm solid #c9c3b6;line-height:1}
+  .kp-t td.nr{border:0;font-size:8pt;font-weight:700;color:#3a3a3a;text-align:right;padding-right:2.2mm}
+  .kp-t td.nr.gol{color:#b5b5b5;font-weight:400}
+  .kp-t td.wk{background:#e8e2cc}
+  .kp-t td.sb{background:#ead3c6;color:#a3271b}
+  .kp-t td.alt{background:#f4f4f2;color:#b9b9b9;font-weight:400;font-size:8pt}
+  .kp-t td.co{box-shadow:inset 0 -2.1mm 0 #ffc46b}
+  .kp-sb{margin-top:3mm;border-top:.5mm solid #8b6f4e;padding-top:1.6mm;display:grid;grid-template-columns:repeat(3,1fr);column-gap:7mm;font-size:8.3pt}
+  .kp-sb div{display:grid;grid-template-columns:27mm 1fr;padding:.45mm 0;border-bottom:.2mm solid #ddd6c9}
+  .kp-sb .z{color:#3a3a3a;text-align:right;padding-right:4mm}
+  .kp-sb .n{color:#a3271b;font-weight:600}
+  .kp-jos{display:flex;justify-content:space-between;font-size:7pt;color:#8a8478;margin-top:1.4mm}
   .cal-gol{text-align:center;padding:6px 0;color:#c9d2cd}
   .cal-d{text-align:center;padding:6px 0;border:0;background:none;border-radius:8px;cursor:pointer;
          font:inherit;color:var(--tx)}
@@ -1143,7 +1174,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
   <span id="rz-w"><button id="rz-reset" class="pictograma" title="Lățimi implicite — pune coloanele din tabelele acestei file înapoi cum erau">↺ Reset layout</button><i class="rz-sep">|</i></span>
   <span id="tz-w" title="Mărimea tabelului (doar tabelul, restul rămâne la fel), din 5 în 5%. Merge și cu Ctrl + rotița mausului, Ctrl + / Ctrl − / Ctrl 0. Dublu clic pe procent = scrii tu valoarea."><button class="pictograma" onclick="tzPas(-1)" aria-label="Micșorează tabelul">−</button><b id="tz-v" ondblclick="tzScrie()" title="Dublu clic = scrii mărimea (ex. 87), Enter">100%</b><input id="tz-in" type="number" min="30" max="300" step="5" style="display:none"><button class="pictograma" onclick="tzPas(1)" aria-label="Mărește tabelul">+</button></span>
-  <span class="ver">v9.90</span>
+  <span class="ver">v9.91</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -1387,7 +1418,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
       <div style="flex:0"><label>An</label><select id="kal-an" onchange="KAL.an=+this.value;if(KAL.mod==='sapt')KAL.zi=new Date(KAL.an,KAL.zi.getMonth(),Math.min(KAL.zi.getDate(),28));kalArata()"></select></div>
       <div style="flex:0" id="kal-luna-w"><label>Luna</label><select id="kal-luna" onchange="KAL.luna=+this.value;kalArata()"></select></div>
       <div style="flex:0"><label>Navigare</label><div class="kal-nav"><button onclick="kalPas(-1)" title="Înapoi" aria-label="Înapoi"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg></button><button class="kal-azi" onclick="kalAzi()" title="Sari la ziua de azi">Azi</button><button onclick="kalPas(1)" title="Înainte" aria-label="Înainte"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></button></div></div>
-      <div style="flex:0"><label>&nbsp;</label><button class="kal-btn" onclick="window.print()" title="Printează ce se vede"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9V2h12v7"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>Printează</button></div>
+      <div style="flex:0"><label>&nbsp;</label><button class="kal-btn" onclick="kalPrint()" title="Pe An: calendarul anului ca modelul de perete (A4 landscape). Pe Lună / Săptămână: ce se vede."><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9V2h12v7"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>Printează</button></div>
       <div style="flex:0"><label>Pe calendar</label><div class="kal-tg-w">
         <label class="kal-tg" id="kal-cmd-w" title="Amplasări, ridicări, servisări — debifat = calendar curat, doar zilele și sărbătorile"><input type="checkbox" id="kal-cmd" checked onchange="kalArata()"><span class="kal-tg-sw"></span><span class="kal-tg-dots"><i class="kd A"></i><i class="kd R"></i><i class="kd S"></i></span>Comenzi</label>
         <label class="kal-tg" id="kal-co-w" title="Zilele cu CO / CM din pontajul angajaților (le vede doar administratorul)"><input type="checkbox" id="kal-co" checked onchange="kalArata()"><span class="kal-tg-sw"></span><span class="kal-tg-dots"><i class="kd C"></i></span>Concedii</label>
@@ -1395,6 +1426,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
     </div>
     <div class="muted" id="kal-info" style="margin-top:10px;font-size:13px"></div>
   </div>
+  <div id="kal-print"></div><!-- v9.91: calendarul de perete (doar la print, pe An) -->
   <div class="card"><div id="kal-corp"></div>
     <div class="kal-leg"><span><i class="l-cur"></i>săptămâna curentă</span><span><i class="l-azi"></i>azi</span><span><i class="l-sb"></i>sărbătoare legală</span><span><i class="l-wk"></i>weekend</span><span><i class="kd A"></i>amplasare / suplimentare</span><span><i class="kd R"></i>ridicare / reducere</span><span><i class="kd S"></i>servisare</span><span><i class="kd C"></i>concediu (CO / CM, din pontaj)</span><span class="muted">Nr. = săptămâna din an (ISO). Clic pe numele lunii = luna mare; clic pe o zi sau pe Nr. = săptămâna ei, cu comenzile pe larg.</span></div>
   </div>
@@ -3782,6 +3814,36 @@ function kalPas(k){
   else if(KAL.mod === "sapt"){ KAL.zi = kalPlus(KAL.zi, 7 * k); KAL.luna = KAL.zi.getMonth(); }
   else { KAL.luna += k; if(KAL.luna < 0){ KAL.luna = 11; KAL.an--; } if(KAL.luna > 11){ KAL.luna = 0; KAL.an++; } }
   kalArata();
+}
+// v9.91 (cerut de Ovidiu, 22.11): Printează pe An = calendarul de perete ca modelul lui (poza de pe avizier)
+const KAL_ROM = ["I","II","III","IV","V","VI","VII","VIII","IX","X","XI","XII"], KAL_ZP = ["Lu.","Ma.","Mi.","Joi","Vi.","Sâ.","Du."];
+const kalFaraDiac = t => String(t || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+function kalPrintHtml(an){
+  const L = kalSarbatori(an), SB = new Map(L.map(x => [kalK(x.d), x])), co = kalCo();
+  const luna = l => { const st = kalLuni(new Date(an, l, 1));
+    let h = `<div class="kp-l"><span class="kp-rom">${KAL_ROM[l]}</span><table class="kp-t"><colgroup><col class="nr">${"<col>".repeat(7)}</colgroup>`
+      + `<caption>${KAL_LUNI[l].toUpperCase()} ${an}</caption><tr><th></th>${KAL_ZP.map(z => `<th>${z}</th>`).join("")}</tr>`;
+    for(let r = 0; r < 6; r++){ const lu = kalPlus(st, r * 7), gol = ![0,1,2,3,4,5,6].some(c => kalPlus(lu, c).getMonth() === l);
+      h += `<tr><td class="nr${gol ? " gol" : ""}">${kalSapt(lu)}</td>`;
+      for(let c = 0; c < 7; c++){ const d = kalPlus(lu, c), k = kalK(d), alt = d.getMonth() !== l, sb = !alt && SB.get(k), C = !alt && co ? (KAL_CO.get(k) || []) : [];
+        const cls = alt ? "alt" : [sb ? "sb" : c > 4 ? "wk" : "", C.length ? "co" : ""].filter(Boolean).join(" ");
+        h += `<td${cls ? ` class="${cls}"` : ""}>${d.getDate()}</td>`; }
+      h += "</tr>"; }
+    return h + "</table></div>"; };
+  const zp = d => ({ 0: "dum.", 1: "lun.", 2: "mar.", 3: "mie.", 4: "joi.", 5: "vin.", 6: "sâm." })[d.getDay()];
+  const per = Math.ceil(L.length / 3), col = [0, 1, 2].map(i => L.slice(i * per, (i + 1) * per));
+  return `<div class="kp"><div class="kp-ani">${KAL_LUNI.map((_, l) => luna(l)).join("")}</div>`
+    + `<div class="kp-sb">${col.map(g => `<section>${g.map(x => `<div><span class="z">${zp(x.d)}${kalD(x.d)}</span><span class="n">${esc(kalFaraDiac(x.n).toUpperCase())}</span></div>`).join("")}</section>`).join("")}</div>`
+    + `<div class="kp-jos"><span>Euro Ecologic · Calendar ${an} · sărbători legale (Codul muncii, art. 139)${co && KAL_CO.size ? " · portocaliu = concediu (CO / CM)" : ""}</span><span>Nr. = săptămâna din an (ISO)</span></div></div>`;
+}
+async function kalPrint(){
+  if(KAL.mod !== "an"){ window.print(); return; }
+  if(kalCo()) await kalConcedii([KAL.an]);
+  $("kal-print").innerHTML = kalPrintHtml(KAL.an);
+  document.body.classList.add("kal-pr-an");
+  const gata = () => { document.body.classList.remove("kal-pr-an"); $("kal-print").innerHTML = ""; window.removeEventListener("afterprint", gata); };
+  window.addEventListener("afterprint", gata);
+  setTimeout(() => window.print(), 50);
 }
 function kalAzi(){ const d = new Date(); KAL.an = d.getFullYear(); KAL.luna = d.getMonth(); KAL.zi = d; kalArata(); }
 // v5.56 (cerut de Ovidiu, 13.10): iconițe în meniu, nume scurte (cel întreg la trecerea cu mausul), meniu strâns / întreg
