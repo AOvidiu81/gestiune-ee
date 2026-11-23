@@ -1188,7 +1188,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
   <span id="rz-w"><button id="rz-reset" class="pictograma" title="Lățimi implicite — pune coloanele din tabelele acestei file înapoi cum erau">↺ Reset layout</button><i class="rz-sep">|</i></span>
   <span id="tz-w" title="Mărimea tabelului (doar tabelul, restul rămâne la fel), din 5 în 5%. Fiecare meniu își ține minte mărimea lui. Merge și cu Ctrl + rotița mausului, Ctrl + / Ctrl − / Ctrl 0. Dublu clic pe procent = scrii tu valoarea."><button class="pictograma" onclick="tzPas(-1)" aria-label="Micșorează tabelul">−</button><b id="tz-v" ondblclick="tzScrie()" title="Dublu clic = scrii mărimea (ex. 87), Enter">100%</b><input id="tz-in" type="number" min="30" max="300" step="5" style="display:none"><button class="pictograma" onclick="tzPas(1)" aria-label="Mărește tabelul">+</button></span>
-  <span class="ver">v10.05</span>
+  <span class="ver">v10.06</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -5503,7 +5503,10 @@ function anexaNouaDinMiscare(){
   MM_INTOARCERE = "anexa"; openAnexa(null, k);
   mmCopiazaInAnexa();
   // v8.29 / v8.30: comanda pornită din fișa „Date contract” — anexa primește produsele fișei (toate, sau grupul ales pentru ea)
-  const F = fisaActiva(); if(F && tip === "AMPLASARE" && F.prod.length) fisaPuneRanduri(F);
+  const F = fisaActiva();
+  if(F && tip === "AMPLASARE" && (F.prod.length > 1 || (F.coada && F.coada.length))) fisaPuneRanduri(F);
+  else if(F && tip === "AMPLASARE"){   // v10.06: un singur produs — rămâne ce ai corectat în comandă (produs, buc., tip); din fișă doar perioada
+    if(F.pana) $("ma-dx").value = F.pana; if(F.R.perioada_text) $("ma-xt").value = F.R.perioada_text; }
 }
 // v4.57: ce e deja scris în comandă se duce în anexa nouă (el verifică și salvează)
 function mmCopiazaInAnexa(){
@@ -5664,6 +5667,9 @@ function mmDate(){
   const d = Object.fromEntries(MM_CAMPURI.map(id => [id, $(id).value || ""]));
   d.acc = accCitite("mm-acc") || ""; d.flags = {}; d.xp = mmXpCitite().map(x => ({ buc: x.buc, produs: x.produs, model: x.model, model_fizic: x.model_fizic, accesorii: x.accesorii }));   // v7.94
   document.querySelectorAll("#mm-flags .flag").forEach(f => { d.flags[f.dataset.f] = f.dataset.v || f.textContent; });
+  // v10.06: și chenarul „Locație nouă” + fișa „Date contract” din care s-a pornit comanda
+  if($("mm-act-da") && $("mm-act") && $("mm-act").style.display !== "none") d.act = { da: $("mm-act-da").checked, nr: ($("mm-act-nr") || {}).value || "", pret: ($("mm-act-pret") || {}).value || "", mon: ($("mm-act-mon") || {}).value || "", sc: ($("mm-act-sc") || {}).value || "" };
+  if(fisaActiva()) d.fisa = MM_FISA.id;
   return d;
 }
 async function mmCiorne(){
@@ -5692,7 +5698,40 @@ function mmCiornaIa(id){
   MM_PV = null; mmZile(); mmModClient(); mmSerii(true);
   mmXpReset(); if(mmExterior()) (d.xp || []).forEach(x => mmXpAdauga(x));   // v7.94
   MM_CIORNA = id; mmCiorneDeseneaza();
+  mmCiornaActPune(d.act);   // v10.06
+  if(d.fisa) mmCiornaFisa(d.fisa, v("mm-client"));
 }
+// v10.06: chenarul „Locație nouă” revine cu ce scriseseși (nr. anexă, preț, monedă, scadent)
+function mmCiornaActPune(a){
+  MM_ACT_K = ""; mmActArata(); if(!a || !$("mm-act-da")) return;
+  $("mm-act-da").checked = a.da !== false;
+  [["nr", "mm-act-nr"], ["pret", "mm-act-pret"], ["mon", "mm-act-mon"], ["sc", "mm-act-sc"]].forEach(([k, id]) => { if($(id) && a[k] !== "" && a[k] != null) $(id).value = a[k]; });
+}
+// v10.06: comanda pornită din fișa „Date contract” — legătura cu fișa revine (produsele / perioada ei merg în anexă și contract)
+async function mmCiornaFisa(fid, client){
+  try{ const { data } = await db.from("cereri_date").select("*").eq("id", fid).maybeSingle(); if(!data || !client) return;
+    const R = data.raspuns || {}; MM_FISA = { id: data.id, R, client, prod: fisaProduse(R), pana: fisaPana(R) }; MM_ACT_K = ""; mmActArata(); }catch(e){}
+}
+// ── v10.06 (cerut de Ovidiu, 23.11): CIORNA AUTOMATĂ — comanda nouă se păstrează singură în ciorne cât scrii (la 2 s după ultima
+// schimbare). Dacă pagina se reîncarcă (Ctrl+F5), se închide browserul sau fereastra, o găsești sus, la „Ciorne”, la următoarea
+// Comandă nouă. După „Salvează” ciorna se șterge. La Edit pe o comandă salvată nu se face ciornă.
+let MM_AUTO_T = null, MM_AUTO_P = null;
+function mmAutoProgrameaza(){ clearTimeout(MM_AUTO_T); MM_AUTO_T = setTimeout(() => { MM_AUTO_P = mmAutoCiorna(); }, 2000); }
+function mmAutoOpreste(){ clearTimeout(MM_AUTO_T); MM_AUTO_T = null; }
+async function mmAutoCiorna(){
+  if(MM_AUTO_P) await MM_AUTO_P;   // una câte una (să nu iasă două ciorne)
+  if(MM_SALVEZ || !$("mod-m").classList.contains("on") || $("mm-id").value || mmModif()) return;
+  const d = mmDate();
+  if(!(d["mm-client"] || d["mm-loc"] || d["mm-sat"] || d["mm-pers"] || d["mm-tel"] || d["mm-obs"])) return;
+  try{
+    if(MM_CIORNA){ await db.from("ciorne").update({ date: d, updated_at: new Date().toISOString() }).eq("id", MM_CIORNA);
+      const x = MM_CIORNE.find(y => y.id === MM_CIORNA); if(x){ x.date = d; mmCiorneDeseneaza(); } }
+    else { const { data, error } = await db.from("ciorne").insert({ tip: "comanda", date: d }).select("*").single();
+      if(!error && data){ MM_CIORNA = data.id; MM_CIORNE.push(data); mmCiorneDeseneaza(); } }
+  }catch(e){}
+}
+["input","change"].forEach(ev => document.querySelector("#mod-m .lux-corp").addEventListener(ev, mmAutoProgrameaza));
+$("mm-flags").addEventListener("click", mmAutoProgrameaza);
 async function mmCiornaSterge(id){
   const x = MM_CIORNE.find(y => y.id === id);
   if(!confirm("Ștergeți aceste date din ciornă?\n\n" + ((x && x.date && x.date["mm-client"]) || "(fără client)"))) return;
@@ -5702,6 +5741,7 @@ async function mmCiornaSterge(id){
   MM_CIORNE = MM_CIORNE.filter(y => y.id !== id); mmCiorneDeseneaza(); toast("Ciorna a fost ștearsă");
 }
 async function mmAnuleaza(){
+  mmAutoOpreste(); if(MM_AUTO_P) await MM_AUTO_P;   // v10.06
   await mmOrfanVerifica();   // v10.03
   const d = mmDate();
   if(!$("mm-id").value && (d["mm-client"] || d["mm-loc"] || d["mm-sat"] || d["mm-pers"] || d["mm-tel"] || d["mm-obs"])){
@@ -5821,14 +5861,20 @@ function mmActPlan(){
 function mmActArata(){
   const el = $("mm-act"); if(!el) return; const P = mmActPlan();
   if(!P){ if(el.style.display !== "none"){ el.style.display = "none"; el.innerHTML = ""; MM_ACT_K = ""; } return; }
-  if(P.nou){ const k = "nou|" + P.k + "|" + P.tip; if(MM_ACT_K === k) return; MM_ACT_K = k;
+  if(P.nou){ const k = "nou|" + P.k + "|" + P.tip + "|" + ((fisaActiva() || {}).id || ""); if(MM_ACT_K === k) return; MM_ACT_K = k;
     const vn = { nr: ($("mm-act-nr") || {}).value, pret: ($("mm-act-pret") || {}).value, mon: ($("mm-act-mon") || {}).value, sc: ($("mm-act-sc") || {}).value, da: ($("mm-act-da") || { checked: true }).checked };
+    // v10.06 (cerut de Ovidiu, 23.11): o singură cale pentru anexa nouă — și la comanda din fișa „Date contract”
+    const F = P.tip === "AMPLASARE" ? fisaActiva() : null, fp = F && F.prod.find(p => p.pret != null && p.pret !== "" && (p.pe || "zi") === "zi");
+    if(!vn.pret && fp) vn.pret = String(fp.pret);
+    const fNota = !F || !F.prod.length ? "" : F.prod.length > 1
+      ? `<div style="margin-top:6px"><b>Din fișă: ${F.prod.length} produse</b> (${esc(F.prod.map(fisaProdTxt).join("; "))}) — la Salvează alegi ce produse merg pe fiecare anexă; anexele se deschid pe rând, le salvezi, apoi apeși din nou Salvează la comandă.</div>`
+      : `<div style="margin-top:6px"><b>Din fișă:</b> ${esc(fisaProdTxt(F.prod[0]))}${F.pana ? " · perioada până la " + esc(fmtD(F.pana)) : ""} — intră pe anexă.${fp ? "" : " Fișa nu are preț — scrie-l aici."}</div>`;
     el.style.display = "";
     el.innerHTML = `<label style="display:flex;gap:8px;align-items:center;margin:0;cursor:pointer;text-transform:none;font-size:13px;letter-spacing:0"><input type="checkbox" id="mm-act-da" ${vn.da ? "checked" : ""} style="width:16px;height:16px;margin:0"> <span>📍 <b>Locație nouă</b> — la <b>Salvează</b> se face și anexa nouă, din datele comenzii (produs, bucăți, dată, adresă, responsabil)</span></label>
       <div class="r"><span>Nr. anexă</span><input type="text" id="mm-act-nr" value="${esc(vn.nr || P.nume)}"><span>Preț / buc</span><input type="number" step="0.01" min="0" id="mm-act-pret" value="${esc(vn.pret || "")}" placeholder="ex. 11.00">
         <select id="mm-act-mon" style="width:auto"><option>RON</option><option ${vn.mon === "EUR" ? "selected" : ""}>EUR</option></select><span class="muted">+ TVA / zi</span>
         <span>Scadent</span><input type="number" min="0" id="mm-act-sc" value="${esc(vn.sc || "30")}" style="width:70px"><span class="muted">zile</span></div>
-      <div class="muted" style="margin-top:6px">Ai o locație existentă? Alege-o mai sus din listă și chenarul dispare.${P.tip === "EVENIMENT-A" ? " La eveniment se deschide fereastra anexei pentru zilele evenimentului." : ""}</div>`;
+      ${fNota}<div class="muted" style="margin-top:6px">Ai o locație existentă? Alege-o mai sus din listă și chenarul dispare.${P.tip === "EVENIMENT-A" ? " La eveniment se deschide fereastra anexei pentru zilele evenimentului." : ""}</div>`;
     return; }
   const buc = Math.abs(+$("mm-buc").value || 0), zi = $("mm-data").value || today(), k = [P.a.id, P.tip, P.nume, buc, zi, P.acum].join("|");
   if(MM_ACT_K === k) return; MM_ACT_K = k;
@@ -5849,7 +5895,7 @@ async function mmActInainte(){
     const ma = $("mod-a"), ev = P.tip === "EVENIMENT-A"; if(!ev) ma.style.visibility = "hidden";
     try{
       anexaNouaDinMiscare();
-      if(!ma.classList.contains("on")) return false;
+      if(!ma.classList.contains("on")){ if($("mod-fi")) toast("Fișa are mai multe produse — împarte-le pe anexe și Continuă; salvezi anexele, apoi apeși din nou Salvează la comandă"); return false; }   // v10.06
       $("ma-an").value = nr; if(pr !== "") $("ma-pret").value = (+pr).toFixed(2);
       if($("ma-moneda") && $("mm-act-mon")) $("ma-moneda").value = $("mm-act-mon").value; if($("ma-scad") && $("mm-act-sc") && $("mm-act-sc").value !== "") $("ma-scad").value = $("mm-act-sc").value;
       if(ev){ toast("Completează zilele evenimentului în anexă și apasă Salvează; apoi Salvează comanda"); return false; }
@@ -6348,6 +6394,7 @@ function mmVerifMergi(id){ mmVerifInchide(); const e = $(id); if(!e) return; e.s
 let MM_SALVEZ = false, MM_ACT_ORFAN = null;
 async function saveMiscare(genereaza, fortat){
   if(MM_SALVEZ){ toast("Se salvează deja — așteaptă o clipă"); return false; }
+  mmAutoOpreste();   // v10.06: ciorna automată nu mai scrie peste salvare
   if(mmModif()) return mmModifSalveaza();   // v7.99: MODIFICARE ANEXĂ = act adițional, nu comandă
   if(!fortat && $("mm-tip").value !== "SERVISARE"){ const { B, W } = mmVerifLista(); if(B.length || W.length){ mmVerifArata(B, W, genereaza); return false; } }
   MM_SALVEZ = true; const bt = ["mm-save", "mm-gen"].map(i => $(i)).filter(Boolean); bt.forEach(b => b.disabled = true);
@@ -6480,6 +6527,7 @@ async function saveMiscareBaza(genereaza){
     toast("Comanda NU s-a salvat: " + error.message + (o ? ". Actul " + (o.anexa || "") + " s-a creat deja — apasă din nou Salvează (nu se mai face a doua oară)." : ". Formularul a rămas completat — încearcă din nou."), true); return false; }
   MM_ACT_ORFAN = null;
   if(id && dataVeche && rec.data && dataVeche !== rec.data) await mmDataAnexa(rec, dataVeche);
+  if(!id && MM_AUTO_P) await MM_AUTO_P;   // v10.06
   if(!id && MM_CIORNA){ await db.from("ciorne").delete().eq("id", MM_CIORNA); MM_CIORNA = null; $("mm-ciorne").innerHTML = ""; }   // v4.80: ciorna folosită nu mai rămâne
   await mmDocSalveaza(salvat.id, rec);   // v5.13: celelalte produse ale anexei
   await mmServPeAnexa(rec);   // v8.00: frecvența / zilele pe anexă, dacă lipsesc
@@ -9038,8 +9086,11 @@ function fisaProduse(R){
   const nume = nomv("produs").slice().sort((a, b) => b.length - a.length);
   return String(R.produse || "").split(";").map(x => x.trim()).filter(Boolean).map(x => {
     const m = /^(\d+)\s*(?:buc\.?\s*)?(.+?)\s*(?:\(\s*igienizare\s*([^)]*)\))?$/i.exec(x); if(!m) return null;
-    const rest = m[2].trim(), p = nume.find(n => fisaFaraDiac(rest) === fisaFaraDiac(n) || fisaFaraDiac(rest).startsWith(fisaFaraDiac(n) + " "));
-    return { buc: +m[1], produs: p || rest.toUpperCase(), tip: p ? rest.slice(p.length).trim().toUpperCase() : "", frecventa: (m[3] || "").trim() };
+    // v10.06: și pluralul scris de client („2 TOALETE CLASIC” → TOALETA, tip CLASIC)
+    const rest = m[2].trim(), R0 = fisaFaraDiac(rest), forme = n => [...new Set([n, prodN(n, 2)].map(fisaFaraDiac))];
+    let p = null, lung = 0;
+    nume.forEach(n => forme(n).forEach(f => { if(!p && (R0 === f || R0.startsWith(f + " "))){ p = n; lung = f.length; } }));
+    return { buc: +m[1], produs: p || rest.toUpperCase(), tip: p ? R0.slice(lung).trim() : "", frecventa: (m[3] || "").trim() };
   }).filter(Boolean);
 }
 function fisaPana(R){   // perioada: data „până la”, sau „7 luni” / „30 zile” / „2 săptămâni” de la data de început
@@ -9077,7 +9128,7 @@ async function comandaDinFisa(id){
   $("mm-obs").value = [fisaGpsObs(R.livrare_gps), !a.jud && R.livrare_adresa && "Adresa scrisă de client: " + R.livrare_adresa, R.liv_reper && "Reper: " + R.liv_reper, R.eveniment && "Eveniment: " + R.eveniment].filter(Boolean).join("\n");   // v8.33: doar ce-i folosește șoferului
   MM_FISA = { id: x.id, R, client: c.nume, prod, pana };
   mmLsArata(); mmSchimbat();
-  toast("Comanda e completată din fișă — apasă + la Contract, apoi + la Anexă (primesc perioada și produsele)");
+  toast("Comanda e completată din fișă — apasă + la Contract (primește perioada). Anexa NU o mai faci cu +: se face singură la Salvează, din chenarul „Locație nouă” (cu produsele fișei). Pune prețul și frecvența, apoi Salvează.");   // v10.06
 }
 // ── v8.30 (cerut de Ovidiu, 09.11): fișa cu mai multe produse → la „+” Anexă alegi ce produse merg pe fiecare anexă
 // (numărul anexei îl scrii tu), până se termină produsele; apoi anexele se deschid pe rând, completate, și le salvezi.
@@ -9126,7 +9177,7 @@ function fisaPuneRanduri(F){
   if(F.pana) $("ma-dx").value = F.pana; if(F.R.perioada_text) $("ma-xt").value = F.R.perioada_text;
   if(g.nr && g.nr.replace(/ANEXA\s*NR\.?/i, "").trim()) $("ma-an").value = g.nr;
   maRandPastreaza(); const b = { ...MA_RAND[0] };
-  MA_RAND = g.prod.map(p => ({ ...b, id: undefined, produs: p.produs, model: p.tip || "", model_fizic: "", accesorii: "", cant: p.buc || 1, frecv_servisare: p.frecventa || "", ...(p.pret != null && (p.pe || "zi") === "zi" ? { pret: p.pret } : {}) }));   // v8.82: prețul pe zi din ofertă
+  MA_RAND = g.prod.map(p => ({ ...b, id: undefined, produs: p.produs, model: p.tip || "", model_fizic: "", accesorii: "", cant: p.buc || 1, frecv_servisare: p.frecventa || b.frecv_servisare || "", ...(p.pret != null && (p.pe || "zi") === "zi" ? { pret: p.pret } : {}) }));   // v8.82: prețul pe zi din ofertă
   maRandArata(0); MA_FISA = true;
   const nr = F.total > 1 ? " — anexa " + (F.total - F.coada.length + 1) + " din " + F.total : "";
   toast("Anexa are produsele din fișă (" + g.prod.length + ")" + nr + " — completează prețul la fiecare și Salvează");
@@ -19172,7 +19223,8 @@ function ptMeniu(ev, id){
     x:   '<svg viewBox="0 0 12 12"><path d="M1.5 1.5l9 9M10.5 1.5l-9 9"/></svg>'
   };
   const INCHIDE = {
-    "mod-m": () => mmOrfanVerifica().finally(() => closeModal("mod-m")),   // v10.03 "mod-c": () => mcAnuleaza(), "mod-k": () => mkAnuleaza(), "mod-a": () => maAnuleaza(),
+    "mod-m": () => { mmAutoOpreste(); (MM_AUTO_P = mmAutoCiorna()).catch(() => {}).then(() => mmOrfanVerifica()).finally(() => closeModal("mod-m")); },   // v10.03; v10.06: ✕ păstrează ciorna
+    "mod-c": () => mcAnuleaza(), "mod-k": () => mkAnuleaza(), "mod-a": () => maAnuleaza(),   // v10.06: repus (în v10.03 rămăsese în comentariu)
     "mod-inch": () => closeModal("mod-inch"), "mod-s": () => closeModal("mod-s"), "mod-doc": () => docRenunta(),
     "mod-cmd": () => cmdInchide(), "mod-pl": () => closeModal("mod-pl"), "mod-mu": () => closeModal("mod-mu"), "mod-sz": () => closeModal("mod-sz"), "mod-act": () => closeModal("mod-act"), "mod-admin": () => { closeModal("mod-admin"); rUrmator(); }
   };
