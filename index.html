@@ -1188,7 +1188,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
   <span id="rz-w"><button id="rz-reset" class="pictograma" title="Lățimi implicite — pune coloanele din tabelele acestei file înapoi cum erau">↺ Reset layout</button><i class="rz-sep">|</i></span>
   <span id="tz-w" title="Mărimea tabelului (doar tabelul, restul rămâne la fel), din 5 în 5%. Fiecare meniu își ține minte mărimea lui. Merge și cu Ctrl + rotița mausului, Ctrl + / Ctrl − / Ctrl 0. Dublu clic pe procent = scrii tu valoarea."><button class="pictograma" onclick="tzPas(-1)" aria-label="Micșorează tabelul">−</button><b id="tz-v" ondblclick="tzScrie()" title="Dublu clic = scrii mărimea (ex. 87), Enter">100%</b><input id="tz-in" type="number" min="30" max="300" step="5" style="display:none"><button class="pictograma" onclick="tzPas(1)" aria-label="Mărește tabelul">+</button></span>
-  <span class="ver">v10.00</span>
+  <span class="ver">v10.01</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -3478,7 +3478,7 @@ const srEfect = () => { const e = {}; (NOM.tip_miscare || []).forEach(r => { e[r
 async function srCalc(zi, depF){
   const [mi, se, si] = await Promise.all([
     db.from("miscari").select("id,grup_id,data,tip_miscare,contract,depozit,produs,model_fizic,buc,client,pv,pv_facut_la").limit(20000),
-    db.from("serii").select("id,produs,model,serie,stare,data_amplasarii,data_ridicarii,miscare_amplasare_id,miscare_ridicare_id").limit(20000),
+    db.from("serii").select("id,produs,model,serie,stare,data_amplasarii,data_ridicarii,miscare_amplasare_id,miscare_ridicare_id,observatii").limit(20000),
     db.from("stoc_initial").select("*") ]);
   if(mi.error || se.error || si.error) throw (mi.error || se.error || si.error);
   await loadSIM();
@@ -3515,7 +3515,8 @@ async function srCalc(zi, depF){
         if(x.miscare_amplasare_id && idDin.has(x.miscare_amplasare_id) && x.data_amplasarii && x.data_amplasarii >= ref && x.data_amplasarii <= zi){
           mod[nm] = (mod[nm] || 0) - 1; const g = grupDe(M.find(m => m.id === x.miscare_amplasare_id)); leg[g + "+"] = (leg[g + "+"] || 0) + 1; }
         if(x.miscare_ridicare_id && idDin.has(x.miscare_ridicare_id) && x.stare !== "LA CLIENT" && x.data_ridicarii && x.data_ridicarii >= ref && x.data_ridicarii <= zi){
-          mod[nm] = (mod[nm] || 0) + 1; const g = grupDe(M.find(m => m.id === x.miscare_ridicare_id)); leg[g + "-"] = (leg[g + "-"] || 0) + 1; }
+          const nmR = serModelIntors(x) || nm;   // v10.01: modelul care s-a întors în depozit (ales la „✓ Închide ridicarea”)
+          mod[nmR] = (mod[nmR] || 0) + 1; const g = grupDe(M.find(m => m.id === x.miscare_ridicare_id)); leg[g + "-"] = (leg[g + "-"] || 0) + 1; }
       });
       // comenzile fără (toate) seriile confirmate → modelul nu se știe încă
       const gr = {}; ord.filter(m => m.ef === "inchiriere").forEach(m => { const c = grupDe(m) + (m.buc < 0 ? "-" : "+"); (gr[c] = gr[c] || { l: [], n: 0 }).l.push(m); gr[c].n += Math.abs(m.buc); });
@@ -6507,6 +6508,12 @@ function serAproape(a, b){ a = serN(a); b = serN(b); if(!a || !b || a === b) ret
   if(a.length === b.length){ const d = [...a].map((c, i) => c !== b[i] ? i : -1).filter(i => i >= 0); return d.length === 1 || (d.length === 2 && d[1] === d[0] + 1 && a[d[0]] === b[d[1]] && a[d[1]] === b[d[0]]); }
   if(Math.abs(a.length - b.length) !== 1) return false; const [l, s2] = a.length > b.length ? [a, b] : [b, a];
   for(let i = 0; i < l.length; i++) if(l.slice(0, i) + l.slice(i + 1) === s2) return true; return false; }
+// v10.01 (hotărârea lui Ovidiu, 23.11): seriile = doar informație. La ridicare: ✓ confirmată când seria din PV e exact aceeași;
+// altfel se notează ce a citit șoferul; modelul care s-a întors în depozit se poate alege (contează la Stoc pe modele).
+// Totul stă în Observații la serie („✓ confirmată la ridicare …”, „citită de șofer: …”, „model întors: …”) — fără coloane noi.
+const serModelIntors = x => { const m = /model întors:\s*([^;\n]+)/i.exec((x && x.observatii) || ""); return m ? m[1].trim() : ""; };
+const serConfirmata = x => /✓ confirmată/i.test((x && x.observatii) || "");
+function riMod(k, id, v){ const o = RI && RI.R[k]; if(!o) return; o.modR = o.modR || {}; o.modR[id] = v; }
 function riPropune(lc, din, pvSerii){   // seriile din PV fără potrivire exactă → cea mai apropiată serie la client (una singură, nefolosită)
   const fol = new Set(din.map(x => x.id)), P = [];
   pvSerii.filter(s => !lc.some(x => serN(x.serie) === serN(s))).forEach(s => { const c = lc.filter(x => !fol.has(x.id) && serAproape(s, x.serie)); if(c.length === 1){ fol.add(c[0].id); P.push({ pv: s, x: c[0] }); } });
@@ -7174,7 +7181,10 @@ function riRender(){
     else {
       const lc = o.ser.filter(x => x.stare === "LA CLIENT"), nb = lc.filter(x => o.bif.has(x.id)).length, buc = Math.abs(+r.buc || 0);
       se = '<div class="ri-ser">' + o.ser.map(x => { const gata = x.stare !== "LA CLIENT";
-        return `<label><input type="checkbox" ${o.bif.has(x.id) || gata ? "checked" : ""} ${gata ? "disabled" : ""} onchange="riSer(${k},${x.id},this.checked)"> <b>${esc(x.serie || "fără serie")}</b> ${esc(x.model || x.produs || "")}${gata ? ` <span class="muted">· ${esc(String(x.stare).toLowerCase())} ${fmtD(x.data_ridicarii)}</span>` : ""}</label>`; }).join("") + "</div>" +
+        const exact = !gata && P.pvSerii.some(s2 => serN(s2) === serN(x.serie)), bif = !gata && o.bif.has(x.id);
+        const mods = [...new Set([x.model, ...modeleFiziceDe(x.produs, x.tip)].filter(Boolean))], mr = (o.modR || {})[x.id] || x.model || "";
+        const alege = bif && !exact && mods.length > 1 ? ` <span class="muted" style="white-space:nowrap" title="Ce model a intrat de fapt în depozit (după PV / ce vezi pe toaletă). Contează doar la Stoc pe modele; seria rămâne doar informație.">· intră ca <select style="width:auto;display:inline-block;padding:1px 4px;height:auto" onclick="event.stopPropagation()" onchange="riMod(${k},${x.id},this.value)">${mods.map(md => `<option${md === mr ? " selected" : ""}>${esc(md)}</option>`).join("")}</select></span>` : "";
+        return `<label><input type="checkbox" ${o.bif.has(x.id) || gata ? "checked" : ""} ${gata ? "disabled" : ""} onchange="riSer(${k},${x.id},this.checked)"> <b>${esc(x.serie || "fără serie")}</b> ${esc(x.model || x.produs || "")}${exact && bif ? ' <span style="color:#2f9e44;font-weight:600" title="Seria din PV e exact aceeași — se notează ca confirmată">✓ confirmată</span>' : serConfirmata(x) ? ' <span style="color:#2f9e44" title="Confirmată la o ridicare anterioară">✓</span>' : ""}${alege}${gata ? ` <span class="muted">· ${esc(String(x.stare).toLowerCase())} ${fmtD(x.data_ridicarii)}</span>` : ""}</label>`; }).join("") + "</div>" +
         ((o.prop || []).length ? `<div style="color:var(--t-warn);font-weight:600;margin:4px 0">⚠ În PV: ${o.prop.map(q => `<b>${esc(q.pv)}</b> → la client e <b>${esc(q.x.serie)}</b>`).join(", ")} — am bifat-o; verifică PV-ul (📄) și debifează dacă nu e ea.</div>` : "") +   // v9.47
         (() => { const ram = lc.filter(x => !o.bif.has(x.id)), plec = lc.filter(x => o.bif.has(x.id)), mod = {};
           plec.forEach(x => { const k = x.model || x.produs || "?"; mod[k] = (mod[k] || 0) + 1; });
@@ -7233,8 +7243,19 @@ async function riSalveaza(){
       }
       const de = o.ser.filter(x => o.bif.has(x.id) && x.stare === "LA CLIENT");
       if(de.length){
-        const { error } = await db.from("serii").update({ stare: "RIDICATA", data_ridicarii: r.data || today(), miscare_ridicare_id: r.id, updated_at: new Date().toISOString() }).in("id", de.map(x => x.id)); if(error) return gres(error);
-        facute.push(de.length + " serii ridicate");
+        // v10.01: notițele de pe fiecare serie (✓ confirmată / citită de șofer / model întors) — doar informație
+        const zR = fmtD(r.data || today()), pvS = RI.pvSerii || [], prop = o.prop || [];
+        const rest = pvS.filter(s2 => !o.ser.some(x => serN(x.serie) === serN(s2)) && !prop.some(q => serN(q.pv) === serN(s2)));
+        const nota = x => { const n = [];
+          if(pvS.some(s2 => serN(s2) === serN(x.serie))) n.push("✓ confirmată la ridicare " + zR);
+          else { const q = prop.find(q2 => q2.x.id === x.id); if(q) n.push("citită de șofer la ridicare: " + q.pv); else if(rest.length) n.push("PV ridicare " + zR + ": " + rest.join(", ")); }
+          const mr = (o.modR || {})[x.id]; if(mr && mr !== x.model) n.push("model întors: " + mr);
+          return n.length ? [String(x.observatii || "").trim(), ...n].filter(Boolean).join("; ") : null; };
+        const baza = { stare: "RIDICATA", data_ridicarii: r.data || today(), miscare_ridicare_id: r.id, updated_at: new Date().toISOString() };
+        const simple = de.filter(x => !nota(x)), cuNota = de.filter(x => nota(x));
+        if(simple.length){ const { error } = await db.from("serii").update(baza).in("id", simple.map(x => x.id)); if(error) return gres(error); }
+        for(const x of cuNota){ const { error } = await db.from("serii").update({ ...baza, observatii: nota(x) }).eq("id", x.id); if(error) return gres(error); }
+        facute.push(de.length + " serii ridicate" + (cuNota.length ? " (" + cuNota.length + " cu notă: confirmată / citită de șofer / model)" : ""));
       }
       if(p && p.ultima){
         if(o.anexa && !p.anexaDeja){
@@ -10245,7 +10266,8 @@ async function serSalveaza(){
   for(const r of SR_ROWS){ if(!r.produs){ toast("Alege produsul pe fiecare bucată",true); return; } }
   SR_ROWS.forEach(r=>{ if(r.serie) r.serie=serFormat(r.serie); });   // v5.26: și seriile vechi (72782 → EE-72782)
   const dub=serDubluri(SR_ROWS, SER, SR_PUNCT ? null : a.id);
-  if(dub.length && !confirm("Atenție, serie deja la client:\n\n"+dub.map(d=>"• "+d.serie+" — "+d.unde).join("\n")+"\n\nSalvezi oricum?")) return;
+  // v10.01 (hotărârea lui Ovidiu, 23.11): seriile sunt doar informație — seria dublată nu mai cere confirmare, doar se semnalează
+  if(dub.length) setTimeout(() => toast("De știut: serie trecută și în alt loc — " + dub.map(d => d.serie + " (" + d.unde + ")").join("; ") + ". Se îndreaptă la următoarea citire corectă.", false), 900);
   // v8.03 (cerut de Ovidiu, 08.11 — PLANTAM FAPTE BUNE): serii trecute DUPĂ ce ridicarea a fost închisă rămâneau „LA CLIENT” (🔢 2/0 portocaliu)
   const ridCmd = r => { const c = SR_CMD; if(!c) return null;
     const l = (MISC || []).filter(x => /^(RIDICARE|EVENIMENT-R|REDUCERE)$/.test(x.tip_miscare || "") && x.client === c.client && x.produs === r.produs && extCheie(x.jud, x.loc, x.sat) === extCheie(a.jud, a.loc, a.sat))
