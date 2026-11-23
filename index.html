@@ -1003,8 +1003,8 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   nav button.on .nv-i{opacity:1}
   nav button:hover .nv-i{opacity:1;transform:translateX(1px)}
   .kpi-lei{border:1.5px solid var(--g) !important}
-  .kpi-lei .kpi-sub{display:block;font-size:11.5px;color:var(--mut);margin-top:2px;white-space:nowrap}
-  .kpi-lei .kpi-sub b{display:inline;font-size:inherit;color:var(--tx)}
+  .kpi .kpi-sub{display:block;font-size:11.5px;color:var(--mut);margin-top:2px;white-space:nowrap}
+  .kpi .kpi-sub b{display:inline;font-size:inherit;color:var(--tx);margin:0;letter-spacing:0}
   .nv-i.ph{fill:currentColor;stroke:none;transition:opacity .2s,color .15s,transform .25s cubic-bezier(.65,0,.35,1)}
   nav button:hover .nv-i.ph,nav button.on .nv-i.ph{color:var(--nc)}
   }
@@ -1188,7 +1188,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
   <span id="rz-w"><button id="rz-reset" class="pictograma" title="Lățimi implicite — pune coloanele din tabelele acestei file înapoi cum erau">↺ Reset layout</button><i class="rz-sep">|</i></span>
   <span id="tz-w" title="Mărimea tabelului (doar tabelul, restul rămâne la fel), din 5 în 5%. Fiecare meniu își ține minte mărimea lui. Merge și cu Ctrl + rotița mausului, Ctrl + / Ctrl − / Ctrl 0. Dublu clic pe procent = scrii tu valoarea."><button class="pictograma" onclick="tzPas(-1)" aria-label="Micșorează tabelul">−</button><b id="tz-v" ondblclick="tzScrie()" title="Dublu clic = scrii mărimea (ex. 87), Enter">100%</b><input id="tz-in" type="number" min="30" max="300" step="5" style="display:none"><button class="pictograma" onclick="tzPas(1)" aria-label="Mărește tabelul">+</button></span>
-  <span class="ver">v9.99</span>
+  <span class="ver">v10.00</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -11368,7 +11368,7 @@ async function raportFacturare(){
   const pe = {};
   R_RANDURI.forEach(f => { const m = f[20] || "RON"; pe[m] = pe[m] || [0, 0]; pe[m][0] += f[25]; pe[m][1] += f[26]; });
   $("r-kpi").innerHTML = `<div>Poziții<b>${R_RANDURI.length}</b></div>` +
-    Object.keys(pe).sort().map(m => `<div>Fără TVA (${esc(m)})<b>${bani(pe[m][0])}</b></div><div>Cu TVA (${esc(m)})<b>${bani(pe[m][1])}</b></div>`).join("");
+    Object.keys(pe).sort().map(m => `<div>Fără TVA (${esc(m)})<b>${bani(pe[m][0])}</b><span class="kpi-sub">cu TVA: <b>${bani(pe[m][1])}</b></span></div>`).join("");   // v10.00: fără TVA sus, cu TVA dedesubt (un card pe monedă)
   F_PE = pe; if(Object.keys(pe).some(m => !["RON", "LEI"].includes(String(m).toUpperCase().trim()))) $("r-kpi").innerHTML += `<div id="kpi-lei" class="kpi-lei">${factLeiHtml()}</div>`;   // v9.99
   factSicapBanda(anF, lunaF);   // v8.83
   const nDep = R_AVERT.filter(v => v.anx || v.ctr).length;
