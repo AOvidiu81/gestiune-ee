@@ -1188,7 +1188,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
   <span id="rz-w"><button id="rz-reset" class="pictograma" title="Lățimi implicite — pune coloanele din tabelele acestei file înapoi cum erau">↺ Reset layout</button><i class="rz-sep">|</i></span>
   <span id="tz-w" title="Mărimea tabelului (doar tabelul, restul rămâne la fel), din 5 în 5%. Fiecare meniu își ține minte mărimea lui. Merge și cu Ctrl + rotița mausului, Ctrl + / Ctrl − / Ctrl 0. Dublu clic pe procent = scrii tu valoarea."><button class="pictograma" onclick="tzPas(-1)" aria-label="Micșorează tabelul">−</button><b id="tz-v" ondblclick="tzScrie()" title="Dublu clic = scrii mărimea (ex. 87), Enter">100%</b><input id="tz-in" type="number" min="30" max="300" step="5" style="display:none"><button class="pictograma" onclick="tzPas(1)" aria-label="Mărește tabelul">+</button></span>
-  <span class="ver">v10.02</span>
+  <span class="ver">v10.03</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -5603,6 +5603,7 @@ function intoarceInMiscare(ce, id){
 function openMiscare(id){
   { const t0 = id ? MISC.find(x => x.id === id) : null; if(t0 && /^Transfer/i.test(t0.tip_miscare || "")){ trEditeaza(t0); return; } }   // v9.74
   MM_LOC_DESF = !!id; MM_ACT_K = ""; { const e = $("mm-act"); if(e){ e.style.display = "none"; e.innerHTML = ""; } }   // v9.61
+  MM_ACT_ORFAN = null;   // v10.03
   MM_FISA = null;   // v8.29: se pune din nou doar de comandaDinFisa
   MM_SV_MEM = {}; MM_SV_ANX = null;   // v8.32
   ["mm-aa-nr","mm-aa-data","mm-aa-pret","mm-aa-obs"].forEach(x => { const e = $(x); if(e) e.value = ""; }); MM_AA_K = ""; MM_AA_VECHI = null;   // v7.99
@@ -5686,6 +5687,7 @@ async function mmCiornaSterge(id){
   MM_CIORNE = MM_CIORNE.filter(y => y.id !== id); mmCiorneDeseneaza(); toast("Ciorna a fost ștearsă");
 }
 async function mmAnuleaza(){
+  await mmOrfanVerifica();   // v10.03
   const d = mmDate();
   if(!$("mm-id").value && (d["mm-client"] || d["mm-loc"] || d["mm-sat"] || d["mm-pers"] || d["mm-tel"] || d["mm-obs"])){
     const q = MM_CIORNA ? db.from("ciorne").update({ date: d, updated_at: new Date().toISOString() }).eq("id", MM_CIORNA)
@@ -6323,13 +6325,37 @@ function mmVerifArata(B, W, gen){
 function mmVerifInchide(){ $("mm-verif").classList.remove("on"); }
 function mmVerifMergi(id){ mmVerifInchide(); const e = $(id); if(!e) return; e.scrollIntoView({ block: "center" }); setTimeout(() => e.focus(), 50);
   e.classList.add("mv-rosu"); setTimeout(() => e.classList.remove("mv-rosu"), 2500); }
+// v10.03 (cerut de Ovidiu, 23.11 — „bulletproof”): salvarea comenzii
+// • nu pornește de două ori (dublu-clic / Enter apăsat de două ori nu mai face două comenzi);
+// • orice eroare din timpul salvării se strânge și se arată la sfârșit într-o fereastră, nu se mai pierde sub „Comandă salvată”;
+// • dacă actul / anexa s-a făcut, dar comanda nu, se spune clar, iar la închiderea ferestrei întreabă ce faci cu actul rămas fără comandă.
+let MM_SALVEZ = false, MM_ACT_ORFAN = null;
 async function saveMiscare(genereaza, fortat){
+  if(MM_SALVEZ){ toast("Se salvează deja — așteaptă o clipă"); return false; }
   if(mmModif()) return mmModifSalveaza();   // v7.99: MODIFICARE ANEXĂ = act adițional, nu comandă
   if(!fortat && $("mm-tip").value !== "SERVISARE"){ const { B, W } = mmVerifLista(); if(B.length || W.length){ mmVerifArata(B, W, genereaza); return false; } }
-  return saveMiscareBaza(genereaza);
+  MM_SALVEZ = true; const bt = ["mm-save", "mm-gen"].map(i => $(i)).filter(Boolean); bt.forEach(b => b.disabled = true);
+  const erori = [], t0 = toast; let ok = false;
+  toast = (m, e) => { if(e) erori.push(String(m)); t0(m, e); };
+  try{ ok = await saveMiscareBaza(genereaza); }
+  catch(e){ console.error(e); erori.push("Eroare neașteptată: " + (e && e.message || e)); ok = false; }
+  finally{ toast = t0; MM_SALVEZ = false; bt.forEach(b => b.disabled = false); }
+  if(ok && erori.length) alert("⚠ Comanda s-a salvat, DAR nu tot a mers:\n\n• " + [...new Set(erori)].join("\n• ") + "\n\nVerifică comanda (Edit) și ce scrie mai sus; la nevoie salvează din nou.");
+  else if(!ok && erori.some(m => /^Eroare neașteptată|Comanda NU/.test(m))) alert("⚠ " + [...new Set(erori)].join("\n\n"));
+  return ok;
+}
+async function mmOrfanVerifica(){   // la închiderea ferestrei: actul făcut pentru o comandă care n-a mai fost salvată
+  const o = MM_ACT_ORFAN; MM_ACT_ORFAN = null; if(!o) return;
+  const a = ANX.find(x => x.id === o.id); if(!a) return;
+  if(!confirm("Actul " + (a.anexa || "") + " s-a creat pentru comanda asta, dar comanda NU s-a salvat.\n\nOK = șterg actul (ca și cum n-ar fi fost)\nAnulează = îl păstrez (îl găsești în Contracte și anexe; comanda o faci din nou)")) return;
+  const { error } = await db.from("anexe").delete().eq("id", o.id);
+  if(error){ toast("Actul nu s-a putut șterge: " + error.message + " — șterge-l din Contracte și anexe", true); return; }
+  toast("Actul " + (a.anexa || "") + " a fost șters"); try{ await reloadClienti(); }catch(e){}
 }
 async function saveMiscareBaza(genereaza){
+  const anx0 = new Set(ANX.map(x => x.id));   // v10.03: ce anexe existau înainte (ca să știu dacă actul s-a făcut acum)
   if(!(await mmActInainte())) return false;   // v9.61: actul -S / -R din fișă se face întâi, apoi comanda
+  { const nou = ANX.find(x => !anx0.has(x.id) && x.id === (+$("mm-anexa").value || 0)) || ANX.find(x => !anx0.has(x.id)); if(nou && !$("mm-id").value) MM_ACT_ORFAN = { id: nou.id }; }
   const tip=$("mm-tip").value; let buc=Math.abs(+$("mm-buc").value||0); if(!buc){toast("Introdu numărul de bucăți",true);return false;}
   { const aid = +$("mm-anexa").value || null;   // v6.68
     if(FARA_ACT(tip) && aid && !mmExterior() && lipsaFinal(aid)){
@@ -6434,7 +6460,9 @@ async function saveMiscareBaza(genereaza){
   // Textul se scrie din formular cât e încă plin, înainte să închidem fereastra.
   const textDeCopiat = genereaza ? textComanda() : null;
   const {data:salvat, error}= id? await db.from("miscari").update(rec).eq("id",id).select("id").single() : await db.from("miscari").insert(rec).select("id").single();
-  if(error){toast(error.message,true);return false;}
+  if(error){ const o = MM_ACT_ORFAN && ANX.find(x => x.id === MM_ACT_ORFAN.id);   // v10.03: mesaj clar, nu doar un toast
+    toast("Comanda NU s-a salvat: " + error.message + (o ? ". Actul " + (o.anexa || "") + " s-a creat deja — apasă din nou Salvează (nu se mai face a doua oară)." : ". Formularul a rămas completat — încearcă din nou."), true); return false; }
+  MM_ACT_ORFAN = null;
   if(id && dataVeche && rec.data && dataVeche !== rec.data) await mmDataAnexa(rec, dataVeche);
   if(!id && MM_CIORNA){ await db.from("ciorne").delete().eq("id", MM_CIORNA); MM_CIORNA = null; $("mm-ciorne").innerHTML = ""; }   // v4.80: ciorna folosită nu mai rămâne
   await mmDocSalveaza(salvat.id, rec);   // v5.13: celelalte produse ale anexei
@@ -19128,7 +19156,7 @@ function ptMeniu(ev, id){
     x:   '<svg viewBox="0 0 12 12"><path d="M1.5 1.5l9 9M10.5 1.5l-9 9"/></svg>'
   };
   const INCHIDE = {
-    "mod-m": () => closeModal("mod-m"), "mod-c": () => mcAnuleaza(), "mod-k": () => mkAnuleaza(), "mod-a": () => maAnuleaza(),
+    "mod-m": () => mmOrfanVerifica().finally(() => closeModal("mod-m")),   // v10.03 "mod-c": () => mcAnuleaza(), "mod-k": () => mkAnuleaza(), "mod-a": () => maAnuleaza(),
     "mod-inch": () => closeModal("mod-inch"), "mod-s": () => closeModal("mod-s"), "mod-doc": () => docRenunta(),
     "mod-cmd": () => cmdInchide(), "mod-pl": () => closeModal("mod-pl"), "mod-mu": () => closeModal("mod-mu"), "mod-sz": () => closeModal("mod-sz"), "mod-act": () => closeModal("mod-act"), "mod-admin": () => { closeModal("mod-admin"); rUrmator(); }
   };
