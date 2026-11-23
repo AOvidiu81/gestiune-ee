@@ -1188,7 +1188,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
   <span id="rz-w"><button id="rz-reset" class="pictograma" title="Lățimi implicite — pune coloanele din tabelele acestei file înapoi cum erau">↺ Reset layout</button><i class="rz-sep">|</i></span>
   <span id="tz-w" title="Mărimea tabelului (doar tabelul, restul rămâne la fel), din 5 în 5%. Fiecare meniu își ține minte mărimea lui. Merge și cu Ctrl + rotița mausului, Ctrl + / Ctrl − / Ctrl 0. Dublu clic pe procent = scrii tu valoarea."><button class="pictograma" onclick="tzPas(-1)" aria-label="Micșorează tabelul">−</button><b id="tz-v" ondblclick="tzScrie()" title="Dublu clic = scrii mărimea (ex. 87), Enter">100%</b><input id="tz-in" type="number" min="30" max="300" step="5" style="display:none"><button class="pictograma" onclick="tzPas(1)" aria-label="Mărește tabelul">+</button></span>
-  <span class="ver">v10.03</span>
+  <span class="ver">v10.04</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -6294,7 +6294,8 @@ function mmVerifLista(){
   if(vz && !v("mm-pers")) W.push(["Cine preia marfa la livrare (nume) e gol", "mm-pers"]);
   if(!trf && !v("mm-client")) B.push(["Clientul nu e ales", "mm-client"]);
   if(!trf && !vz && !ext && !v("mm-ctr")) B.push(["Contractul nu e ales", "mm-ctr"]);
-  if(!ext && /^(AMPLASARE|SUPLIMENTARE|REDUCERE|RIDICARE|EVENIMENT-A|EVENIMENT-R)$/.test(tip) && !(+v("mm-anexa")))
+  const actNou = !!($("mm-act-da") && $("mm-act-da").checked && $("mm-act") && $("mm-act").style.display !== "none");   // v10.04: „Locație nouă” bifată → anexa se face la Salvează
+  if(!ext && !actNou && /^(AMPLASARE|SUPLIMENTARE|REDUCERE|RIDICARE|EVENIMENT-A|EVENIMENT-R)$/.test(tip) && !(+v("mm-anexa")))
     B.push(["Anexa nu e aleasă (sau creată cu + lângă Anexă) — fără anexă comanda nu intră în Facturare", "mm-anexa"]);
   if(!(Math.abs(+v("mm-buc") || 0) > 0)) B.push(["Bucăți = 0", "mm-buc"]);
   if(!v("mm-prod")) B.push(["Produsul nu e ales", "mm-prod"]);
