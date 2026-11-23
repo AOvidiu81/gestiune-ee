@@ -1188,7 +1188,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
   <span id="rz-w"><button id="rz-reset" class="pictograma" title="Lățimi implicite — pune coloanele din tabelele acestei file înapoi cum erau">↺ Reset layout</button><i class="rz-sep">|</i></span>
   <span id="tz-w" title="Mărimea tabelului (doar tabelul, restul rămâne la fel), din 5 în 5%. Fiecare meniu își ține minte mărimea lui. Merge și cu Ctrl + rotița mausului, Ctrl + / Ctrl − / Ctrl 0. Dublu clic pe procent = scrii tu valoarea."><button class="pictograma" onclick="tzPas(-1)" aria-label="Micșorează tabelul">−</button><b id="tz-v" ondblclick="tzScrie()" title="Dublu clic = scrii mărimea (ex. 87), Enter">100%</b><input id="tz-in" type="number" min="30" max="300" step="5" style="display:none"><button class="pictograma" onclick="tzPas(1)" aria-label="Mărește tabelul">+</button></span>
-  <span class="ver">v10.08</span>
+  <span class="ver">v10.09</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -11428,13 +11428,14 @@ async function raportFacturare(){
   { const { data: cm } = await db.from("miscari").select("id,anexa_id,cmd_nr,cmd_data").eq("tip_miscare", "EVENIMENT-A").not("anexa_id", "is", null).or("cmd_nr.not.is.null,cmd_data.not.is.null").limit(5000);
     FACT_CMD = {}; (cm || []).sort((x, y) => x.id - y.id).forEach(m => { FACT_CMD[m.anexa_id] = m; }); }
   const [misF, fsR, fpR, scR, flR] = await Promise.all([ miscariLuna(anF, lunaF),
-    db.from("facturare_stare").select("anexa_id,stare").eq("an", anF).eq("luna", lunaF),
+    db.from("facturare_stare").select("anexa_id,stare,valoare,moneda,dif_ok,refacut_din").eq("an", anF).eq("luna", lunaF),   // v10.09
     db.from("facturare_perioada").select("*"),
     db.from("facturare_servisari").select("*").eq("an", anF).eq("luna", lunaF),   // v6.86
     db.from("facturare_locatii").select("*") ]);   // v6.88
   if(scR.error) toast("Servisări la cerere: " + scR.error.message, true);
   FACT_SC = {}; (scR.data || []).forEach(z => FACT_SC[z.anexa_id] = z);
   const FS = {}; (fsR.data || []).forEach(z => FS[z.anexa_id] = z.stare);
+  R_FSX = {}; (fsR.data || []).forEach(z => R_FSX[z.anexa_id] = z);   // v10.09
   if(fpR.error) toast("Perioade de facturare: " + fpR.error.message, true);
   FACT_PER = fpR.data || [];
   r = factAplicaPerioade(r, anF, lunaF, FACT_PER);   // v6.50
@@ -11502,6 +11503,8 @@ async function raportFacturare(){
   r.forEach((x, j) => { const f = R_RANDURI[j]; if(!f || !x || !x.a) return;
     FT_TXT.set(j, factText(x, f, tva));
     R_EXTRA[j] = (R_EXTRA[j] || "") + ` <button class="btn sm sec" title="Text pentru departamentul de facturare (copiază / WhatsApp)" onclick="ftDeschide(${j})">✉</button>`; });
+  { const vaz = new Set(); r.forEach((x, j) => { if(!x || !x.a || vaz.has(x.a.id)) return; vaz.add(x.a.id); const d = factDif(x.a.id); if(!d) return;   // v10.09
+    R_EXTRA[j] = (R_EXTRA[j] || "") + ` <button class="btn sm" style="background:#d97706;border-color:#d97706" title="Modificat după trimitere: facturat ${fmtPret(d.fact)}, acum ${fmtPret(d.acum)} ${esc(d.mon)} — alege: refaci factura sau o lași așa" onclick="factDifDeschide(${x.a.id})">⚠ ${fmtPret(d.fact)} → ${fmtPret(d.acum)}</button>`; }); }
   // v6.86 (cerut de Ovidiu, 24.10 — VITAL BERRY): anexa cu „Servisare la cerere” bifată are sub ultimul ei rând un rând
   // „SERVISARE LA CERERE”: zilele servisărilor din luna aceasta + bucățile servisate, trecute de mână (dublu clic / „Zile”).
   // Valoare = total bucăți servisate × prețul pe servisare / produs. Fără zile = INACTIV, 0. Anexa nu se schimbă.
@@ -11603,7 +11606,8 @@ async function raportFacturare(){
         nota.down = `${t} în data de ${pct(f[23])}\n${anx} · ${prod}\n${per} (ziua ${t === "REDUCERE" ? "reducerii" : "ridicării"} inclusă)`; }
       const c = factCtrDe(j);
       const ax = (R_FX[j] || {}).a, lin = ax ? String(ax.linie_id || ax.id) : "";   // v8.54: linia anexei (13 + 13-S1 + 13-R1…)
-      return { f, j, ro: R_ROSU[j], nota, k1: idK(f[5]), k2: scK(f[27]), c, cl: String(f[4] || "").trim().toUpperCase(), lin };
+      const zs = !R_SC.has(j) && f[0] === "ACTIV" && R_FSX[R_AID[j]], rf = zs && zs.refacut_din != null ? +zs.refacut_din : null;   // v10.09
+      return { f, j, ro: R_ROSU[j], nota, k1: idK(f[5]), k2: scK(f[27]), c, cl: String(f[4] || "").trim().toUpperCase(), lin, rf };
     });
     // v7.87 (cerut de Ovidiu, 05.11): rândurile unui client rămân lipite — clientul se așază după scadentul lui cel mai mare (FLORERO: 30)
     factOrdonGata(sel);   // v8.76: ordinea comună cu Verificare (v7.87 / v8.54: clientul după scadentul lui cel mai mare, rândurile aceleiași locații lipite)
@@ -11619,7 +11623,7 @@ async function raportFacturare(){
     R_FCONT = sel.map(x => x.g === "cont");
     // v6.47: coloana „DOCUMENT” = FACTURA AVANS / FACTURA PROFORMA (gol la factura obișnuită); v7.84: prima coloană
     const DOC_SCURT = { "FACTURA AVANS": "FA", "FACTURA PROFORMA": "FP" };   // v7.89 (cerut de Ovidiu, 05.11): prescurtări, cu legendă în Excel
-    R_RANDURI = sel.map(({ f, g, gn }) => { const doc = /^FACTURA /.test(f[0]) ? (DOC_SCURT[f[0]] || f[0]) : "";
+    R_RANDURI = sel.map(({ f, g, gn, rf }) => { const doc = /^FACTURA /.test(f[0]) ? (DOC_SCURT[f[0]] || f[0]) : rf != null ? "RF " + fmtPret(rf) : "";   // v10.09
       const r = [g === "prim" ? [doc, `1F-${gn}R`].filter(Boolean).join(" · ") : doc].concat(idx.map(i => i === 8 && f._cod ? f._cod : f[i]));   // v7.13: doar codul clientului
       if(g === "cont") r[2] = "↳ " + r[2];
       return r; });
@@ -11650,7 +11654,64 @@ function factValAnexa(aid){
   if(a && a.serv_cerere && sc){ t += scZile(sc).reduce((s, z) => s + (+z.buc || 0), 0) * (+a.serv_pret || 0); }
   return { valoare: Math.round(t * 100) / 100, moneda: mon || (a && a.moneda) || "RON" };
 }
-const factValSnap = (aid, st) => /^(FACTURAT|FACTURA AVANS)$/.test(st) ? factValAnexa(aid) : { valoare: null, moneda: null };
+const factValSnap = (aid, st) => Object.assign(/^(FACTURAT|FACTURA AVANS|IN ASTEPTARE FACTURA)$/.test(st) ? factValAnexa(aid) : { valoare: null, moneda: null }, { dif_ok: null });   // v10.09: și cererea trimisă (✉)
+// ── v10.09 (cerut de Ovidiu, 23.11): MODIFICAT DUPĂ TRIMITERE — rândul FACTURAT / IN ASTEPTARE FACTURA a ajuns la altă valoare decât cea
+// trimisă (ex. ridicare pe 27.11 după ce raportul a plecat la sediu). Nu se blochează nimic: ⚠ pe rând + card la „De urmărit”;
+// el alege „Refac factura” (rândul revine ACTIV, intră iar la „Gata de trimis”, DOCUMENT = RF + suma facturată inițial) sau „Las așa”.
+let R_FSX = {};
+const factDifCalc = (z, acum) => {
+  if(!z || z.valoare == null || !/^(FACTURAT|IN ASTEPTARE FACTURA)$/.test(z.stare || "")) return null;
+  if(Math.abs(acum - +z.valoare) < 0.01 || (z.dif_ok != null && Math.abs(acum - +z.dif_ok) < 0.01)) return null;
+  return { fact: +z.valoare, acum, mon: z.moneda || "RON" };
+};
+const factDif = aid => factDifCalc(R_FSX[aid], factValAnexa(aid).valoare);
+function factMergiLuna(an, luna){   // v10.09: din „De urmărit” → Facturare pe luna aceea
+  initRapoarte(); deschideSectiune("facturare");
+  setTimeout(() => { $("r-an").value = an; $("r-luna").value = luna; $("r-client").value = ""; R_MOD = "lucru"; genereazaRaport(); }, 50);
+}
+function factDifDeschide(aid){
+  const d = factDif(aid), a = ANX.find(x => x.id === aid); if(!d || !a) return;
+  const an = +$("r-an").value, luna = +$("r-luna").value, z = R_FSX[aid], k = CTR.find(x => x.id === a.contract_id) || {};
+  const cl = CLI.find(x => x.id === k.client_id) || {}, dif = Math.round((d.acum - d.fact) * 100) / 100;
+  const old = $("mod-fdif"); if(old) old.remove();
+  const w = document.createElement("div"); w.className = "modal on"; w.id = "mod-fdif";
+  w.innerHTML = `<div class="box" style="max-width:560px"><h3 class="lux-cap cap-mut">Modificat după trimitere — ${esc(a.anexa || "")}</h3>
+    <p style="margin:0 0 8px"><b>${esc(cl.nume || "")}</b> · CTR ${esc(k.nr_ctr || "")} · luna ${zi2(luna)}.${an} · ${esc(z.stare)}</p>
+    <p style="margin:0 0 8px">Trimis la facturare: <b>${fmtPret(d.fact)} ${esc(d.mon)}</b> · acum în tabel: <b>${fmtPret(d.acum)} ${esc(d.mon)}</b> (${dif > 0 ? "+" : ""}${fmtPret(dif)}).<br><span class="muted">De obicei o ridicare / reducere sau o dată schimbată după ce raportul a plecat la sediu. Data de final o pune comanda de ridicare; o poți corecta cu dublu clic pe SFARSIT LUNA.</span></p>
+    <div style="border:1px solid var(--bd);border-radius:10px;padding:8px 12px;margin-bottom:8px"><b>Refac factura</b><div class="muted">Rândul revine pe ACTIV, cu valoarea de acum, și intră iar la „Gata de trimis” ca un rând obișnuit; în DOCUMENT apare RF ${fmtPret(d.fact)} (refacere, facturat inițial). Factura veche o stornează sediul.</div></div>
+    <div style="border:1px solid var(--bd);border-radius:10px;padding:8px 12px"><b>Las așa</b><div class="muted">Factura rămâne cum a plecat (${fmtPret(d.fact)} ${esc(d.mon)}); semnalul dispare. Dacă se mai schimbă ceva, apare din nou.</div></div>
+    <p class="muted" style="margin:8px 0 0">Anexa nu se schimbă — alegerea ține doar de Facturare.</p>
+    <div class="row" style="margin-top:12px;justify-content:flex-end"><div style="flex:1"></div>
+      <div style="flex:0"><button class="btn sec" id="fd-x">Renunță</button></div>
+      <div style="flex:0"><button class="btn sec" id="fd-las">Las așa</button></div>
+      <div style="flex:0"><button class="btn" id="fd-ref">Refac factura</button></div></div></div>`;
+  document.body.appendChild(w); feFereastra(w);
+  w.querySelector("#fd-x").onclick = () => w.remove();
+  w.querySelector("#fd-las").onclick = async () => {
+    const { error } = await db.from("facturare_stare").update({ dif_ok: d.acum, actualizat_la: new Date().toISOString() }).eq("anexa_id", aid).eq("an", an).eq("luna", luna);
+    if(error){ toast(error.message, true); return; }
+    w.remove(); toast("Rămâne factura trimisă (" + fmtPret(d.fact) + " " + d.mon + ")"); await raportFacturare(); };
+  w.querySelector("#fd-ref").onclick = async () => {
+    const { error } = await db.from("facturare_stare").upsert({ anexa_id: aid, an, luna, stare: "ACTIV", valoare: null, moneda: null, dif_ok: null, refacut_din: d.fact, actualizat_la: new Date().toISOString() });
+    if(error){ toast(error.message, true); return; }
+    w.remove(); toast("Rândul e iar ACTIV (" + fmtPret(d.acum) + " " + d.mon + ") — intră la „Gata de trimis”, cu RF " + fmtPret(d.fact)); await raportFacturare(); };
+}
+// valorile anexelor pe o lună (ca în Facturare, fără filtrele de sus) — pentru cardul de la „De urmărit”
+function factValLuna(an, luna, FP, SC){
+  const ids = ["r-client", "r-jud", "r-stare"], v0 = ids.map(i => $(i).value); ids.forEach(i => $(i).value = "");
+  let r; try{
+    r = randuriFacturare(an, luna);
+    const [anU, lunaU] = luna === 12 ? [an + 1, 1] : [an, luna + 1], p1 = new Date(an, luna - 1, 1), pN = new Date(an, luna, 0);
+    const primaLuna = x => { const d = dtz(x.a.data_livrarii || x.a.data_emitere); return d && d >= p1 && d <= pN; };
+    r = r.filter(x => !x.a.fact_avans || primaLuna(x)).concat(randuriFacturare(anU, lunaU).filter(x => x.a.fact_avans));
+    r = factPeLocatii(factAplicaPerioade(r, an, luna, FP));
+  } finally { ids.forEach((i, k) => $(i).value = v0[k]); }
+  const V = new Map();
+  r.forEach(x => { if(!x || !x.a || x.acoperit || x.locZero || factPerZero(x)) return; V.set(x.a.id, (V.get(x.a.id) || 0) + (x.zile || 0) * (+x.a.pret || 0) * cantFact(x.a, x.cant)); });
+  (SC || []).forEach(z => { const a = ANX.find(y => y.id === z.anexa_id); if(a && a.serv_cerere) V.set(a.id, (V.get(a.id) || 0) + scZile(z).reduce((t, q) => t + (+q.buc || 0), 0) * (+a.serv_pret || 0)); });
+  V.forEach((t, k) => V.set(k, Math.round(t * 100) / 100));
+  return V;
+}
 // Banda SICAP din Facturare: pe fiecare contract din raport cu achiziție SICAP pe luna aleasă — contractat, facturat înainte, rămas, luna aceasta
 async function factSicapBanda(an, luna){
   const el = $("r-sicap"); if(!el) return; el.innerHTML = "";
@@ -11717,6 +11778,8 @@ async function fvFacturat(t, pune){   // ✓ corect → FACTURAT; din ✓ înapo
   if(t.serv){ const rec = { fact_stare: pune ? "FACTURAT" : null, fac: pune ? "V" : "-" }; r = await db.from("miscari").update(rec).eq("id", t.serv);
     [MISC, CMA, R_MIS].forEach(L => (L || []).forEach(m => { if(m.id === t.serv) Object.assign(m, rec); })); }
   else if(t.sc) r = await db.from("facturare_servisari").upsert({ anexa_id: t.sc, an, luna, stare: pune ? "FACTURAT" : null, actualizat_la: new Date().toISOString() }, { onConflict: "anexa_id,an,luna" });
+  else if(t.anx && pune && R_FSX[t.aid] && R_FSX[t.aid].stare === "IN ASTEPTARE FACTURA" && R_FSX[t.aid].valoare != null)   // v10.09: suma cerută rămâne cea trimisă
+    r = await db.from("facturare_stare").update({ stare: "FACTURAT", actualizat_la: new Date().toISOString() }).eq("anexa_id", t.aid).eq("an", an).eq("luna", luna);
   else if(t.anx) r = pune ? await db.from("facturare_stare").upsert(Object.assign({ anexa_id: t.aid, an, luna, stare: "FACTURAT", actualizat_la: new Date().toISOString() }, factValSnap(t.aid, "FACTURAT")))
                           : await db.from("facturare_stare").delete().eq("anexa_id", t.aid).eq("an", an).eq("luna", luna);
   if(r && r.error) toast("STARE LUNA: " + r.error.message, true);
@@ -12759,6 +12822,7 @@ async function exportFactTrimis(){
   rt++;
   const leg = [[{ fill: "FFFFFFFF" }, "1F-6R = 1 factură cu 6 rânduri (poziții): rândul cu 1F-…R și rândurile de sub el, scrise înclinat cu ↳, merg pe aceeași factură", "1F-6R"],
     [{ fill: "FFFFFFFF" }, "FA = factură în avans · FP = factură proformă (DOCUMENT gol = factură obișnuită)", "FA / FP"],
+    [{ fill: "FFFFFFFF" }, "RF 720.00 = refacere factură (s-a schimbat după trimitere, ex. ridicare); 720.00 = suma facturată inițial, de stornat", "RF"],   // v10.09
     [VERDE, "zi de amplasare / suplimentare (notă pe celulă)"], [ROSU, "zi de ridicare / reducere (notă pe celulă)"], [GALBEN, "perioadă care nu e lună întreagă din alt motiv (ex. perioadă stabilită separat)"]];
   leg.forEach(([C, t, et]) => { const c = ws.getCell(rt, O); c.value = et || ""; c.fill = umple(C.fill); c.border = bord;
     if(et) Object.assign(c, { font: { name: "Arial", size: 12, bold: true, color: { argb: /^F[AP]/.test(et) ? "FFC2570C" : "FF4A2E8F" } }, alignment: { horizontal: "center", vertical: "middle" } });
@@ -12983,6 +13047,29 @@ async function loadAtentie(){
         .sort((x, y) => x.p.pana.localeCompare(y.p.pana))
         .map(({ p, a }) => { const c = CTR.find(x => x.id === a.contract_id) || {};
           return { id: "fp" + p.id, go: "openAnexa(" + a.id + ")", ctx: p.pana, v: [numeClient(c), a.anexa || "", [a.loc, a.sat].filter(Boolean).join(", "), fmtD(p.de) + " – " + fmtD(p.pana), p.document || "factură", ziDiff(p.pana, azi)] }; })); }
+
+  // v10.09 (cerut de Ovidiu, 23.11): MODIFICĂRI DUPĂ FACTURARE — luna aceasta și luna trecută: rândurile FACTURAT / IN ASTEPTARE FACTURA
+  // care acum au altă valoare decât cea trimisă (ex. ridicare după ce raportul a plecat). Clic → Facturare pe luna aceea, butonul ⚠ pe rând.
+  try{
+    const d0 = new Date(), L2 = [[d0.getFullYear(), d0.getMonth() + 1], d0.getMonth() ? [d0.getFullYear(), d0.getMonth()] : [d0.getFullYear() - 1, 12]];
+    const [fsA, scA, flA] = await Promise.all([
+      db.from("facturare_stare").select("anexa_id,an,luna,stare,valoare,moneda,dif_ok").in("stare", ["FACTURAT", "IN ASTEPTARE FACTURA"]).not("valoare", "is", null).in("an", [...new Set(L2.map(x => x[0]))]),
+      db.from("facturare_servisari").select("*").in("an", [...new Set(L2.map(x => x[0]))]),
+      FACT_LOC && FACT_LOC.length ? Promise.resolve({ data: FACT_LOC }) : db.from("facturare_locatii").select("*") ]);
+    if(!(FACT_LOC && FACT_LOC.length)) FACT_LOC = flA.data || [];
+    const rand = [];
+    L2.forEach(([an, luna]) => {
+      const Z = (fsA.data || []).filter(z => z.an === an && z.luna === luna); if(!Z.length) return;
+      const V = factValLuna(an, luna, fper.data || [], (scA.data || []).filter(z => z.an === an && z.luna === luna));
+      Z.forEach(z => { const d = factDifCalc(z, V.get(z.anexa_id) || 0); if(!d) return;
+        const a = ANX.find(x => x.id === z.anexa_id); if(!a) return; const c = CTR.find(x => x.id === a.contract_id) || {};
+        rand.push({ id: "fd" + an + luna + "-" + a.id, go: `factMergiLuna(${an},${luna})`, ctx: String(d.acum),
+          v: [numeClient(c), a.anexa || "", zi2(luna) + "." + an, z.stare, fmtPret(d.fact) + " " + d.mon, fmtPret(d.acum) + " " + d.mon] }); });
+    });
+    add("fact_dif", "Modificări după facturare",
+      "Rânduri deja trimise la facturare (FACTURAT / IN ASTEPTARE FACTURA) care acum au altă valoare — de obicei o ridicare după trimiterea raportului. Clic → Facturare, pe rând butonul ⚠: „Refac factura” sau „Las așa”.",
+      ["Client", "Anexă", "Luna", "Stare", "Trimis", "Acum"], rand);
+  }catch(e){ console.warn("fact_dif", e); }
 
   // v7.30 (cerut de Ovidiu, 30.10): sponsorizările active (SPONSORIZARE-A fără SPONSORIZARE-R la aceeași adresă) cu ridicarea estimată
   // în ≤ 7 zile, depășită sau nepusă — „să nu uit de ea la client”. Amână cu „până la” după ce vorbești cu clientul.
