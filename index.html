@@ -1188,7 +1188,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
   <span id="rz-w"><button id="rz-reset" class="pictograma" title="Lățimi implicite — pune coloanele din tabelele acestei file înapoi cum erau">↺ Reset layout</button><i class="rz-sep">|</i></span>
   <span id="tz-w" title="Mărimea tabelului (doar tabelul, restul rămâne la fel), din 5 în 5%. Fiecare meniu își ține minte mărimea lui. Merge și cu Ctrl + rotița mausului, Ctrl + / Ctrl − / Ctrl 0. Dublu clic pe procent = scrii tu valoarea."><button class="pictograma" onclick="tzPas(-1)" aria-label="Micșorează tabelul">−</button><b id="tz-v" ondblclick="tzScrie()" title="Dublu clic = scrii mărimea (ex. 87), Enter">100%</b><input id="tz-in" type="number" min="30" max="300" step="5" style="display:none"><button class="pictograma" onclick="tzPas(1)" aria-label="Mărește tabelul">+</button></span>
-  <span class="ver">v10.07</span>
+  <span class="ver">v10.08</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -6564,7 +6564,42 @@ async function saveMiscareBaza(genereaza){
       else await actSpreRegistru(salvat.id, r2);
     }catch(e){ console.error(e); toast("Registrul nu s-a putut deschide: " + (e.message || e), true); }
   }
+  { const ax = rec.anexa_id && ANX.find(x => x.id === rec.anexa_id), cid = rec.contract_id || (ax && ax.contract_id);   // v10.08
+    if(!id && cid && CTR_NOI.has(cid)){ CTR_NOI.delete(cid); setTimeout(() => ceUrmeaza(cid, salvat.id), 300); } }
   return true;
+}
+// ── v10.08 (cerut de Ovidiu, 23.11 — analiza AZALIS, punctul D): „CE URMEAZĂ” — o singură dată, după prima comandă salvată
+// pe un contract nou făcut acum: 📄 Contract (cu Anexa 1 + PV), Registru documente, avansul în Facturare, PV-ul la amplasare.
+// Doar o listă cu scurtături; nu salvează nimic singură. Nu e coloana din Comenzi (refuzată pe 06.11).
+let CTR_NOI = new Set();
+function ceUrmeaza(cid, mid){
+  const k = CTR.find(x => x.id === cid); if(!k) return;
+  const cl = CLI.find(x => x.id === k.client_id) || {}, ax = ANX.filter(x => x.contract_id === cid && !x.tip_anexa);
+  const zile = k.data_emitere && k.data_expirare ? Math.round((new Date(k.data_expirare) - new Date(k.data_emitere)) / 864e5) + 1 : null;
+  const avans = ax.some(a => a.fact_avans) || cl.id_tip === "CNP" || (zile != null && zile < 90);
+  const old = $("mod-cu"); if(old) old.remove();
+  const w = document.createElement("div"); w.className = "modal on"; w.id = "mod-cu";
+  const pas = (n, titlu, txt, bt) => `<div class="cu-p" style="display:flex;gap:10px;align-items:flex-start;border:1px solid var(--bd);border-radius:10px;padding:9px 12px;margin-bottom:8px">
+      <b style="min-width:22px;font-size:15px" class="cu-n">${n}</b><div style="flex:1"><b>${titlu}</b><div class="muted" style="margin-top:2px">${txt}</div></div>${bt || ""}</div>`;
+  w.innerHTML = `<div class="box" style="max-width:620px"><h3 class="lux-cap cap-mut">Contract nou ${esc(k.nr_ctr || "")} — ce urmează</h3>
+    <p class="muted" style="margin:0 0 10px">${esc(cl.nume || "")} · ${fmtD(k.data_emitere)} → ${esc(ctrExpText(k))}. Comanda e salvată${ax.length ? " pe " + esc(ax.map(a => a.anexa).join(", ")) : ""}. Pașii de mai jos nu se fac singuri — apasă pe fiecare când ajungi la el.</p>
+    ${pas(1, "📄 Contractul în Word", "Contractul completat, cu Tabel nr. 1 și Anexa 1 + PV — îl verifici și îl trimiți clientului la semnat.", `<button type="button" class="btn sm" data-a="ctr">📄 Contract</button>`)}
+    ${pas(2, "Registru documente", "Contractul trimis: CONTRACT · TRIMIS / IN ASTEPTARE. Când vine semnat: „Primit azi”.", `<button type="button" class="btn sm sec" data-a="reg">Registru</button>`)}
+    ${pas(3, avans ? "Factura de avans" : "Facturare", avans
+        ? "Plata e în avans" + (zile != null && zile < 90 ? " (contract sub 90 de zile)" : cl.id_tip === "CNP" ? " (persoană fizică)" : "") + ": în Facturare, pe rândul anexei, dublu clic pe INCEPUT / SFARSIT LUNA → perioada avansului; apoi ✉ cererea de factură (STARE LUNA = IN ASTEPTARE FACTURA)."
+        : "Factura se emite la sfârșitul lunii — acum nu e nimic de făcut; rândul anexei apare singur în Facturare.", `<button type="button" class="btn sm sec" data-a="fac">Facturare</button>`)}
+    ${pas(4, "PV la amplasare", "PV-ul de predare e în contract (Anexa 1 + PV) și se semnează la amplasare. După amplasare, în Comenzi bifezi PV (și ACT când vine contractul semnat).", "")}
+    <div class="row" style="margin-top:12px;justify-content:flex-end"><div style="flex:0"><button class="btn" id="cu-ok">Am înțeles</button></div></div></div>`;
+  document.body.appendChild(w); feFereastra(w);
+  const bifa = b => { const p = b.closest(".cu-p"); p.querySelector(".cu-n").textContent = "✓"; p.style.opacity = ".65"; };
+  const minim = () => { const m = w.querySelector(".fe-mn"); if(m) m.click(); };
+  w.querySelector("#cu-ok").onclick = () => w.remove();
+  w.querySelectorAll("[data-a]").forEach(b => b.onclick = async () => {
+    bifa(b);
+    if(b.dataset.a === "ctr") ctrGenereaza(cid);
+    else if(b.dataset.a === "reg"){ minim(); await actSpreRegistru(mid); }
+    else { minim(); verDeschide(mid, "fac"); }
+  });
 }
 // ── Serii în comanda de ridicare / reducere (etapa 2) ──
 // Bucățile bifate se leagă de comandă prin serii.miscare_ridicare_id; rămân „LA CLIENT”
@@ -9841,7 +9876,7 @@ async function saveContract(dupa){
   $("mk-conf").classList.remove("on");
   const id=$("mk-id").value; let noulId = id ? +id : null;
   if(id){ const {error}=await db.from("contracte").update(rec).eq("id",id); if(error){toast(error.message,true);return;} }
-  else { const {data,error}=await db.from("contracte").insert(rec).select("id").single(); if(error){toast(error.message,true);return;} noulId=data.id; }
+  else { const {data,error}=await db.from("contracte").insert(rec).select("id").single(); if(error){toast(error.message,true);return;} noulId=data.id; if(!rec.intern) CTR_NOI.add(noulId); }   // v10.08: „Ce urmează” după prima comandă
   if(!id && MK_CIORNA){ await db.from("ciorne").delete().eq("id", MK_CIORNA); MK_CIORNA = null; }   // ciorna folosită nu mai rămâne
   closeModal("mod-k"); toast("Contract salvat"); await reloadClienti();
   if(dupa==="anexa" && noulId) openAnexa(null, noulId);
