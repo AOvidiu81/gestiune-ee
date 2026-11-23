@@ -1188,7 +1188,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
   <span id="rz-w"><button id="rz-reset" class="pictograma" title="Lățimi implicite — pune coloanele din tabelele acestei file înapoi cum erau">↺ Reset layout</button><i class="rz-sep">|</i></span>
   <span id="tz-w" title="Mărimea tabelului (doar tabelul, restul rămâne la fel), din 5 în 5%. Fiecare meniu își ține minte mărimea lui. Merge și cu Ctrl + rotița mausului, Ctrl + / Ctrl − / Ctrl 0. Dublu clic pe procent = scrii tu valoarea."><button class="pictograma" onclick="tzPas(-1)" aria-label="Micșorează tabelul">−</button><b id="tz-v" ondblclick="tzScrie()" title="Dublu clic = scrii mărimea (ex. 87), Enter">100%</b><input id="tz-in" type="number" min="30" max="300" step="5" style="display:none"><button class="pictograma" onclick="tzPas(1)" aria-label="Mărește tabelul">+</button></span>
-  <span class="ver">v10.09</span>
+  <span class="ver">v10.10</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -1736,6 +1736,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
     </div>
   </div>
 
+  <div class="card noprint" id="v-sanatate"></div>   <!-- v10.10 -->
   <div id="v-sectiuni" class="stoc-grid"></div>
 
   <div class="card" id="v-lucru" style="display:none">
@@ -10959,8 +10960,85 @@ async function loadVerif(){
       <button class="btn sm ${gata?'sec':''}" style="width:100%" onclick="startVerif('${r.tabel}')" ${gata?'disabled':''}>${gata?'✓ gata':'Începe verificarea'}</button>
     </div>`;
   }).join("");
+  sanatateIncarca();   // v10.10
 }
 
+// ── v10.10 (cerut de Ovidiu, 23.11 — „bulletproof”): SĂNĂTATEA DATELOR — panou în Verificare. Doar citește și arată;
+// nu schimbă nimic. Regulile de bază (bucăți / cantități cu semnul corect, date în ordine, stoc inițial ≥ 0) sunt și în baza
+// Supabase (migrarea v10_10_reguli_in_baza): o salvare greșită se oprește cu mesaj „Regulă: …”. Panoul prinde ce a rămas din urmă
+// și ce nu se poate pune ca regulă (CUI / CNP greșit, comenzi salvate de două ori, anexe active pe contract închis, stoc negativ).
+const SN_NEG = /RIDICARE|EVENIMENT-R|SPONSORIZARE-R|REDUCERE|TransferOUT|VANZARE|DAUNA|FURT/;
+const snCuiOk = s => { s = String(s || "").toUpperCase().replace(/^RO/, "").replace(/\D/g, ""); if(s.length < 2 || s.length > 10) return false;
+  const k = "753217532", c = +s.slice(-1), b = s.slice(0, -1).padStart(9, "0"); let t = 0; for(let i = 0; i < 9; i++) t += +b[i] * +k[i];
+  let r = (t * 10) % 11; if(r === 10) r = 0; return r === c; };
+const snCnpOk = s => { s = String(s || "").replace(/\D/g, ""); if(s.length !== 13) return false; const k = "279146358279"; let t = 0;
+  for(let i = 0; i < 12; i++) t += +s[i] * +k[i]; let r = t % 11; if(r === 10) r = 1; return r === +s[12]; };
+let SN_DESCHIS = null;
+async function sanatateIncarca(){
+  const box = $("v-sanatate"); if(!box) return;
+  box.innerHTML = `<div class="muted">Verific datele…</div>`;
+  const [mis, anx, ctr, cli, vst, si] = await Promise.all([
+    db.from("miscari").select("id,data,tip_miscare,buc,produs,client,client_id,contract_id,anexa_id,loc,sat,created_at"),
+    db.from("anexe").select("id,contract_id,anexa,produs,cant,tip_anexa,activ,data_livrarii,data_ridicarii,data_emitere,data_expirare,ev_de,ev_pana"),
+    db.from("contracte").select("id,client_id,nr_ctr,stare,data_emitere,data_expirare"),
+    db.from("clienti").select("id,nume,cui,id_tip"),
+    db.from("v_stoc").select("*"),
+    db.from("stoc_initial").select("depozit")]);
+  const err = [mis, anx, ctr, cli, vst, si].find(x => x.error);
+  if(err){ box.innerHTML = `<div class="neg">Nu s-au putut citi datele: ${esc(err.error.message)}</div>`; return; }
+  const M = mis.data || [], A = anx.data || [], C = ctr.data || [], K = cli.data || [];
+  const cI = {}; C.forEach(c => cI[c.id] = c); const kI = {}; K.forEach(k => kI[k.id] = k); const aI = {}; A.forEach(a => aI[a.id] = a);
+  const numeC = c => c ? ((kI[c.client_id] || {}).nume || "") + " · " + (c.nr_ctr || "") : "";
+  const cmd = m => ({ t: `${fmtD(m.data)} · ${m.tip_miscare || ""} · ${m.buc ?? "—"} ${m.produs || ""} · ${m.client || ""}`, go: `atDeschideCmd(${m.id})` });
+  const anxR = (a, d) => ({ t: `${numeC(cI[a.contract_id])} · ${a.anexa || "anexă"} · ${a.produs || ""}${d ? " — " + d : ""}`, go: `openAnexa(${a.id},${a.contract_id})` });
+  const G = [];
+  const add = (cheie, titlu, ce, r) => G.push({ cheie, titlu, ce, r });
+
+  add("buc", "Comenzi cu bucăți greșite", "Bucăți 0 sau cu semnul invers (ridicările / reducerile / -R / daunele au minus, restul plus).",
+    M.filter(m => !+m.buc || (SN_NEG.test(m.tip_miscare || "") ? +m.buc > 0 : +m.buc < 0)).map(cmd));
+  add("cant", "Anexe cu cantitate greșită", "Cantitate 0, lipsă sau cu semnul invers (doar anexele R au minus).",
+    A.filter(a => !+a.cant || (a.tip_anexa === "R" ? +a.cant > 0 : +a.cant < 0)).map(a => anxR(a, "cant. " + (a.cant ?? "—"))));
+  add("date", "Date în ordine greșită", "Ridicare înainte de amplasare, expirare înainte de emitere, eveniment care se termină înainte să înceapă.",
+    [...A.filter(a => (a.data_ridicarii && a.data_livrarii && a.data_ridicarii < a.data_livrarii) || (a.data_expirare && a.data_emitere && a.data_expirare < a.data_emitere) || (a.ev_pana && a.ev_de && a.ev_pana < a.ev_de)).map(a => anxR(a)),
+     ...C.filter(c => c.data_expirare && c.data_emitere && c.data_expirare < c.data_emitere).map(c => ({ t: numeC(c) + ` — ${fmtD(c.data_emitere)} → ${fmtD(c.data_expirare)}`, go: `openContract(${c.id})` }))]);
+  add("datacmd", "Comenzi cu dată ciudată", "Înainte de 2015 sau la peste un an în viitor — poate e o greșeală de tastare (ex. 2062 în loc de 2026). Amplasările vechi aduse din Excel pot fi corecte.",
+    M.filter(m => !m.data || m.data < "2015-01-01" || m.data > new Date(Date.now() + 365 * 864e5).toISOString().slice(0, 10)).map(cmd));
+  add("legaturi", "Comenzi legate greșit", "Comanda are alt client decât contractul ei, sau anexa ei e de pe alt contract.",
+    M.filter(m => { const c = cI[m.contract_id], a = aI[m.anexa_id]; return (c && m.client_id && c.client_id !== m.client_id) || (a && m.contract_id && a.contract_id !== m.contract_id); }).map(cmd));
+  add("ctrinchis", "Anexe active pe contract închis", "Contractul nu mai e ACTIV (ex. FINALIZAT), dar anexele lui sunt încă active — închide anexele sau corectează starea contractului.",
+    A.filter(a => a.activ && cI[a.contract_id] && (cI[a.contract_id].stare || "").toUpperCase() && !/^ACTIV$/i.test(cI[a.contract_id].stare)).map(a => anxR(a, "contract " + cI[a.contract_id].stare)));
+  { const vaz = {}; const dub = [];
+    M.forEach(m => { const k = [m.data, m.tip_miscare, m.client, m.produs, m.buc, m.anexa_id, m.loc, m.sat].join("|"); (vaz[k] = vaz[k] || []).push(m); });
+    Object.values(vaz).forEach(l => { if(l.length < 2) return; l.sort((x, y) => (x.created_at || "").localeCompare(y.created_at || ""));
+      for(let i = 1; i < l.length; i++) if(Math.abs(new Date(l[i].created_at) - new Date(l[i - 1].created_at)) < 600000) dub.push(Object.assign(cmd(l[i]), { t: cmd(l[i]).t + ` (la fel ca nr. ${l[i - 1].id})` })); });
+    add("dubla", "Comenzi posibil salvate de două ori", "Aceeași zi, tip, client, produs, bucăți, anexă și locație, salvate la mai puțin de 10 minute una de alta.", dub); }
+  { const dep = new Set((si.data || []).map(x => x.depozit));
+    add("stoc", "Stoc negativ în depozit", "Doar depozitele cu stoc inițial introdus (" + ([...dep].join(", ") || "—") + "). Ies mai multe decât au intrat — lipsește o comandă sau o bucată din stocul inițial.",
+      (vst.data || []).filter(v => dep.has(v.depozit) && (+v.in_depozit < 0 || +v.inchiriate < 0)).map(v => ({ t: `${v.depozit} · ${v.produs}: în depozit ${v.in_depozit}, închiriate ${v.inchiriate}`, go: `document.querySelector('nav button[data-p=\\'stoc\\']')?.click()` }))); }
+  add("cui", "CUI / CNP greșit", "Cifra de control nu se potrivește — verifică pe fișa clientului (contul de facturare și contractul folosesc codul ăsta).",
+    K.filter(k => { const s = String(k.cui || "").replace(/\s/g, ""); if(!s) return false; const d = s.replace(/\D/g, ""); return d.length === 13 ? !snCnpOk(d) : !snCuiOk(s); })
+     .map(k => ({ t: `${k.nume} — „${k.cui}”`, go: `openClient(${k.id})` })));
+
+  const nr = G.reduce((s, g) => s + g.r.length, 0);
+  const ok = G.filter(g => !g.r.length).length;
+  box.innerHTML = `<div class="row" style="align-items:center;margin-bottom:8px"><div><h3 style="margin:0;color:var(--g)">Sănătatea datelor</h3>
+      <div class="muted" style="font-size:12px">${G.length} verificări · <b class="${nr ? "neg" : "pos"}">${nr ? nr + " de privit" : "totul în regulă ✓"}</b> · regulile de bază sunt și în bază (salvarea greșită se oprește cu „Regulă: …”)</div></div>
+      <div style="flex:0"><button class="btn sm sec" onclick="sanatateIncarca()">Verifică din nou</button></div></div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:6px">${G.map(g => `
+      <div class="stoc" style="padding:8px 10px;cursor:${g.r.length ? "pointer" : "default"};${g.r.length ? "border-color:#f59e0b" : ""}" ${g.r.length ? `onclick="SN_DESCHIS=SN_DESCHIS==='${g.cheie}'?null:'${g.cheie}';sanatateLista()"` : ""} title="${esc(g.ce)}">
+        <div class="n" style="margin:0"><span>${g.r.length ? "⚠" : "✓"} ${esc(g.titlu)}</span><b class="${g.r.length ? "neg" : "pos"}">${g.r.length}</b></div></div>`).join("")}</div>
+    <div id="v-sn-lista"></div>`;
+  window.SN_G = G; sanatateLista();
+  void ok;
+}
+function sanatateLista(){
+  const el = $("v-sn-lista"); if(!el) return; const g = (window.SN_G || []).find(x => x.cheie === SN_DESCHIS);
+  if(!g || !g.r.length){ el.innerHTML = ""; return; }
+  const N = 60;
+  el.innerHTML = `<div style="margin-top:10px;border-top:1px solid var(--bd);padding-top:8px"><b>${esc(g.titlu)}</b> <span class="muted" style="font-size:12px">— ${esc(g.ce)} Clic pe rând = îl deschide.</span>
+    <ul style="margin:6px 0 0;padding-left:18px;font-size:13px">${g.r.slice(0, N).map(r => `<li><a href="#" onclick="${esc(r.go)};return false">${esc(r.t)}</a></li>`).join("")}</ul>
+    ${g.r.length > N ? `<div class="muted" style="font-size:12px">… și încă ${g.r.length - N}</div>` : ""}</div>`;
+}
 async function startVerif(tabel){
   V_TABEL=tabel; V_IDX=0; V_FACUTE=0;
   const d=V_DEF[tabel];
