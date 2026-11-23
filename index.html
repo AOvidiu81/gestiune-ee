@@ -11369,7 +11369,7 @@ async function raportFacturare(){
   R_RANDURI.forEach(f => { const m = f[20] || "RON"; pe[m] = pe[m] || [0, 0]; pe[m][0] += f[25]; pe[m][1] += f[26]; });
   $("r-kpi").innerHTML = `<div>Poziții<b>${R_RANDURI.length}</b></div>` +
     Object.keys(pe).sort().map(m => `<div>Fără TVA (${esc(m)})<b>${bani(pe[m][0])}</b></div><div>Cu TVA (${esc(m)})<b>${bani(pe[m][1])}</b></div>`).join("");
-  F_PE = pe; if(Object.keys(pe).some(m => m !== "RON")) $("r-kpi").innerHTML += `<div id="kpi-lei" class="kpi-lei">${factLeiHtml()}</div>`;   // v9.99
+  F_PE = pe; if(Object.keys(pe).some(m => !["RON", "LEI"].includes(String(m).toUpperCase().trim()))) $("r-kpi").innerHTML += `<div id="kpi-lei" class="kpi-lei">${factLeiHtml()}</div>`;   // v9.99
   factSicapBanda(anF, lunaF);   // v8.83
   const nDep = R_AVERT.filter(v => v.anx || v.ctr).length;
   if(nDep) $("r-kpi").innerHTML += `<div class="kpi-amb">Termen depășit<b>${nDep}</b></div>`;
@@ -12114,7 +12114,7 @@ let F_PE = {};
 function factCurs(){ try{ const c = JSON.parse(localStorage.getItem("fact-curs") || "null"); return c && +c.curs ? c : null; }catch(e){ return null; } }
 function factLeiHtml(){
   const c = factCurs(), k = c ? +c.curs : 0; let f = 0, t = 0, lipsa = false;
-  Object.keys(F_PE).forEach(m => { const r = m === "RON" ? 1 : m === "EUR" ? k : 0; if(!r) lipsa = true; f += F_PE[m][0] * r; t += F_PE[m][1] * r; });
+  Object.keys(F_PE).forEach(m => { const mu = String(m).toUpperCase().trim(), r = ["RON", "LEI"].includes(mu) ? 1 : ["EUR", "EURO"].includes(mu) ? k : 0;   /* moneda pe rând e scrisă „EURO” */ if(!r) lipsa = true; f += F_PE[m][0] * r; t += F_PE[m][1] * r; });
   if(lipsa) return `Total lună (lei)<b>—</b><span class="kpi-sub">fără curs BNR</span>`;
   return `<span title="Rândurile în lei + rândurile în EUR × cursul BNR ${k} lei / EUR (${esc(fmtD(c.data))}). E o estimare — factura în lei se face la cursul din ziua facturii.">Total lună fără TVA (lei)<b>${bani(f)}</b><span class="kpi-sub">cu TVA: <b>${bani(t)}</b> · curs ${String(k).replace(".", ",")} (${esc(fmtD(c.data).slice(0, 5))})</span></span>`;
 }
