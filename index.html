@@ -634,6 +634,11 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   #m-leg .lg-n{color:inherit;opacity:.8}
   .search{max-width:320px}
   details summary{cursor:pointer;font-weight:600;color:var(--g);padding:6px 0}
+  details.rl-sec>summary{font-size:16px;color:var(--g);list-style:none;display:flex;align-items:center;gap:6px;padding:2px 0}
+  details.rl-sec>summary::-webkit-details-marker{display:none}
+  details.rl-sec>summary::before{content:"▸";font-size:12px;width:12px;color:var(--mut);transition:transform .2s}
+  details.rl-sec[open]>summary{margin-bottom:8px}
+  details.rl-sec[open]>summary::before{transform:rotate(90deg)}
   .badge{background:var(--g);color:#fff;border-radius:10px;padding:1px 7px;font-size:11px;margin-left:6px}
   @media print{header,nav,.noprint{display:none!important}body{display:block}main{padding:0}.tw{max-height:none;overflow:visible;border:0}body{background:#fff}th{position:static}}
   @media (max-width:640px){th,td{padding:6px 5px;font-size:12px}}
@@ -1178,7 +1183,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
   <span id="rz-w"><button id="rz-reset" class="pictograma" title="Lățimi implicite — pune coloanele din tabelele acestei file înapoi cum erau">↺ Reset layout</button><i class="rz-sep">|</i></span>
   <span id="tz-w" title="Mărimea tabelului (doar tabelul, restul rămâne la fel), din 5 în 5%. Fiecare meniu își ține minte mărimea lui. Merge și cu Ctrl + rotița mausului, Ctrl + / Ctrl − / Ctrl 0. Dublu clic pe procent = scrii tu valoarea."><button class="pictograma" onclick="tzPas(-1)" aria-label="Micșorează tabelul">−</button><b id="tz-v" ondblclick="tzScrie()" title="Dublu clic = scrii mărimea (ex. 87), Enter">100%</b><input id="tz-in" type="number" min="30" max="300" step="5" style="display:none"><button class="pictograma" onclick="tzPas(1)" aria-label="Mărește tabelul">+</button></span>
-  <span class="ver">v9.96</span>
+  <span class="ver">v9.97</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -12090,18 +12095,21 @@ function trLuna(L){
   T.filter(m => /IN$/i.test(m.tip_miscare) && !folosit.has(m.id)).forEach(i => { const [a] = capete(i), q = trp(i); rez.push([i.data, a, i.depozit || "", i.produs || "", i.model || "", i.model_fizic || "", Math.abs(+i.buc || 0), q[4], q[0], q[1], q[2], q[3]]); });
   return rez.sort((x, y) => String(x[0]).localeCompare(String(y[0])));
 }
+// v9.97 (cerut de Ovidiu, 23.11): Vânzări / Transferuri din Raport lună — strânse implicit, se deschid cu un clic; starea se ține minte pe calculator
+const rlSecDeschis = k => { try{ return localStorage.getItem("ee-rl-" + k) === "1"; }catch(e){ return false; } };
+function rlSecTine(k, d){ try{ localStorage.setItem("ee-rl-" + k, d ? "1" : "0"); }catch(e){} }
 function rlTrfArata(){
   const el = $("r-trf"); if(!el) return;
   if(R_NUME !== "Raport_luna" || (!R_TRF.length && !R_VZ.length)){ el.innerHTML = ""; return; }
   const tot = R_TRF.reduce((t, r) => t + r[6], 0);
-  const vz = R_VZ.length ? `<div class="card" style="margin-top:12px"><h3 style="margin:0 0 8px;color:var(--g)">💰 Vânzări în luna aceasta <span class="muted" style="font-size:13px;font-weight:400">— ${R_VZ.length}, ${R_VZ.reduce((t, m) => t + Math.abs(+m.buc || 0), 0)} buc.</span></h3>
+  const vz = R_VZ.length ? `<div class="card" style="margin-top:12px"><details class="rl-sec"${rlSecDeschis("vz") ? " open" : ""} ontoggle="rlSecTine('vz',this.open)"><summary>💰 Vânzări în luna aceasta <span class="muted" style="font-size:13px;font-weight:400">— ${R_VZ.length}, ${R_VZ.reduce((t, m) => t + Math.abs(+m.buc || 0), 0)} buc.</span></summary>
     <div class="tw"><table><thead><tr><th>Data</th><th>Client</th><th>Din depozitul</th><th>Produs</th><th>Tip</th><th>Model</th><th style="text-align:right">Buc.</th><th>Livrare</th><th>Preț / factură / plată</th></tr></thead><tbody>` +
-    R_VZ.map(m => `<tr><td>${esc(fmtD(m.data))}</td><td><b>${esc(m.client || "")}</b></td><td>${esc(m.depozit || "")}</td><td>${esc(m.produs || "")}</td><td>${esc(m.model || "")}</td><td>${esc(m.model_fizic || "")}</td><td style="text-align:right"><b>${Math.abs(+m.buc || 0)}</b></td><td>${esc([m.loc, m.sat].filter(Boolean).join(", "))}</td><td>${esc(((/^VANZARE:([^\n]*)/.exec(m.observatii || "") || [])[1] || "").trim())}</td></tr>`).join("") + "</tbody></table></div></div>" : "";
+    R_VZ.map(m => `<tr><td>${esc(fmtD(m.data))}</td><td><b>${esc(m.client || "")}</b></td><td>${esc(m.depozit || "")}</td><td>${esc(m.produs || "")}</td><td>${esc(m.model || "")}</td><td>${esc(m.model_fizic || "")}</td><td style="text-align:right"><b>${Math.abs(+m.buc || 0)}</b></td><td>${esc([m.loc, m.sat].filter(Boolean).join(", "))}</td><td>${esc(((/^VANZARE:([^\n]*)/.exec(m.observatii || "") || [])[1] || "").trim())}</td></tr>`).join("") + "</tbody></table></div></details></div>" : "";
   if(!R_TRF.length){ el.innerHTML = vz; return; }
-  el.innerHTML = vz + `<div class="card" style="margin-top:12px"><h3 style="margin:0 0 8px;color:var(--g)">🔁 Transferuri între depozite în luna aceasta <span class="muted" style="font-size:13px;font-weight:400">— ${R_TRF.length} ${R_TRF.length === 1 ? "mutare" : "mutări"}, ${tot} buc.</span></h3>
+  el.innerHTML = vz + `<div class="card" style="margin-top:12px"><details class="rl-sec"${rlSecDeschis("trf") ? " open" : ""} ontoggle="rlSecTine('trf',this.open)"><summary>🔁 Transferuri între depozite în luna aceasta <span class="muted" style="font-size:13px;font-weight:400">— ${R_TRF.length} ${R_TRF.length === 1 ? "mutare" : "mutări"}, ${tot} buc.</span></summary>
     <div class="tw"><table><thead><tr><th>Data</th><th>Din depozitul</th><th></th><th>În depozitul</th><th>Produs</th><th>Tip</th><th>Model</th><th style="text-align:right">Buc.</th><th>Vehicul</th><th>Nr. mașină</th><th>Șofer</th><th>Telefon</th><th>Observații</th></tr></thead><tbody>` +
     R_TRF.map(r => `<tr><td>${esc(fmtD(r[0]))}</td><td><b>${esc(r[1])}</b></td><td style="color:#1a5fb4">➜</td><td><b>${esc(r[2])}</b></td><td>${esc(prodN(r[3], r[6]))}</td><td>${esc(r[4])}</td><td>${esc(r[5])}</td><td style="text-align:right"><b>${r[6]}</b></td><td>${esc(r[8] || "")}</td><td>${esc(r[9] || "")}</td><td>${esc(r[10] || "")}</td><td>${esc(r[11] || "")}</td><td>${esc(r[7])}</td></tr>`).join("") +
-    `</tbody></table></div></div>`;
+    `</tbody></table></div></details></div>`;
 }
 function deseneazaRaport(){
   try{ rlTrfArata(); }catch(e){ console.warn("transferuri:", e); }   // v9.66
