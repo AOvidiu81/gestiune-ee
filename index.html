@@ -1188,7 +1188,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
   <span id="rz-w"><button id="rz-reset" class="pictograma" title="Lățimi implicite — pune coloanele din tabelele acestei file înapoi cum erau">↺ Reset layout</button><i class="rz-sep">|</i></span>
   <span id="tz-w" title="Mărimea tabelului (doar tabelul, restul rămâne la fel), din 5 în 5%. Fiecare meniu își ține minte mărimea lui. Merge și cu Ctrl + rotița mausului, Ctrl + / Ctrl − / Ctrl 0. Dublu clic pe procent = scrii tu valoarea."><button class="pictograma" onclick="tzPas(-1)" aria-label="Micșorează tabelul">−</button><b id="tz-v" ondblclick="tzScrie()" title="Dublu clic = scrii mărimea (ex. 87), Enter">100%</b><input id="tz-in" type="number" min="30" max="300" step="5" style="display:none"><button class="pictograma" onclick="tzPas(1)" aria-label="Mărește tabelul">+</button></span>
-  <span class="ver">v10.01</span>
+  <span class="ver">v10.02</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -1630,6 +1630,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
           </optgroup>
           <optgroup label="Întreținere">
             <option value="_curat">Copie de siguranță / date de probă</option>
+            <option value="_jurnal">Jurnal modificări (cine, ce, când)</option>
             <option value="_ghid">Ghid pentru începători</option>
           </optgroup>
         </select>
@@ -1701,6 +1702,19 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
     <p class="muted" style="margin:0 0 12px">Scrie numele clientului (ca în aplicație). Se șterge tot ce ține de el, fără urmă: fișa, contractele, anexele, seriile, comenzile, registrul de documente, procese verbale (cu PDF), punctele de rută, vizitele, notele din „De urmărit”. Merge și pentru clienții scriși doar pe comandă (fără fișă). Întâi îți arăt ce găsesc, apoi confirmi.</p>
     <div class="row" style="align-items:flex-end"><div><label>Numele clientului</label><input id="sc-nume" list="sc-dl" autocomplete="off" placeholder="ex. DEVA TEST CLIENT"><datalist id="sc-dl"></datalist></div>
       <div style="flex:0"><button class="btn danger" onclick="stergeClient()">Șterge clientul</button></div></div>
+  </div>
+  <!-- v10.02 (cerut de Ovidiu, 23.11): jurnalul modificărilor din bază — cine a schimbat, ce era, ce a devenit, cu „Anulează” -->
+  <div class="card" id="a-card-jurnal" style="display:none">
+    <h3 style="margin:0 0 6px;color:var(--g)">Jurnal modificări</h3>
+    <p class="muted" style="margin:0 0 10px">Fiecare adăugare, modificare sau ștergere în clienți, contracte, anexe, comenzi, serii, puncte de rută, stoc inițial, facturare, registru documente, angajați, mașini și liste se notează singură: cine, când, ce era și ce a devenit. <b>↶ Anulează</b> pune înapoi valoarea veche (sau readuce rândul șters). Dacă între timp rândul s-a schimbat din nou, te întreabă înainte. Anularea se notează și ea în jurnal. Se păstrează 12 luni.</p>
+    <div class="row" style="align-items:flex-end">
+      <div style="flex:0;min-width:170px"><label>Ce</label><select id="jr-tabel" onchange="jurnalArata()"><option value="">toate</option></select></div>
+      <div style="flex:0;min-width:140px"><label>Perioada</label><select id="jr-per" onchange="jurnalArata()"><option value="1">azi</option><option value="7" selected>ultimele 7 zile</option><option value="31">ultimele 31 de zile</option><option value="366">ultimul an</option></select></div>
+      <div><label>Caută</label><input id="jr-cauta" placeholder="client, serie, anexă, cine…" oninput="jurnalDeseneaza()"></div>
+      <div style="flex:0"><button class="btn sec" onclick="jurnalArata()">Reîncarcă</button></div>
+    </div>
+    <div id="jr-info" class="muted" style="margin:8px 0"></div>
+    <div class="tw"><table><thead><tr><th>Când</th><th>Cine</th><th>Ce</th><th>Acțiune</th><th>Rândul</th><th>Ce s-a schimbat (era → a devenit)</th><th class="noprint"></th></tr></thead><tbody id="jr-rand"></tbody></table></div>
   </div>
   <div class="card" id="a-card-ghid" style="display:none">
     <h3 style="margin:0 0 6px;color:var(--g)">Ghid pentru începători</h3>
@@ -14948,6 +14962,72 @@ const A_DEF = {
 };
 let A_TBL="soferi", A_ROWS=[], A_ID=null;
 
+
+// ================= v10.02 (cerut de Ovidiu, 23.11): JURNAL MODIFICĂRI =================
+// Tabelul `jurnal` se completează singur în bază (declanșatorul zz_jurnal pe tabelele importante); aici doar se citește,
+// iar „↶ Anulează” cheamă funcția jurnal_anuleaza (doar admin). Câmpurile updated_at / verificat* nu se notează.
+const JR_NUME = { clienti: "Client (fișă)", contracte: "Contract", anexe: "Anexă", miscari: "Comandă", serii: "Serie", clients: "Punct de rută",
+  stoc_initial: "Stoc inițial", stoc_initial_model: "Stoc inițial pe modele", facturare_stare: "Facturare (stare lună)", facturare_perioada: "Facturare (perioadă)",
+  facturare_locatii: "Facturare (locații)", facturare_servisari: "Facturare (servisări)", documente: "Registru documente", soferi: "Angajat", masini: "Mașină", nomenclatoare: "Liste / catalog" };
+let JR = [];
+async function jurnalArata(){
+  const sel = $("jr-tabel"); if(sel && sel.options.length < 2) sel.innerHTML = '<option value="">toate</option>' + Object.entries(JR_NUME).map(([k, v]) => `<option value="${k}">${esc(v)}</option>`).join("");
+  $("jr-info").textContent = "Încarc…";
+  const zile = +$("jr-per").value || 7, de = new Date(); de.setHours(0, 0, 0, 0); de.setDate(de.getDate() - (zile - 1));
+  let q = db.from("jurnal").select("*").gte("la", de.toISOString()).order("id", { ascending: false }).limit(2000);
+  if($("jr-tabel").value) q = q.eq("tabel", $("jr-tabel").value);
+  const { data, error } = await q;
+  if(error){ $("jr-info").textContent = "Jurnalul nu s-a putut citi: " + error.message; return; }
+  JR = data || []; jurnalDeseneaza();
+  try{ if(!jurnalArata.curatat){ jurnalArata.curatat = 1; db.rpc("jurnal_curata").then(() => {}); } }catch(e){}
+}
+const jrVal = v => v === null || v === undefined || v === "" ? "—" : typeof v === "object" ? JSON.stringify(v) : String(v);
+const jrScurt = (t, n) => (t = String(t)).length > n ? t.slice(0, n - 1) + "…" : t;
+function jurnalRand(j){   // o denumire ușor de recunoscut pentru rând (din ce e în jurnal sau din listele deja încărcate)
+  const r = Object.assign({}, j.vechi || {}, j.nou || {}), id = (j.cheie || {}).id;
+  const din = (L, f) => { const x = (L || []).find(y => y.id === id); return x ? f(x) : ""; };
+  const ctrN = cid => { const k = (CTR || []).find(y => y.id === cid); return k ? "CTR " + (k.nr_ctr || "") : ""; };
+  switch(j.tabel){
+    case "clienti": return r.nume || din(CLI, x => x.nume);
+    case "contracte": return [r.nr_ctr ? "CTR " + r.nr_ctr : din(CTR, x => "CTR " + x.nr_ctr), din(CTR, x => ((CLI || []).find(c => c.id === x.client_id) || {}).nume || "")].filter(Boolean).join(" · ");
+    case "anexe": { const a = (ANX || []).find(y => y.id === id) || r; return [a.anexa, ctrN(a.contract_id), [a.loc, a.sat].filter(Boolean).join(", ")].filter(Boolean).join(" · "); }
+    case "miscari": { const m = (MISC || []).find(y => y.id === id) || r; return ["#" + id, m.tip_miscare, m.client, m.data ? fmtD(m.data) : ""].filter(Boolean).join(" · "); }
+    case "serii": { const x = (SER || []).find(y => y.id === id) || r; return [x.serie || "fără serie", x.model, x.loc].filter(Boolean).join(" · "); }
+    case "clients": return [r.client_key, r.client].filter(Boolean).join(" · ") || "punct " + jrScurt(id || "", 8);
+    case "facturare_stare": { const c = j.cheie || {}, a = (ANX || []).find(y => y.id === c.anexa_id); return [a ? a.anexa : "anexa " + c.anexa_id, a ? ctrN(a.contract_id) : "", c.luna + "/" + c.an].filter(Boolean).join(" · "); }
+    default: return [r.nume, r.nr_inmatriculare, r.produs, r.valoare, r.client].filter(Boolean).join(" · ") || "#" + jrVal(id);
+  }
+}
+function jurnalDeseneaza(){
+  const t = ($("jr-cauta").value || "").trim().toLowerCase();
+  const L = JR.filter(j => !t || [jurnalRand(j), j.cine_nume, JSON.stringify(j.vechi || ""), JSON.stringify(j.nou || ""), JR_NUME[j.tabel] || j.tabel].join(" ").toLowerCase().includes(t));
+  $("jr-info").textContent = L.length + (L.length === 1 ? " modificare" : " modificări") + (JR.length >= 2000 ? " (primele 2000 — alege o perioadă mai scurtă sau un tip)" : "");
+  const ACT = { ADAUGAT: ["adăugat", "#2f9e44"], MODIFICAT: ["modificat", "#1a5fb4"], STERS: ["șters", "#c0392b"] };
+  $("jr-rand").innerHTML = L.map(j => {
+    const a = ACT[j.actiune] || [j.actiune, ""], dt = new Date(j.la);
+    let ce;
+    if(j.actiune === "MODIFICAT") ce = Object.keys(j.nou || {}).map(k => `<div><b>${esc(k)}</b>: <span style="color:#c0392b;text-decoration:line-through">${esc(jrScurt(jrVal((j.vechi || {})[k]), 80))}</span> → <span style="color:#2f9e44">${esc(jrScurt(jrVal(j.nou[k]), 80))}</span></div>`).join("");
+    else { const r = j.nou || j.vechi || {}; ce = `<span class="muted" title="${esc(JSON.stringify(r, null, 1))}">${esc(jrScurt(Object.entries(r).filter(([k, v]) => v !== null && v !== "" && !/^(id|created_at|updated_at)$/.test(k)).slice(0, 8).map(([k, v]) => k + ": " + jrVal(v)).join(" · "), 220))}</span>`; }
+    const btn = j.anulat_la ? `<span class="muted" title="Anulat de ${esc(j.anulat_de || "")}">↶ anulat ${esc(fmtD(String(j.anulat_la).slice(0, 10)))}</span>`
+      : `<button class="btn sm sec" onclick="jurnalAnuleaza(${j.id})" title="${j.actiune === "MODIFICAT" ? "Pune înapoi valorile vechi" : j.actiune === "STERS" ? "Readuce rândul șters" : "Șterge rândul adăugat"}">↶ Anulează</button>`;
+    return `<tr${j.anulat_la ? ' style="opacity:.55"' : ""}><td style="white-space:nowrap">${esc(fmtD(j.la.slice(0, 10)))} <b>${zi2(dt.getHours())}:${zi2(dt.getMinutes())}</b></td><td>${esc(j.cine_nume || "—")}</td><td>${esc(JR_NUME[j.tabel] || j.tabel)}</td>` +
+      `<td><b style="color:${a[1]}">${a[0]}</b></td><td>${esc(jurnalRand(j))}</td><td style="font-size:12.5px;max-width:520px">${ce}</td><td class="noprint">${btn}</td></tr>`;
+  }).join("") || '<tr><td colspan="7" class="muted">Nicio modificare în perioada aleasă.</td></tr>';
+}
+async function jurnalAnuleaza(id){
+  const j = JR.find(x => x.id === id); if(!j) return;
+  const ce = j.actiune === "MODIFICAT" ? "Pun înapoi valorile vechi:\n" + Object.keys(j.nou || {}).map(k => "• " + k + ": " + jrScurt(jrVal(j.nou[k]), 60) + " → " + jrScurt(jrVal((j.vechi || {})[k]), 60)).join("\n")
+    : j.actiune === "STERS" ? "Readuc rândul șters." : "Șterg rândul adăugat atunci.";
+  if(!confirm("Anulezi modificarea din " + fmtD(j.la.slice(0, 10)) + " (" + (j.cine_nume || "") + ")?\n\n" + (JR_NUME[j.tabel] || j.tabel) + ": " + jurnalRand(j) + "\n\n" + ce)) return;
+  let { error } = await db.rpc("jurnal_anuleaza", { p_id: id });
+  if(error && /SCHIMBAT_DIN_NOU/.test(error.message)){
+    if(!confirm("Atenție: " + error.message.replace(/^.*SCHIMBAT_DIN_NOU:\s*/, "") + ".\n\nDacă anulezi, se pierde și modificarea mai nouă. Continui?")) return;
+    ({ error } = await db.rpc("jurnal_anuleaza", { p_id: id, p_forta: true }));
+  }
+  if(error){ toast("Nu s-a putut anula: " + error.message, true); return; }
+  toast("Modificarea a fost anulată — reîncarcă pagina pe care lucrai ca să vezi valoarea veche");
+  jurnalArata();
+}
 function adminSchimba(){
   const v = $("a-tabel").value, eTabel = !v.startsWith("_");
   $("a-card-crud").style.display  = eTabel ? "" : "none";
@@ -14955,6 +15035,7 @@ function adminSchimba(){
   $("a-card-stoc").style.display  = (v === "_stoc")  ? "" : "none";
   $("a-card-curat").style.display = (v === "_curat") ? "" : "none";
   $("a-card-ghid").style.display = (v === "_ghid") ? "" : "none";   // v5.15
+  $("a-card-jurnal").style.display = (v === "_jurnal") ? "" : "none";   // v10.02
   ["a-w-cauta","a-w-nou","a-w-reload","a-w-export"].forEach(id => $(id).style.display = eTabel ? "" : "none");
   $("a-w-sect").style.display = (v === "clients") ? "none" : "";   // v5.42: Puncte de rută e filă separată, fără lista Secțiune
   $("a-card-pf").style.display = (v === "clients") ? "" : "none";
@@ -14963,9 +15044,11 @@ function adminSchimba(){
       ? "Listele care apar în formularele aplicației: tipuri de mișcare, frecvențe, funcții, mărci. Produsele și modelele au fila lor, Produse. „Efect stoc” se completează doar la tipurile de mișcare."
       : (v === "_curat") ? "Copia de siguranță a datelor și golirea datelor de probă."
       : (v === "_ghid") ? "Pornește sau oprește ghidul cu pașii de urmat."
+      : (v === "_jurnal") ? "Cine a modificat ce și când — cu posibilitatea de a pune înapoi."
       : "Valorile de pornire pe depozit și produs (celulele START din Excel). Mișcările înregistrate după data de referință se adună sau se scad din acestea.";
     if(v === "_curat"){ scNume(); csStare(); return; }
     if(v === "_ghid"){ ghidAdminDeseneaza(); return; }
+    if(v === "_jurnal"){ jurnalArata(); return; }   // v10.02
     if(v === "_liste") renderNom(); else renderStocInitial();
     return;
   }
