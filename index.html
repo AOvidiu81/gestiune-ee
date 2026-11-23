@@ -1188,7 +1188,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
   <span id="rz-w"><button id="rz-reset" class="pictograma" title="Lățimi implicite — pune coloanele din tabelele acestei file înapoi cum erau">↺ Reset layout</button><i class="rz-sep">|</i></span>
   <span id="tz-w" title="Mărimea tabelului (doar tabelul, restul rămâne la fel), din 5 în 5%. Fiecare meniu își ține minte mărimea lui. Merge și cu Ctrl + rotița mausului, Ctrl + / Ctrl − / Ctrl 0. Dublu clic pe procent = scrii tu valoarea."><button class="pictograma" onclick="tzPas(-1)" aria-label="Micșorează tabelul">−</button><b id="tz-v" ondblclick="tzScrie()" title="Dublu clic = scrii mărimea (ex. 87), Enter">100%</b><input id="tz-in" type="number" min="30" max="300" step="5" style="display:none"><button class="pictograma" onclick="tzPas(1)" aria-label="Mărește tabelul">+</button></span>
-  <span class="ver">v10.06</span>
+  <span class="ver">v10.07</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -5710,7 +5710,7 @@ function mmCiornaActPune(a){
 // v10.06: comanda pornită din fișa „Date contract” — legătura cu fișa revine (produsele / perioada ei merg în anexă și contract)
 async function mmCiornaFisa(fid, client){
   try{ const { data } = await db.from("cereri_date").select("*").eq("id", fid).maybeSingle(); if(!data || !client) return;
-    const R = data.raspuns || {}; MM_FISA = { id: data.id, R, client, prod: fisaProduse(R), pana: fisaPana(R) }; MM_ACT_K = ""; mmActArata(); }catch(e){}
+    const R = data.raspuns || {}, prod = fisaProduse(R); MM_FISA = { id: data.id, R, client, prod, pana: fisaPana(R), avert: await fisaAvertizari(R, prod) }; MM_ACT_K = ""; mmActArata(); }catch(e){}   // v10.07: și avertizările
 }
 // ── v10.06 (cerut de Ovidiu, 23.11): CIORNA AUTOMATĂ — comanda nouă se păstrează singură în ciorne cât scrii (la 2 s după ultima
 // schimbare). Dacă pagina se reîncarcă (Ctrl+F5), se închide browserul sau fereastra, o găsești sus, la „Ciorne”, la următoarea
@@ -5868,13 +5868,13 @@ function mmActArata(){
     if(!vn.pret && fp) vn.pret = String(fp.pret);
     const fNota = !F || !F.prod.length ? "" : F.prod.length > 1
       ? `<div style="margin-top:6px"><b>Din fișă: ${F.prod.length} produse</b> (${esc(F.prod.map(fisaProdTxt).join("; "))}) — la Salvează alegi ce produse merg pe fiecare anexă; anexele se deschid pe rând, le salvezi, apoi apeși din nou Salvează la comandă.</div>`
-      : `<div style="margin-top:6px"><b>Din fișă:</b> ${esc(fisaProdTxt(F.prod[0]))}${F.pana ? " · perioada până la " + esc(fmtD(F.pana)) : ""} — intră pe anexă.${fp ? "" : " Fișa nu are preț — scrie-l aici."}</div>`;
+      : `<div style="margin-top:6px"><b>Din fișă:</b> ${esc(fisaProdTxt(F.prod[0]))}${F.pana ? " · perioada până la " + esc(fmtD(F.pana)) : ""} — intră pe anexă.</div>`;
     el.style.display = "";
     el.innerHTML = `<label style="display:flex;gap:8px;align-items:center;margin:0;cursor:pointer;text-transform:none;font-size:13px;letter-spacing:0"><input type="checkbox" id="mm-act-da" ${vn.da ? "checked" : ""} style="width:16px;height:16px;margin:0"> <span>📍 <b>Locație nouă</b> — la <b>Salvează</b> se face și anexa nouă, din datele comenzii (produs, bucăți, dată, adresă, responsabil)</span></label>
       <div class="r"><span>Nr. anexă</span><input type="text" id="mm-act-nr" value="${esc(vn.nr || P.nume)}"><span>Preț / buc</span><input type="number" step="0.01" min="0" id="mm-act-pret" value="${esc(vn.pret || "")}" placeholder="ex. 11.00">
         <select id="mm-act-mon" style="width:auto"><option>RON</option><option ${vn.mon === "EUR" ? "selected" : ""}>EUR</option></select><span class="muted">+ TVA / zi</span>
         <span>Scadent</span><input type="number" min="0" id="mm-act-sc" value="${esc(vn.sc || "30")}" style="width:70px"><span class="muted">zile</span></div>
-      ${fNota}<div class="muted" style="margin-top:6px">Ai o locație existentă? Alege-o mai sus din listă și chenarul dispare.${P.tip === "EVENIMENT-A" ? " La eveniment se deschide fereastra anexei pentru zilele evenimentului." : ""}</div>`;
+      ${fNota}${fisaAvertHtml(F)}<div class="muted" style="margin-top:6px">Ai o locație existentă? Alege-o mai sus din listă și chenarul dispare.${P.tip === "EVENIMENT-A" ? " La eveniment se deschide fereastra anexei pentru zilele evenimentului." : ""}</div>`;
     return; }
   const buc = Math.abs(+$("mm-buc").value || 0), zi = $("mm-data").value || today(), k = [P.a.id, P.tip, P.nume, buc, zi, P.acum].join("|");
   if(MM_ACT_K === k) return; MM_ACT_K = k;
@@ -9107,6 +9107,39 @@ function fisaGpsObs(g){
   const m = /(-?\d{1,2}[.,]\d+)\s*[,;\s]\s*(-?\d{1,2}[.,]\d+)/.exec(String(g)), la = m && +m[1].replace(",", "."), lo = m && +m[2].replace(",", ".");
   return m && la > 43.5 && la < 48.4 && lo > 20.2 && lo < 29.8 ? "Locația GPS: https://maps.google.com/?q=" + la.toFixed(6) + "," + lo.toFixed(6) : "GPS de la client (de verificat): " + g;
 }
+// ── v10.07 (cerut de Ovidiu, 23.11 — analiza AZALIS, punctul C): AVERTIZĂRI LA COMANDA DIN FIȘĂ
+// Ce lipsește din fișă (preț / servisare = oferta nu e completată) și „satul” care nu e sat al comunei (ex. „Peco Rompetrol”
+// = reper scris la Sat). Doar semnal în chenarul „Locație nouă” + buton „Mută la Reper”; nu oprește nimic.
+async function fisaAvertizari(R, prod){
+  const A = [];
+  if(!prod.length) A.push({ t: "Fișa nu are produse — completează produsul și bucățile la comandă." });
+  else {
+    const fp = prod.filter(p => p.pret == null || p.pret === ""), fs = prod.filter(p => !String(p.frecventa || "").trim());
+    if(fp.length) A.push({ t: (fp.length === prod.length ? "Fișa nu are preț" : "Fără preț în fișă: " + fp.map(fisaProdTxt).join("; ")) + " (oferta nu e completată în fișă) — scrie prețul aici." });
+    if(fs.length) A.push({ t: (fs.length === prod.length ? "Fișa nu are servisarea" : "Fără servisare în fișă: " + fs.map(fisaProdTxt).join("; ")) + " — pune frecvența la comandă (intră pe anexă)." });
+  }
+  const L = R && R.livrare, sat = L && String(L.sat || "").trim();
+  if(sat && L.jud && L.loc && await locIncarca()){
+    const ln = locFara(L.loc), u = LOCX.U.findIndex(x => x[2] === L.jud && locNorm(x[0]) === ln);
+    const sn = locFara(sat), eSat = u >= 0 && (locNorm(LOCX.U[u][0]) === sn || LOCX.E.some(e => e.up && e.uat === u && e.n === sn));
+    if(u >= 0 && !eSat) A.push({ reper: fisaFaraDiac(sat).replace(/^SAT(UL)?\s+/, ""), t: "„" + sat + "” nu e sat al " + (LOCX.U[u][1] === "C" ? "comunei " : "localității ") + locTitlu(LOCX.U[u][0]) + " — pare un reper scris la Sat." });
+  }
+  return A;
+}
+function fisaAvertHtml(F){
+  if(!F || !F.avert || !F.avert.length) return "";
+  return `<div style="margin-top:6px;padding:6px 8px;border-radius:8px;background:rgba(217,119,6,.10);border:1px solid rgba(217,119,6,.45)"><b style="color:var(--t-warn)">⚠ Atenție la fișă:</b>` +
+    F.avert.map((a, i) => `<div style="margin-top:3px">• ${esc(a.t)}${a.reper ? ` <button type="button" class="btn sm sec" onclick="fisaMutaReper(${i})" title="Scoate textul de la Sat și îl pune în Observații ca reper">Mută la Reper</button>` : ""}</div>`).join("") + `</div>`;
+}
+function fisaMutaReper(i){
+  const F = fisaActiva(), a = F && F.avert && F.avert[i]; if(!a || !a.reper) return;
+  const r = a.reper, re = new RegExp("^\\s*(SAT(UL)?\\s+)?" + r.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "\\s*,?\\s*", "i");
+  $("mm-sat").value = fisaFaraDiac($("mm-sat").value).replace(re, "").trim();
+  const o = $("mm-obs").value; if(!/^Reper:/m.test(o)) $("mm-obs").value = [o, "Reper: " + r].filter(Boolean).join("\n");
+  else $("mm-obs").value = o.replace(/^Reper:\s*(.*)$/m, (m, x) => "Reper: " + [x, r].filter(Boolean).join(", "));
+  F.avert.splice(i, 1); MM_ACT_K = ""; mmActArata(); mmLsArata(); mmSchimbat();
+  toast("Reperul e mutat în Observații. La Sat a rămas: " + ($("mm-sat").value || "(gol)") + " — adresa asta merge și pe anexa nouă.");
+}
 function fisaActiva(){ return MM_FISA && $("mod-m").classList.contains("on") && $("mm-client").value.trim().toLowerCase() === MM_FISA.client.toLowerCase() ? MM_FISA : null; }
 async function comandaDinFisa(id){
   let x = CD.find(y => y.id === id);
@@ -9126,9 +9159,10 @@ async function comandaDinFisa(id){
   const fr = (prod.find(k => k.frecventa) || {}).frecventa; if(fr) $("mm-frecv").value = fr;
   const pana = fisaPana(R);
   $("mm-obs").value = [fisaGpsObs(R.livrare_gps), !a.jud && R.livrare_adresa && "Adresa scrisă de client: " + R.livrare_adresa, R.liv_reper && "Reper: " + R.liv_reper, R.eveniment && "Eveniment: " + R.eveniment].filter(Boolean).join("\n");   // v8.33: doar ce-i folosește șoferului
-  MM_FISA = { id: x.id, R, client: c.nume, prod, pana };
+  MM_FISA = { id: x.id, R, client: c.nume, prod, pana, avert: await fisaAvertizari(R, prod) };   // v10.07
+  MM_ACT_K = ""; if(typeof mmActArata === "function") mmActArata();
   mmLsArata(); mmSchimbat();
-  toast("Comanda e completată din fișă — apasă + la Contract (primește perioada). Anexa NU o mai faci cu +: se face singură la Salvează, din chenarul „Locație nouă” (cu produsele fișei). Pune prețul și frecvența, apoi Salvează.");   // v10.06
+  toast((MM_FISA.avert.length ? "⚠ Fișa are " + MM_FISA.avert.length + " lucru(ri) de verificat — vezi chenarul „Locație nouă”. " : "") + "Comanda e completată din fișă — apasă + la Contract (primește perioada). Anexa NU o mai faci cu +: se face singură la Salvează, din chenarul „Locație nouă” (cu produsele fișei). Pune prețul și frecvența, apoi Salvează.");   // v10.06
 }
 // ── v8.30 (cerut de Ovidiu, 09.11): fișa cu mai multe produse → la „+” Anexă alegi ce produse merg pe fiecare anexă
 // (numărul anexei îl scrii tu), până se termină produsele; apoi anexele se deschid pe rând, completate, și le salvezi.
