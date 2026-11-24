@@ -1189,7 +1189,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
   <span id="rz-w"><button id="rz-reset" class="pictograma" title="Lățimi implicite — pune coloanele din tabelele acestei file înapoi cum erau">↺ Reset layout</button><i class="rz-sep">|</i></span>
   <span id="tz-w" title="Mărimea tabelului (doar tabelul, restul rămâne la fel), din 5 în 5%. Fiecare meniu își ține minte mărimea lui. Merge și cu Ctrl + rotița mausului, Ctrl + / Ctrl − / Ctrl 0. Dublu clic pe procent = scrii tu valoarea."><button class="pictograma" onclick="tzPas(-1)" aria-label="Micșorează tabelul">−</button><b id="tz-v" ondblclick="tzScrie()" title="Dublu clic = scrii mărimea (ex. 87), Enter">100%</b><input id="tz-in" type="number" min="30" max="300" step="5" style="display:none"><button class="pictograma" onclick="tzPas(1)" aria-label="Mărește tabelul">+</button></span>
-  <span class="ver">v10.12</span>
+  <span class="ver">v10.13</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -7026,7 +7026,7 @@ function inchPlan(anexaId, anx, ctr, cli, ser){
   if(!ale.length || ale.some(x=>x.stare==="LA CLIENT")) return null;
   const k=ctr.find(x=>x.id===a.contract_id)||null, c=k?cli.find(x=>x.id===k.client_id)||null:null;
   const zi=ale.map(x=>x.data_ridicarii).filter(Boolean).sort().pop()||null;
-  const anexeLoc=anx.filter(x=>loc.includes(x.id) && anexaActiva(x) && (x.id===anexaId || (x.linie_id||x.id)===(a.linie_id||a.id) || areSerie(x.produs))).map(x=>x.id);   // gardul fără serii de la aceeași adresă nu se închide
+  const anexeLoc=anx.filter(x=>loc.includes(x.id) && anexaActiva(x) && (x.id===anexaId || (x.linie_id||x.id)===(a.linie_id||a.id) || (areSerie(x.produs) && ale.some(s=>s.anexa_id===x.id)))).map(x=>x.id);   // gardul fără serii de la aceeași adresă nu se închide; v10.13: nici anexa cu serie dar fără serii trecute
   const alteAnexe=k?anx.filter(x=>x.contract_id===k.id && !anexeLoc.includes(x.id) && anexaActiva(x)):[];
   const alteCtr=c?ctr.filter(x=>x.client_id===c.id && x.id!==(k&&k.id) && x.stare==="ACTIV"):[];
   return {a,k,c,zi,buc:ale.length,alteAnexe,alteCtr,loc,anexeLoc,anexaDeja:!anexeLoc.length};
@@ -7275,7 +7275,9 @@ function riPlan(o){
     : o.calc.coada ? o.calc.coada.every(x => x.rec.status === "INACTIV")
     : (a.tip_anexa === "R" && /FINAL/i.test(a.anexa || "")) || r.tip_miscare === "EVENIMENT-R";
   const k = CTR.find(x => x.id === a.contract_id) || null, c = k ? CLI.find(x => x.id === k.client_id) || null : null;
-  const anexeLoc = ANX.filter(x => loc.includes(x.id) && anexaActiva(x) && (x.id === a.id || (x.linie_id || x.id) === (a.linie_id || a.id) || areSerie(x.produs))).map(x => x.id);
+  // v10.13 (găsit de Ovidiu la PRISMA PLAZA, 24.11): altă linie de la aceeași adresă se închide doar dacă are serii ridicate —
+  // ridicarea gardului (anexa 2) nu mai închide toaleta fără serii (anexa 1)
+  const anexeLoc = ANX.filter(x => loc.includes(x.id) && anexaActiva(x) && (x.id === a.id || (x.linie_id || x.id) === (a.linie_id || a.id) || (areSerie(x.produs) && serLoc.some(s => s.anexa_id === x.id)))).map(x => x.id);
   return { a, k, c, loc, ultima, ramanSer, anexeLoc, anexaDeja: !anexeLoc.length };
 }
 function riCiteste(){
