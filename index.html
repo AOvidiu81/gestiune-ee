@@ -1189,7 +1189,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
   <span id="rz-w"><button id="rz-reset" class="pictograma" title="Lățimi implicite — pune coloanele din tabelele acestei file înapoi cum erau">↺ Reset layout</button><i class="rz-sep">|</i></span>
   <span id="tz-w" title="Mărimea tabelului (doar tabelul, restul rămâne la fel), din 5 în 5%. Fiecare meniu își ține minte mărimea lui. Merge și cu Ctrl + rotița mausului, Ctrl + / Ctrl − / Ctrl 0. Dublu clic pe procent = scrii tu valoarea."><button class="pictograma" onclick="tzPas(-1)" aria-label="Micșorează tabelul">−</button><b id="tz-v" ondblclick="tzScrie()" title="Dublu clic = scrii mărimea (ex. 87), Enter">100%</b><input id="tz-in" type="number" min="30" max="300" step="5" style="display:none"><button class="pictograma" onclick="tzPas(1)" aria-label="Mărește tabelul">+</button></span>
-  <span class="ver">v10.13</span>
+  <span class="ver">v10.14</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -1469,6 +1469,8 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
       <div style="flex:0" id="r-tva-w"><label>TVA %</label><input id="r-tva" type="number" value="21" step="1" oninput="genereazaRaport()"></div>
       <div style="flex:0 0 auto" id="r-pana-w"><label title="Gol = zilele se completează până azi. Cu o dată (ex. ultima zi a lunii) se completează până la ea și rămâne așa până o golești.">Completat până la</label><div style="display:flex;gap:6px"><input id="r-pana" type="date" onchange="rlPanaSet(this.value)" style="width:150px;flex:0 0 150px"><button class="btn sec" style="flex:0 0 auto" onclick="rlPanaSet('')" title="Golește data — zilele se completează din nou până azi">✕</button></div></div>
       <div style="flex:0" id="r-mod-wrap"><label>Variantă</label><div style="display:flex;gap:6px"><button class="btn sec" id="r-mod-lucru" onclick="setModFact('lucru')">În lucru</button><button class="btn sec" id="r-mod-gata" onclick="setModFact('gata')">Gata de trimis</button><button class="btn sec" id="r-mod-verif" onclick="setModFact('verif')" title="Facturile primite de la sediu: verifici rând cu rând înainte să le trimiți la clienți">Verificare</button></div></div>
+      <div style="flex:0" id="r-ff-w"><label title="Filtru pe tipul de ID al clientului — se păstrează pe În lucru, Gata de trimis și Verificare">ID</label><select id="r-fid" onchange="genereazaRaport()"><option value="">toate</option><option>CIF</option><option>CUI</option><option>CNP</option><option value="ALT">altele</option></select></div>
+      <div style="flex:0" id="r-fs-w"><label title="Filtru pe scadent (zile) — se păstrează pe În lucru, Gata de trimis și Verificare">Scadent</label><select id="r-fsc" onchange="genereazaRaport()"><option value="">toate</option><option value="30">30 zile</option><option value="15">15 zile</option><option value="5">5 zile</option><option value="ALT">altele</option></select></div>
       <div style="flex:0;align-self:flex-end;padding-bottom:9px;white-space:nowrap" id="r-ac-w"><label style="display:flex;align-items:center;gap:6px;cursor:pointer;margin:0" title="Arată și rândurile din lunile plătite deja în avans (gri, valoare 0, „facturat în …”) — bun când cauți ceva în urmă. Nu intră la Gata de trimis."><input type="checkbox" id="r-ac" onchange="factAcSchimba(this.checked)"> Arată și cele acoperite de avans</label></div>
       <div style="flex:0"><label>&nbsp;</label><button class="btn sec" onclick="exportRaport()">Export Excel</button></div>
       <div style="flex:0;display:none" id="r-col-w"><label>&nbsp;</label><button class="btn sec" onclick="colOrdReset()" title="Ai mutat coloanele acestui tabel (tras de capul de tabel). Clic = le pune înapoi în ordinea inițială.">↺ Ordinea coloanelor</button></div>
@@ -11126,8 +11128,16 @@ let R_AID = [], R_AVERT = [], R_RIDS = [], R_ROSU = [], R_FCOL = [], R_FNOTE = [
 // v7.87: contractul unui rând din Facturare („În lucru”): din rând sau, la rândurile adăugate (servisare la cerere), după NR. CTR
 // v8.76 (cerut de Ovidiu, 14.11): aceeași ordine în „Gata de trimis” și „Verificare”: ID (CUI, CIF, CNP, COM, restul) → client (după scadentul lui
 // cel mai mare: 30, 15, 5, restul) → numele clientului → contract → linia anexei (13, 13-S1, 13-R1 lipite) → începutul perioadei
+// v10.14 (cerut de Ovidiu, 24.11): filtrele ID (CIF / CUI / CNP / altele) și Scadent (30 / 15 / 5 / altele), aceleași pe toate tabelele din Facturare;
+// „În lucru” se arată și el în ordinea de la Gata de trimis / Verificare (ID → scadent → alfabetic). R_ORD = rândurile afișate (indicii din R_RANDURI).
+let R_ORD = null;
+const ffId = v => { const t = String(v || "").trim().toUpperCase(); return ["CIF", "CUI", "CNP"].includes(t) ? t : "ALT"; };
+const ffSc = v => String(v ?? "").trim() !== "" && [30, 15, 5].includes(+v) ? String(+v) : "ALT";
+function factFiltruOk(f){ const i = $("r-fid") ? $("r-fid").value : "", s = $("r-fsc") ? $("r-fsc").value : "";
+  return (!i || ffId(f[5]) === i) && (!s || ffSc(f[27]) === s); }
+const rapIdx = () => R_ORD || R_RANDURI.map((f, j) => j);
 function factOrdonGata(L){   // L = [{ f, j }] — se sortează pe loc
-  const idK = v => { const k = ["CUI", "CIF", "CNP", "COM"].indexOf(String(v || "").trim().toUpperCase()); return k < 0 ? 9 : k; };
+  const idK = v => { const k = ["CIF", "CUI", "CNP", "COM"].indexOf(String(v || "").trim().toUpperCase()); return k < 0 ? 9 : k; };   // v10.14: CIF primul (cerut de Ovidiu)
   const scK = v => { const k = [30, 15, 5].indexOf(+v); return k < 0 ? 9 : k; };
   L.forEach(x => { const ax = (R_FX[x.j] || {}).a; x._k1 = idK(x.f[5]); x._k2 = scK(x.f[27]); x._cl = String(x.f[4] || "").trim().toUpperCase(); x._c = factCtrDe(x.j); x._lin = ax ? String(ax.linie_id || ax.id) : ""; x._de = (R_FX[x.j] || {}).de || null; });
   const clK = new Map(); L.forEach(x => clK.set(x._cl, Math.min(clK.has(x._cl) ? clK.get(x._cl) : 9, x._k2)));
@@ -11398,12 +11408,13 @@ function modFactButoane(){
   const fact = $("r-tip").value === "facturare";
   $("r-mod-wrap").style.display = fact ? "" : "none";
   $("r-pana-w").style.display = fact ? "none" : ""; $("r-exp-c").style.display = fact ? "none" : "";   // v7.43
-  $("r-tva-w").style.display = fact ? "" : "none"; $("r-ac-w").style.display = fact ? "" : "none";   // v7.45: TVA și „acoperite de avans” țin doar de Facturare
+  $("r-tva-w").style.display = fact ? "" : "none"; $("r-ac-w").style.display = fact ? "" : "none";
+  $("r-ff-w").style.display = fact ? "" : "none"; $("r-fs-w").style.display = fact ? "" : "none";   // v10.14   // v7.45: TVA și „acoperite de avans” țin doar de Facturare
   const st = (id, activ, cul) => { $(id).style.cssText = activ ? "background:" + cul + ";border-color:" + cul + ";color:#fff" : ""; };
   st("r-mod-lucru", R_MOD === "lucru", "#D97706"); st("r-mod-gata", R_MOD === "gata", "#2E8B3C"); st("r-mod-verif", R_MOD === "verif", "#2563EB");   // v7.05
 }
 async function genereazaRaport(){
-  modFactButoane(); R_FMT2 = new Set(); R_DESP = new Set(); R_VKX = new Map(); R_SERV = new Map(); R_SC = new Map(); R_ACC = [];
+  modFactButoane(); R_ORD = null; R_FMT2 = new Set(); R_DESP = new Set(); R_VKX = new Map(); R_SERV = new Map(); R_SC = new Map(); R_ACC = [];
   if(!ANX.length){ return; }
   await colOrdIncarca();   // v10.11
   if($("r-tip").value === "facturare") await raportFacturare(); else await raportLuna();
@@ -11652,16 +11663,18 @@ async function raportFacturare(){
   R_NUME = "Facturare";
   R_ANTET[0] = "STARE LUNA";
   const pe = {};
-  R_RANDURI.forEach(f => { const m = f[20] || "RON"; pe[m] = pe[m] || [0, 0]; pe[m][0] += f[25]; pe[m][1] += f[26]; });
-  $("r-kpi").innerHTML = `<div>Poziții<b>${R_RANDURI.length}</b></div>` +
+  R_ORD = factOrdonGata(R_RANDURI.map((f, j) => ({ f, j })).filter(x => factFiltruOk(x.f))).map(x => x.j);   // v10.14
+  const vz = R_ORD.map(j => R_RANDURI[j]);
+  vz.forEach(f => { const m = f[20] || "RON"; pe[m] = pe[m] || [0, 0]; pe[m][0] += f[25]; pe[m][1] += f[26]; });
+  $("r-kpi").innerHTML = `<div>Poziții<b>${vz.length}</b></div>` +
     Object.keys(pe).sort().map(m => `<div>Fără TVA (${esc(m)})<b>${bani(pe[m][0])}</b><span class="kpi-sub">cu TVA: <b>${bani(pe[m][1])}</b></span></div>`).join("");   // v10.00: fără TVA sus, cu TVA dedesubt (un card pe monedă)
   F_PE = pe; if(Object.keys(pe).some(m => !["RON", "LEI"].includes(String(m).toUpperCase().trim()))) $("r-kpi").innerHTML += `<div id="kpi-lei" class="kpi-lei">${factLeiHtml()}</div>`;   // v9.99
   factSicapBanda(anF, lunaF);   // v8.83
-  const nDep = R_AVERT.filter(v => v.anx || v.ctr).length;
+  const nDep = R_ORD.filter(j => R_AVERT[j] && (R_AVERT[j].anx || R_AVERT[j].ctr)).length;
   if(nDep) $("r-kpi").innerHTML += `<div class="kpi-amb">Termen depășit<b>${nDep}</b></div>`;
   factCursBnr();   // v9.99: cursul BNR al zilei pentru „Total lună (lei)”
-  const deFact = R_RANDURI.filter(f => FACT_VAL(f[0])).length;
-  const fct = R_RANDURI.filter(f => f[0] === "FACTURAT").length;
+  const deFact = vz.filter(f => FACT_VAL(f[0])).length;
+  const fct = vz.filter(f => f[0] === "FACTURAT").length;
   if(deFact) $("r-kpi").innerHTML += `<div>Facturate<b>${fct} din ${deFact}</b></div>`;
   $("r-nota").textContent = "Zilele se numără de la data amplasării de pe anexă. Când o locație are suplimentări / reduceri, fiecare anexă (ex. ANEXA NR 1, 1-S1, 1-R1) are rândul ei, cu totalul de la client și perioada ei: de la data anexei până în ziua dinaintea anexei următoare. Ziua reducerii se facturează încă la cantitatea veche, deci anexa de reducere începe de a doua zi. Anexele cu statusul RIDICARE se facturează în luna ridicării până în ziua ridicării (data ridicării de pe anexă); fără dată de ridicare se trec cu 0 zile. Dacă nu vrei să facturezi acele câteva zile, alege NU FACTURAM la STARE LUNA. La anexele bifate „La facturare: un singur rând” (ex. Primăria), produsele cu același preț și aceeași perioadă se adună într-un rând. " +
     "Contractele trecute de termen sunt marcate cu ⚠ (act adițional sau trecere pe nedeterminat). " +
@@ -11677,10 +11690,11 @@ async function raportFacturare(){
     const deTrimis = f => FACT_VAL(f[0]) && f[0] !== "FACTURAT" && f[0] !== "IN ASTEPTARE FACTURA";   // v7.16: nici cele cerute deja
     // v7.84 (cerut de Ovidiu, 05.11): DOCUMENT în față; ordinea: ID (CUI, CIF, CNP, COM, restul) → SCADENT (30, 15, 5, restul);
     // pentru Excel: zilele de amplasare / suplimentare (verde) și ridicare / reducere (roșu), cu notă în celulă (R_FNOTE)
-    const idK = v => { const k = ["CUI", "CIF", "CNP", "COM"].indexOf(String(v || "").trim().toUpperCase()); return k < 0 ? 9 : k; };
+    const idK = v => { const k = ["CIF", "CUI", "CNP", "COM"].indexOf(String(v || "").trim().toUpperCase()); return k < 0 ? 9 : k; };
     const scK = v => { const k = [30, 15, 5].indexOf(+v); return k < 0 ? 9 : k; };
     const pct = d => String(d || "").replace(/-/g, ".");
-    const sel = R_RANDURI.map((f, j) => ({ f, j })).filter(x => deTrimis(x.f)).map(({ f, j }) => {
+    R_ORD = null;
+    const sel = R_RANDURI.map((f, j) => ({ f, j })).filter(x => deTrimis(x.f) && factFiltruOk(x.f)).map(({ f, j }) => {
       const fc = R_FCOL[j] || {}, st = String(f[21] || "").toUpperCase(), anx = f._cod || f[8] || "", nota = {};
       const prod = [f[18], f[15], f[16]].filter(v => v !== "" && v != null).join(" "), per = `Se facturează ${pct(f[22])} – ${pct(f[23])} = ${f[24]} zile`;
       if(fc[22] === "up"){ const t = /SUPLIMENTARE/.test(st) || /-S\d/i.test(anx) ? "SUPLIMENTARE" : /EVENIMENT/.test(st) ? "AMPLASARE EVENIMENT" : "AMPLASARE";
@@ -11836,7 +11850,8 @@ async function factVerifica(an, luna){
   FVER = {}; (data || []).forEach(z => { FVER[z.cheie] = z; });
   const idx = [4, 7, 1, 8, 12, 13, 15, 16, 18, 19, 20, 22, 23, 24, 25, 26];
   const tot = [];
-  R_RANDURI.forEach((f, j) => { if(!FACT_VAL(f[0])) return;
+  R_ORD = null;
+  R_RANDURI.forEach((f, j) => { if(!FACT_VAL(f[0]) || !factFiltruOk(f)) return;   // v10.14: + filtrele ID / Scadent
     tot.push({ f, j, k: R_VK[j], serv: R_SERV.has(j) ? R_SERV.get(j) : null, sc: R_SC.has(j) ? R_SC.get(j) : null,
                aid: R_AID[j] != null ? R_AID[j] : (R_SC.has(j) ? R_SC.get(j) : null), anx: R_AID[j] != null }); });
   factOrdonGata(tot);   // v8.76: aceeași ordine ca la „Gata de trimis”
@@ -12559,7 +12574,7 @@ function deseneazaRaport(){
   const fl = R_NUME === "Facturare";   // v6.89: lățimi fixe + ACC. doar la Facturare „În lucru”
   // v7.87: butonul „1 factură” apare pe primul rând al fiecărui contract care are cel puțin 2 rânduri în luna aceasta
   FCTR_PRIM = new Map();
-  if(fl){ const n = new Map(), prim = new Map(); R_RANDURI.forEach((f, j) => { const c = factCtrDe(j); if(!c) return; n.set(c.id, (n.get(c.id) || 0) + 1); if(!prim.has(c.id)) prim.set(c.id, j); });
+  if(fl){ const n = new Map(), prim = new Map(); rapIdx().forEach(j => { const c = factCtrDe(j); if(!c) return; n.set(c.id, (n.get(c.id) || 0) + 1); if(!prim.has(c.id)) prim.set(c.id, j); });
     prim.forEach((j, id) => { if(n.get(id) > 1) FCTR_PRIM.set(j, CTR.find(c => c.id === id)); }); }
   const rlf = R_NUME === "Raport_luna" && R_ACC.length === R_RANDURI.length;   // v6.91: la fel în Raport lună (ACC. după TIP)
   const accI = rlf ? 6 : -1, lx = fl || rlf;   // v7.06: Facturare fără coloana ACC. (TIP îngroșat)
@@ -12570,7 +12585,7 @@ function deseneazaRaport(){
   $("r-tbl").innerHTML = (lx ? `<colgroup>${lat.map(w => `<col style="width:${w}px">`).join("")}</colgroup>` : "") +
     "<thead><tr>" + R_ANTET.map((h, i) => `<th title="${esc(h)}"${colThAttr(i)}>${esc(h)}</th>` + (i === accI ? '<th title="Accesorii">ACC.</th>' : "") + (fl && i === 1 ? '<th title="Clic pe buton = alegi care anexe ale contractului merg pe o singură factură">1 FACTURĂ</th>' : "")).join("") +
     (R_EXTRA_T ? `<th class="noprint" title="Se bifează de mână: - → V → L → X">${esc(R_EXTRA_T)}</th>` : "") + "</tr></thead><tbody>" +
-    R_RANDURI.map((f, j) => {
+    rapIdx().map(j => { const f = R_RANDURI[j];   // v10.14: În lucru filtrat + ordonat
       const fact = R_NUME === "Facturare" , av = fact ? (R_AVERT[j] || {}) : {};
       const cls = [fact && !FACT_VAL(f[0]) ? "fs-off" : "", (av.anx || av.ctr) ? "r-depasit" : ""].filter(Boolean).join(" ");
       const rr = R_RIDS[j];
@@ -12994,7 +13009,7 @@ async function exportRaportFormatat(){
   let EJ; try{ EJ = await expLib("exceljs"); }catch(e){ return false; }
   const fAcc = (R_NUME === "Facturare" || R_NUME === "Raport_luna") && R_ACC.length === R_RANDURI.length;
   const P = colOrdine();   // v10.11: ordinea coloanelor aleasă
-  const ant = P.map(i => R_ANTET[i]).concat(fAcc ? ["ACCESORII"] : []), rand = R_RANDURI.map((f, j) => P.map(i => f[i]).concat(fAcc ? [R_ACC[j] || ""] : []));
+  const ant = P.map(i => R_ANTET[i]).concat(fAcc ? ["ACCESORII"] : []), rand = rapIdx().map(j => P.map(i => R_RANDURI[j][i]).concat(fAcc ? [R_ACC[j] || ""] : []));
   const O = 2, H = 4, n = ant.length, NAVY = "FF17275A", GRI = "FFC9D3E8";
   const wb = new EJ.Workbook(); wb.creator = "GestiuneEE";
   const ws = wb.addWorksheet(R_NUME.replace(/_/g, " ").slice(0, 28), { views: [{ state: "frozen", ySplit: H, zoomScale: 90 }],
@@ -13024,7 +13039,7 @@ async function exportRaport(){
   try{ if(await exportRaportFormatat()) return; }catch(e){ console.warn("export formatat:", e); }   // v9.85; dacă nu merge → simplu, ca înainte
   const fAcc = (R_NUME === "Facturare" || R_NUME === "Raport_luna") && R_ACC.length === R_RANDURI.length;   // v6.89: accesoriile ca ultimă coloană (doar „În lucru”)
   const P = colOrdine(), Q = colPoz();   // v10.11
-  const ws = XLSX.utils.aoa_to_sheet([P.map(i => R_ANTET[i]).concat(fAcc ? ["ACCESORII"] : []), ...R_RANDURI.map((f, j) => P.map(i => f[i]).concat(fAcc ? [R_ACC[j] || ""] : []))]);
+  const ws = XLSX.utils.aoa_to_sheet([P.map(i => R_ANTET[i]).concat(fAcc ? ["ACCESORII"] : []), ...rapIdx().map(j => P.map(i => R_RANDURI[j][i]).concat(fAcc ? [R_ACC[j] || ""] : []))]);
   // coloanele cu două zecimale (prețul 10.00) rămân numere în Excel, doar afișate cu două zecimale
   R_RANDURI.forEach((f, r) => R_FMT2.forEach(c => { const cel = ws[XLSX.utils.encode_cell({ r: r + 1, c: Q[c] })]; if(cel && cel.t === "n") cel.z = "0.00"; }));
   const wb = XLSX.utils.book_new();
