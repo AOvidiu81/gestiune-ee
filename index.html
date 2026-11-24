@@ -1189,7 +1189,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
   <span id="rz-w"><button id="rz-reset" class="pictograma" title="Lățimi implicite — pune coloanele din tabelele acestei file înapoi cum erau">↺ Reset layout</button><i class="rz-sep">|</i></span>
   <span id="tz-w" title="Mărimea tabelului (doar tabelul, restul rămâne la fel), din 5 în 5%. Fiecare meniu își ține minte mărimea lui. Merge și cu Ctrl + rotița mausului, Ctrl + / Ctrl − / Ctrl 0. Dublu clic pe procent = scrii tu valoarea."><button class="pictograma" onclick="tzPas(-1)" aria-label="Micșorează tabelul">−</button><b id="tz-v" ondblclick="tzScrie()" title="Dublu clic = scrii mărimea (ex. 87), Enter">100%</b><input id="tz-in" type="number" min="30" max="300" step="5" style="display:none"><button class="pictograma" onclick="tzPas(1)" aria-label="Mărește tabelul">+</button></span>
-  <span class="ver">v10.11</span>
+  <span class="ver">v10.12</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -11702,6 +11702,14 @@ async function raportFacturare(){
     const vazut = new Set(); sel.forEach(x => { const k = gk(x); x.g = k && gN.get(k) > 1 ? (vazut.has(k) ? "cont" : (vazut.add(k), "prim")) : ""; x.gn = k ? gN.get(k) : 0; });
     R_ROSU = sel.map(x => x.ro); R_FNOTE = sel.map(x => x.nota); R_FCOL = []; R_FCODB = sel.map(x => !!x.f._cod);   // v7.85: cod client → bold
     R_FCONT = sel.map(x => x.g === "cont");
+    // v10.12 (găsit de Ovidiu, 24.11): cardurile de sus după rândurile de aici, nu după „În lucru” (fără INACTIV / NU FACTURAM / FACTURAT / IN ASTEPTARE FACTURA)
+    const peG = {}; sel.forEach(({ f }) => { const m = f[20] || "RON"; peG[m] = peG[m] || [0, 0]; peG[m][0] += +f[25] || 0; peG[m][1] += +f[26] || 0; });
+    const nFact = sel.filter(x => x.g !== "cont").length, nDepG = sel.filter(x => (R_AVERT[x.j] || {}).anx || (R_AVERT[x.j] || {}).ctr).length;
+    $("r-kpi").innerHTML = `<div title="Rândurile din tabel — o factură cu mai multe rânduri (1F-…R) se numără cu fiecare rând">Poziții<b>${sel.length}</b></div>` +
+      `<div title="Câte facturi ies: o factură cu mai multe rânduri (1F-…R, ex. DRAMIROM, VITAL BERRY) se numără o dată">Facturi<b>${nFact}</b></div>` +
+      Object.keys(peG).sort().map(m => `<div>Fără TVA (${esc(m)})<b>${bani(peG[m][0])}</b><span class="kpi-sub">cu TVA: <b>${bani(peG[m][1])}</b></span></div>`).join("");
+    F_PE = peG; if(Object.keys(peG).some(m => !["RON", "LEI"].includes(String(m).toUpperCase().trim()))) $("r-kpi").innerHTML += `<div id="kpi-lei" class="kpi-lei">${factLeiHtml()}</div>`;
+    if(nDepG) $("r-kpi").innerHTML += `<div class="kpi-amb">Termen depășit<b>${nDepG}</b></div>`;
     // v6.47: coloana „DOCUMENT” = FACTURA AVANS / FACTURA PROFORMA (gol la factura obișnuită); v7.84: prima coloană
     const DOC_SCURT = { "FACTURA AVANS": "FA", "FACTURA PROFORMA": "FP" };   // v7.89 (cerut de Ovidiu, 05.11): prescurtări, cu legendă în Excel
     R_RANDURI = sel.map(({ f, g, gn, rf }) => { const doc = /^FACTURA /.test(f[0]) ? (DOC_SCURT[f[0]] || f[0]) : rf != null ? "RF " + fmtPret(rf) : "";   // v10.09
