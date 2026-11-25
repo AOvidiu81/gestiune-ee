@@ -174,6 +174,34 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   .pr-l .btn{padding:3px 8px}
   .subtab button{padding:7px 16px;border-radius:8px;border:1px solid var(--bd);background:none;color:inherit;cursor:pointer;font:inherit;font-size:14px}
   .subtab button.on{background:var(--g);border-color:var(--g);color:#fff}
+  /* v10.16: Catalog produse */
+  .ct-wrap{display:grid;grid-template-columns:minmax(260px,340px) 1fr;gap:14px;align-items:start}
+  @media(max-width:900px){.ct-wrap{grid-template-columns:1fr}}
+  .ct-st{margin:0;max-height:calc(100vh - 220px);overflow:auto;padding:10px}
+  .ct-cauta input{width:100%;margin-bottom:8px}
+  .ct-r{display:flex;align-items:center;gap:8px;padding:5px 6px;border-radius:8px;cursor:pointer;border:1px solid transparent}
+  .ct-r:hover{background:rgba(127,127,127,.08)} .ct-r.sel{border-color:var(--g);background:rgba(127,127,127,.10)}
+  .ct-r .nm{flex:1;min-width:0;font-size:13.5px;overflow-wrap:anywhere} .ct-r.niv1 .nm{font-weight:700;font-size:14px}
+  .ct-r.niv2{margin-left:26px} .ct-r .nr{font-size:11px;color:var(--mut);white-space:nowrap}
+  .ct-g{margin:6px 0 2px 32px;font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:var(--mut)}
+  .ct-tg{background:none;border:0;color:inherit;cursor:pointer;width:16px;padding:0;font-size:12px}
+  .ct-th{width:34px;height:34px;flex:0 0 34px;border-radius:6px;border:1px solid var(--bd);display:flex;align-items:center;justify-content:center;overflow:hidden;font-size:14px;
+    background:repeating-conic-gradient(rgba(127,127,127,.14) 0 25%,transparent 0 50%) 0 0/10px 10px}
+  .ct-th.mare{width:42px;height:42px;flex-basis:42px} .ct-th img{max-width:100%;max-height:100%;object-fit:contain}
+  .ct-th.gol{opacity:.45} .ct-th.mostenit img{opacity:.45}
+  .ct-tip{display:inline-block;font-size:11px;font-weight:700;padding:1px 8px;border-radius:9px;background:var(--g);color:#fff;vertical-align:2px;margin-right:4px}
+  .ct-poze{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:12px}
+  .ct-p{border:1px solid var(--bd);border-radius:10px;padding:8px;display:flex;flex-direction:column;gap:6px}
+  .ct-p.pr{border-color:var(--g);box-shadow:0 0 0 1px var(--g)}
+  .ct-pi{height:170px;border-radius:6px;display:flex;align-items:center;justify-content:center;cursor:zoom-in;
+    background:repeating-conic-gradient(rgba(127,127,127,.14) 0 25%,transparent 0 50%) 0 0/16px 16px}
+  .ct-pi img{max-width:100%;max-height:100%;object-fit:contain}
+  .ct-pt{font-size:12.5px;padding:4px 6px} .ct-pb{display:flex;gap:4px;align-items:center} .ct-pb .btn{padding:3px 8px}
+  .ct-st-pr{font-size:12px;font-weight:700;color:var(--g)} .ct-dim{font-size:11px}
+  .ct-up{border:2px dashed var(--bd);border-radius:10px;min-height:250px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;text-align:center;cursor:pointer;padding:10px;font-size:13px}
+  .ct-up:hover,.ct-up.peste{border-color:var(--g);background:rgba(127,127,127,.06)} .ct-up.lucru{opacity:.5;pointer-events:none}
+  .ct-mare{display:flex;align-items:center;justify-content:center;min-height:300px;background:repeating-conic-gradient(rgba(127,127,127,.14) 0 25%,transparent 0 50%) 0 0/20px 20px;border-radius:6px}
+  .ct-mare img{max-width:100%;max-height:72vh;object-fit:contain}
   /* v8.58: filele din Angajați / Flotă (separate de .subtab, pe care îl comută subStoc) */
   .tabz{display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap}
   /* v9.89 (cerut de Ovidiu, 22.11): Angajați — rândul cu Dashboard + numele angajaților rămâne sus la derulare */
@@ -1189,7 +1217,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
   <span id="rz-w"><button id="rz-reset" class="pictograma" title="Lățimi implicite — pune coloanele din tabelele acestei file înapoi cum erau">↺ Reset layout</button><i class="rz-sep">|</i></span>
   <span id="tz-w" title="Mărimea tabelului (doar tabelul, restul rămâne la fel), din 5 în 5%. Fiecare meniu își ține minte mărimea lui. Merge și cu Ctrl + rotița mausului, Ctrl + / Ctrl − / Ctrl 0. Dublu clic pe procent = scrii tu valoarea."><button class="pictograma" onclick="tzPas(-1)" aria-label="Micșorează tabelul">−</button><b id="tz-v" ondblclick="tzScrie()" title="Dublu clic = scrii mărimea (ex. 87), Enter">100%</b><input id="tz-in" type="number" min="30" max="300" step="5" style="display:none"><button class="pictograma" onclick="tzPas(1)" aria-label="Mărește tabelul">+</button></span>
-  <span class="ver">v10.15</span>
+  <span class="ver">v10.16</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -1263,7 +1291,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
 
 <!-- ================= PRODUSE ================= -->
 <section class="page" id="p-produse">
-  <div class="subtab noprint"><button onclick="subStoc('stoc')">Stoc</button><button class="on" onclick="subStoc('produse')">Produse</button><button onclick="subStoc('casate')">Casate / pierdute</button></div>
+  <div class="subtab noprint"><button onclick="subStoc('stoc')">Stoc</button><button class="on" onclick="subStoc('produse')">Produse</button><button onclick="subStoc('casate')">Casate / pierdute</button><button onclick="subStoc('catalog')">Catalog produse</button></div>
   <div class="card noprint">
     <p class="muted" style="margin:0"><b>Categoria</b> e produsul generic (TOALETA, LAVOAR…) și e cea numărată în Stoc. Alegi o categorie ca să-i vezi <b>tipurile</b> (ce se închiriază și se facturează: CLASIC, HANDY…), <b>modelele</b> (bucata propriu-zisă: ARMAL, MONDO… — la fiecare model bifezi la ce tipuri se aplică; fără nicio bifă apare la toate) și <b>accesoriile</b> (doar informative, se bifează pe comandă). Bifa <b>„Are serie”</b> spune dacă la categoria respectivă se trec serii pe bucată (la gard sau cordon nu). Bifele „în stoc la” aleg în ce depozite apare categoria în tabelul de stoc; la Comenzi și Anexe categoria rămâne oricum de ales. Ordinea (↑ ↓) e ordinea coloanelor din Stoc. <b>Redenumirea într-o categorie care există deja le unește</b> (ex. TOALETE → TOALETA): comenzile, anexele și stocul inițial trec pe numele ales.</p>
   </div>
@@ -1272,7 +1300,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
 
 <!-- ================= STOC ================= -->
 <section class="page" id="p-stoc">
-  <div class="subtab noprint"><button class="on" onclick="subStoc('stoc')">Stoc</button><button onclick="subStoc('produse')">Produse</button><button onclick="subStoc('casate')">Casate / pierdute</button></div>
+  <div class="subtab noprint"><button class="on" onclick="subStoc('stoc')">Stoc</button><button onclick="subStoc('produse')">Produse</button><button onclick="subStoc('casate')">Casate / pierdute</button><button onclick="subStoc('catalog')">Catalog produse</button></div>
   <div class="card noprint">
     <div class="row">
       <div><label>Depozit</label><select id="st-dep"><option value="">Toate</option></select></div>
@@ -1299,7 +1327,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
 
 <!-- ================= CASATE / PIERDUTE (v6.33) ================= -->
 <section class="page ecran" id="p-casate">
-  <div class="subtab noprint"><button onclick="subStoc('stoc')">Stoc</button><button onclick="subStoc('produse')">Produse</button><button class="on" onclick="subStoc('casate')">Casate / pierdute</button></div>
+  <div class="subtab noprint"><button onclick="subStoc('stoc')">Stoc</button><button onclick="subStoc('produse')">Produse</button><button class="on" onclick="subStoc('casate')">Casate / pierdute</button><button onclick="subStoc('catalog')">Catalog produse</button></div>
   <div class="card noprint">
     <div class="row">
       <div><label>Caută</label><input id="cp-q" placeholder="client, serie, localitate…" oninput="renderCasate()"></div>
@@ -1309,6 +1337,15 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
     <p class="muted" data-info="Casate / pierdute" style="margin:8px 0 0">Produsele care nu se mai întorc în depozit (daună totală, furt): comenzile <b>DAUNA</b> / <b>FURT</b> și bucățile trecute pe DAUNA / FURT în fereastra Serii. Ies din ÎNCHIRIATE și nu intră în DEPOZIT; chiria se oprește prin anexa -R a clientului.</p>
   </div>
   <div class="card ecran-t"><div class="tw"><table id="cp-tbl"></table></div></div>
+</section>
+
+<!-- ================= CATALOG PRODUSE (v10.16) ================= -->
+<section class="page" id="p-catalog">
+  <div class="subtab noprint"><button onclick="subStoc('stoc')">Stoc</button><button onclick="subStoc('produse')">Produse</button><button onclick="subStoc('casate')">Casate / pierdute</button><button class="on" onclick="subStoc('catalog')">Catalog produse</button></div>
+  <div class="card noprint">
+    <p class="muted" style="margin:0">Fișa fiecărui produs, într-un singur loc: <b>pozele</b> și <b>descrierea pentru client</b> (caracteristicile vin în etapa următoare). Ofertele de chirie și de eveniment vor lua datele de aici. Produsele sunt cele din <b>Produse</b> (categorii, tipuri, modele, accesorii) — aici nu se adaugă și nu se șterg produse. La <b>categorie</b> pui imaginea reprezentativă; la <b>tip / model</b> pozele specifice, câte trebuie. Steaua ★ = poza principală (cea care intră în ofertă). Pozele se micșorează singure la max. 1200 px; PNG-ul cu fundal transparent rămâne transparent.</p>
+  </div>
+  <div id="cat-grid"></div>
 </section>
 
 <!-- ================= MISCARI ================= -->
@@ -3481,10 +3518,168 @@ function renderStoc(){
 const cheieAsc=(dep,p)=>dep+"|"+p;
 const esteAscuns=(dep,p)=>nomv("stoc_ascuns").includes(cheieAsc(dep,p));
 const escJs=x=>String(x).replace(/\\/g,"\\\\").replace(/'/g,"\\'").replace(/"/g,"&quot;");
+// ===== v10.16 (cerut de Ovidiu, 25.11): CATALOG PRODUSE — fișa fiecărui produs (categorie / tip / model / accesoriu din Produse):
+// poze (una principală = reprezentativă, oricâte în plus), descriere pentru client. Ofertele vor lua de aici poza și datele.
+// Pozele stau în Supabase Storage (bucket privat „catalog-produse”), rândurile în catalog_imagini / catalog_fise, legate de nomenclatoare.id.
+const CAT = { fise: {}, img: [], url: {}, sel: null, desch: new Set(), q: "" };
+const CAT_TIP = { produs: "Categorie", model: "Tip", model_fizic: "Model", accesoriu: "Accesoriu" };
+const catNom = id => { for(const t of ["produs","model","model_fizic","accesoriu"]){ const r = (NOM[t]||[]).find(x => x.id === id); if(r) return r; } return null; };
+const catImg = id => CAT.img.filter(i => i.nom_id === id).sort((a,b) => (b.principala - a.principala) || (a.ordine - b.ordine) || (a.id - b.id));
+const catPrinc = id => catImg(id)[0] || null;
+// poza folosită în ofertă: a produsului; dacă n-are → a tipului (pentru model, primul tip bifat) → a categoriei
+function catPozaOferta(id){
+  const r = catNom(id); if(!r) return null;
+  const p = catPrinc(id); if(p) return { img: p, de: r };
+  if(r.tip === "model_fizic" && (r.tipuri||[]).length){ const t = (NOM.model||[]).find(x => x.parinte === r.parinte && x.valoare === r.tipuri[0]); if(t && catPrinc(t.id)) return { img: catPrinc(t.id), de: t }; }
+  if(r.tip !== "produs"){ const c = (NOM.produs||[]).find(x => x.valoare === r.parinte); if(c && catPrinc(c.id)) return { img: catPrinc(c.id), de: c }; }
+  return null;
+}
+async function catUrluri(){
+  const lipsa = CAT.img.map(i => i.cale).filter(c => !CAT.url[c] || CAT.url[c].exp < Date.now()); if(!lipsa.length) return;
+  const { data, error } = await db.storage.from("catalog-produse").createSignedUrls(lipsa, 3600);
+  if(error){ toast("Pozele: " + error.message, true); return; }
+  (data||[]).forEach(d => { if(d.signedUrl) CAT.url[d.path] = { u: d.signedUrl, exp: Date.now() + 55*60*1000 }; });
+}
+const catSrc = i => i && CAT.url[i.cale] ? CAT.url[i.cale].u : "";
+async function loadCatalog(){
+  const [f, im] = await Promise.all([db.from("catalog_fise").select("*"), db.from("catalog_imagini").select("*")]);
+  if(f.error || im.error){ toast((f.error||im.error).message, true); return; }
+  CAT.fise = {}; (f.data||[]).forEach(r => CAT.fise[r.nom_id] = r); CAT.img = im.data || [];
+  await catUrluri(); renderCatalog();
+}
+function catThumb(id, cls){ const o = catPozaOferta(id), own = catPrinc(id);
+  if(!o) return `<span class="ct-th ${cls||""} gol" title="Fără poză">📷</span>`;
+  return `<span class="ct-th ${cls||""}${own?"":" mostenit"}" title="${own?"Poza principală":"Fără poză proprie — în ofertă intră poza de la "+esc(o.de.valoare)}"><img src="${esc(catSrc(o.img))}" alt=""></span>`; }
+function catRand(r, niv){ const n = catImg(r.id).length;
+  return `<div class="ct-r niv${niv}${CAT.sel===r.id?" sel":""}" onclick="catAlege(${r.id})">${catThumb(r.id)}<span class="nm">${esc(r.valoare)}</span><span class="nr">${n?n+" poz"+(n===1?"ă":"e"):""}${CAT.fise[r.id]&&CAT.fise[r.id].descriere?" · ✎":""}</span></div>`; }
+function renderCatalog(){
+  const g = $("cat-grid"); if(!g) return;
+  const P = NOM.produs||[], q = CAT.q.trim().toLowerCase();
+  if(CAT.sel == null || !catNom(CAT.sel)){ CAT.sel = P.length ? P[0].id : null; }
+  const selR = catNom(CAT.sel), selCat = selR ? (selR.tip === "produs" ? selR.valoare : selR.parinte) : null;
+  const fara = P.reduce((s,p) => s + [p, ...(NOM.model||[]).filter(x=>x.parinte===p.valoare), ...(NOM.model_fizic||[]).filter(x=>x.parinte===p.valoare)].filter(x => !catPozaOferta(x.id)).length, 0);
+  let st = `<div class="card ct-st"><div class="ct-cauta"><input placeholder="caută produs…" value="${esc(CAT.q)}" oninput="CAT.q=this.value;renderCatalog();const i=document.querySelector('.ct-cauta input');i.focus();i.setSelectionRange(i.value.length,i.value.length)"></div>`;
+  st += P.map(p => {
+    const sub = t => (NOM[t]||[]).filter(x => x.parinte === p.valoare);
+    const T = sub("model"), M = sub("model_fizic"), A = sub("accesoriu");
+    const potr = x => !q || x.valoare.toLowerCase().includes(q);
+    if(q && !potr(p) && ![...T,...M,...A].some(potr)) return "";
+    const deschis = q || CAT.desch.has(p.id) || selCat === p.valoare;
+    const grup = (eti, L) => L.length ? `<div class="ct-g">${eti}</div>` + L.filter(x => !q || potr(p) || potr(x)).map(x => catRand(x, 2)).join("") : "";
+    return `<div class="ct-cat"><div class="ct-r niv1${CAT.sel===p.id?" sel":""}" onclick="catAlege(${p.id})"><button class="ct-tg" onclick="event.stopPropagation();CAT.desch.has(${p.id})?CAT.desch.delete(${p.id}):CAT.desch.add(${p.id});renderCatalog()">${deschis?"▾":"▸"}</button>${catThumb(p.id,"mare")}<span class="nm">${esc(p.valoare)}</span><span class="nr">${catImg(p.id).length||""}</span></div>`
+      + (deschis ? grup("Tipuri", T) + grup("Modele", M) + grup("Accesorii", A) : "") + `</div>`;
+  }).join("") + (fara ? `<p class="muted" style="margin:10px 4px 0;font-size:12px">${fara} produse (categorii / tipuri / modele) n-au încă nicio poză.</p>` : "") + `</div>`;
+  g.innerHTML = `<div class="ct-wrap">${st}<div id="ct-fisa">${catFisaHtml(selR)}</div></div>`;
+}
+function catFisaHtml(r){
+  if(!r) return `<div class="card"><p class="muted">Nu există produse. Adaugă-le întâi în Stoc → Produse.</p></div>`;
+  const cale = r.tip === "produs" ? esc(r.valoare) : `<a href="#" onclick="event.preventDefault();catAlege(${(NOM.produs||[]).find(x=>x.valoare===r.parinte)?.id||0})">${esc(r.parinte)}</a> › ${esc(r.valoare)}`;
+  const I = catImg(r.id), f = CAT.fise[r.id] || {}, o = catPozaOferta(r.id);
+  const nota = r.tip === "produs" ? "Poza principală a categoriei e <b>imaginea reprezentativă</b>: intră în ofertă la orice tip / model din categorie care n-are poză proprie."
+    : "Pozele specifice acestui " + CAT_TIP[r.tip].toLowerCase() + ". Dacă n-are nicio poză, în ofertă intră poza " + (r.tip === "model_fizic" ? "tipului bifat sau a categoriei" : "categoriei") + ".";
+  const poze = I.map((i, k) => `<div class="ct-p${i.principala?" pr":""}">
+      <div class="ct-pi" onclick="catVezi(${i.id})" title="Mărește"><img src="${esc(catSrc(i))}" alt=""></div>
+      <input class="ct-pt" placeholder="denumire poză (ex. față, interior)" value="${esc(i.titlu||"")}" onchange="catTitlu(${i.id},this.value)">
+      <div class="ct-pb">${i.principala ? `<span class="ct-st-pr">★ principală</span>` : `<button class="btn sm sec" title="Fă-o poza principală (reprezentativă)" onclick="catPrincipala(${i.id})">☆ principală</button>`}
+        <span style="flex:1"></span>
+        <button class="btn sm sec" title="Mută la stânga" ${k===0?"disabled":""} onclick="catMuta(${i.id},-1)">◀</button>
+        <button class="btn sm sec" title="Mută la dreapta" ${k===I.length-1?"disabled":""} onclick="catMuta(${i.id},1)">▶</button>
+        <button class="btn sm danger" title="Șterge poza" onclick="catSterge(${i.id})">✕</button></div>
+      ${i.latime?`<div class="muted ct-dim">${i.latime}×${i.inaltime} px</div>`:""}</div>`).join("");
+  return `<div class="card">
+    <div class="pr-h"><h4><span class="ct-tip">${CAT_TIP[r.tip]}</span> ${cale}</h4></div>
+    <p class="muted" style="margin:0 0 10px;font-size:12.5px">${nota}${!I.length && o ? ` Acum: poza de la <b>${esc(o.de.valoare)}</b>.` : ""}</p>
+    <div class="ct-poze">${poze}
+      <label class="ct-up" id="ct-up" ondragover="event.preventDefault();this.classList.add('peste')" ondragleave="this.classList.remove('peste')" ondrop="event.preventDefault();this.classList.remove('peste');catIncarca(${r.id},event.dataTransfer.files)">
+        <input type="file" accept="image/png,image/jpeg,image/webp" multiple hidden onchange="catIncarca(${r.id},this.files);this.value=''">
+        <span style="font-size:26px">＋</span><b>Adaugă poze</b><span class="muted">clic (Browse) sau trage pozele aici<br>PNG transparent / JPG / WEBP</span></label>
+    </div>
+    <div style="margin-top:14px"><label>Descriere pentru client (apare în ofertă)</label>
+      <textarea id="ct-desc" rows="4" style="width:100%" placeholder="ex. Cabină de pază izolată, cu ușă, fereastră și instalație electrică…">${esc(f.descriere||"")}</textarea>
+      <div style="display:flex;justify-content:flex-end;margin-top:6px"><button class="btn" onclick="catSalveazaDesc(${r.id})">Salvează descrierea</button></div></div>
+    <p class="muted" style="margin:10px 0 0;font-size:12px">Caracteristicile (dimensiuni, greutate…) vin în etapa următoare.</p>
+  </div>`;
+}
+function catAlege(id){ if(!id) return; CAT.sel = id; const r = catNom(id); if(r && r.tip === "produs") CAT.desch.add(id); renderCatalog(); }
+// micșorează la max 1200 px pe latura mare; PNG / WEBP rămân PNG (păstrează transparența), JPG rămâne JPG
+function catPregateste(file){
+  return new Promise((res, rej) => {
+    const u = URL.createObjectURL(file), im = new Image();
+    im.onload = () => { URL.revokeObjectURL(u);
+      const k = Math.min(1, 1200 / Math.max(im.naturalWidth, im.naturalHeight)), w = Math.round(im.naturalWidth * k), h = Math.round(im.naturalHeight * k);
+      const c = document.createElement("canvas"); c.width = w; c.height = h; c.getContext("2d").drawImage(im, 0, 0, w, h);
+      const jpg = file.type === "image/jpeg", tip = jpg ? "image/jpeg" : "image/png";
+      c.toBlob(b => b ? res({ b, w, h, ext: jpg ? "jpg" : "png", tip }) : rej(new Error("nu pot citi poza")), tip, 0.88); };
+    im.onerror = () => { URL.revokeObjectURL(u); rej(new Error(file.name + " nu e o poză")); };
+    im.src = u;
+  });
+}
+async function catIncarca(id, files){
+  files = [...(files||[])].filter(f => /^image\/(png|jpeg|webp)$/.test(f.type)); if(!files.length){ toast("Alege poze PNG, JPG sau WEBP", true); return; }
+  const up = $("ct-up"); if(up) up.classList.add("lucru");
+  let ok = 0, are = catImg(id).length, ord = Math.max(-1, ...catImg(id).map(i => i.ordine)) + 1;
+  for(const f of files){
+    try{
+      const p = await catPregateste(f), cale = `${id}/${Date.now()}-${Math.random().toString(36).slice(2,8)}.${p.ext}`;
+      const { error: e1 } = await db.storage.from("catalog-produse").upload(cale, p.b, { contentType: p.tip, upsert: false }); if(e1) throw e1;
+      const titlu = f.name.replace(/\.[^.]+$/, "").replace(/[_-]+/g, " ").trim();
+      const { data, error: e2 } = await db.from("catalog_imagini").insert({ nom_id: id, cale, titlu, principala: !are && !ok, ordine: ord++, latime: p.w, inaltime: p.h }).select().single();
+      if(e2){ await db.storage.from("catalog-produse").remove([cale]); throw e2; }
+      CAT.img.push(data); ok++;
+    }catch(e){ toast(f.name + ": " + (e.message || e), true); }
+  }
+  await catUrluri(); renderCatalog(); if(ok) toast(ok === 1 ? "Poză adăugată" : ok + " poze adăugate");
+}
+async function catPrincipala(iid){
+  const i = CAT.img.find(x => x.id === iid); if(!i) return;
+  let { error } = await db.from("catalog_imagini").update({ principala: false }).eq("nom_id", i.nom_id).eq("principala", true);
+  if(!error) ({ error } = await db.from("catalog_imagini").update({ principala: true }).eq("id", iid));
+  if(error){ toast(error.message, true); return loadCatalog(); }
+  CAT.img.forEach(x => { if(x.nom_id === i.nom_id) x.principala = x.id === iid; }); renderCatalog(); toast("Poza principală schimbată");
+}
+async function catMuta(iid, d){
+  const i = CAT.img.find(x => x.id === iid); if(!i) return; const L = catImg(i.nom_id), k = L.indexOf(i), j = L[k + d]; if(!j) return;
+  // ordinea nouă = ordinea din listă, cu cele două schimbate; principala rămâne prima oricum
+  [L[k], L[k + d]] = [L[k + d], L[k]];
+  const upd = L.map((x, n) => ({ x, n })).filter(o => o.x.ordine !== o.n);
+  for(const o of upd){ const { error } = await db.from("catalog_imagini").update({ ordine: o.n }).eq("id", o.x.id); if(error){ toast(error.message, true); return loadCatalog(); } o.x.ordine = o.n; }
+  if(i.principala || j.principala){ const nou = L[0]; if(!nou.principala) return catPrincipala(nou.id); }
+  renderCatalog();
+}
+async function catTitlu(iid, v){
+  const { error } = await db.from("catalog_imagini").update({ titlu: v.trim() || null }).eq("id", iid);
+  if(error){ toast(error.message, true); return; } const i = CAT.img.find(x => x.id === iid); if(i) i.titlu = v.trim() || null; toast("Denumirea pozei salvată");
+}
+async function catSterge(iid){
+  const i = CAT.img.find(x => x.id === iid); if(!i) return;
+  if(!confirm(`Ștergi poza${i.titlu ? " „" + i.titlu + "”" : ""} de la ${catNom(i.nom_id)?.valoare || "produs"}?\nNu se mai poate recupera.`)) return;
+  const { error: e1 } = await db.storage.from("catalog-produse").remove([i.cale]); if(e1){ toast(e1.message, true); return; }
+  const { error } = await db.from("catalog_imagini").delete().eq("id", iid); if(error){ toast(error.message, true); return loadCatalog(); }
+  CAT.img = CAT.img.filter(x => x.id !== iid);
+  if(i.principala){ const r = catImg(i.nom_id)[0]; if(r) return catPrincipala(r.id); }
+  renderCatalog(); toast("Poza ștearsă");
+}
+async function catSalveazaDesc(id){
+  const v = ($("ct-desc").value || "").trim();
+  const { data, error } = await db.from("catalog_fise").upsert({ nom_id: id, descriere: v || null, updated_at: new Date().toISOString() }).select().single();
+  if(error){ toast(error.message, true); return; } CAT.fise[id] = data; renderCatalog(); toast("Descrierea salvată");
+}
+function catVezi(iid){
+  const i = CAT.img.find(x => x.id === iid); if(!i) return; const r = catNom(i.nom_id);
+  let m = $("mod-ctv");
+  if(!m){ m = document.createElement("div"); m.id = "mod-ctv"; m.className = "modal";
+    m.innerHTML = `<div class="box" style="max-width:900px"><h3 class="lux-cap cap-mut" id="ctv-t"></h3><div class="ct-mare"><img id="ctv-i" alt=""></div>
+      <div style="display:flex;gap:8px;justify-content:space-between;margin-top:10px;align-items:center"><span class="muted" id="ctv-d"></span><button class="btn sec" onclick="closeModal('mod-ctv')">Închide</button></div></div>`;
+    m.addEventListener("mousedown", e => { if(e.target === m) closeModal("mod-ctv"); });
+    document.body.appendChild(m); feFereastra(m, () => closeModal("mod-ctv")); }
+  $("ctv-t").textContent = "📷 " + (r ? r.valoare : "") + (i.titlu ? " — " + i.titlu : "");
+  $("ctv-i").src = catSrc(i); $("ctv-d").textContent = (i.latime ? i.latime + "×" + i.inaltime + " px" : "") + (i.principala ? " · ★ poza principală" : "");
+  m.classList.add("on");
+}
 function subStoc(p){
   document.querySelectorAll(".page").forEach(x=>x.classList.remove("on")); $("p-"+p).classList.add("on");
   document.querySelectorAll(".subtab button").forEach(b=>b.classList.toggle("on", b.getAttribute("onclick").includes("'"+p+"'")));
-  if(p==="produse") renderProduse(); else if(p==="casate") loadCasate(); else loadStoc();
+  if(p==="produse") renderProduse(); else if(p==="casate") loadCasate(); else if(p==="catalog") loadCatalog(); else loadStoc();
 }
 async function comutaProdDep(cb,dep,p){
   cb.disabled=true; const val=cheieAsc(dep,p); let error;
@@ -18740,7 +18935,7 @@ const HOW = [
       { t: "Pe <b>modele</b>: pornesc de la numărătoare și se mișcă doar din seriile din PV-uri (amplasare −1, ridicare +1). Ce a ieșit / intrat fără serie confirmată stă pe rândul „fără model (așteaptă PV)”." },
       { t: "<b>Stoc inițial</b>: Administrare → Secțiune = <b>Stoc inițial</b> → depozit, produs, Închiriate, În depozit, <b>Data referință</b> → Salvează.", ar: { fn: HOW_ADMIN("_stoc"), el: "#si-tbl" } },
       { t: "<b>Modele</b> pe rând: scrii câte bucăți sunt din fiecare model (ARMAL, MONDO…) → <b>Salvează modelele</b>. Suma trebuie să dea „În depozit” (✓ verde); altfel apare ⚠ și cardul „Stoc pe modele — nu coincide” în De urmărit." },
-      { t: "Filele de sus: <b>Produse</b> (categorii, tipuri, modele, „Are serie”) și <b>Casate / pierdute</b> (daună, furt)." } ],
+      { t: "Filele de sus: <b>Produse</b> (categorii, tipuri, modele, „Are serie”) și <b>Casate / pierdute</b> (daună, furt); <b>Catalog produse</b> = pozele și descrierea fiecărui produs, pentru oferte." } ],
     du: { s: "stoc", fn: () => subStoc("stoc"), el: "#stoc-grid" } },
 
   { id: "puncte-ruta", cat: "Rute și șoferi", t: "Puncte de rută — coordonate, ⇄ Mută produse, INACTIV",
