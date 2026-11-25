@@ -202,6 +202,10 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   .ct-up:hover,.ct-up.peste{border-color:var(--g);background:rgba(127,127,127,.06)} .ct-up.lucru{opacity:.5;pointer-events:none}
   .ct-mare{display:flex;align-items:center;justify-content:center;min-height:300px;background:repeating-conic-gradient(rgba(127,127,127,.14) 0 25%,transparent 0 50%) 0 0/20px 20px;border-radius:6px}
   .ct-mare img{max-width:100%;max-height:72vh;object-fit:contain}
+  /* v10.17: caracteristici */
+  .ct-tc{width:100%;border-collapse:collapse;font-size:13px} .ct-tc th{text-align:left;font-size:11px;color:var(--mut);font-weight:600;padding:4px 6px;border-bottom:1px solid var(--bd)}
+  .ct-tc td{padding:4px 6px;border-bottom:1px solid var(--bd);vertical-align:middle} .ct-tc input:not([type=checkbox]){width:100%;padding:4px 6px;font-size:13px}
+  .ct-tc .ct-u,.pr-add .ct-u{max-width:90px} .ct-tc .btn{padding:3px 8px} .ct-v::placeholder{font-style:italic}
   /* v8.58: filele din Angajați / Flotă (separate de .subtab, pe care îl comută subStoc) */
   .tabz{display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap}
   /* v9.89 (cerut de Ovidiu, 22.11): Angajați — rândul cu Dashboard + numele angajaților rămâne sus la derulare */
@@ -1217,7 +1221,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
   <span id="rz-w"><button id="rz-reset" class="pictograma" title="Lățimi implicite — pune coloanele din tabelele acestei file înapoi cum erau">↺ Reset layout</button><i class="rz-sep">|</i></span>
   <span id="tz-w" title="Mărimea tabelului (doar tabelul, restul rămâne la fel), din 5 în 5%. Fiecare meniu își ține minte mărimea lui. Merge și cu Ctrl + rotița mausului, Ctrl + / Ctrl − / Ctrl 0. Dublu clic pe procent = scrii tu valoarea."><button class="pictograma" onclick="tzPas(-1)" aria-label="Micșorează tabelul">−</button><b id="tz-v" ondblclick="tzScrie()" title="Dublu clic = scrii mărimea (ex. 87), Enter">100%</b><input id="tz-in" type="number" min="30" max="300" step="5" style="display:none"><button class="pictograma" onclick="tzPas(1)" aria-label="Mărește tabelul">+</button></span>
-  <span class="ver">v10.16</span>
+  <span class="ver">v10.17</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -1343,7 +1347,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
 <section class="page" id="p-catalog">
   <div class="subtab noprint"><button onclick="subStoc('stoc')">Stoc</button><button onclick="subStoc('produse')">Produse</button><button onclick="subStoc('casate')">Casate / pierdute</button><button class="on" onclick="subStoc('catalog')">Catalog produse</button></div>
   <div class="card noprint">
-    <p class="muted" style="margin:0">Fișa fiecărui produs, într-un singur loc: <b>pozele</b> și <b>descrierea pentru client</b> (caracteristicile vin în etapa următoare). Ofertele de chirie și de eveniment vor lua datele de aici. Produsele sunt cele din <b>Produse</b> (categorii, tipuri, modele, accesorii) — aici nu se adaugă și nu se șterg produse. La <b>categorie</b> pui imaginea reprezentativă; la <b>tip / model</b> pozele specifice, câte trebuie. Steaua ★ = poza principală (cea care intră în ofertă). Pozele se micșorează singure la max. 1200 px; PNG-ul cu fundal transparent rămâne transparent.</p>
+    <p class="muted" style="margin:0">Fișa fiecărui produs, într-un singur loc: <b>pozele</b> și <b>descrierea pentru client</b> și <b>caracteristicile</b> (dimensiuni, greutate…: câmpurile se fac la categorie, valorile la fiecare tip / model; ce nu scrii se moștenește de la categorie). Ofertele de chirie și de eveniment vor lua datele de aici. Produsele sunt cele din <b>Produse</b> (categorii, tipuri, modele, accesorii) — aici nu se adaugă și nu se șterg produse. La <b>categorie</b> pui imaginea reprezentativă; la <b>tip / model</b> pozele specifice, câte trebuie. Steaua ★ = poza principală (cea care intră în ofertă). Pozele se micșorează singure la max. 1200 px; PNG-ul cu fundal transparent rămâne transparent.</p>
   </div>
   <div id="cat-grid"></div>
 </section>
@@ -3521,7 +3525,7 @@ const escJs=x=>String(x).replace(/\\/g,"\\\\").replace(/'/g,"\\'").replace(/"/g,
 // ===== v10.16 (cerut de Ovidiu, 25.11): CATALOG PRODUSE — fișa fiecărui produs (categorie / tip / model / accesoriu din Produse):
 // poze (una principală = reprezentativă, oricâte în plus), descriere pentru client. Ofertele vor lua de aici poza și datele.
 // Pozele stau în Supabase Storage (bucket privat „catalog-produse”), rândurile în catalog_imagini / catalog_fise, legate de nomenclatoare.id.
-const CAT = { fise: {}, img: [], url: {}, sel: null, desch: new Set(), q: "" };
+const CAT = { fise: {}, img: [], campuri: [], url: {}, sel: null, desch: new Set(), q: "" };
 const CAT_TIP = { produs: "Categorie", model: "Tip", model_fizic: "Model", accesoriu: "Accesoriu" };
 const catNom = id => { for(const t of ["produs","model","model_fizic","accesoriu"]){ const r = (NOM[t]||[]).find(x => x.id === id); if(r) return r; } return null; };
 const catImg = id => CAT.img.filter(i => i.nom_id === id).sort((a,b) => (b.principala - a.principala) || (a.ordine - b.ordine) || (a.id - b.id));
@@ -3542,8 +3546,9 @@ async function catUrluri(){
 }
 const catSrc = i => i && CAT.url[i.cale] ? CAT.url[i.cale].u : "";
 async function loadCatalog(){
-  const [f, im] = await Promise.all([db.from("catalog_fise").select("*"), db.from("catalog_imagini").select("*")]);
-  if(f.error || im.error){ toast((f.error||im.error).message, true); return; }
+  const [f, im, cc] = await Promise.all([db.from("catalog_fise").select("*"), db.from("catalog_imagini").select("*"), db.from("catalog_campuri").select("*")]);
+  if(f.error || im.error || cc.error){ toast((f.error||im.error||cc.error).message, true); return; }
+  CAT.campuri = cc.data || [];
   CAT.fise = {}; (f.data||[]).forEach(r => CAT.fise[r.nom_id] = r); CAT.img = im.data || [];
   await catUrluri(); renderCatalog();
 }
@@ -3574,7 +3579,7 @@ function renderCatalog(){
 function catFisaHtml(r){
   if(!r) return `<div class="card"><p class="muted">Nu există produse. Adaugă-le întâi în Stoc → Produse.</p></div>`;
   const cale = r.tip === "produs" ? esc(r.valoare) : `<a href="#" onclick="event.preventDefault();catAlege(${(NOM.produs||[]).find(x=>x.valoare===r.parinte)?.id||0})">${esc(r.parinte)}</a> › ${esc(r.valoare)}`;
-  const I = catImg(r.id), f = CAT.fise[r.id] || {}, o = catPozaOferta(r.id);
+  const I = catImg(r.id), f = CAT.fise[r.id] || {}, o = catPozaOferta(r.id), dm = !f.descriere ? catDescriere(r) : null;
   const nota = r.tip === "produs" ? "Poza principală a categoriei e <b>imaginea reprezentativă</b>: intră în ofertă la orice tip / model din categorie care n-are poză proprie."
     : "Pozele specifice acestui " + CAT_TIP[r.tip].toLowerCase() + ". Dacă n-are nicio poză, în ofertă intră poza " + (r.tip === "model_fizic" ? "tipului bifat sau a categoriei" : "categoriei") + ".";
   const poze = I.map((i, k) => `<div class="ct-p${i.principala?" pr":""}">
@@ -3594,11 +3599,82 @@ function catFisaHtml(r){
         <input type="file" accept="image/png,image/jpeg,image/webp" multiple hidden onchange="catIncarca(${r.id},this.files);this.value=''">
         <span style="font-size:26px">＋</span><b>Adaugă poze</b><span class="muted">clic (Browse) sau trage pozele aici<br>PNG transparent / JPG / WEBP</span></label>
     </div>
-    <div style="margin-top:14px"><label>Descriere pentru client (apare în ofertă)</label>
-      <textarea id="ct-desc" rows="4" style="width:100%" placeholder="ex. Cabină de pază izolată, cu ușă, fereastră și instalație electrică…">${esc(f.descriere||"")}</textarea>
+    <div style="margin-top:14px"><label>Descriere pentru client (apare în ofertă; scrie-o fără diacritice)</label>
+      <textarea id="ct-desc" rows="4" style="width:100%" placeholder="${dm ? esc("Gol = se ia descrierea de la " + dm.de.valoare + ": " + dm.v.slice(0, 160) + (dm.v.length > 160 ? "…" : "")) : "ex. Cabina de paza izolata, cu usa, fereastra si instalatie electrica…"}">${esc(f.descriere||"")}</textarea>
       <div style="display:flex;justify-content:flex-end;margin-top:6px"><button class="btn" onclick="catSalveazaDesc(${r.id})">Salvează descrierea</button></div></div>
-    <p class="muted" style="margin:10px 0 0;font-size:12px">Caracteristicile (dimensiuni, greutate…) vin în etapa următoare.</p>
+    ${catCarHtml(r)}
   </div>`;
+}
+// ---- v10.17 (cerut de Ovidiu, 25.11): caracteristicile — câmpurile se definesc pe categorie, valorile pe fiecare fișă;
+// tipul / modelul fără valoare proprie moștenește (model → tipul bifat → categoria), ca la poze
+const catCateg = r => r ? (r.tip === "produs" ? r : (NOM.produs||[]).find(x => x.valoare === r.parinte)) : null;
+const catCampuri = r => { const c = catCateg(r); return c ? CAT.campuri.filter(x => x.categorie_id === c.id).sort((a,b) => a.ordine - b.ordine || a.id - b.id) : []; };
+function catParinti(r){ const L = []; if(!r) return L;
+  if(r.tip === "model_fizic" && (r.tipuri||[]).length){ const t = (NOM.model||[]).find(x => x.parinte === r.parinte && x.valoare === r.tipuri[0]); if(t) L.push(t); }
+  if(r.tip !== "produs"){ const c = catCateg(r); if(c) L.push(c); }
+  return L; }
+const catValProp = (id, cid) => { const f = CAT.fise[id]; const v = f && f.caracteristici ? f.caracteristici[cid] : null; return v == null || v === "" ? null : String(v); };
+function catVal(r, cid){ const v = catValProp(r.id, cid); if(v != null) return { v, de: null };
+  for(const p of catParinti(r)){ const w = catValProp(p.id, cid); if(w != null) return { v: w, de: p }; } return null; }
+function catDescriere(r){ const f = CAT.fise[r.id]; if(f && f.descriere) return { v: f.descriere, de: null };
+  for(const p of catParinti(r)){ const g = CAT.fise[p.id]; if(g && g.descriere) return { v: g.descriere, de: p }; } return null; }
+// ce intră în ofertă pentru un produs: poza, descrierea și caracteristicile bifate „în ofertă” (cu moștenire)
+function catPentruOferta(id){ const r = catNom(id); if(!r) return null;
+  const o = catPozaOferta(id), d = catDescriere(r);
+  return { produs: r, poza: o ? o.img : null, descriere: d ? d.v : "",
+    caracteristici: catCampuri(r).filter(c => c.in_oferta).map(c => { const x = catVal(r, c.id); return x ? { nume: c.nume, valoare: x.v + (c.unitate ? " " + c.unitate : "") } : null; }).filter(Boolean) }; }
+function catCarHtml(r){
+  if(r.tip === "accesoriu") return `<p class="muted" style="margin:12px 0 0;font-size:12px">Accesoriile au doar poze și descriere.</p>`;
+  const C = catCampuri(r), cat = r.tip === "produs", cg = catCateg(r);
+  let h = `<div class="ct-car"><div class="pr-h" style="margin-top:16px"><h4>Caracteristici</h4></div>`;
+  if(cat) h += `<p class="muted" style="margin:0 0 8px;font-size:12.5px">Câmpurile se fac aici, la categorie, și apar la toate tipurile și modelele ei. Valoarea scrisă la categorie e cea comună; la un tip / model o scrii doar dacă diferă. Bifa <b>„în ofertă”</b> = apare la client; fără bifă rămâne doar internă (ex. greutatea, pentru transport).</p>`;
+  else h += `<p class="muted" style="margin:0 0 8px;font-size:12.5px">Câmpurile vin de la categoria <b>${esc(cg ? cg.valoare : "")}</b>. Gol = se ia valoarea moștenită (scrisă estompat). Scrii doar ce diferă la acest ${CAT_TIP[r.tip].toLowerCase()}.</p>`;
+  if(!C.length && !cat) return h + `<p class="muted" style="margin:0">Categoria n-are încă nicio caracteristică. <a href="#" onclick="event.preventDefault();catAlege(${cg ? cg.id : 0})">Fă câmpurile la ${esc(cg ? cg.valoare : "categorie")}</a>.</p></div>`;
+  h += `<table class="ct-tc"><tr><th>Caracteristică</th>${cat ? "<th>Unitate</th>" : ""}<th>Valoare</th><th title="Apare în ofertă">în ofertă</th>${cat ? "<th></th>" : ""}</tr>`;
+  h += C.map((c, k) => { const own = catValProp(r.id, c.id), mo = cat ? null : (() => { for(const p of catParinti(r)){ const w = catValProp(p.id, c.id); if(w != null) return { v: w, de: p }; } return null; })();
+    const ph = mo ? `${mo.v} (de la ${mo.de.valoare})` : (cat ? "valoarea comună" : "—");
+    return `<tr>${cat ? `<td><input value="${esc(c.nume)}" onchange="catCampSet(${c.id},'nume',this.value)"></td><td><input class="ct-u" value="${esc(c.unitate||"")}" placeholder="m, kg, l…" onchange="catCampSet(${c.id},'unitate',this.value)"></td>`
+        : `<td><b>${esc(c.nume)}</b>${c.unitate ? ` <span class="muted">(${esc(c.unitate)})</span>` : ""}</td>`}
+      <td><input class="ct-v" data-camp="${c.id}" value="${esc(own||"")}" placeholder="${esc(ph)}"></td>
+      <td style="text-align:center">${cat ? `<input type="checkbox" ${c.in_oferta ? "checked" : ""} onchange="catCampSet(${c.id},'in_oferta',this.checked)">` : (c.in_oferta ? "✓" : `<span class="muted" title="doar intern">—</span>`)}</td>
+      ${cat ? `<td style="white-space:nowrap"><button class="btn sm sec" title="Mută sus" ${k===0?"disabled":""} onclick="catCampMuta(${c.id},-1)">↑</button><button class="btn sm sec" title="Mută jos" ${k===C.length-1?"disabled":""} onclick="catCampMuta(${c.id},1)">↓</button><button class="btn sm danger" title="Scoate caracteristica (cu valorile ei de la toate produsele)" onclick="catCampSterge(${c.id})">✕</button></td>` : ""}</tr>`; }).join("");
+  h += `</table>`;
+  if(cat) h += `<div class="pr-add"><input id="ct-cn" placeholder="caracteristică nouă (ex. Dimensiuni L×l×H)" onkeydown="if(event.key==='Enter')catCampNou(${r.id})"><input id="ct-cu" class="ct-u" placeholder="unitate" onkeydown="if(event.key==='Enter')catCampNou(${r.id})"><button class="btn sm" onclick="catCampNou(${r.id})">+ Caracteristică</button></div>`;
+  if(C.length) h += `<div style="display:flex;justify-content:flex-end;margin-top:8px"><button class="btn" onclick="catSalveazaVal(${r.id})">Salvează valorile</button></div>`;
+  return h + `</div>`;
+}
+async function catCampNou(cid){
+  const n = ($("ct-cn").value||"").trim(), u = ($("ct-cu").value||"").trim(); if(!n) return;
+  if(CAT.campuri.some(c => c.categorie_id === cid && c.nume.toLowerCase() === n.toLowerCase())){ toast("Caracteristica există deja", true); return; }
+  const ord = Math.max(-1, ...CAT.campuri.filter(c => c.categorie_id === cid).map(c => c.ordine)) + 1;
+  const { data, error } = await db.from("catalog_campuri").insert({ categorie_id: cid, nume: n, unitate: u || null, ordine: ord }).select().single();
+  if(error){ toast(error.message, true); return; } CAT.campuri.push(data); renderCatalog(); toast("Caracteristică adăugată"); const i = $("ct-cn"); if(i) i.focus();
+}
+async function catCampSet(id, k, v){
+  if(typeof v === "string"){ v = v.trim(); if(k === "nume" && !v){ toast("Numele nu poate fi gol", true); return renderCatalog(); } if(!v) v = null; }
+  const { error } = await db.from("catalog_campuri").update({ [k]: v }).eq("id", id); if(error){ toast(error.message, true); return; }
+  const c = CAT.campuri.find(x => x.id === id); if(c) c[k] = v; toast("Salvat");
+}
+async function catCampMuta(id, d){
+  const c = CAT.campuri.find(x => x.id === id); if(!c) return; const L = CAT.campuri.filter(x => x.categorie_id === c.categorie_id).sort((a,b) => a.ordine - b.ordine || a.id - b.id);
+  const k = L.indexOf(c); if(!L[k + d]) return; [L[k], L[k + d]] = [L[k + d], L[k]];
+  for(let n = 0; n < L.length; n++) if(L[n].ordine !== n){ const { error } = await db.from("catalog_campuri").update({ ordine: n }).eq("id", L[n].id); if(error){ toast(error.message, true); return loadCatalog(); } L[n].ordine = n; }
+  renderCatalog();
+}
+async function catCampSterge(id){
+  const c = CAT.campuri.find(x => x.id === id); if(!c) return;
+  if(!confirm(`Scoți caracteristica „${c.nume}”?\nSe pierd și valorile ei de la categorie, tipuri și modele.`)) return;
+  const { error } = await db.from("catalog_campuri").delete().eq("id", id); if(error){ toast(error.message, true); return; }
+  CAT.campuri = CAT.campuri.filter(x => x.id !== id); renderCatalog(); toast("Caracteristica scoasă");
+}
+async function catSalveazaVal(id){
+  const car = Object.assign({}, (CAT.fise[id] && CAT.fise[id].caracteristici) || {});
+  document.querySelectorAll("#ct-fisa .ct-v[data-camp]").forEach(i => { const v = i.value.trim(); if(v) car[i.dataset.camp] = v; else delete car[i.dataset.camp]; });
+  // valorile câmpurilor scoase nu mai contează: le curăț
+  Object.keys(car).forEach(k => { if(!CAT.campuri.some(c => String(c.id) === k)) delete car[k]; });
+  const f = CAT.fise[id] || {};
+  const { data, error } = await db.from("catalog_fise").upsert({ nom_id: id, descriere: f.descriere || null, caracteristici: car, updated_at: new Date().toISOString() }).select().single();
+  if(error){ toast(error.message, true); return; } CAT.fise[id] = data; renderCatalog(); toast("Caracteristicile salvate");
 }
 function catAlege(id){ if(!id) return; CAT.sel = id; const r = catNom(id); if(r && r.tip === "produs") CAT.desch.add(id); renderCatalog(); }
 // micșorează la max 1200 px pe latura mare; PNG / WEBP rămân PNG (păstrează transparența), JPG rămâne JPG
@@ -3661,7 +3737,7 @@ async function catSterge(iid){
 }
 async function catSalveazaDesc(id){
   const v = ($("ct-desc").value || "").trim();
-  const { data, error } = await db.from("catalog_fise").upsert({ nom_id: id, descriere: v || null, updated_at: new Date().toISOString() }).select().single();
+  const { data, error } = await db.from("catalog_fise").upsert({ nom_id: id, descriere: v || null, caracteristici: (CAT.fise[id] && CAT.fise[id].caracteristici) || {}, updated_at: new Date().toISOString() }).select().single();
   if(error){ toast(error.message, true); return; } CAT.fise[id] = data; renderCatalog(); toast("Descrierea salvată");
 }
 function catVezi(iid){
