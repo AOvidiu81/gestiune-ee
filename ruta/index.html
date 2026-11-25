@@ -551,7 +551,8 @@
 /* v44: CTR. (al cui e contractul) + agent — doar pentru angajații bifați în GestiuneEE */
 .ctr-tag,.dep-tag{background:transparent;color:var(--text);border:1px solid currentColor;border-radius:6px;padding:1px 7px;font-weight:700;font-size:.72rem;-webkit-tap-highlight-color:transparent}
 html.ee-deschis .ctr-tag,html.ee-deschis .dep-tag{color:#111827}
-.ctr-tag.tel{cursor:pointer}   /* v48: se atinge doar unde se vede agentul (bifa „vede_contract”) */
+.ctr-tag.tel{cursor:pointer}
+.ctr-tag.pp-tag,html.ee-deschis .ctr-tag.pp-tag{color:#6d28d9;border-color:#6d28d9}   /* v56: PRELUAT ← ARAD — mov */   /* v48: se atinge doar unde se vede agentul (bifa „vede_contract”) */
 .ctr-pop{display:none;margin:8px 0 2px;background:#1b2550;color:#fff;border-radius:10px;padding:8px 12px;font-size:.85rem;line-height:1.55}
 .ctr-pop.on{display:block}
 .ctr-pop a{color:#9fd0ff;font-weight:700;text-decoration:none}
@@ -1115,7 +1116,7 @@ let dayStart = {}; // {brand, plate, kmStart, driver1, driver2, startTime}
 let lastRouteRows = [];
 
 // --- Șofer EE: aplicatia ruleaza in fila „Rută” (../sofer/), care trimite datele zilei ---
-const EE_RUTA_VERSION = 'v55'; // aceeasi cu VERSIUNE din sw.js; Șofer EE o arata langa rotita
+const EE_RUTA_VERSION = 'v56'; // aceeasi cu VERSIUNE din sw.js; Șofer EE o arata langa rotita
 const SOFER_MODE = new URLSearchParams(location.search).get('sofer') === '1';
 let multiZile = null;   // mai multe zile bifate (ruta complementara), altfel null
 let multiTrasee = null; // mai multe trasee bifate, altfel null
@@ -3573,6 +3574,7 @@ async function laTrimitePdf(){
 }
 function agentScurt(n){ const p = String(n || '').trim().split(/\s+/).filter(Boolean); return p.length > 1 ? p[0][0] + '. ' + p.slice(1).join(' ') : p.join(' '); }
 function ctrTagHtml(r){ const k = r.clientKey && CTR[r.clientKey]; if(!k || !k.contract) return '';
+  if(k.preluat) return `<span class="ctr-tag pp-tag" data-ctr="${escapeHtml(r.clientKey)}" title="Toaletele depozitului ${escapeHtml(k.depozit || k.contract)} — noi doar le servisăm">PRELUAT ← ${escapeHtml(k.depozit || k.contract)}</span>`;   // v56 (GestiuneEE v10.21): PRELUARE
   return `<span class="ctr-tag" data-ctr="${escapeHtml(r.clientKey)}">CTR. ${escapeHtml(k.contract)}</span>`; }   // v48b: doar contractul, fără DEP. (cerut 18.11)
 function ctrPopHtml(r){ return '';   // v52 (cerut de Ovidiu, 21.11): scos agentul + telefonul (rămâne doar CTR. pe card)
   const k = r.clientKey && CTR[r.clientKey]; if(!k || !k.contract || !(k.telefon || k.agent)) return '';   // v48: agentul + telefonul doar cu bifa
