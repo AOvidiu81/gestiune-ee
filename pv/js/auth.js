@@ -312,6 +312,8 @@ async function trimiteDocument(meta, blob) {
     miscare_id: meta.miscareId || null,
     ...(meta.locatieCod ? { locatie_cod: meta.locatieCod } : {}),   // v90: PV pe o locatie a comenzii din exterior
     serii: meta.serii || null,   // s30
+    ...(Array.isArray(meta.produse) && meta.produse.length ? { produse: meta.produse } : {}),   // v98: model / tip / serii pe produs
+    ...(meta.gps ? { gps: meta.gps } : {}),   // v98: GPS-ul pozei de confirmare
   });
   if (insertErr && String(insertErr.code) !== '23505') {
     console.warn('[pv-sync] salvare rand pv_records esuata:', insertErr.message || insertErr);

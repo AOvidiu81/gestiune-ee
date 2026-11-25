@@ -233,7 +233,7 @@ function pageOnePv({ model, driver, isPreview, depotEmail, depotPhone, beneficia
       <div class="doc-header-rule"></div>
     </div>
     ${isPreview ? '<div class="doc-preview-badge">PREVIEW</div>' : ''}
-    <h1 class="doc-title">PROCES VERBAL DE: ${esc(processTypeUpper)}</h1>
+    <h1 class="doc-title">PROCES VERBAL DE: ${esc(processTypeUpper)}${/^PRELUARE$/i.test(model.mentiuneComanda || '') ? ' [ PRELUARE ]' : ''}</h1>
     <div class="doc-subtitle">Emis de depozit ${esc(model.depotName)}</div>
     <div class="doc-meta-line">Nr. document: <strong>${esc(displayPvNumber(model.pvNumber))}</strong>&nbsp;&nbsp;&nbsp;Data: <strong>${esc(dt.date)}</strong>&nbsp;&nbsp;&nbsp;Ora: <strong>${esc(dt.hour)}</strong></div>
 

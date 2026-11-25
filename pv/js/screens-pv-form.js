@@ -944,6 +944,12 @@ export async function openProcessVerbalForm({ driver, car, depot, processType, p
                 locatieCod: locatieCod || null,   // v90: locatia comenzii din exterior (C71-01)
                 // s30: seriile trecute pe PV ajung in GestiuneEE (pv_records.serii), ca Ovidiu sa stie ce s-a ridicat
                 serii: state.noSeriesMode ? '' : state.productEntries.flatMap((e) => e.series.map((x) => x.trim()).filter(Boolean)).join(', '),
+                // v98 (cerut de Ovidiu, 25.11): produsele de pe PV (model, tip, bucati, serii) + GPS-ul pozei — GestiuneEE le preia (ex. la PRELUARE)
+                produse: state.productEntries.filter((e) => (e.model || '').trim() || (e.type || '').trim()).map((e) => ({
+                  model: (e.model || '').trim(), tip: (e.type || '').trim(), buc: (e.series || []).length || 1,
+                  serii: state.noSeriesMode ? [] : (e.series || []).map((x) => String(x || '').trim()).filter(Boolean),
+                })),
+                gps: (() => { const g = ((state.confirmationPhotos || []).find((p) => p && /^-?\d/.test(p.gps || '')) || {}).gps || state.gps || ''; return /^-?\d/.test(g) ? g : null; })(),
                 createdAt,
               },
               blob

@@ -25,6 +25,7 @@ const TIP_PV = {
   'EVENIMENT-R': 'RIDICARE',
   'SPONSORIZARE-A': 'AMPLASARE',   // v94 (cerut de Ovidiu, 30.10): sponsorizarea pe PV de amplasare / ridicare, cu mentiunea SPONSORIZARE
   'SPONSORIZARE-R': 'RIDICARE',
+  PRELUARE: 'AMPLASARE',   // v98 (cerut de Ovidiu, 25.11): PV de AMPLASARE [ PRELUARE ] — toaletele altui depozit, preluate de noi in servisare
   SERVISARE: 'SERVISARE',
   VANZARE: 'VANZARE',
 };
