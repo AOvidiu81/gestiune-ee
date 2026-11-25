@@ -1221,7 +1221,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
   <span id="rz-w"><button id="rz-reset" class="pictograma" title="Lățimi implicite — pune coloanele din tabelele acestei file înapoi cum erau">↺ Reset layout</button><i class="rz-sep">|</i></span>
   <span id="tz-w" title="Mărimea tabelului (doar tabelul, restul rămâne la fel), din 5 în 5%. Fiecare meniu își ține minte mărimea lui. Merge și cu Ctrl + rotița mausului, Ctrl + / Ctrl − / Ctrl 0. Dublu clic pe procent = scrii tu valoarea."><button class="pictograma" onclick="tzPas(-1)" aria-label="Micșorează tabelul">−</button><b id="tz-v" ondblclick="tzScrie()" title="Dublu clic = scrii mărimea (ex. 87), Enter">100%</b><input id="tz-in" type="number" min="30" max="300" step="5" style="display:none"><button class="pictograma" onclick="tzPas(1)" aria-label="Mărește tabelul">+</button></span>
-  <span class="ver">v10.18</span>
+  <span class="ver">v10.19</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -9732,6 +9732,21 @@ function mcCuiRO(){   // „RO123…” scris în Număr → RO trece la Atribut
   if(/^ro\s*\d/i.test(v)){ $("mc-cui").value = cuiCurat(v); $("mc-atr").value = "RO"; mcCuiVerif(); }
 }
 let MC_ANAF = null;
+// v10.19 (cerut de Ovidiu, 25.11, MANASTIREA PRISLOP): din răspunsul ANAF se deduce Tip ID și categoria.
+// Cu Nr. Reg. Com. (J… / F…) = înscrisă la Registrul Comerțului → CUI; fără = CIF (instituții, ONG-uri, culte, alte forme juridice).
+const MC_CAT_ET = { SOCIETATE: "Societate (SRL, SA…)", PFA: "PFA / Întreprindere individuală / familială", INSTITUTIE: "Instituție publică / Primărie", ONG: "ONG (asociație, fundație, club)", ALTELE: "Altele" };
+function mcAnafTip(d){
+  const U = x => faraDiac(String(x || "")).toUpperCase(), j = U(d.nr_reg_com).trim(), t = U(d.forma) + " " + U(d.denumire), n = U(d.denumire).trim();
+  let cat;
+  if(/^F/.test(j) || /PERSOANA FIZICA AUTORIZATA|INTREPRINDERE (INDIVIDUALA|FAMILIALA)/.test(t)) cat = "PFA";
+  else if(j) cat = "SOCIETATE";
+  else if(/PUBLIC/.test(U(d.stare) + " " + U(d.forma)) || catDinClient({ nume: d.denumire }) === "INSTITUTIE"
+    || /^(SCOALA|LICEUL|COLEGIUL|GRADINITA|SPITALUL|DIRECTIA|INSPECTORATUL|AGENTIA|UNIVERSITATEA|CASA DE CULTURA|ADMINISTRATIA|SERVICIUL PUBLIC)/.test(n)) cat = "INSTITUTIE";
+  else if(/ASOCIATI|FUNDATI|CLUBUL|CLUB SPORTIV|FEDERATIA|SINDICAT|ORGANIZATIA/.test(t)) cat = "ONG";
+  else cat = "ALTELE";
+  const cult = /^(MANASTIREA|SCHITUL|PAROHIA|BISERICA|EPISCOPIA|ARHIEPISCOPIA|MITROPOLIA|PROTOPOPIATUL|PATRIARHIA)/.test(n);
+  return { idtip: j ? "CUI" : "CIF", cat, motiv: j ? "are Nr. Reg. Com. " + j : (cult ? "unitate de cult" : "fără Nr. Reg. Com.") + " — nu e înscrisă la Registrul Comerțului" };
+}
 const leiF = v => v == null ? "—" : Number(v).toLocaleString("ro-RO") + " lei";
 async function mcAnaf(){
   const c = cuiCurat($("mc-cui").value);
@@ -9761,6 +9776,7 @@ async function mcAnaf(){
     ${b ? `<div class="muted">Bilanț ${b.an}: cifra de afaceri ${leiF(b.cifra_afaceri)} · ${b.pierdere_neta ? "pierdere " + leiF(b.pierdere_neta) : "profit " + leiF(b.profit_net)} · ${b.angajati ?? "—"} angajați</div>` : '<div class="muted">Bilanț: nu există la ANAF (instituție publică sau firmă nouă).</div>'}
     <div style="margin-top:6px">Ce se completează:</div>
     ${rand("mca-nume", true, "Nume", d.denumire)}
+    ${$("mc-idtip").value !== "CNP" ? rand("mca-idtip", true, "Tip ID", mcAnafTip(d).idtip + " (" + mcAnafTip(d).motiv + ")") + rand("mca-cat", !MC_CAT_MANA || $("mc-cat").value === "SOCIETATE", "Categorie", MC_CAT_ET[mcAnafTip(d).cat]) : ""}
     ${rand("mca-atr", true, "Atribut fiscal", atrNou || "(gol — neplătitor de TVA)")}
     ${rand("mca-obs", true, "Observații (se adaugă)", obs)}
     ${d.telefon ? rand("mca-tel", !$("mc-tel").value.trim(), "Telefon", d.telefon) : ""}
@@ -9789,10 +9805,11 @@ function mcAnafAplica(){
   if(bif("mca-sediu")) $("mc-sediu").value = P.dataset.sediu || "";   // v8.05
   if(bif("mca-j")) $("mc-j").value = d.nr_reg_com || "";
   if(bif("mca-iban")){ $("mc-iban").value = d.iban || ""; const b = bancaDinIban(d.iban); if(b) $("mc-banca").value = b; }
-  // v8.78 (cerut de Ovidiu, 14.11, CASA DE CULTURA A STUDENTILOR 1560 HD): instituția publică (fără Reg. Com., „PUBLIC” la ANAF sau nume de primărie / oraș…) → INSTITUȚIE + CIF
-  const inst = $("mc-idtip").value !== "CNP" && !d.nr_reg_com && (/PUBLIC/i.test([d.stare, d.forma].join(" ")) || catDinClient({ nume: d.denumire }) === "INSTITUTIE");
-  if(inst){ $("mc-cat").value = "INSTITUTIE"; if($("mc-idtip").value === "CUI") $("mc-idtip").value = "CIF"; mcCatSchimbat(false); }
-  P.innerHTML = ""; mcCuiVerif(); toast(inst ? "Completat din ANAF — instituție publică: categoria INSTITUȚIE și Tip ID = CIF. Verifică și salvează" : "Completat din ANAF — verifică și salvează");
+  // v10.19: Tip ID și categoria din ANAF (înlocuiește regula v8.78, care prindea doar instituțiile publice)
+  const T = $("mc-idtip").value !== "CNP" ? mcAnafTip(d) : null;
+  if(T && bif("mca-cat")){ $("mc-cat").value = T.cat; mcCatSchimbat(false); }
+  if(T && bif("mca-idtip")) $("mc-idtip").value = T.idtip;
+  P.innerHTML = ""; mcCuiVerif(); toast(T ? `Completat din ANAF — Tip ID ${T.idtip}, categoria ${MC_CAT_ET[T.cat]}. Verifică și salvează` : "Completat din ANAF — verifică și salvează");
 }
 // v4.77 (cerut de Ovidiu, 08.10): ciornele clienților nesalvați, ținute în bază (tabel `ciorne`, tip 'client').
 let MC_CIORNA = null, MC_CIORNE = [];
