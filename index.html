@@ -1189,7 +1189,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
   <span id="rz-w"><button id="rz-reset" class="pictograma" title="Lățimi implicite — pune coloanele din tabelele acestei file înapoi cum erau">↺ Reset layout</button><i class="rz-sep">|</i></span>
   <span id="tz-w" title="Mărimea tabelului (doar tabelul, restul rămâne la fel), din 5 în 5%. Fiecare meniu își ține minte mărimea lui. Merge și cu Ctrl + rotița mausului, Ctrl + / Ctrl − / Ctrl 0. Dublu clic pe procent = scrii tu valoarea."><button class="pictograma" onclick="tzPas(-1)" aria-label="Micșorează tabelul">−</button><b id="tz-v" ondblclick="tzScrie()" title="Dublu clic = scrii mărimea (ex. 87), Enter">100%</b><input id="tz-in" type="number" min="30" max="300" step="5" style="display:none"><button class="pictograma" onclick="tzPas(1)" aria-label="Mărește tabelul">+</button></span>
-  <span class="ver">v10.14</span>
+  <span class="ver">v10.15</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -10985,7 +10985,7 @@ async function sanatateIncarca(){
   box.innerHTML = `<div class="muted">Verific datele…</div>`;
   const [mis, anx, ctr, cli, vst, si] = await Promise.all([
     db.from("miscari").select("id,data,tip_miscare,buc,produs,client,client_id,contract_id,anexa_id,loc,sat,created_at"),
-    db.from("anexe").select("id,contract_id,anexa,produs,cant,tip_anexa,activ,data_livrarii,data_ridicarii,data_emitere,data_expirare,ev_de,ev_pana"),
+    db.from("anexe").select("id,contract_id,anexa,produs,cant,tip_anexa,activ,status,data_livrarii,data_ridicarii,data_emitere,data_expirare,ev_de,ev_pana"),
     db.from("contracte").select("id,client_id,nr_ctr,stare,data_emitere,data_expirare"),
     db.from("clienti").select("id,nume,cui,id_tip"),
     db.from("v_stoc").select("*"),
@@ -11008,11 +11008,13 @@ async function sanatateIncarca(){
     [...A.filter(a => (a.data_ridicarii && a.data_livrarii && a.data_ridicarii < a.data_livrarii) || (a.data_expirare && a.data_emitere && a.data_expirare < a.data_emitere) || (a.ev_pana && a.ev_de && a.ev_pana < a.ev_de)).map(a => anxR(a)),
      ...C.filter(c => c.data_expirare && c.data_emitere && c.data_expirare < c.data_emitere).map(c => ({ t: numeC(c) + ` — ${fmtD(c.data_emitere)} → ${fmtD(c.data_expirare)}`, go: `openContract(${c.id})` }))]);
   add("datacmd", "Comenzi cu dată ciudată", "Înainte de 2015 sau la peste un an în viitor — poate e o greșeală de tastare (ex. 2062 în loc de 2026). Amplasările vechi aduse din Excel pot fi corecte.",
-    M.filter(m => !m.data || m.data < "2015-01-01" || m.data > new Date(Date.now() + 365 * 864e5).toISOString().slice(0, 10)).map(cmd));
+    M.filter(m => { if(m.data && m.data > new Date(Date.now() + 365 * 864e5).toISOString().slice(0, 10)) return true; if(m.data && m.data >= "2015-01-01") return false;
+      // v10.15: amplasarea veche care se potrivește cu anexa și contractul ei (aceeași dată, adusă din Excel — ex. SSE EXPLO 62 HD din 2011) nu e greșeală
+      const a = aI[m.anexa_id], c = a && cI[a.contract_id]; return !(m.data && a && a.data_livrarii === m.data && c && c.data_emitere && c.data_emitere <= m.data); }).map(cmd));
   add("legaturi", "Comenzi legate greșit", "Comanda are alt client decât contractul ei, sau anexa ei e de pe alt contract.",
     M.filter(m => { const c = cI[m.contract_id], a = aI[m.anexa_id]; return (c && m.client_id && c.client_id !== m.client_id) || (a && m.contract_id && a.contract_id !== m.contract_id); }).map(cmd));
   add("ctrinchis", "Anexe active pe contract închis", "Contractul nu mai e ACTIV (ex. FINALIZAT), dar anexele lui sunt încă active — închide anexele sau corectează starea contractului.",
-    A.filter(a => a.activ && cI[a.contract_id] && (cI[a.contract_id].stare || "").toUpperCase() && !/^ACTIV$/i.test(cI[a.contract_id].stare)).map(a => anxR(a, "contract " + cI[a.contract_id].stare)));
+    A.filter(a => anexaActiva(a) && cI[a.contract_id] && (cI[a.contract_id].stare || "").toUpperCase() && !/^ACTIV$/i.test(cI[a.contract_id].stare)).map(a => anxR(a, "contract " + cI[a.contract_id].stare)));   // v10.15: anexa ridicată (status RIDICARE) e închisă, chiar dacă bifa „activ” a rămas
   { const vaz = {}; const dub = [];
     M.forEach(m => { const k = [m.data, m.tip_miscare, m.client, m.produs, m.buc, m.anexa_id, m.loc, m.sat].join("|"); (vaz[k] = vaz[k] || []).push(m); });
     Object.values(vaz).forEach(l => { if(l.length < 2) return; l.sort((x, y) => (x.created_at || "").localeCompare(y.created_at || ""));
