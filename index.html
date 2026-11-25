@@ -1221,7 +1221,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
   <span id="rz-w"><button id="rz-reset" class="pictograma" title="Lățimi implicite — pune coloanele din tabelele acestei file înapoi cum erau">↺ Reset layout</button><i class="rz-sep">|</i></span>
   <span id="tz-w" title="Mărimea tabelului (doar tabelul, restul rămâne la fel), din 5 în 5%. Fiecare meniu își ține minte mărimea lui. Merge și cu Ctrl + rotița mausului, Ctrl + / Ctrl − / Ctrl 0. Dublu clic pe procent = scrii tu valoarea."><button class="pictograma" onclick="tzPas(-1)" aria-label="Micșorează tabelul">−</button><b id="tz-v" ondblclick="tzScrie()" title="Dublu clic = scrii mărimea (ex. 87), Enter">100%</b><input id="tz-in" type="number" min="30" max="300" step="5" style="display:none"><button class="pictograma" onclick="tzPas(1)" aria-label="Mărește tabelul">+</button></span>
-  <span class="ver">v10.17</span>
+  <span class="ver">v10.18</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -3545,12 +3545,13 @@ async function catUrluri(){
   (data||[]).forEach(d => { if(d.signedUrl) CAT.url[d.path] = { u: d.signedUrl, exp: Date.now() + 55*60*1000 }; });
 }
 const catSrc = i => i && CAT.url[i.cale] ? CAT.url[i.cale].u : "";
-async function loadCatalog(){
+async function loadCatalog(){ if(await catDate()) renderCatalog(); }
+async function catDate(){
   const [f, im, cc] = await Promise.all([db.from("catalog_fise").select("*"), db.from("catalog_imagini").select("*"), db.from("catalog_campuri").select("*")]);
-  if(f.error || im.error || cc.error){ toast((f.error||im.error||cc.error).message, true); return; }
-  CAT.campuri = cc.data || [];
+  if(f.error || im.error || cc.error){ toast((f.error||im.error||cc.error).message, true); return false; }
+  CAT.campuri = cc.data || []; CAT.incarcat = true;
   CAT.fise = {}; (f.data||[]).forEach(r => CAT.fise[r.nom_id] = r); CAT.img = im.data || [];
-  await catUrluri(); renderCatalog();
+  await catUrluri(); return true;
 }
 function catThumb(id, cls){ const o = catPozaOferta(id), own = catPrinc(id);
   if(!o) return `<span class="ct-th ${cls||""} gol" title="Fără poză">📷</span>`;
@@ -8014,7 +8015,27 @@ const OF_PLATA = ["Plata facturi scadenta in 30 zile.", "Plata facturi scadenta 
 const OF_FRL = ["1 / Sap", "2 / Sap", "3 / Sap", "4 / Sap", "2 / Luna", "1 / Luna", "Zilnic", "La Cerere"];
 const OF_FR = { "1 / Sap": "1 pe Saptamana", "2 / Sap": "2 pe Saptamana", "3 / Sap": "3 pe Saptamana", "4 / Sap": "4 pe Saptamana", "2 / Luna": "2 pe Luna", "1 / Luna": "1 pe Luna", "Zilnic": "1 pe Zi", "La Cerere": "la cerere" };
 const OF_PE = { zi: "zi", luna: "luna", eveniment: "eveniment", buc: "" };
-const ofCat = k => OF.C.find(c => c.cheie === k);
+const ofCat = k => { const c = OF.C.find(c => c.cheie === k); return c ? ofCatImb(c) : c; };
+// v10.18 (cerut de Ovidiu, 25.11): oferta ia poza, dotările și descrierea din Stoc → Catalog produse, după legătura Produs / Tip a intrării din
+// Catalogul de ofertă (fișa tipului; dacă e goală → a categoriei). Ce lipsește acolo rămâne din Catalogul de ofertă (poza / dotările / „Avantaje” vechi).
+// Numele din ofertă, U.M. și prețurile rămân în Catalogul de ofertă.
+function ofCatProdus(c){ if(!c || !c.produs) return null;
+  const t = c.tip && (NOM.model||[]).find(x => x.parinte === c.produs && x.valoare === c.tip);
+  return t || (NOM.produs||[]).find(x => x.valoare === c.produs) || null; }
+function ofCatImb(c){
+  const r = CAT.incarcat ? ofCatProdus(c) : null; if(!r) return c;
+  const P = catPentruOferta(r.id); if(!P) return c; const o = { ...c };
+  const L = P.caracteristici.filter(x => !/^nu$/i.test(String(x.valoare).trim())).map(x => /^da$/i.test(String(x.valoare).trim()) ? x.nume : x.nume + ": " + x.valoare);
+  if(L.length) o.dotari = L.join("\n");
+  if(P.descriere) o.descriere = faraDiac(P.descriere);
+  o._poza = P.poza; return o;
+}
+async function catImgData(i){   // poza din Catalog produse → data:image/... (ținută în memorie pe id)
+  CAT.data = CAT.data || {}; if(CAT.data[i.id]) return CAT.data[i.id];
+  const { data, error } = await db.storage.from("catalog-produse").download(i.cale); if(error || !data) return "";
+  return (CAT.data[i.id] = await new Promise(ok => { const fr = new FileReader(); fr.onload = () => ok(fr.result); fr.onerror = () => ok(""); fr.readAsDataURL(data); }));
+}
+const ofPozaDe = k => (OF.pozeCat && OF.pozeCat[k]) || OF.poze[k] || "";
 const ofNr = o => "OF " + String(o.nr).padStart(3, "0") + " / " + o.an;
 const ofTotalRand = (r, zile) => (r.pe === "zi" && +r.buc > 0 && +zile > 0 && r.pret != null) ? Math.round(r.buc * zile * r.pret * 100) / 100 : null;
 function ofValoare(k){   // valoarea ofertei = prima variantă a fiecărui produs (pe zile) + transportul
@@ -8206,14 +8227,17 @@ function ofLaFisa(id, alese){
 }
 // ── PDF-ul ofertei: blocuri măsurate și împărțite pe pagini A4 (antet + subsol pe fiecare pagină) ──
 async function ofPozeIa(chei){
-  const lipsa = chei.filter(c => c && !(c in OF.poze)); if(!lipsa.length) return;
-  const { data } = await db.from("oferta_catalog").select("cheie,poza").in("cheie", lipsa); (data || []).forEach(x => { OF.poze[x.cheie] = x.poza || ""; });
+  const lipsa = chei.filter(c => c && !(c in OF.poze));
+  if(lipsa.length){ const { data } = await db.from("oferta_catalog").select("cheie,poza").in("cheie", lipsa); (data || []).forEach(x => { OF.poze[x.cheie] = x.poza || ""; }); }
+  try{ await catDate(); OF.pozeCat = {};   // v10.18: poza principală din Catalog produse are întâietate
+    for(const k of [...new Set(chei.filter(Boolean))]){ const c = ofCat(k); if(c && c._poza){ const d = await catImgData(c._poza); if(d) OF.pozeCat[k] = d; } } }
+  catch(e){ console.warn("catalog produse:", e); }
 }
 function ofHtml(o){
   const k = o.continut || {}, T = s => esc(faraDiac(s == null ? "" : String(s))), R = k.randuri || [], B = [];
   const chei = [...new Set(R.map(r => r.cat).filter(Boolean))], cats = chei.map(ofCat).filter(Boolean), unul = cats.length === 1 && chei.length === new Set(R.map(r => r.cat || r.nume)).size;
   const toal = R.some(r => /toalet/i.test(r.nume)), titlu = k.titlu || (unul ? (toal ? "TOALETE ECOLOGICE" : cats[0].nume.toUpperCase()) : cats.length <= 1 && toal ? "TOALETE ECOLOGICE" : "PRODUSE");
-  const poza = c => { const x = k.poze !== false ? OF.poze[c.cheie] : ""; return !x ? "" : /^data:/.test(x) ? x : esc(new URL(x, location.href).href); };   // poza = imagine ținută în catalog sau fișier din folderul aplicației
+  const poza = c => { const x = k.poze !== false ? ofPozaDe(c.cheie) : ""; return !x ? "" : /^data:/.test(x) ? x : esc(new URL(x, location.href).href); };   // poza = imagine ținută în catalog sau fișier din folderul aplicației
   B.push(`<div class="nr">Nr. ${o.nr} / ${fmtD(o.data).replace(/-/g, ".")}</div><div class="at">In atentia : <b>${T(o.catre)}</b></div><div class="ti"><u><b>OFERTA</b></u><br>${T(titlu)}</div>`);
   if(k.poze !== false && unul && (cats[0].dotari || poza(cats[0]))){ const c = cats[0];
     B.push(`<div class="car"><div class="l"><b>Caracteristici ${T(c.nume)}</b>${c.dotari ? `<br><u>Dotari:</u><br>${c.dotari.split("\n").filter(x => x.trim()).map(x => "- " + T(x.trim())).join("<br>")}` : ""}</div>${poza(c) ? `<div class="p"><img src="${poza(c)}" alt=""><div class="inf">* imagine cu caracter informativ</div></div>` : ""}</div>`);
@@ -8908,7 +8932,7 @@ async function ofImgData(src){   // poza din catalog (data: sau fișier) → { d
 }
 async function ofChRes(o){
   const F = await ofEvRes(), k = o.continut || {}, R = k.randuri || [], img = {};
-  if(k.poze !== false){ await ofPozeIa(R.map(r => r.cat)); for(const c of [...new Set(R.map(r => r.cat).filter(Boolean))]){ const x = await ofImgData(OF.poze[c]); if(x) img[c] = x; } }
+  if(k.poze !== false){ await ofPozeIa(R.map(r => r.cat)); for(const c of [...new Set(R.map(r => r.cat).filter(Boolean))]){ const x = await ofImgData(ofPozaDe(c)); if(x) img[c] = x; } }
   const st = k.stampila !== false ? await ofImgData("pv/assets/docs/stampila_euro_ecologic.png") : null;
   return { ...F, img, st };
 }
