@@ -1223,7 +1223,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
   <span id="rz-w"><button id="rz-reset" class="pictograma" title="Lățimi implicite — pune coloanele din tabelele acestei file înapoi cum erau">↺ Reset layout</button><i class="rz-sep">|</i></span>
   <span id="tz-w" title="Mărimea tabelului (doar tabelul, restul rămâne la fel), din 5 în 5%. Fiecare meniu își ține minte mărimea lui. Merge și cu Ctrl + rotița mausului, Ctrl + / Ctrl − / Ctrl 0. Dublu clic pe procent = scrii tu valoarea."><button class="pictograma" onclick="tzPas(-1)" aria-label="Micșorează tabelul">−</button><b id="tz-v" ondblclick="tzScrie()" title="Dublu clic = scrii mărimea (ex. 87), Enter">100%</b><input id="tz-in" type="number" min="30" max="300" step="5" style="display:none"><button class="pictograma" onclick="tzPas(1)" aria-label="Mărește tabelul">+</button></span>
-  <span class="ver">v10.22</span>
+  <span class="ver">v10.23</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -1916,7 +1916,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   :root[data-tema="inchis"] #mod-m .mm-pp{background:#221638;color:#e9e1ff;border-color:#5b21b6}
   #mod-m .mm-pp .pp-t{font-weight:800;color:#6d28d9;font-size:14px} :root[data-tema="inchis"] #mod-m .mm-pp .pp-t{color:#c4b5fd}
   #mod-m .mm-pp .pp-av{color:#b42318;font-weight:700} #mod-m .mm-pp input{max-width:420px;margin-top:4px}
-  #mod-m:is([data-tipc="PRELUARE"],[data-tipc="PREDARE"]) :is(.g-cc > div:has(#mm-contract), #mm-caz, .mm-s[data-s="7"] .gf:has(#mm-anexa), #mm-act, #mm-doc-sect, #mm-serii-sect, #mm-cmd-sect, #mm-sp-sect, #mm-evp-sect, #mm-ev-info, #mm-sv-ev, .g-tip > div:has(#mm-ora)){display:none!important}
+  #mod-m:is([data-tipc="PRELUARE"],[data-tipc="PREDARE"]) :is(#mm-caz, .mm-s[data-s="7"] .gf:has(#mm-anexa), #mm-act, #mm-doc-sect, #mm-serii-sect, #mm-cmd-sect, #mm-sp-sect, #mm-evp-sect, #mm-ev-info, #mm-sv-ev, .g-tip > div:has(#mm-ora)){display:none!important}
   #mod-m[data-tipc="PREDARE"] :is(#mm-sv-frecv-d, #mm-sv-zile-d){display:none!important}
   #mod-m .mm-schimba{font-size:12px;color:var(--acc);cursor:pointer;text-decoration:underline;margin-left:8px;font-weight:600;text-transform:none;letter-spacing:0}
   #mod-m .mm-nr{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:50%;background:#e6ebe8;color:#4a5a52;font-size:12px;font-weight:700;flex:0 0 auto}
@@ -2962,11 +2962,13 @@ const SP_TIP = /^SPONSORIZARE-[AR]$/;
 // nu se facturează, fără PV / act / factură de la Hunedoara, fără anexe. PRELUARE face punctul de rută; PREDARE îl trece INACTIV de la data ei.
 const PP_TIP = /^(PRELUARE|PREDARE)$/;
 const ppEste = m => !!m && PP_TIP.test(m.tip_miscare || m.tip || "");
-const ppEtich = (t, dep) => t === "PREDARE" ? "PREDARE → " + (dep || "?") : "PRELUARE ← " + (dep || "?");
-const ppTitlu = (t, dep) => { dep = dep || "alt depozit";
-  return t === "PREDARE"
+// v10.23 (cerut de Ovidiu, 25.11): contractul (al cui e) și depozitul (de unde au fost livrate) pot fi diferite — ex. contract ARAD, livrate din CRAIOVA
+const ppEtich = (t, ctr, dep) => (t === "PREDARE" ? "PREDARE → " : "PRELUARE ← ") + (ctr || "?") + (dep && ctr && dep !== ctr && dep !== depPrincipal() ? " (livrat din " + dep + ")" : "");
+const ppTitlu = (t, ctr, dep0) => { const dep = ctr || "alt depozit";
+  const liv = dep0 && ctr && dep0 !== ctr && dep0 !== depPrincipal() ? "Contractul e al depozitului " + ctr + "; toaletele au fost livrate din depozitul " + dep0 + ".\n" : "";
+  return liv + (t === "PREDARE"
     ? "PREDARE din servisare — toaletele depozitului " + dep + " rămân / pleacă cu ei: Hunedoara NU le mai servisează de la data comenzii (punctul de rută trece pe INACTIV).\nNu mișcă stocul niciunui depozit · nu se facturează · nu cere PV / act / factură de la Hunedoara.\nDacă le ridici TU în depozitul tău, nu faci PREDARE, ci RIDICARE (Contract = " + dep + ", Depozit = " + depPrincipal() + ") → intră în stocul tău."
-    : "PRELUARE în servisare — toaletele aparțin depozitului " + dep + " (livrate de ei, pe contractul lor). Hunedoara doar le servisează pe rută.\nNu mișcă stocul niciunui depozit · nu se facturează · nu cere PV / act / factură de la Hunedoara.\nDacă ajung în depozitul tău: RIDICARE (Contract = " + dep + ", Depozit = " + depPrincipal() + ") → intră în stocul " + depPrincipal() + "."; };   // v10.21: hotărât de Ovidiu, 25.11
+    : "PRELUARE în servisare — toaletele aparțin depozitului " + dep + " (livrate de ei, pe contractul lor). Hunedoara doar le servisează pe rută.\nNu mișcă stocul niciunui depozit · nu se facturează · nu cere PV / act / factură de la Hunedoara.\nDacă ajung în depozitul tău: RIDICARE (Contract = " + dep + ", Depozit = " + depPrincipal() + ") → intră în stocul " + depPrincipal() + "."); };   // v10.21: hotărât de Ovidiu, 25.11
 const SP_MARC = /^(\d+)\s+SPONSORIZARE$/i;
 const spN = r => (Array.isArray(r && r.echipamente) ? r.echipamente : []).reduce((t, x) => { const k = SP_MARC.exec(String(x || "").trim()); return t + (k ? +k[1] : 0); }, 0);
 function spSet(rec, n){ const l = (Array.isArray(rec.echipamente) ? rec.echipamente : []).filter(x => !SP_MARC.test(String(x || "").trim())); if(n > 0) l.push(n + " SPONSORIZARE"); rec.echipamente = l; }
@@ -3082,7 +3084,7 @@ function clStare(r){
 }
 // v6.63: bifa care contează și e încă „-” primește clasa DF (de făcut, portocaliu 30%)
 const flDF = (r, f, html) => (r && (r[f] || "-") === "-") ? html.replace('class="flag ', 'class="flag DF ') : html;
-const flNC = (r, f, html) => !flaguriNuConteaza(r).has(f) ? flDF(r, f, html) : flaguriNuConteaza(r).has(f) ? `<span class="fl-nc" title="Nu e nevoie la această comandă (${ppEste(r) ? esc(r.tip_miscare) + ": toaletele depozitului " + esc(r.depozit) + " — Hunedoara doar le servisează" : ctrExterior(r) && ["rpt","fac","act"].includes(f) ? "contract pe depozitul " + esc(r.contract) : f === "rpt" ? "servisările nu intră în Raport lună" : f === "fac" && servFaraFact(r) ? "servisare care nu se facturează (Se facturează debifat)" : "livrată din depozitul " + esc(r.depozit)}) — nu contează la verde">${html}</span>` : html;
+const flNC = (r, f, html) => !flaguriNuConteaza(r).has(f) ? flDF(r, f, html) : flaguriNuConteaza(r).has(f) ? `<span class="fl-nc" title="Nu e nevoie la această comandă (${ppEste(r) ? esc(r.tip_miscare) + ": contractul depozitului " + esc(r.contract) + " — Hunedoara doar le servisează" : ctrExterior(r) && ["rpt","fac","act"].includes(f) ? "contract pe depozitul " + esc(r.contract) : f === "rpt" ? "servisările nu intră în Raport lună" : f === "fac" && servFaraFact(r) ? "servisare care nu se facturează (Se facturează debifat)" : "livrată din depozitul " + esc(r.depozit)}) — nu contează la verde">${html}</span>` : html;
 const depPrincipalId = () => { const p=DEP.find(d=>d.tip==="principal"); return p?p.id  :(DEP[0]?DEP[0].id  :null); };
 let DEP_PRESELECTAT = false;
 function pune(sel,val){ const s=$(sel); if(!s||!val) return; if([...s.options].some(o=>o.value===val)) s.value=val; }
@@ -4450,7 +4452,7 @@ const F_LAT = [150,80,92,100,220,44,44,100,110,96,96,40,110,200,84,90,170,44,90,
 let R_SC = new Map(), FACT_SC = {}, FSC = null, FACT_LOC = [], FLO = null;   // v6.88: FACT_LOC = facturare_locatii   // v6.86: rândurile „servisare la cerere” pe anexă (index rând → anexa) + zilele lunii
 let R_SERV = new Map();   // v6.44: rândurile de servisare fără anexă din Facturare (index rând → id comandă)
 const tipLit = t => PP_TIP.test(t || "") ? "P" : /AMPLASARE|EVENIMENT-A|SUPLIMENTARE/.test(t)?"A":/RIDICARE|EVENIMENT-R|REDUCERE|DAUNA|FURT/.test(t)?"R":/SERVISARE/.test(t)?"S":/Transfer|VANZARE/.test(t)?"T":"X";
-const tipTxt = (t, r) => PP_TIP.test(t || "") ? `<span class="tc tc-P" style="cursor:help" title="${esc(ppTitlu(t, r && r.depozit))}">${esc(ppEtich(t, r && r.depozit))}</span>` : `<span class="tc tc-${tipLit(t)}">${esc(t)}</span>`;   // v10.21
+const tipTxt = (t, r) => PP_TIP.test(t || "") ? `<span class="tc tc-P" style="cursor:help" title="${esc(ppTitlu(t, r && r.contract, r && r.depozit))}">${esc(ppEtich(t, r && r.contract, r && r.depozit))}</span>` : `<span class="tc tc-${tipLit(t)}">${esc(t)}</span>`;   // v10.21
 // v5.22: titlul ferestrei — „Gestiune - Euro Ecologic - Depozit <principal>” (depozitul vine din Administrare → Depozite)
 // v5.23: „Duminică, 11 Oct. 2026 · 11.10.2026” sus, se schimbă singură la miezul nopții
 // v5.37: + „· Week Nr.: 42 din 53” — săptămâna ISO (luni–duminică; săptămâna 1 = cea cu prima joi a anului)
@@ -4623,7 +4625,7 @@ function renderMiscari(){
   const clCls = clStare;   // v5.75: doar bifele care contează la comanda asta
   const sTit = M_SORT.camp === "data" ? (M_SORT.dir < 0 ? "Acum: nou → vechi. Apasă: vechi → nou" : M_SORT.dir > 0 ? "Acum: vechi → nou. Apasă: pe grupe (Azi, săptămâna asta, trecută, viitoare)" : "Acum: pe grupe (Azi, săptămâna asta, trecută, viitoare, apoi restul). Apasă: nou → vechi") : "Apasă ca să sortezi după dată";
   let h=`<tr><th class="sortabil" onclick="sorteazaComenzi('data')" title="${sTit}">Data${sg("data")}</th><th>Comandă</th><th>Buc</th><th>Produs</th><th title="Tip îngroșat și subliniat = are accesorii (lista la mouse)">Tip</th><th title="Dublu clic pe nume (sau ține mouse-ul 1,5 s) → contractul și anexa">Client</th><th>Jud</th><th>Loc./Com.</th><th>Sat/Str./Locație</th><th>Contract</th><th>Depozit</th><th>Resp. șantier</th><th>Telefon</th><th>Rpt</th><th>RT</th><th>FAC</th><th>PV</th><th>ACT</th><th>WaAp</th><th>Frecv.</th><th class="noprint"></th></tr>`;
-  h+=mOrdonat(MISC.filter(r=>!(r.grup_id&&r.grup_id!==r.id&&MISC.some(x=>x.id===r.grup_id)&&mGrupStrans(r.grup_id)))).map(r=>{const sr=subReferinta(r); const gS=r.grup_id===r.id&&mGrupStrans(r.id), gD=r.grup_id===r.id&&M_DESCHISE.has(r.id)&&mGrupFii(r.id).length, gF=gS?mGrupFii(r.id):[]; const gz=grupaZilei(r.data); return `<tr><td${gz?` class="zd-${gz}"`:""}><span class="zd">${ziScurtData(r.data)}</span>${sr?` <span class="pill p-T" title="Mai veche decât data de referință a stocului (${fmtD(sr)}) — nu intră în stoc">sub referință</span>`:""}</td><td${ppEste(r)?` class="pp-cel" title="${esc(ppTitlu(r.tip_miscare, r.depozit))}"`:""}>${gS||gD?`<span class="${clCls(r)}" style="cursor:pointer;user-select:none;font-size:13px" title="${gS?"Comanda are "+(gF.length+1)+" produse — clic ca să le vezi pe rânduri":"Clic ca să strângi produsele într-un rând"}" onclick="mGrupComuta(${r.id})">${gS?"▶":"▼"}</span> `:""}${r.grup_id&&r.grup_id!==r.id?'<span class="muted" title="Produs din aceeași comandă cu #'+r.grup_id+'">↳ </span>':""}${tipTxt(r.tip_miscare, r)}${r.grup_id===r.id?' <span class="muted" title="Comanda are mai multe produse">+'+MISC.filter(x=>x.grup_id===r.id&&x.id!==r.id).length+'</span>':""}</td><td class="tc tc-${tipLit(r.tip_miscare)}"${gS?` title="${esc([r, ...gF].map(x => Math.abs(+x.buc || 0) + " " + (x.produs || "")).join(" + "))}"`:""}>${gS?[r, ...gF].reduce((t,x)=>t+(+x.buc||0),0):r.buc}</td><td>${gS && mAmestec(r, gF) ? `<b class="muted" style="cursor:help" title="${esc([r, ...gF].map(x => Math.abs(+x.buc || 0) + " " + prodN(x.produs || "", x.buc) + " " + [x.model, x.model_fizic].filter(Boolean).join(" ")).join("\n"))}">PRODUSE</b>` : esc(prodN(r.produs, gS ? [r, ...gF].reduce((t,x)=>t+(+x.buc||0),0) : r.buc))}${gS && !mAmestec(r, gF)?` <span class="muted" title="${esc(gF.map(x => Math.abs(+x.buc || 0) + " " + (x.produs || "") + (x.model ? " " + x.model : "")).join("\n"))}">+ ${esc(gF.map(x => [x.model, x.model_fizic].filter(Boolean).join(" ") || x.produs || "").join(", "))}</span>`:""}</td><td>${gS && mAmestec(r, gF) ? '<span class="muted">—</span>' : tipAcc([r.model, r.model_fizic].filter(Boolean).join(" "), r.accesorii)}</td><td><b class="${clCls(r)} cl-pop" data-mid="${r.id}">${esc(r.client)}</b>${r.din_telefon?' <span class="tel-v" title="Făcută pe telefon — deschide cu Edit, verifică și apasă Salvează pe PC">📱 de verificat</span>':""}</td><td>${esc(r.jud)}</td><td>${svLoc(r)?svlLocCel(r):esc(r.loc)}</td><td>${svLoc(r)?svlSatCel(r):esc(r.sat)}</td><td${depCls(r.contract)}>${esc(r.contract)}</td><td${depCls(r.depozit)}>${esc(r.depozit)}</td><td>${esc(r.pers_resp)}</td><td>${esc(r.telefon)}</td><td>${flNC(r, "rpt", flVer(r, "rpt"))}${mGrupDif(r,"rpt")}</td><td>${flNC(r, "rt", flVer(r, "rt"))}${mGrupDif(r,"rt")}</td><td>${flNC(facR(r), "fac", svLoc(r) ? flagBtn(r, "fac") : flVer(facR(r), "fac"))}${mGrupDif(r,"fac")}</td><td>${flNC(pvR(r), "pv", pvFlag(r))}${mGrupDif(r,"pv")}</td><td>${flNC(actR(r), "act", flVer(actR(r), "act"))}${mGrupDif(r,"act")}</td><td>${flNC(r, "waap", flVer(r, "waap"))}${mGrupDif(r,"waap")}</td><td>${esc(r.frecv_serv)}</td><td class="noprint actions">${riEditBtn(r)} ${livrExterior(r) ? `<button class="btn sm sec" disabled style="opacity:.45;cursor:default" title="Livrat din depozitul ${esc(r.depozit)} — fără punct de rută la tine (rămân Facturare și Raport lună)">→ Rute</button>` : /^Transfer/i.test(r.tip_miscare || "") ? `<button class="btn sm sec" disabled style="opacity:.45;cursor:default" title="Transfer între depozite — fără punct de rută">→ Rute</button>` : `<button class="btn sm" ${ruteStil(r)} onclick="spreRute(${r.id})" title="Verde = comanda e trecută pe rută (RT = V) și punctul are GPS; portocaliu = mai ai de făcut (RT nu e V, fără punct sau fără GPS). Deschide punctul de rută completat din comandă. Nu se salvează nimic până nu verifici și apeși Salvează.">→ Rute</button>`}</td></tr>`;}).join("");
+  h+=mOrdonat(MISC.filter(r=>!(r.grup_id&&r.grup_id!==r.id&&MISC.some(x=>x.id===r.grup_id)&&mGrupStrans(r.grup_id)))).map(r=>{const sr=subReferinta(r); const gS=r.grup_id===r.id&&mGrupStrans(r.id), gD=r.grup_id===r.id&&M_DESCHISE.has(r.id)&&mGrupFii(r.id).length, gF=gS?mGrupFii(r.id):[]; const gz=grupaZilei(r.data); return `<tr><td${gz?` class="zd-${gz}"`:""}><span class="zd">${ziScurtData(r.data)}</span>${sr?` <span class="pill p-T" title="Mai veche decât data de referință a stocului (${fmtD(sr)}) — nu intră în stoc">sub referință</span>`:""}</td><td${ppEste(r)?` class="pp-cel" title="${esc(ppTitlu(r.tip_miscare, r.contract, r.depozit))}"`:""}>${gS||gD?`<span class="${clCls(r)}" style="cursor:pointer;user-select:none;font-size:13px" title="${gS?"Comanda are "+(gF.length+1)+" produse — clic ca să le vezi pe rânduri":"Clic ca să strângi produsele într-un rând"}" onclick="mGrupComuta(${r.id})">${gS?"▶":"▼"}</span> `:""}${r.grup_id&&r.grup_id!==r.id?'<span class="muted" title="Produs din aceeași comandă cu #'+r.grup_id+'">↳ </span>':""}${tipTxt(r.tip_miscare, r)}${r.grup_id===r.id?' <span class="muted" title="Comanda are mai multe produse">+'+MISC.filter(x=>x.grup_id===r.id&&x.id!==r.id).length+'</span>':""}</td><td class="tc tc-${tipLit(r.tip_miscare)}"${gS?` title="${esc([r, ...gF].map(x => Math.abs(+x.buc || 0) + " " + (x.produs || "")).join(" + "))}"`:""}>${gS?[r, ...gF].reduce((t,x)=>t+(+x.buc||0),0):r.buc}</td><td>${gS && mAmestec(r, gF) ? `<b class="muted" style="cursor:help" title="${esc([r, ...gF].map(x => Math.abs(+x.buc || 0) + " " + prodN(x.produs || "", x.buc) + " " + [x.model, x.model_fizic].filter(Boolean).join(" ")).join("\n"))}">PRODUSE</b>` : esc(prodN(r.produs, gS ? [r, ...gF].reduce((t,x)=>t+(+x.buc||0),0) : r.buc))}${gS && !mAmestec(r, gF)?` <span class="muted" title="${esc(gF.map(x => Math.abs(+x.buc || 0) + " " + (x.produs || "") + (x.model ? " " + x.model : "")).join("\n"))}">+ ${esc(gF.map(x => [x.model, x.model_fizic].filter(Boolean).join(" ") || x.produs || "").join(", "))}</span>`:""}</td><td>${gS && mAmestec(r, gF) ? '<span class="muted">—</span>' : tipAcc([r.model, r.model_fizic].filter(Boolean).join(" "), r.accesorii)}</td><td><b class="${clCls(r)} cl-pop" data-mid="${r.id}">${esc(r.client)}</b>${r.din_telefon?' <span class="tel-v" title="Făcută pe telefon — deschide cu Edit, verifică și apasă Salvează pe PC">📱 de verificat</span>':""}</td><td>${esc(r.jud)}</td><td>${svLoc(r)?svlLocCel(r):esc(r.loc)}</td><td>${svLoc(r)?svlSatCel(r):esc(r.sat)}</td><td${depCls(r.contract)}>${esc(r.contract)}</td><td${depCls(r.depozit)}>${esc(r.depozit)}</td><td>${esc(r.pers_resp)}</td><td>${esc(r.telefon)}</td><td>${flNC(r, "rpt", flVer(r, "rpt"))}${mGrupDif(r,"rpt")}</td><td>${flNC(r, "rt", flVer(r, "rt"))}${mGrupDif(r,"rt")}</td><td>${flNC(facR(r), "fac", svLoc(r) ? flagBtn(r, "fac") : flVer(facR(r), "fac"))}${mGrupDif(r,"fac")}</td><td>${flNC(pvR(r), "pv", pvFlag(r))}${mGrupDif(r,"pv")}</td><td>${flNC(actR(r), "act", flVer(actR(r), "act"))}${mGrupDif(r,"act")}</td><td>${flNC(r, "waap", flVer(r, "waap"))}${mGrupDif(r,"waap")}</td><td>${esc(r.frecv_serv)}</td><td class="noprint actions">${riEditBtn(r)} ${livrExterior(r) ? `<button class="btn sm sec" disabled style="opacity:.45;cursor:default" title="Livrat din depozitul ${esc(r.depozit)} — fără punct de rută la tine (rămân Facturare și Raport lună)">→ Rute</button>` : /^Transfer/i.test(r.tip_miscare || "") ? `<button class="btn sm sec" disabled style="opacity:.45;cursor:default" title="Transfer între depozite — fără punct de rută">→ Rute</button>` : `<button class="btn sm" ${ruteStil(r)} onclick="spreRute(${r.id})" title="Verde = comanda e trecută pe rută (RT = V) și punctul are GPS; portocaliu = mai ai de făcut (RT nu e V, fără punct sau fără GPS). Deschide punctul de rută completat din comandă. Nu se salvează nimic până nu verifici și apeși Salvează.">→ Rute</button>`}</td></tr>`;}).join("");
   $("m-tbl").innerHTML=(h?`<colgroup>${M_LAT.map(w=>`<col style="width:${w}px">`).join("")}</colgroup>`+h:"<tr><td>Nicio comandă.</td></tr>");   // v6.65
   $("m-tbl").style.setProperty("--m-lat", M_LAT.reduce((t,w)=>t+w,0)+"px");
   $("m-tbl").className = "ds-" + DATA_STIL;
@@ -6136,12 +6138,12 @@ $("mm-tip").addEventListener("change", mmFel);
 function mmPPArata(){
   const el = $("mm-pp"); if(!el) return; const t = $("mm-tip").value;
   if(!PP_TIP.test(t)){ el.style.display = "none"; el.innerHTML = ""; return; }
-  const d = $("mm-dep").value, dd = DEP.find(x => x.nume === d || x.cod === d), sec = !!(dd && dd.tip === "secundar");
-  if(sec && $("mm-contract").value !== d){ $("mm-contract").value = d; $("mm-contract").dispatchEvent(new Event("change", { bubbles: true })); }
+  const g = $("mm-contract").value, d = $("mm-dep").value, sec = mmExterior();   // v10.23: contractul = al cui e (ex. ARAD); depozitul = de unde au fost livrate (ex. CRAIOVA)
   const ser = $("mm-pp-ser") ? $("mm-pp-ser").value : (MM_PP_SER || "");
-  el.innerHTML = `<div class="pp-t">${esc(ppEtich(t, sec ? d : "…"))}</div>` +
-    `<div>${esc(ppTitlu(t, sec ? d : "")).replace(/\n/g, "<br>")}</div>` +
-    (sec ? "" : `<div class="pp-av">⚠ Alege la „Depozit” depozitul căruia îi aparțin toaletele (ex. ARAD) — nu ${esc(depPrincipal())}.</div>`) +
+  el.innerHTML = `<div class="pp-t">${esc(ppEtich(t, sec ? g : "…", d))}</div>` +
+    `<div>${esc(ppTitlu(t, sec ? g : "", d)).replace(/\n/g, "<br>")}</div>` +
+    (sec ? "" : `<div class="pp-av">⚠ La „Contract (gestiune)” alege depozitul căruia îi aparține contractul (ex. ARAD) — nu ${esc(depPrincipal())}.</div>`) +
+    (sec && d === depPrincipal() ? `<div class="pp-av">⚠ La „Depozit” pune depozitul din care au fost livrate (ex. CRAIOVA / ARAD) — nu ${esc(depPrincipal())}.</div>` : "") +
     `<div style="margin-top:6px">Rămân doar: <b>nr. toalete</b>, <b>client</b>, <b>locație</b>` + (t === "PRELUARE" ? `, <b>frecvența / zilele / traseul</b> de servisare` : "") + `; model și serie dacă le dă șoferul. <b>Anexă: nu se face</b> (nu e contractul nostru).</div>` +
     `<div><label style="margin-top:6px">Serii <span class="hint">opțional — dacă le dă șoferul, despărțite prin virgulă</span></label><input id="mm-pp-ser" maxlength="300" placeholder="ex. 12345, 12346" value="${esc(ser)}" oninput="MM_PP_SER=this.value"></div>`;
   el.style.display = "";
@@ -6149,6 +6151,7 @@ function mmPPArata(){
 let MM_PP_SER = "";
 const MM_PP_RE = /^SERII: [^\n]*\n?/;
 $("mm-dep").addEventListener("change", () => { if(PP_TIP.test($("mm-tip").value)) mmPPArata(); });
+$("mm-contract").addEventListener("change", () => { if(PP_TIP.test($("mm-tip").value)) setTimeout(mmPPArata, 0); });   // v10.23
 const MM_VZ_RE = /^VANZARE:[^\n]*\n?/;
 function mmVzText(){
   const pr = $("mm-vz-pret").value, f = $("mm-vz-fact").value.trim(), pl = $("mm-vz-plata").value, dc = $("mm-vz-doc").value.trim();
@@ -6680,7 +6683,8 @@ function mmVerifLista(){
   const v = id => String(($(id) || {}).value || "").trim(), ext = mmExterior(), tip = v("mm-tip"), B = [], W = [];
   if(!tip) B.push(["Tipul comenzii nu e ales", "mm-tip"]);
   if(!v("mm-data")) B.push(["Lipsește data comenzii", "mm-data"]);
-  if(PP_TIP.test(tip) && !ext) B.push(["La " + tip + " alege la „Depozit” depozitul căruia îi aparțin toaletele (ex. ARAD)", "mm-dep"]);   // v10.21
+  if(PP_TIP.test(tip) && !ext) B.push(["La " + tip + " alege la „Contract (gestiune)” depozitul căruia îi aparține contractul (ex. ARAD)", "mm-contract"]);   // v10.21 / v10.23
+  if(PP_TIP.test(tip) && (!v("mm-dep") || v("mm-dep") === depPrincipal())) W.push(["La „Depozit” pune depozitul din care au fost livrate toaletele (ex. CRAIOVA)", "mm-dep"]);
   if(tip === "PRELUARE" && !v("mm-frecv")) W.push(["Frecvența de servisare e goală", "mm-frecv"]);
   if(tip === "PRELUARE" && !v("mm-traseu")) W.push(["Traseul e gol — punctul nu ajunge pe rută", "mm-traseu"]);
   const trf = /^Transfer/i.test(tip), vz = tip === "VANZARE";   // v9.65: transferul între depozite n-are client / contract   // v9.67: vânzarea n-are contract
@@ -6790,7 +6794,7 @@ async function saveMiscareBaza(genereaza){
     contract_id:+$("mm-ctr").value||null, anexa_id:+$("mm-anexa").value||null};
   if(tip === "VANZARE"){ const vz = mmVzText(); rec.observatii = [vz, String(rec.observatii || "").replace(MM_VZ_RE, "")].filter(Boolean).join("\n") || null; rec.anexa_id = null; rec.contract_id = null; }   // v9.67
   if(PP_TIP.test(tip)){   // v10.21: PRELUARE / PREDARE — contractul = depozitul proprietar; fără anexă, fără preț; seriile în Observații
-    rec.contract = rec.depozit; rec.client_id = null; rec.contract_id = null; rec.anexa_id = null;
+    rec.client_id = null;   // v10.23: contractul rămâne cel ales (ex. ARAD), depozitul = de unde au fost livrate (ex. CRAIOVA) rec.contract_id = null; rec.anexa_id = null;
     const sr = faraDiac(String(($("mm-pp-ser") || {}).value || "").trim()).toUpperCase();
     rec.observatii = [sr ? "SERII: " + sr : "", String(rec.observatii || "").replace(MM_PP_RE, "")].filter(Boolean).join("\n") || null;
   }
@@ -17411,7 +17415,7 @@ function textComandaDin(d){
   // v7.40 (cerut de Ovidiu, 01.11): tipul comenzii și numele clientului îngroșate (*…* = bold pe WhatsApp; la E-mail se copiază formatat)
   if(svlc){ L.push("COMANDA DIN DATA: " + dzL(d.data)); L.push("*SERVISARE" + (/cerere/i.test(d.frecv || "") ? " LA CERERE" : "") + "*"); }
   else { const evT = { "EVENIMENT-A": "AMPLASARE", "EVENIMENT-R": "RIDICARE" }[d.tip];   // v7.41: „EVENIMENT-A [ AMPLASARE ]”
-    const ppT = PP_TIP.test(d.tip || "") ? faraDiac(ppEtich(d.tip, d.dep || d.depozit)) : "";   // v10.21: „PRELUARE ← ARAD”
+    const ppT = PP_TIP.test(d.tip || "") ? faraDiac(ppEtich(d.tip, d.cdep, d.dep)) : "";   // v10.21: „PRELUARE ← ARAD”
     L.push((d.tip ? "*" + (ppT || d.tip) + (evT ? " [ " + evT + " ]" : "") + "*" : "") + "    " + dz(d.data)); }
   if(String(d.ora || "").trim()) L.push("ORA " + (/RIDICARE|EVENIMENT-R|REDUCERE/.test(d.tip || "") ? "RIDICARE" : /SERVIS/.test(d.tip || "") ? "SERVISARE" : "AMPLASARE") + "  :  " + String(d.ora).trim());   // v7.95
   // v5.13: comanda pe toată anexa — toate produsele; mai multe locații = lista locațiilor (varianta B, Primăria)
@@ -19050,7 +19054,7 @@ const HOW = [
     anexa: "<b>Nu se face anexă</b> — nu e contractul nostru. Nu se mișcă stocul niciunui depozit, nu se facturează, nu cerem PV / act / factură. Rămân: nr. toalete, client, locație, frecvența (și model / serie dacă le dă șoferul).",
     pasi: [
       { t: "<b>Comenzi</b> → <b>+ Comandă nouă</b> → la „Ce faci?” alege <b>Preluare ← alt depozit</b> (sau Predare → alt depozit).", ar: { s: "miscari", el: '#p-miscari button[onclick="openMiscare()"]' } },
-      { t: "La <b>Depozit</b> alegi depozitul căruia îi aparțin toaletele (ex. ARAD). Contractul (gestiune) se pune singur la fel; contractul, anexa și prețul se ascund.", ar: Object.assign({ el: "#mm-dep" }, HOW_NOUA) },
+      { t: "La <b>Contract (gestiune)</b> alegi depozitul căruia îi aparține contractul (ex. ARAD), iar la <b>Depozit</b> depozitul din care au fost livrate (ex. CRAIOVA — pot fi diferite). Anexa și prețul se ascund.", ar: Object.assign({ el: "#mm-contract" }, HOW_NOUA) },
       { t: "Completezi clientul (doar numele), <b>bucățile</b>, locația, responsabilul și, la PRELUARE, <b>frecvența / zilele / traseul</b>. Seriile — opțional, în banda mov.", ar: Object.assign({ el: "#mm-buc" }, HOW_NOUA) },
       { t: "<b>Salvează și generează</b> → textul pentru șoferi începe cu „PRELUARE ← ARAD”." },
       { t: "În Comenzi, rândul arată <b>PRELUARE ← ARAD</b> (mov; mouse pe el = explicația). PV / ACT / FAC nu contează — rămân doar RT și WaAp." },
@@ -21227,7 +21231,7 @@ async function expWord(D, an, luna, lunaT, sufix){
   const sp = "    ";
   const scurt = m => {
     const L = [], evT = { "EVENIMENT-A": "AMPLASARE", "EVENIMENT-R": "RIDICARE" }[m.tip_miscare];
-    L.push("*" + (PP_TIP.test(m.tip_miscare || "") ? faraDiac(ppEtich(m.tip_miscare, m.depozit)) : m.tip_miscare) + (evT ? " [ " + evT + " ]" : "") + "*" + sp + dz(m.data));   // v10.21
+    L.push("*" + (PP_TIP.test(m.tip_miscare || "") ? faraDiac(ppEtich(m.tip_miscare, m.contract, m.depozit)) : m.tip_miscare) + (evT ? " [ " + evT + " ]" : "") + "*" + sp + dz(m.data));   // v10.21
     // v7.46: comanda cu mai multe produse (grup, ex. DRAMIROM 155–158) — toate produsele, fiecare cu accesoriile lui
     const ext = m.grup_id === m.id ? lun.filter(x => x.grup_id === m.id && x.id !== m.id).sort((x, y) => x.id - y.id) : [];
     [m, ...ext].forEach(x => prodL(x).split("\n").forEach(l => L.push(l)));

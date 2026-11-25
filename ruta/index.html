@@ -1116,7 +1116,7 @@ let dayStart = {}; // {brand, plate, kmStart, driver1, driver2, startTime}
 let lastRouteRows = [];
 
 // --- Șofer EE: aplicatia ruleaza in fila „Rută” (../sofer/), care trimite datele zilei ---
-const EE_RUTA_VERSION = 'v56'; // aceeasi cu VERSIUNE din sw.js; Șofer EE o arata langa rotita
+const EE_RUTA_VERSION = 'v57'; // aceeasi cu VERSIUNE din sw.js; Șofer EE o arata langa rotita
 const SOFER_MODE = new URLSearchParams(location.search).get('sofer') === '1';
 let multiZile = null;   // mai multe zile bifate (ruta complementara), altfel null
 let multiTrasee = null; // mai multe trasee bifate, altfel null
@@ -3574,7 +3574,7 @@ async function laTrimitePdf(){
 }
 function agentScurt(n){ const p = String(n || '').trim().split(/\s+/).filter(Boolean); return p.length > 1 ? p[0][0] + '. ' + p.slice(1).join(' ') : p.join(' '); }
 function ctrTagHtml(r){ const k = r.clientKey && CTR[r.clientKey]; if(!k || !k.contract) return '';
-  if(k.preluat) return `<span class="ctr-tag pp-tag" data-ctr="${escapeHtml(r.clientKey)}" title="Toaletele depozitului ${escapeHtml(k.depozit || k.contract)} — noi doar le servisăm">PRELUAT ← ${escapeHtml(k.depozit || k.contract)}</span>`;   // v56 (GestiuneEE v10.21): PRELUARE
+  if(k.preluat) return `<span class="ctr-tag pp-tag" data-ctr="${escapeHtml(r.clientKey)}" title="Contractul depozitului ${escapeHtml(k.contract)}${k.depozit && k.depozit !== k.contract ? ', livrate din ' + escapeHtml(k.depozit) : ''} — noi doar le servisăm">PRELUAT ← ${escapeHtml(k.contract)}</span>`;   // v56 (GestiuneEE v10.21): PRELUARE
   return `<span class="ctr-tag" data-ctr="${escapeHtml(r.clientKey)}">CTR. ${escapeHtml(k.contract)}</span>`; }   // v48b: doar contractul, fără DEP. (cerut 18.11)
 function ctrPopHtml(r){ return '';   // v52 (cerut de Ovidiu, 21.11): scos agentul + telefonul (rămâne doar CTR. pe card)
   const k = r.clientKey && CTR[r.clientKey]; if(!k || !k.contract || !(k.telefon || k.agent)) return '';   // v48: agentul + telefonul doar cu bifa
