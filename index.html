@@ -1223,7 +1223,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
   <span id="rz-w"><button id="rz-reset" class="pictograma" title="Lățimi implicite — pune coloanele din tabelele acestei file înapoi cum erau">↺ Reset layout</button><i class="rz-sep">|</i></span>
   <span id="tz-w" title="Mărimea tabelului (doar tabelul, restul rămâne la fel), din 5 în 5%. Fiecare meniu își ține minte mărimea lui. Merge și cu Ctrl + rotița mausului, Ctrl + / Ctrl − / Ctrl 0. Dublu clic pe procent = scrii tu valoarea."><button class="pictograma" onclick="tzPas(-1)" aria-label="Micșorează tabelul">−</button><b id="tz-v" ondblclick="tzScrie()" title="Dublu clic = scrii mărimea (ex. 87), Enter">100%</b><input id="tz-in" type="number" min="30" max="300" step="5" style="display:none"><button class="pictograma" onclick="tzPas(1)" aria-label="Mărește tabelul">+</button></span>
-  <span class="ver">v10.29</span>
+  <span class="ver">v10.30</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -14285,6 +14285,8 @@ function vechimeTxt(iso){ const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(iso |
   if(l < 0) return ""; const an = Math.floor(l / 12), r = l % 12;
   return [an ? an + (an === 1 ? " an" : " ani") : "", r ? r + (r === 1 ? " lună" : " luni") : ""].filter(Boolean).join(" și ") || "sub o lună"; }
 let LEGIT_HTML = "";
+// v10.30 (cerut de Ovidiu, 26.11): „| 🪪 Legitimație” și în capul fișei angajatului, după Medicina muncii
+function legitDinFisa(angId){ const c = contulAngajatului(angId); if(!c){ toast("Angajatul nu are cont de acces — legitimația se face din cont (🔑 Cont de acces și PIN)", true); return; } legitAng(c.id); }
 async function legitAng(userId){
   const { data, error } = await db.rpc("legitimatie_cont", { p_id: String(userId) });
   if(error || !data || !data[0]){ toast("Legitimația nu s-a putut citi" + (error ? ": " + error.message : ""), true); return; }
@@ -18196,7 +18198,7 @@ async function angFisa(x){
   $("ang-corp").innerHTML = `<div class="card"><details class="an-det" ${desc ? "open" : ""} ontoggle="ANG.fisaDeschisa=this.open"><summary style="cursor:pointer;list-style:none;display:flex;align-items:center;gap:12px;flex-wrap:wrap">
       <span class="an-sag" style="display:inline-block;width:20px;font-size:14px;color:var(--g)">▸</span>
       <span style="font-size:18px;font-weight:700;color:var(--g)">${nou ? "Angajat nou" : esc(x.nume)}</span>
-      ${nou ? "" : `<span style="display:flex;gap:16px;flex-wrap:wrap;font-size:13px"><span><span class="muted">Funcție</span> <b>${esc(x.functie || "—")}</b></span><span><span class="muted">Contract</span> <b>${esc(x.nr_contract || "—")}</b>${x.data_angajare ? ` <span class="muted">din ${fmtD(x.data_angajare)}</span>` : ""}</span><span><span class="muted">Vechime</span> <b>${esc(afVechime(x.data_angajare) || "—")}</b></span>${(k => k ? `<span title="Cuvenit anul acesta ${k.alocat}${k.partial ? " (proporțional din " + k.n + ")" : ""} · cuvenit până azi ${angCOz(k.cuvAzi)} · luat ${k.luat} · rămas pe an ${k.ramas}"><span class="muted">CO ${k.an}</span> <b>${k.luat}</b> luate din <b>${k.alocat}</b> · poate lua azi <b style="color:${k.poate > 0 ? "#2E8B3C" : "#C0392B"}">${k.poate}</b></span>` : "")(angCO(x, (ANG.co[x.id] || {}).CO))}${x.medicina_expira ? `<span><span class="muted">Medicina muncii</span> ${afSem(x.medicina_expira)}</span>` : ""}</span>`}
+      ${nou ? "" : `<span style="display:flex;gap:16px;flex-wrap:wrap;font-size:13px"><span><span class="muted">Funcție</span> <b>${esc(x.functie || "—")}</b></span><span><span class="muted">Contract</span> <b>${esc(x.nr_contract || "—")}</b>${x.data_angajare ? ` <span class="muted">din ${fmtD(x.data_angajare)}</span>` : ""}</span><span><span class="muted">Vechime</span> <b>${esc(afVechime(x.data_angajare) || "—")}</b></span>${(k => k ? `<span title="Cuvenit anul acesta ${k.alocat}${k.partial ? " (proporțional din " + k.n + ")" : ""} · cuvenit până azi ${angCOz(k.cuvAzi)} · luat ${k.luat} · rămas pe an ${k.ramas}"><span class="muted">CO ${k.an}</span> <b>${k.luat}</b> luate din <b>${k.alocat}</b> · poate lua azi <b style="color:${k.poate > 0 ? "#2E8B3C" : "#C0392B"}">${k.poate}</b></span>` : "")(angCO(x, (ANG.co[x.id] || {}).CO))}${x.medicina_expira ? `<span><span class="muted">Medicina muncii</span> ${afSem(x.medicina_expira)}</span>` : ""}<span class="muted">|</span><a href="#" style="font-weight:700;color:var(--g);text-decoration:none" title="Legitimația de lucru — o vezi și o tipărești" onclick="event.preventDefault();event.stopPropagation();legitDinFisa('${x.id}')">🪪 Legitimație</a></span>`}
       <span class="muted noprint" style="margin-left:auto;font-size:12px">${nou ? "" : "clic = arată / ascunde datele angajatului"}</span></summary><div style="margin-top:12px">
     <div class="grid3">${afC("an-nume", "Nume și prenume (ca pe CI)", x.nume)}${afC("an-scurt", "Nume scurt", x.nume_scurt)}${afC("an-functie", "Funcție", x.functie)}
       ${afC("an-tel", "Telefon", x.telefon)}${afC("an-email", "E-mail", x.email)}${afC("an-nastere", "Data nașterii", x.data_nasterii, "date")}
