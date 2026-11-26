@@ -452,4 +452,25 @@ select.field-input { appearance: none; background-image: linear-gradient(45deg, 
 .ca-rezumat { font-weight: 700; font-size: 14.5px; color: var(--ink); margin-top: 2px; }
 
 /* v99 (cerut de Ovidiu, 26.11): semnatura aplicatiei, jos pe ecranele de pornire */
-.app-semn-autor { text-align: center; font-size: 11px; color: var(--ink-soft); opacity: .7; margin: 18px auto 10px; letter-spacing: .2px; }
+.app-semn-autor { text-align: center; font-size: 11px; color: var(--ink-soft); opacity: .7; margin: auto 0 0; padding: 18px 0 4px; letter-spacing: .2px; }
+.scroll-cu-subsol { display: flex; flex-direction: column; }
+.scroll-cu-subsol > .centru { flex: 1 0 auto; display: flex; flex-direction: column; justify-content: center; }
+.logo-apasabil { cursor: pointer; }
+.logo-apasabil:active { opacity: .6; }
+
+/* v99: /* datele firmei / depozitului (logo apasat): intrare / iesire cu fade, trecere cu fade intre pagini */
+.ff-fundal { position: fixed; inset: 0; z-index: 9999; background: rgba(15,23,42,0); display: flex; align-items: center; justify-content: center; padding: 20px;
+  transition: background .25s; }
+.ff-fundal.on { background: rgba(15,23,42,.55); }
+.ff-panou { width: 100%; max-width: 420px; background: #fff; border-radius: 18px; padding: 16px 18px 12px; box-shadow: 0 12px 40px rgba(0,0,0,.3);
+  opacity: 0; transform: scale(.92); transition: opacity .22s, transform .22s; cursor: pointer; }
+.ff-fundal.on .ff-panou { opacity: 1; transform: scale(1); }
+.ff-fundal.on .ff-panou.ff-stins { opacity: 0; transform: scale(.97); }
+.ff-cap { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+.ff-cap img { height: 34px; }
+.ff-x { background: none; border: 0; font-size: 20px; color: var(--ink-soft); cursor: pointer; padding: 4px 8px; }
+.ff-titlu { font-weight: 800; font-size: 17px; color: var(--brand-primary); margin-bottom: 8px; }
+.ff-rand { display: flex; justify-content: space-between; gap: 12px; padding: 6px 0; border-bottom: 1px dashed #d6dde8; font-size: 14px; }
+.ff-rand span { color: var(--ink-soft); flex-shrink: 0; }
+.ff-rand b { text-align: right; overflow-wrap: anywhere; }
+.ff-hint { text-align: center; font-size: 12px; color: var(--ink-soft); margin-top: 10px; }

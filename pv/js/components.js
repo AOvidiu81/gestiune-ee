@@ -3,6 +3,7 @@
 
 import { el, parseIsoDate, toIsoDate } from './utils.js';
 import { pushScreen } from './router.js';
+import { COMPANY_INFO } from './catalog-defaults.js';
 
 // ------------------------------------------------------------------
 // Toast
@@ -1031,4 +1032,33 @@ export function captureCameraPhoto() {
     document.body.appendChild(input);
     input.click();
   });
+}
+
+// ------------------------------------------------------------------
+// v99 / s62 (cerut de Ovidiu, 26.11): logo-ul apasat — datele firmei, apoi (apasare) ale depozitului,
+// apoi (apasare) se inchide. Intrare / iesire cu fade, trecere cu fade intre pagini. Folosit pe „Cine esti?” si „Ziua de azi”.
+// ------------------------------------------------------------------
+export function fereastraFirma(dep) {
+  const c = COMPANY_INFO, d = dep || {};
+  const esc = (t) => String(t == null ? '' : t).replace(/[&<>"]/g, (x) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[x]);
+  const pag = [{ t: 'Datele firmei', r: [['Firma', c.name], ['CUI', c.cui], ['Reg. Com.', c.regCom], ['Sediu', c.address], ['Telefon', c.phone], ['E-mail', c.email], ['Web', c.website]] }];
+  if (d.name) pag.push({ t: 'Depozit ' + d.name, r: [['Adresa', d.address], ['Responsabil', [d.representativeName, d.representativeFunction].filter(Boolean).join(', ')], ['Telefon', d.representativePhone], ['E-mail', d.representativeEmail]] });
+  let i = 0;
+  const panou = el('div', { class: 'ff-panou' });
+  const fundal = el('div', { class: 'ff-fundal' }, [panou]);
+  const inchide = () => { fundal.classList.remove('on'); setTimeout(() => fundal.remove(), 260); };
+  const arata = () => {
+    const p = pag[i];
+    panou.innerHTML = `<div class="ff-cap"><img src="assets/logo/euro_ecologic_logo.png" alt=""><button class="ff-x" title="Inchide">✕</button></div><div class="ff-titlu">${esc(p.t)}</div>` +
+      p.r.filter(([, v]) => v).map(([k, v]) => `<div class="ff-rand"><span>${esc(k)}</span><b>${esc(v)}</b></div>`).join('') +
+      `<div class="ff-hint">${i < pag.length - 1 ? 'Apasă pentru datele depozitului →' : 'Apasă ca să închizi'}</div>`;
+    panou.querySelector('.ff-x').onclick = (e) => { e.stopPropagation(); inchide(); };
+  };
+  fundal.onclick = () => {
+    if (i >= pag.length - 1) return inchide();
+    panou.classList.add('ff-stins');
+    setTimeout(() => { i++; arata(); panou.classList.remove('ff-stins'); }, 220);
+  };
+  arata(); document.body.appendChild(fundal);
+  requestAnimationFrame(() => requestAnimationFrame(() => fundal.classList.add('on')));
 }

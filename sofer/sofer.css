@@ -123,9 +123,15 @@
 .sofer-cont-semn img { max-width: 100%; max-height: 90px; }
 
 /* legitimatia (aceeasi forma in GestiuneEE la tiparire): card 85,6 × 54 mm, totul in procente din latime (cqw) */
-.lg-scroll { background: #1f2a44; }
-.lg-loc { container-type: inline-size; width: 100%; max-width: 640px; margin: 14px auto 0; }
-.lg-scroll .sofer-nota { color: #d7deea; }
+.lg-ecran { background: #1f2a44; }
+/* v99 / s62: legitimatia pe tot ecranul, culcata (landscape). Aplicatia e blocata pe vertical, deci in portret cardul se roteste 90°. */
+.lg-plin { flex: 1; position: relative; overflow: hidden; background: #1f2a44; }
+.lg-rot { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
+  width: min(calc(100vw - 24px), calc((100dvh - 80px) * 85.6 / 54)); }
+@media (orientation: portrait) {
+  .lg-rot { transform: translate(-50%, -50%) rotate(90deg); width: min(calc(100dvh - 90px), calc((100vw - 20px) * 85.6 / 54)); }
+}
+.lg-loc { container-type: inline-size; width: 100%; }
 .lg-card { aspect-ratio: 85.6 / 54; background: #fff; color: #141A2E; border-radius: 3.5cqw; overflow: hidden; display: flex; flex-direction: column;
   box-shadow: 0 8px 28px rgba(0,0,0,.35); font-family: Arial, Helvetica, sans-serif; font-size: 3.2cqw; }
 .lg-cap { display: flex; align-items: center; gap: 3cqw; padding: 2.2cqw 3.5cqw; border-bottom: .9cqw solid #17275A; }
@@ -144,19 +150,3 @@
 .lg-faraqr { font-size: 2.2cqw; color: #9a3412; }
 .lg-jos { background: #17275A; color: #fff; font-size: 2.4cqw; text-align: center; padding: 1.3cqw 3cqw; }
 
-/* datele firmei / depozitului (logo apasat): intrare / iesire cu fade, trecere cu fade intre pagini */
-.ff-fundal { position: fixed; inset: 0; z-index: 9999; background: rgba(15,23,42,0); display: flex; align-items: center; justify-content: center; padding: 20px;
-  transition: background .25s; }
-.ff-fundal.on { background: rgba(15,23,42,.55); }
-.ff-panou { width: 100%; max-width: 420px; background: #fff; border-radius: 18px; padding: 16px 18px 12px; box-shadow: 0 12px 40px rgba(0,0,0,.3);
-  opacity: 0; transform: scale(.92); transition: opacity .22s, transform .22s; cursor: pointer; }
-.ff-fundal.on .ff-panou { opacity: 1; transform: scale(1); }
-.ff-fundal.on .ff-panou.ff-stins { opacity: 0; transform: scale(.97); }
-.ff-cap { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
-.ff-cap img { height: 34px; }
-.ff-x { background: none; border: 0; font-size: 20px; color: var(--ink-soft); cursor: pointer; padding: 4px 8px; }
-.ff-titlu { font-weight: 800; font-size: 17px; color: var(--brand-primary); margin-bottom: 8px; }
-.ff-rand { display: flex; justify-content: space-between; gap: 12px; padding: 6px 0; border-bottom: 1px dashed #d6dde8; font-size: 14px; }
-.ff-rand span { color: var(--ink-soft); flex-shrink: 0; }
-.ff-rand b { text-align: right; overflow-wrap: anywhere; }
-.ff-hint { text-align: center; font-size: 12px; color: var(--ink-soft); margin-top: 10px; }

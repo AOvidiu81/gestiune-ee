@@ -18,7 +18,7 @@ import { replaceRoot, pushScreen, popAll } from '../pv/js/router.js';
 import { DriverRepo, CarRepo, DepotRepo } from '../pv/js/db.js';
 import { runLoginGate } from '../pv/js/screens-login.js';
 import { getCurrentProfile, saveOwnSignature, saveOwnPhoto, syncMasterData, getTodayBirthdays, getSupabase, listDriversForLogin, signOut, flushPvQueue, pvQueueCount } from '../pv/js/auth.js';
-import { tile, openModal, primaryButton, outlineButton, sectionCard, captureSignature, confirmDialog, showToast } from '../pv/js/components.js';
+import { tile, openModal, primaryButton, outlineButton, sectionCard, captureSignature, confirmDialog, showToast, fereastraFirma } from '../pv/js/components.js';
 import { blobToDataUrl } from '../pv/js/utils.js';
 import { PROCESS_TYPES, COMPANY_INFO } from '../pv/js/catalog-defaults.js';
 import { openProcessVerbalForm } from '../pv/js/screens-pv-form.js';
@@ -27,7 +27,7 @@ import { openHistoryScreen } from '../pv/js/screens-history.js';
 import { buildComenziActive } from '../pv/js/screens-comenzi.js';
 import { openSettingsScreen } from '../pv/js/screens-setup.js';
 
-export const SOFER_VERSION = 's62';
+export const SOFER_VERSION = 's63';
 
 const KEY_ZI = 'ee-sofer-zi'; // ziua deschisa: { zi, coleg, carId, km, trasee, zile, zona, ordine, ruta }
 const KEY_ULTIMA = 'ee-sofer-ultima'; // ultimele alegeri (masina, traseu, zona) — precompletare
@@ -378,7 +378,7 @@ function construiesteZiua({ initial, liste, gata, inapoi, cereColeg, nota }) {
   // s62 (cerut de Ovidiu, 26.11): sus logo-ul in stanga (apasat = datele firmei / depozitului) si cardul cu cel logat in dreapta (= Contul meu)
   const sus = inapoi ? [] : [
     el('div', { class: 'sofer-antet' }, [
-      el('button', { class: 'sofer-logo-btn', title: 'Datele firmei și ale depozitului', onclick: () => fereastraFirma() }, [
+      el('button', { class: 'sofer-logo-btn', title: 'Datele firmei și ale depozitului', onclick: () => fereastraFirma(stare.depot) }, [
         el('img', { src: 'assets/logo/euro_ecologic_logo.png', alt: 'Euro Ecologic' }),
         el('div', { class: 'sofer-antet-ver' }, [`Șofer EE ${SOFER_VERSION} · PV ${PV_VERSION}`]),
       ]),
@@ -386,7 +386,7 @@ function construiesteZiua({ initial, liste, gata, inapoi, cereColeg, nota }) {
     ]),
   ];
   const jos = inapoi ? [] : [el('div', { class: 'app-semn-autor' }, ['Euro Ecologic · realizat de A. Ovidiu · 2026'])];
-  screen.appendChild(el('div', { class: 'screen-scroll' }, [...sus, card, ...jos]));
+  screen.appendChild(el('div', { class: 'screen-scroll scroll-cu-subsol' }, [el('div', {}, [...sus, card]), ...jos]));   // textul jos de tot
   if (cereColeg) setTimeout(async () => { z.coleg = await alegeColeg(liste.colegi, z.coleg, true); arataEchipa(); }, 250);
   return screen;
 }
@@ -767,37 +767,9 @@ function legitimatia() {
       el('div', { class: 'topbar-spacer' }),
     ]));
     const box = el('div', { class: 'lg-loc' }); box.innerHTML = legitimatieHtml(stare.driver || {}, stare.depot);
-    screen.appendChild(el('div', { class: 'screen-scroll lg-scroll' }, [box,
-      el('div', { class: 'sofer-nota', style: 'text-align:center;margin-top:12px' }, ['Arată ecranul acesta la poartă / pe șantier. Cine scanează codul QR vede dacă ești angajat ACTIV al Euro Ecologic. Întoarce telefonul pe orizontală pentru o legitimație mai mare.'])]));
+    screen.appendChild(el('div', { class: 'lg-plin' }, [el('div', { class: 'lg-rot' }, [box])]));   // s62: pe tot ecranul, culcata
     return screen;
   });
-}
-
-// logo apasat: datele firmei → (apasare) datele depozitului → (apasare) se inchide; trecere cu fade
-function fereastraFirma() {
-  const c = COMPANY_INFO, dep = stare.depot || {};
-  const pag = [
-    { t: 'Datele firmei', r: [['Firma', c.name], ['CUI', c.cui], ['Reg. Com.', c.regCom], ['Sediu', c.address], ['Telefon', c.phone], ['E-mail', c.email], ['Web', c.website]] },
-    { t: 'Depozit ' + (dep.name || ''), r: [['Adresa', dep.address], ['Responsabil', [dep.representativeName, dep.representativeFunction].filter(Boolean).join(', ')], ['Telefon', dep.representativePhone], ['E-mail', dep.representativeEmail]] },
-  ];
-  let i = 0;
-  const panou = el('div', { class: 'ff-panou' });
-  const fundal = el('div', { class: 'ff-fundal' }, [panou]);
-  const inchide = () => { fundal.classList.remove('on'); setTimeout(() => fundal.remove(), 260); };
-  const arata = () => {
-    const p = pag[i];
-    panou.innerHTML = `<div class="ff-cap"><img src="${LOGO}" alt=""><button class="ff-x" title="Închide">✕</button></div><div class="ff-titlu">${escH(p.t)}</div>` +
-      p.r.filter(([, v]) => v).map(([k, v]) => `<div class="ff-rand"><span>${escH(k)}</span><b>${escH(v)}</b></div>`).join('') +
-      `<div class="ff-hint">${i === 0 ? 'Apasă pentru datele depozitului →' : 'Apasă ca să închizi'}</div>`;
-    panou.querySelector('.ff-x').onclick = (e) => { e.stopPropagation(); inchide(); };
-  };
-  fundal.onclick = () => {
-    if (i >= pag.length - 1) return inchide();
-    panou.classList.add('ff-stins');
-    setTimeout(() => { i++; arata(); panou.classList.remove('ff-stins'); }, 220);
-  };
-  arata(); document.body.appendChild(fundal);
-  requestAnimationFrame(() => fundal.classList.add('on'));
 }
 
 // ---------- seriile pe punctul de ruta (s23) ----------

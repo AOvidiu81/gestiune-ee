@@ -7,7 +7,8 @@
 
 import { el, blobToDataUrl, APP_VERSION, forceUpdateApp } from './utils.js';
 import { replaceRoot } from './router.js';
-import { primaryButton, showToast, captureSignature } from './components.js';
+import { primaryButton, showToast, captureSignature, fereastraFirma } from './components.js';
+import { DepotRepo } from './db.js';
 import { getCurrentProfile, listDriversForLogin, signInAsDriver, signOut, saveOwnSignature, syncMasterData } from './auth.js';
 
 /** Blocheaza pornirea aplicatiei pana cand exista un profil autentificat,
@@ -34,7 +35,9 @@ function runLoginScreen() {
     function render() {
       replaceRoot(() => {
         const screen = el('div', { class: 'screen' });
-        const logo = el('img', { class: 'brand-logo', src: 'assets/logo/euro_ecologic_logo.png', alt: 'Euro Ecologic' });
+        // v99 (cerut de Ovidiu, 26.11): logo apasat = datele firmei (+ depozitul, daca telefonul il stie de la o sincronizare)
+        const logo = el('img', { class: 'brand-logo logo-apasabil', src: 'assets/logo/euro_ecologic_logo.png', alt: 'Euro Ecologic', title: 'Datele firmei',
+          onclick: async () => { let dep = null; try { const L = await DepotRepo.getAll(); dep = L.find((x) => x.depotType === 'principal') || L[0] || null; } catch (e) {} fereastraFirma(dep); } });
         const versionTag = el('div', { class: 'app-version-tag' }, [`Versiune aplicatie: ${APP_VERSION}`]);
         const updateBtn = el(
           'button',
@@ -64,8 +67,8 @@ function runLoginScreen() {
           errorBox,
         ]);
 
-        const scroll = el('div', { class: 'screen-scroll', style: 'display:flex;flex-direction:column;justify-content:center;min-height:100%' }, [logo, versionTag, updateBtn, card,
-          el('div', { class: 'app-semn-autor' }, ['Euro Ecologic · realizat de A. Ovidiu · 2026'])]);   // v99 (cerut de Ovidiu, 26.11)
+        const scroll = el('div', { class: 'screen-scroll scroll-cu-subsol' }, [el('div', { class: 'centru' }, [logo, versionTag, updateBtn, card]),
+          el('div', { class: 'app-semn-autor' }, ['Euro Ecologic · realizat de A. Ovidiu · 2026'])]);   // v99 (cerut de Ovidiu, 26.11): textul jos de tot
         screen.appendChild(scroll);
 
         (async () => {
