@@ -95,12 +95,21 @@ export async function signIn(username, password) {
 /** Lista soferilor activi pentru ecranul de selectare de la pornirea
  * aplicatiei (inainte de orice autentificare) — doar id + nume, nimic
  * sensibil (username, masina etc. raman ascunse). */
-// v101 (cerut de Ovidiu, 26.11): conturile din CONDUCERE (in GestiuneEE debifat „apare în lista șoferilor”) nu apar
-// pe telefoanele soferilor — nici la „Cine esti?”, nici la „Alege un coleg”. Apar doar pe telefonul unde s-a conectat
-// cineva din CONDUCERE (telefonul tine minte) sau dupa 5 atingeri pe „Cine esti?”.
-export const KEY_DISP_CONDUCERE = 'ee-dispozitiv-conducere';
-export function dispozitivConducere(da) {
-  try { if (da) localStorage.setItem(KEY_DISP_CONDUCERE, '1'); return localStorage.getItem(KEY_DISP_CONDUCERE) === '1'; } catch (e) { return false; }
+// v102 (cerut de Ovidiu, 26.11): conturile din CONDUCERE (in GestiuneEE debifat „apare în lista șoferilor”) nu mai vin
+// deloc din baza catre telefoanele soferilor — nici la „Cine esti?”, nici la „Alege un coleg” (baza decide).
+// Se intra cu 5 atingeri pe „Cine esti?” → Utilizator → PIN; telefonul tine minte contul si il arata data viitoare.
+const KEY_CONTURI_TINUTE = 'ee-conturi-tinute';
+const conturiTinute = () => { try { return JSON.parse(localStorage.getItem(KEY_CONTURI_TINUTE) || '[]') || []; } catch (e) { return []; } };
+export function tineMinteCont(d) {
+  if (!d || d.grup !== 'CONDUCERE') return;
+  try { const L = conturiTinute().filter((x) => x.id !== d.id); L.unshift({ id: d.id, full_name: d.full_name, grup: d.grup }); localStorage.setItem(KEY_CONTURI_TINUTE, JSON.stringify(L.slice(0, 4))); } catch (e) {}
+}
+export async function contDupaUtilizator(user) {
+  let supabase;
+  try { supabase = await getSupabase(); } catch (e) { return { error: 'Ai nevoie de internet.' }; }
+  const { data, error } = await supabase.rpc('cont_dupa_utilizator', { p_user: String(user || '').trim() });
+  if (error) return { error: 'Nu am putut verifica utilizatorul.' };
+  return data && data[0] ? { driver: data[0] } : { error: 'Utilizator necunoscut.' };
 }
 export async function listDriversForLogin(opts = {}) {
   let supabase;
@@ -111,8 +120,9 @@ export async function listDriversForLogin(opts = {}) {
   }
   const { data, error } = await supabase.rpc('list_drivers_for_login');
   if (error) return { error: 'Nu am putut incarca lista de soferi.' };
-  const toti = opts.toti || dispozitivConducere();
-  return { drivers: (data || []).filter((d) => toti || d.grup !== 'CONDUCERE') };
+  const L = data || [];
+  if (opts.cuTinute) conturiTinute().forEach((c) => { if (!L.some((x) => x.id === c.id)) L.unshift(c); });   // pe telefonul lui: contul din conducere tinut minte
+  return { drivers: L };
 }
 
 /** Autentificare FARA parola: soferul doar isi atinge numele din lista

@@ -1232,7 +1232,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
   <span id="rz-w"><button id="rz-reset" class="pictograma" title="Lățimi implicite — pune coloanele din tabelele acestei file înapoi cum erau">↺ Reset layout</button><i class="rz-sep">|</i></span>
   <span id="tz-w" title="Mărimea tabelului (doar tabelul, restul rămâne la fel), din 5 în 5%. Fiecare meniu își ține minte mărimea lui. Merge și cu Ctrl + rotița mausului, Ctrl + / Ctrl − / Ctrl 0. Dublu clic pe procent = scrii tu valoarea."><button class="pictograma" onclick="tzPas(-1)" aria-label="Micșorează tabelul">−</button><b id="tz-v" ondblclick="tzScrie()" title="Dublu clic = scrii mărimea (ex. 87), Enter">100%</b><input id="tz-in" type="number" min="30" max="300" step="5" style="display:none"><button class="pictograma" onclick="tzPas(1)" aria-label="Mărește tabelul">+</button></span>
-  <span class="ver">v10.34</span>
+  <span class="ver">v10.36</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -15842,7 +15842,7 @@ const A_DEF = {
   soferi:{
     titlu:"Angajați", ord:"nume",
     nota:"Toți angajații, nu doar șoferii. Cei activi apar în ecranul „Șoferi” din aplicația de rute. Un om dezactivat dispare de acolo, dar rămâne în istoricul rutelor. Funcțiile se completează din secțiunea Liste.",
-    lista:[["nume","Nume complet"],["nume_scurt","Scurt"],["rol","Rol"],["functie","Funcție"],["telefon","Telefon"],["_cont","Cont"],["_acces","Acces"],["activ","Activ"]],
+    lista:[["nume","Nume complet"],["nume_scurt","Scurt"],["rol","Rol"],["functie","Funcție"],["telefon","Telefon"],["_cont","Cont"],["_acces","Acces"],["_grup","Grup Șofer EE"],["activ","Activ"]],   // v10.36: grupul (RUTĂ / CONDUCERE)
     campuri:[
       {c:"nume",e:"Nume complet",t:"text",req:1,up:1},
       {c:"nume_scurt",e:"Nume scurt (ca în Excel)",t:"text",up:1},
@@ -15857,6 +15857,7 @@ const A_DEF = {
       {c:"ci_serie",e:"CI serie",t:"text",up:1},
       {c:"ci_numar",e:"CI număr",t:"text"},
       {c:"nr_contract",e:"Nr. contract",t:"text"},
+      {c:"apare_la_soferi",e:"Grup Șofer EE: Da = echipă de rută (îl văd șoferii) · Nu = CONDUCERE (ascuns la șoferi)",t:"bool"},   // v10.36 (cerut de Ovidiu, 26.11)
       {c:"activ",e:"Activ",t:"bool"}
     ]
   },
@@ -16048,7 +16049,9 @@ async function adminIncarca(){
     await incarcaConturi();
     A_ROWS.forEach(r=>{ const c=contulAngajatului(r.id);
       r._cont  = c ? c.username : "—";
-      r._acces = c ? (c.active ? (c.role==="admin"?"administrator":"șofer") : "oprit") : "fără cont"; });
+      r._acces = c ? (c.active ? (c.role==="admin"?"administrator":"șofer") : "oprit") : "fără cont";
+      const pr = r.unit_in ? (A_ROWS.find(x=>x.id===r.unit_in) || r) : r;   // v10.36: contul unit urmează fișa principală
+      r._grup = pr.apare_la_soferi === false ? "🔒 CONDUCERE" : "🚚 echipă rută"; });
   }
   renderAdmin();
 }

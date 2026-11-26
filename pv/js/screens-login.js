@@ -9,7 +9,7 @@ import { el, blobToDataUrl, APP_VERSION, forceUpdateApp } from './utils.js';
 import { replaceRoot } from './router.js';
 import { primaryButton, showToast, captureSignature, fereastraFirma } from './components.js';
 import { DepotRepo } from './db.js';
-import { getCurrentProfile, listDriversForLogin, dispozitivConducere, signInAsDriver, signOut, saveOwnSignature, syncMasterData } from './auth.js';
+import { getCurrentProfile, listDriversForLogin, tineMinteCont, contDupaUtilizator, signInAsDriver, signOut, saveOwnSignature, syncMasterData } from './auth.js';
 
 /** Blocheaza pornirea aplicatiei pana cand exista un profil autentificat,
  * activ si cu semnatura setata. Intoarce acel profil. */
@@ -31,8 +31,8 @@ export async function runLoginGate() {
 function runLoginScreen() {
   return new Promise((resolve) => {
     let cancelled = false;
-    let arataToti = false, atingeri = 0;   // v101: 5 atingeri pe „Cine esti?” = arata si conturile din CONDUCERE
-    const gata = (driver, profil) => { if (driver && driver.grup === 'CONDUCERE') dispozitivConducere(true); resolve(profil); };
+    let atingeri = 0, cautaUtilizator = null;   // v102: 5 atingeri pe „Cine esti?” = campul „Utilizator” (pentru conturile din CONDUCERE)
+    const gata = (driver, profil) => { tineMinteCont(driver); resolve(profil); };
 
     function render() {
       replaceRoot(() => {
@@ -60,7 +60,7 @@ function runLoginScreen() {
         const errorBox = el('div', { style: 'color:var(--danger);font-size:13px;text-align:center;min-height:18px;margin-top:6px' }, []);
 
         const card = el('div', { class: 'section-card' }, [
-          el('h3', { class: 'section-title', style: 'text-align:center;user-select:none', onclick: () => { if (++atingeri >= 5 && !arataToti) { arataToti = true; render(); } } }, ['Cine esti?']),
+          el('h3', { class: 'section-title', style: 'text-align:center;user-select:none', onclick: () => { if (++atingeri >= 5 && cautaUtilizator) { atingeri = 0; cautaUtilizator(); } } }, ['Cine esti?']),
           el('div', { style: 'text-align:center;color:var(--ink-soft);font-size:13px;margin-bottom:14px' }, [
             'Alege-ti numele din lista — contul e creat de administrator.',
           ]),
@@ -74,7 +74,7 @@ function runLoginScreen() {
         screen.appendChild(scroll);
 
         (async () => {
-          const result = await listDriversForLogin({ toti: arataToti });
+          const result = await listDriversForLogin({ cuTinute: true });
           if (cancelled) return;
           statusBox.remove();
           if (result.error) {
@@ -107,6 +107,31 @@ function runLoginScreen() {
             listBox.appendChild(btn);
           }
         })();
+
+        // v102: contul din CONDUCERE — scrie utilizatorul (ex. anamaria), apoi PIN-ul
+        cautaUtilizator = () => {
+          listBox.innerHTML = ''; errorBox.textContent = '';
+          const inp = el('input', { type: 'text', autocomplete: 'off', autocapitalize: 'none', spellcheck: 'false', placeholder: 'utilizator',
+            style: 'font-size:20px;text-align:center;padding:10px;width:100%;box-sizing:border-box;border-radius:10px' });
+          const cauta = primaryButton('Continuă', async () => {
+            if (!inp.value.trim()) { inp.focus(); return; }
+            cauta.disabled = true; errorBox.textContent = '';
+            const r = await contDupaUtilizator(inp.value);
+            if (cancelled) return;
+            cauta.disabled = false;
+            if (r.error) { errorBox.textContent = r.error; inp.focus(); return; }
+            const s = await signInAsDriver(r.driver.id);
+            if (cancelled) return;
+            if (s.needPin) { cerePin(r.driver, s); return; }
+            if (s.error) { errorBox.textContent = s.error; return; }
+            gata(r.driver, s.profile);
+          });
+          inp.addEventListener('keydown', (e) => { if (e.key === 'Enter') cauta.click(); });
+          listBox.appendChild(el('div', { style: 'text-align:center;color:var(--ink-soft);font-size:13px' }, ['Scrie numele de utilizator']));
+          listBox.appendChild(inp); listBox.appendChild(cauta);
+          listBox.appendChild(el('button', { class: 'btn btn-text', style: 'display:block;margin:4px auto 0', onclick: () => render() }, ['← Înapoi la listă']));
+          setTimeout(() => inp.focus(), 50);
+        };
 
         // Ecranul de PIN (4 cifre, pus de administrator din GestiuneEE). Se cere
         // la fiecare logare; dupa 4 cifre se trimite singur.
