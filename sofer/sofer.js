@@ -17,8 +17,9 @@ import { el, APP_VERSION as PV_VERSION, forceUpdateApp } from '../pv/js/utils.js
 import { replaceRoot, pushScreen, popAll } from '../pv/js/router.js';
 import { DriverRepo, CarRepo, DepotRepo } from '../pv/js/db.js';
 import { runLoginGate } from '../pv/js/screens-login.js';
-import { getCurrentProfile, syncMasterData, getTodayBirthdays, getSupabase, listDriversForLogin, signOut, flushPvQueue, pvQueueCount } from '../pv/js/auth.js';
-import { tile, openModal, primaryButton, outlineButton, sectionCard } from '../pv/js/components.js';
+import { getCurrentProfile, saveOwnSignature, syncMasterData, getTodayBirthdays, getSupabase, listDriversForLogin, signOut, flushPvQueue, pvQueueCount } from '../pv/js/auth.js';
+import { tile, openModal, primaryButton, outlineButton, sectionCard, captureSignature, confirmDialog, showToast } from '../pv/js/components.js';
+import { blobToDataUrl } from '../pv/js/utils.js';
 import { PROCESS_TYPES } from '../pv/js/catalog-defaults.js';
 import { openProcessVerbalForm } from '../pv/js/screens-pv-form.js';
 import { openCereriMenu } from '../pv/js/screens-cereri.js';
@@ -26,7 +27,7 @@ import { openHistoryScreen } from '../pv/js/screens-history.js';
 import { buildComenziActive } from '../pv/js/screens-comenzi.js';
 import { openSettingsScreen } from '../pv/js/screens-setup.js';
 
-export const SOFER_VERSION = 's60';
+export const SOFER_VERSION = 's61';
 
 const KEY_ZI = 'ee-sofer-zi'; // ziua deschisa: { zi, coleg, carId, km, trasee, zile, zona, ordine, ruta }
 const KEY_ULTIMA = 'ee-sofer-ultima'; // ultimele alegeri (masina, traseu, zona) — precompletare
@@ -373,6 +374,7 @@ function construiesteZiua({ initial, liste, gata, inapoi, cereColeg, nota }) {
     z.ruta ? null : outlineButton('🏭 Azi la depozit (fără mașină)', () => laDepozit()),
     inapoi ? null : el('div', { style: 'height:10px' }),
     inapoi ? null : el('button', { class: 'btn btn-text btn-block', onclick: () => altSofer() }, ['← Nu sunt eu (alege alt șofer)']),
+    inapoi ? null : el('button', { class: 'btn btn-text btn-block', onclick: () => semnaturaMea() }, ['✍️ Semnătura mea']),   // s61
   ]);
   const sus = inapoi ? [] : [
     el('img', { class: 'brand-logo', src: 'assets/logo/euro_ecologic_logo.png', alt: 'Euro Ecologic' }),
@@ -574,9 +576,60 @@ function ecranSetari() {
         el('div', { class: 'sofer-info' }, [`Depozit: ${stare.depot?.name || '-'}`]),
         outlineButton('📅 Ziua de azi (coleg, traseu, zonă)', () => { pop(undefined); editeazaZiua(); }),
         outlineButton('🚚 Schimbă mașina', () => { pop(undefined); schimbaMasina(); }),
+        outlineButton('✍️ Semnătura mea', () => semnaturaMea()),   // s61
         outlineButton('⟳ Forțează actualizarea', () => forceUpdateApp()),
         outlineButton('👤 Cont / Deconectare', () => openSettingsScreen()),
       ]),
+    ]);
+    screen.appendChild(el('div', { class: 'screen-scroll' }, [card]));
+    return screen;
+  });
+}
+
+// ---------- s61 (cerut de Ovidiu, 26.11): „Semnătura mea” — soferul isi vede semnatura si o poate reface ----------
+// Din „Ziua de azi” (sub „Nu sunt eu”) si din Setari (⚙). Semnatura veche ramane pana cand soferul semneaza si confirma
+// cu Da (cu internet). PV-urile deja facute nu se schimba; cele noi iau semnatura noua (DriverRepo local, prin syncMasterData).
+function semnaturaMea() {
+  return pushScreen(({ pop }) => {
+    const screen = el('div', { class: 'screen' });
+    screen.appendChild(el('div', { class: 'topbar' }, [
+      el('button', { class: 'icon-btn', onclick: () => pop(undefined) }, ['←']),
+      el('div', { class: 'topbar-title' }, ['Semnătura mea']),
+      el('div', { class: 'topbar-spacer' }),
+    ]));
+    const cutie = el('div', { style: 'background:#fff;border:1px solid var(--line, #d6dde8);border-radius:10px;min-height:120px;display:flex;align-items:center;justify-content:center;padding:10px;margin-bottom:12px' }, ['Se încarcă…']);
+    const arata = (url) => {
+      cutie.innerHTML = '';
+      cutie.appendChild(url ? el('img', { src: url, alt: 'semnatura', style: 'max-width:100%;max-height:160px' })
+        : el('div', { style: 'color:var(--ink-soft)' }, ['Nu ai încă semnătură salvată.']));
+    };
+    (async () => {
+      let url = '';
+      try { url = (await DriverRepo.getAll()).find((d) => d.signatureDataUrl)?.signatureDataUrl || ''; } catch (e) {}
+      if (!url) { try { url = (await getCurrentProfile())?.signature_url || ''; } catch (e) {} }
+      arata(url);
+    })();
+    const btn = primaryButton('✍️ Refă semnătura', async () => {
+      const blob = await captureSignature({ title: 'Semnătura ta' });
+      if (!blob) return;
+      if (!(await confirmDialog({ title: 'Semnătura nouă', message: 'Înlocuiești semnătura veche? Pe PV-urile de acum înainte va apărea semnătura nouă (cele deja făcute rămân cum sunt).', okLabel: 'Da', cancelLabel: 'Nu' }))) return;
+      btn.disabled = true; btn.textContent = 'Se salvează...';
+      try {
+        if (!navigator.onLine) throw new Error('Ai nevoie de internet ca să-ți schimbi semnătura. A rămas cea veche.');
+        const dataUrl = await blobToDataUrl(blob);
+        const prof = await saveOwnSignature(dataUrl);
+        try { await syncMasterData(prof || await getCurrentProfile()); } catch (e) {}
+        arata(dataUrl);
+        showToast('Semnătura salvată.');
+      } catch (e) {
+        showToast(/internet|fetch|network/i.test(e.message) ? 'Ai nevoie de internet ca să-ți schimbi semnătura. A rămas cea veche.' : 'Nu am putut salva semnătura: ' + e.message, { danger: true });
+      }
+      btn.disabled = false; btn.textContent = '✍️ Refă semnătura';
+    });
+    const card = sectionCard('Semnătura de acum', [
+      el('div', { class: 'sofer-nota', style: 'margin-bottom:10px' }, ['Asta apare pe PV-uri și pe cereri. O schimbi doar dacă apeși „Refă semnătura”, semnezi și confirmi cu Da.']),
+      cutie,
+      btn,
     ]);
     screen.appendChild(el('div', { class: 'screen-scroll' }, [card]));
     return screen;
