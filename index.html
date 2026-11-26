@@ -1232,7 +1232,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
   <span id="rz-w"><button id="rz-reset" class="pictograma" title="Lățimi implicite — pune coloanele din tabelele acestei file înapoi cum erau">↺ Reset layout</button><i class="rz-sep">|</i></span>
   <span id="tz-w" title="Mărimea tabelului (doar tabelul, restul rămâne la fel), din 5 în 5%. Fiecare meniu își ține minte mărimea lui. Merge și cu Ctrl + rotița mausului, Ctrl + / Ctrl − / Ctrl 0. Dublu clic pe procent = scrii tu valoarea."><button class="pictograma" onclick="tzPas(-1)" aria-label="Micșorează tabelul">−</button><b id="tz-v" ondblclick="tzScrie()" title="Dublu clic = scrii mărimea (ex. 87), Enter">100%</b><input id="tz-in" type="number" min="30" max="300" step="5" style="display:none"><button class="pictograma" onclick="tzPas(1)" aria-label="Mărește tabelul">+</button></span>
-  <span class="ver">v10.38</span>
+  <span class="ver">v10.39</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -12111,17 +12111,18 @@ async function raportFacturare(){
   R_ORD = factOrdonGata(R_RANDURI.map((f, j) => ({ f, j })).filter(x => factFiltruOk(x.f))).map(x => x.j);   // v10.14
   const vz = R_ORD.map(j => R_RANDURI[j]);
   vz.forEach(f => { const m = f[20] || "RON"; pe[m] = pe[m] || [0, 0]; pe[m][0] += f[25]; pe[m][1] += f[26]; });
-  $("r-kpi").innerHTML = `<div>Poziții<b>${vz.length}</b></div>` +
+  let kh = `<div>Poziții<b>${vz.length}</b></div>` +
     Object.keys(pe).sort().map(m => `<div>Fără TVA (${esc(m)})<b>${bani(pe[m][0])}</b><span class="kpi-sub">cu TVA: <b>${bani(pe[m][1])}</b></span></div>`).join("");   // v10.00: fără TVA sus, cu TVA dedesubt (un card pe monedă)
-  F_PE = pe; if(Object.keys(pe).some(m => !["RON", "LEI"].includes(String(m).toUpperCase().trim()))) $("r-kpi").innerHTML += `<div id="kpi-lei" class="kpi-lei">${factLeiHtml()}</div>`;   // v9.99
+  F_PE = pe; if(Object.keys(pe).some(m => !["RON", "LEI"].includes(String(m).toUpperCase().trim()))) kh += `<div id="kpi-lei" class="kpi-lei">${factLeiHtml()}</div>`;   // v9.99
   factSicapBanda(anF, lunaF);   // v8.83
   const nDep = R_ORD.filter(j => R_AVERT[j] && (R_AVERT[j].anx || R_AVERT[j].ctr)).length;
-  if(nDep) $("r-kpi").innerHTML += `<div class="kpi-amb">Termen depășit<b>${nDep}</b></div>`;
-  factCursBnr();   // v9.99: cursul BNR al zilei pentru „Total lună (lei)”
+  if(nDep) kh += `<div class="kpi-amb">Termen depășit<b>${nDep}</b></div>`;
   const deFact = vz.filter(f => FACT_VAL(f[0])).length;
   const fct = vz.filter(f => f[0] === "FACTURAT").length;
-  if(deFact) $("r-kpi").innerHTML += `<div>Facturate<b>${fct} din ${deFact}</b></div>`;
-  $("r-nota").textContent = "Zilele se numără de la data amplasării de pe anexă. Când o locație are suplimentări / reduceri, fiecare anexă (ex. ANEXA NR 1, 1-S1, 1-R1) are rândul ei, cu totalul de la client și perioada ei: de la data anexei până în ziua dinaintea anexei următoare. Ziua reducerii se facturează încă la cantitatea veche, deci anexa de reducere începe de a doua zi. Anexele cu statusul RIDICARE se facturează în luna ridicării până în ziua ridicării (data ridicării de pe anexă); fără dată de ridicare se trec cu 0 zile. Dacă nu vrei să facturezi acele câteva zile, alege NU FACTURAM la STARE LUNA. La anexele bifate „La facturare: un singur rând” (ex. Primăria), produsele cu același preț și aceeași perioadă se adună într-un rând. " +
+  if(deFact) kh += `<div>Facturate<b>${fct} din ${deFact}</b></div>`;
+  if(R_MOD !== "verif") $("r-kpi").innerHTML = kh;   // v10.39 (cerut de Ovidiu, 26.11): la Verificare nu mai apar o clipă cartelele din „În lucru” (tabelul sărea)
+  factCursBnr();   // v9.99: cursul BNR al zilei pentru „Total lună (lei)”
+  if(R_MOD !== "verif") $("r-nota").textContent = "Zilele se numără de la data amplasării de pe anexă. Când o locație are suplimentări / reduceri, fiecare anexă (ex. ANEXA NR 1, 1-S1, 1-R1) are rândul ei, cu totalul de la client și perioada ei: de la data anexei până în ziua dinaintea anexei următoare. Ziua reducerii se facturează încă la cantitatea veche, deci anexa de reducere începe de a doua zi. Anexele cu statusul RIDICARE se facturează în luna ridicării până în ziua ridicării (data ridicării de pe anexă); fără dată de ridicare se trec cu 0 zile. Dacă nu vrei să facturezi acele câteva zile, alege NU FACTURAM la STARE LUNA. La anexele bifate „La facturare: un singur rând” (ex. Primăria), produsele cu același preț și aceeași perioadă se adună într-un rând. " +
     "Contractele trecute de termen sunt marcate cu ⚠ (act adițional sau trecere pe nedeterminat). " +
     "STARE LUNA se alege pe fiecare rând, doar pentru luna aceasta: FACTURAT păstrează valoarea și marchează factura făcută; FACTURA AVANS / FACTURA PROFORMA păstrează valoarea și apar la „Gata de trimis” cu documentul cerut; INACTIV și NU FACTURAM trec rândul cu valoare 0. " +
     "Dublu clic pe INCEPUT LUNA / SFARSIT LUNA = perioadă pusă de mână (factură în avans / proformă, ex. 19.10–18.11): în luna facturării rândul are toată perioada și toată valoarea; în celelalte luni apare „ACOPERIT DE AVANS” cu valoare 0, iar ce rămâne din lună se calculează normal. ⚠ cu o săptămână înainte de sfârșit.";
