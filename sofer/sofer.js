@@ -27,7 +27,7 @@ import { openHistoryScreen } from '../pv/js/screens-history.js';
 import { buildComenziActive } from '../pv/js/screens-comenzi.js';
 import { openSettingsScreen } from '../pv/js/screens-setup.js';
 
-export const SOFER_VERSION = 's66';
+export const SOFER_VERSION = 's67';
 
 const KEY_ZI = 'ee-sofer-zi'; // ziua deschisa: { zi, coleg, carId, km, trasee, zile, zona, ordine, ruta }
 const KEY_ULTIMA = 'ee-sofer-ultima'; // ultimele alegeri (masina, traseu, zona) — precompletare
@@ -766,7 +766,17 @@ function legitimatia() {
       el('div', { class: 'topbar-title' }, ['Legitimația mea']),
       el('div', { class: 'topbar-spacer' }),
     ]));
-    const box = el('div', { class: 'lg-loc' }); box.innerHTML = legitimatieHtml(stare.driver || {}, stare.depot);
+    const box = el('div', { class: 'lg-loc' });
+    // s67 (cerut de Ovidiu, 26.11): o singura legitimatie pe om — contul legat (ex. contul de sofer al lui Ovidiu) arata
+    // datele fisei principale (nume, functie, contract, QR) + poza; tinuta minte pentru folosirea fara semnal
+    const arata = (L) => { const d = { ...(stare.driver || {}) }, dep = { ...(stare.depot || {}) };
+      if (L) { Object.assign(d, { name: L.full_name || d.name, functia: L.functie || d.functia, nrContract: L.nr_contract || d.nrContract, dataAngajare: L.data_angajare || d.dataAngajare, fotoUrl: L.foto_url || d.fotoUrl, legitCod: L.legit_cod || d.legitCod });
+        if (L.depozit) Object.assign(dep, { name: L.depozit, address: L.depozit_adresa || dep.address, representativePhone: L.depozit_telefon || dep.representativePhone }); }
+      box.innerHTML = legitimatieHtml(d, dep); };
+    let L = null; try { L = JSON.parse(localStorage.getItem('ee-sofer-legit') || 'null'); } catch (e) {}
+    arata(L);
+    (async () => { try { const sb = await getSupabase(); const { data } = await sb.rpc('legitimatia_mea');
+      if (data && data[0]) { localStorage.setItem('ee-sofer-legit', JSON.stringify(data[0])); arata(data[0]); } } catch (e) {} })();
     screen.appendChild(el('div', { class: 'lg-plin' }, [el('div', { class: 'lg-rot' }, [box])]));   // s62: pe tot ecranul, culcata
     return screen;
   });

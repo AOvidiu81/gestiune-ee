@@ -1232,7 +1232,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
   <span id="rz-w"><button id="rz-reset" class="pictograma" title="Lățimi implicite — pune coloanele din tabelele acestei file înapoi cum erau">↺ Reset layout</button><i class="rz-sep">|</i></span>
   <span id="tz-w" title="Mărimea tabelului (doar tabelul, restul rămâne la fel), din 5 în 5%. Fiecare meniu își ține minte mărimea lui. Merge și cu Ctrl + rotița mausului, Ctrl + / Ctrl − / Ctrl 0. Dublu clic pe procent = scrii tu valoarea."><button class="pictograma" onclick="tzPas(-1)" aria-label="Micșorează tabelul">−</button><b id="tz-v" ondblclick="tzScrie()" title="Dublu clic = scrii mărimea (ex. 87), Enter">100%</b><input id="tz-in" type="number" min="30" max="300" step="5" style="display:none"><button class="pictograma" onclick="tzPas(1)" aria-label="Mărește tabelul">+</button></span>
-  <span class="ver">v10.33</span>
+  <span class="ver">v10.34</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -18270,7 +18270,7 @@ async function angFisa(x){
       ${afC("an-inc", "Data încetării", x.data_incetare, "date")}${afC("an-co", "Zile concediu alocate / an", x.zile_co_an, "number")}<div></div></div>
     <h4 style="margin:16px 0 8px">Program și pontaj</h4>
     <div class="grid3">${afC("an-ps", "Program birou — de la", afOra(x.program_start), "time")}${afC("an-pp", "Program birou — până la", afOra(x.program_stop), "time")}
-      ${afBif("an-sof", "apare în lista șoferilor (aplicațiile de rute)", x.apare_la_soferi, "Debifat = nu apare în aplicațiile șoferilor (ex. personal de birou)")}
+      ${afBif("an-sof", "apare în lista șoferilor (aplicațiile de rute)", x.apare_la_soferi, "Debifat = CONDUCERE: nu apare pe telefoanele șoferilor (nici la „Cine ești?”, nici la „Alege un coleg”); apare doar pe telefonul unde s-a conectat cineva din conducere")}
       <div style="grid-column:1/-1"><label>Nume vechi <span class="muted" style="text-transform:none;font-weight:400">(cum apare în rutele deja făcute — despărțite prin virgulă; pontajul le recunoaște)</span></label><input id="an-vechi" value="${esc((x.nume_vechi || []).join(", "))}"></div>
       <div style="grid-column:1/-1"><label>Observații</label><input id="an-obs" value="${esc(x.observatii || "")}"></div>
       ${afBif("an-activ", "angajat activ", x.activ !== false)}</div>

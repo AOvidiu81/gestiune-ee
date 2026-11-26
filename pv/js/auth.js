@@ -95,7 +95,14 @@ export async function signIn(username, password) {
 /** Lista soferilor activi pentru ecranul de selectare de la pornirea
  * aplicatiei (inainte de orice autentificare) — doar id + nume, nimic
  * sensibil (username, masina etc. raman ascunse). */
-export async function listDriversForLogin() {
+// v101 (cerut de Ovidiu, 26.11): conturile din CONDUCERE (in GestiuneEE debifat „apare în lista șoferilor”) nu apar
+// pe telefoanele soferilor — nici la „Cine esti?”, nici la „Alege un coleg”. Apar doar pe telefonul unde s-a conectat
+// cineva din CONDUCERE (telefonul tine minte) sau dupa 5 atingeri pe „Cine esti?”.
+export const KEY_DISP_CONDUCERE = 'ee-dispozitiv-conducere';
+export function dispozitivConducere(da) {
+  try { if (da) localStorage.setItem(KEY_DISP_CONDUCERE, '1'); return localStorage.getItem(KEY_DISP_CONDUCERE) === '1'; } catch (e) { return false; }
+}
+export async function listDriversForLogin(opts = {}) {
   let supabase;
   try {
     supabase = await getSupabase();
@@ -104,7 +111,8 @@ export async function listDriversForLogin() {
   }
   const { data, error } = await supabase.rpc('list_drivers_for_login');
   if (error) return { error: 'Nu am putut incarca lista de soferi.' };
-  return { drivers: data || [] };
+  const toti = opts.toti || dispozitivConducere();
+  return { drivers: (data || []).filter((d) => toti || d.grup !== 'CONDUCERE') };
 }
 
 /** Autentificare FARA parola: soferul doar isi atinge numele din lista

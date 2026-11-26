@@ -9,7 +9,7 @@ import { el, blobToDataUrl, APP_VERSION, forceUpdateApp } from './utils.js';
 import { replaceRoot } from './router.js';
 import { primaryButton, showToast, captureSignature, fereastraFirma } from './components.js';
 import { DepotRepo } from './db.js';
-import { getCurrentProfile, listDriversForLogin, signInAsDriver, signOut, saveOwnSignature, syncMasterData } from './auth.js';
+import { getCurrentProfile, listDriversForLogin, dispozitivConducere, signInAsDriver, signOut, saveOwnSignature, syncMasterData } from './auth.js';
 
 /** Blocheaza pornirea aplicatiei pana cand exista un profil autentificat,
  * activ si cu semnatura setata. Intoarce acel profil. */
@@ -31,6 +31,8 @@ export async function runLoginGate() {
 function runLoginScreen() {
   return new Promise((resolve) => {
     let cancelled = false;
+    let arataToti = false, atingeri = 0;   // v101: 5 atingeri pe „Cine esti?” = arata si conturile din CONDUCERE
+    const gata = (driver, profil) => { if (driver && driver.grup === 'CONDUCERE') dispozitivConducere(true); resolve(profil); };
 
     function render() {
       replaceRoot(() => {
@@ -58,7 +60,7 @@ function runLoginScreen() {
         const errorBox = el('div', { style: 'color:var(--danger);font-size:13px;text-align:center;min-height:18px;margin-top:6px' }, []);
 
         const card = el('div', { class: 'section-card' }, [
-          el('h3', { class: 'section-title', style: 'text-align:center' }, ['Cine esti?']),
+          el('h3', { class: 'section-title', style: 'text-align:center;user-select:none', onclick: () => { if (++atingeri >= 5 && !arataToti) { arataToti = true; render(); } } }, ['Cine esti?']),
           el('div', { style: 'text-align:center;color:var(--ink-soft);font-size:13px;margin-bottom:14px' }, [
             'Alege-ti numele din lista — contul e creat de administrator.',
           ]),
@@ -72,7 +74,7 @@ function runLoginScreen() {
         screen.appendChild(scroll);
 
         (async () => {
-          const result = await listDriversForLogin();
+          const result = await listDriversForLogin({ toti: arataToti });
           if (cancelled) return;
           statusBox.remove();
           if (result.error) {
@@ -100,7 +102,7 @@ function runLoginScreen() {
                 btn.textContent = driver.full_name;
                 return;
               }
-              resolve(signInResult.profile);
+              gata(driver, signInResult.profile);
             });
             listBox.appendChild(btn);
           }
@@ -126,7 +128,7 @@ function runLoginScreen() {
             if (cancelled) return;
             trimite = false; intra.disabled = false; intra.textContent = 'Intră';
             if (r.error) { errorBox.textContent = r.error; input.value = ''; input.focus(); return; }
-            resolve(r.profile);
+            gata(driver, r.profile);
           });
           input.addEventListener('input', () => {
             input.value = input.value.replace(/\D/g, '').slice(0, 4);
