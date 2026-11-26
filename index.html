@@ -656,6 +656,15 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   #m-leg .ds-b::before{display:none}
   /* v5.22: tipul comenzii și BUC doar cu text colorat */
   .tc{font-weight:700;font-size:11px}
+  /* v10.31: butonul „Legitimație” din capul fișei angajatului — card premium */
+  .btn-legit{display:inline-flex;align-items:center;align-self:center;gap:8px;margin:-4px 0;padding:4px 12px 4px 5px;border:1px solid #2a3f7a;border-radius:10px;cursor:pointer;
+    background:linear-gradient(135deg,#17275A 0%,#24407f 65%,#2E8B3C 150%);color:#fff;font:inherit;line-height:1.1;
+    box-shadow:0 2px 6px rgba(23,39,90,.28),inset 0 1px 0 rgba(255,255,255,.15);transition:transform .12s,box-shadow .12s}
+  .btn-legit:hover{transform:translateY(-1px);box-shadow:0 5px 14px rgba(23,39,90,.38),inset 0 1px 0 rgba(255,255,255,.2)}
+  .btn-legit:active{transform:translateY(0)}
+  .btn-legit .bl-ic{display:flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:7px;background:rgba(255,255,255,.16);font-size:15px}
+  .btn-legit .bl-tx{display:flex;flex-direction:column;text-align:left}.btn-legit b{font-size:12.5px;letter-spacing:.3px}
+  .btn-legit small{font-size:10px;opacity:.75}
   .tc-P{color:#6d28d9} :root[data-tema="inchis"] .tc-P{color:#c4b5fd}   /* v10.21: PRELUARE / PREDARE — mov */
   .p-P{background:#ede4ff;color:#5b21b6} :root[data-tema="inchis"] .p-P{background:#2e1f52;color:#c4b5fd}
   .tc-A{color:#145c34}.tc-R{color:#8a1d17}.tc-S{color:#1e3a8a}.tc-T{color:#7a4a00}.tc-X{color:#444}
@@ -1223,7 +1232,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
   <span id="rz-w"><button id="rz-reset" class="pictograma" title="Lățimi implicite — pune coloanele din tabelele acestei file înapoi cum erau">↺ Reset layout</button><i class="rz-sep">|</i></span>
   <span id="tz-w" title="Mărimea tabelului (doar tabelul, restul rămâne la fel), din 5 în 5%. Fiecare meniu își ține minte mărimea lui. Merge și cu Ctrl + rotița mausului, Ctrl + / Ctrl − / Ctrl 0. Dublu clic pe procent = scrii tu valoarea."><button class="pictograma" onclick="tzPas(-1)" aria-label="Micșorează tabelul">−</button><b id="tz-v" ondblclick="tzScrie()" title="Dublu clic = scrii mărimea (ex. 87), Enter">100%</b><input id="tz-in" type="number" min="30" max="300" step="5" style="display:none"><button class="pictograma" onclick="tzPas(1)" aria-label="Mărește tabelul">+</button></span>
-  <span class="ver">v10.30</span>
+  <span class="ver">v10.31</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -18198,7 +18207,7 @@ async function angFisa(x){
   $("ang-corp").innerHTML = `<div class="card"><details class="an-det" ${desc ? "open" : ""} ontoggle="ANG.fisaDeschisa=this.open"><summary style="cursor:pointer;list-style:none;display:flex;align-items:center;gap:12px;flex-wrap:wrap">
       <span class="an-sag" style="display:inline-block;width:20px;font-size:14px;color:var(--g)">▸</span>
       <span style="font-size:18px;font-weight:700;color:var(--g)">${nou ? "Angajat nou" : esc(x.nume)}</span>
-      ${nou ? "" : `<span style="display:flex;gap:16px;flex-wrap:wrap;font-size:13px"><span><span class="muted">Funcție</span> <b>${esc(x.functie || "—")}</b></span><span><span class="muted">Contract</span> <b>${esc(x.nr_contract || "—")}</b>${x.data_angajare ? ` <span class="muted">din ${fmtD(x.data_angajare)}</span>` : ""}</span><span><span class="muted">Vechime</span> <b>${esc(afVechime(x.data_angajare) || "—")}</b></span>${(k => k ? `<span title="Cuvenit anul acesta ${k.alocat}${k.partial ? " (proporțional din " + k.n + ")" : ""} · cuvenit până azi ${angCOz(k.cuvAzi)} · luat ${k.luat} · rămas pe an ${k.ramas}"><span class="muted">CO ${k.an}</span> <b>${k.luat}</b> luate din <b>${k.alocat}</b> · poate lua azi <b style="color:${k.poate > 0 ? "#2E8B3C" : "#C0392B"}">${k.poate}</b></span>` : "")(angCO(x, (ANG.co[x.id] || {}).CO))}${x.medicina_expira ? `<span><span class="muted">Medicina muncii</span> ${afSem(x.medicina_expira)}</span>` : ""}<span class="muted">|</span><a href="#" style="font-weight:700;color:var(--g);text-decoration:none" title="Legitimația de lucru — o vezi și o tipărești" onclick="event.preventDefault();event.stopPropagation();legitDinFisa('${x.id}')">🪪 Legitimație</a></span>`}
+      ${nou ? "" : `<span style="display:flex;gap:16px;flex-wrap:wrap;font-size:13px"><span><span class="muted">Funcție</span> <b>${esc(x.functie || "—")}</b></span><span><span class="muted">Contract</span> <b>${esc(x.nr_contract || "—")}</b>${x.data_angajare ? ` <span class="muted">din ${fmtD(x.data_angajare)}</span>` : ""}</span><span><span class="muted">Vechime</span> <b>${esc(afVechime(x.data_angajare) || "—")}</b></span>${(k => k ? `<span title="Cuvenit anul acesta ${k.alocat}${k.partial ? " (proporțional din " + k.n + ")" : ""} · cuvenit până azi ${angCOz(k.cuvAzi)} · luat ${k.luat} · rămas pe an ${k.ramas}"><span class="muted">CO ${k.an}</span> <b>${k.luat}</b> luate din <b>${k.alocat}</b> · poate lua azi <b style="color:${k.poate > 0 ? "#2E8B3C" : "#C0392B"}">${k.poate}</b></span>` : "")(angCO(x, (ANG.co[x.id] || {}).CO))}${x.medicina_expira ? `<span><span class="muted">Medicina muncii</span> ${afSem(x.medicina_expira)}</span>` : ""}<span class="muted">|</span><button type="button" class="btn-legit" title="Legitimația de lucru — o vezi și o tipărești" onclick="event.preventDefault();event.stopPropagation();legitDinFisa('${x.id}')"><span class="bl-ic">🪪</span><span class="bl-tx"><b>Legitimație</b><small>vezi · tipărește</small></span></button></span>`}
       <span class="muted noprint" style="margin-left:auto;font-size:12px">${nou ? "" : "clic = arată / ascunde datele angajatului"}</span></summary><div style="margin-top:12px">
     <div class="grid3">${afC("an-nume", "Nume și prenume (ca pe CI)", x.nume)}${afC("an-scurt", "Nume scurt", x.nume_scurt)}${afC("an-functie", "Funcție", x.functie)}
       ${afC("an-tel", "Telefon", x.telefon)}${afC("an-email", "E-mail", x.email)}${afC("an-nastere", "Data nașterii", x.data_nasterii, "date")}
