@@ -1232,7 +1232,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
   <span id="rz-w"><button id="rz-reset" class="pictograma" title="Lățimi implicite — pune coloanele din tabelele acestei file înapoi cum erau">↺ Reset layout</button><i class="rz-sep">|</i></span>
   <span id="tz-w" title="Mărimea tabelului (doar tabelul, restul rămâne la fel), din 5 în 5%. Fiecare meniu își ține minte mărimea lui. Merge și cu Ctrl + rotița mausului, Ctrl + / Ctrl − / Ctrl 0. Dublu clic pe procent = scrii tu valoarea."><button class="pictograma" onclick="tzPas(-1)" aria-label="Micșorează tabelul">−</button><b id="tz-v" ondblclick="tzScrie()" title="Dublu clic = scrii mărimea (ex. 87), Enter">100%</b><input id="tz-in" type="number" min="30" max="300" step="5" style="display:none"><button class="pictograma" onclick="tzPas(1)" aria-label="Mărește tabelul">+</button></span>
-  <span class="ver">v10.31</span>
+  <span class="ver">v10.33</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -14318,14 +14318,67 @@ async function legitAng(userId){
     m.innerHTML = `<div class="box" style="max-width:640px"><h3 class="lux-cap">🪪 Legitimație de lucru</h3><style>${LEGIT_CSS}</style>
       <div id="legit-nota" class="muted" style="font-size:12px;margin-bottom:8px"></div><div class="lg-loc" id="legit-loc"></div>
       <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px"><button class="btn sec" onclick="closeModal('mod-legit')">Închide</button>
-      <button class="btn" onclick="legitPrint()" title="Tipărește la mărimea cardului (85,6 × 54 mm), de plastifiat">🖨 Tipărește</button></div></div>`;
+      <button class="btn sec" onclick="legitTrimPanou()" title="Trimite legitimația ca PNG sau PDF pe WhatsApp / e-mail">📤 Trimite</button>
+      <button class="btn" onclick="legitPrint()" title="Tipărește la mărimea cardului (85,6 × 54 mm), de plastifiat">🖨 Tipărește</button></div>
+      <div id="legit-trim" style="display:none;margin-top:10px;padding:10px 12px;border:1px solid var(--bd);border-radius:10px;background:var(--card)">
+        <div style="display:flex;gap:14px;align-items:center;flex-wrap:wrap;margin-bottom:8px"><b style="font-size:13px">Format</b>
+          <label style="display:flex;gap:5px;align-items:center;margin:0;font-weight:600"><input type="radio" name="legit-fmt" value="png" checked> PNG (poză)</label>
+          <label style="display:flex;gap:5px;align-items:center;margin:0;font-weight:600"><input type="radio" name="legit-fmt" value="pdf"> PDF (mărimea cardului)</label></div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end">
+          <button class="btn sec" onclick="legitTrimite('wa')">💬 WhatsApp</button><button class="btn sec" onclick="legitTrimite('mail')">✉ E-mail</button>
+          <button class="btn sec" onclick="legitTrimite('sal')">💾 Salvează</button></div>
+        <div class="muted" style="font-size:11px;margin-top:6px">Dacă PC-ul are fereastra de partajare (Windows), alegi acolo WhatsApp / Mail. Dacă nu, fișierul se salvează în Descărcări și se deschide WhatsApp / e-mailul — îl atașezi tu.</div></div></div>`;
     m.addEventListener("mousedown", e => { if(e.target === m) closeModal("mod-legit"); });
     document.body.appendChild(m); feFereastra(m, () => closeModal("mod-legit"));
   }
+  { const bx = m.querySelector(".box"), cp = m.querySelector(".lux-cap");   // v10.32 (cerut de Ovidiu, 26.11): la fiecare deschidere pornește mică, la locul ei
+    if(bx.classList.contains("fe-max")) m.querySelector(".fe-mx").click();
+    cp.dispatchEvent(new MouseEvent("dblclick")); bx.style.width = "640px"; }
+  LEGIT_D = d; LEGIT_F = {}; $("legit-trim").style.display = "none";
   $("legit-loc").innerHTML = LEGIT_HTML;
   $("legit-nota").innerHTML = (d.foto_url ? "Cu poza făcută de angajat în Șofer EE." : "Fără poză (angajatul nu și-a făcut selfie în Șofer EE → Contul meu) — apare logo-ul.") +
     (d.active ? "" : " <b style='color:#b3261e'>Contul e DEZACTIVAT — QR-ul arată „NU mai este angajat”.</b>");
   m.classList.add("on");
+}
+// v10.33 (cerut de Ovidiu, 26.11): 📤 Trimite — legitimația ca PNG sau PDF (85,6 × 54 mm) pe WhatsApp / e-mail / salvată
+let LEGIT_D = null, LEGIT_F = {};
+function legitTrimPanou(){ const p = $("legit-trim"); p.style.display = p.style.display === "none" ? "" : "none"; }
+async function legitFisier(fmt){
+  if(LEGIT_F[fmt]) return LEGIT_F[fmt];
+  await cdLib();
+  const d = document.createElement("div");
+  d.style.cssText = "position:fixed;left:-10000px;top:0;width:1012px;background:transparent";
+  d.innerHTML = `<style>${LEGIT_CSS}</style><div class="lg-loc">${LEGIT_HTML}</div>`;
+  document.body.appendChild(d);
+  try{
+    await Promise.all([...d.querySelectorAll("img")].map(i => i.complete ? 0 : new Promise(r => { i.onload = i.onerror = r; })));
+    const cv = await html2canvas(d.querySelector(".lg-card"), { scale: 2, useCORS: true, backgroundColor: null });
+    const nume = "Legitimatie - " + faraDiac(LEGIT_D && LEGIT_D.full_name || "angajat").replace(/[\\/:*?"<>|]+/g, " ").trim();
+    let f;
+    if(fmt === "pdf"){
+      const pdf = new window.jspdf.jsPDF({ orientation: "landscape", unit: "mm", format: [85.6, 54], compress: true });
+      pdf.addImage(cv.toDataURL("image/png"), "PNG", 0, 0, 85.6, 54);
+      f = new File([pdf.output("blob")], nume + ".pdf", { type: "application/pdf" });
+    } else {
+      const b = await new Promise(r => cv.toBlob(r, "image/png"));
+      f = new File([b], nume + ".png", { type: "image/png" });
+    }
+    return (LEGIT_F[fmt] = f);
+  } finally { d.remove(); }
+}
+async function legitTrimite(canal){
+  const fmt = (document.querySelector('input[name="legit-fmt"]:checked') || {}).value || "png";
+  toast("Pregătesc legitimația (" + fmt.toUpperCase() + ")…");
+  let f; try{ f = await legitFisier(fmt); }catch(e){ toast("N-a mers: " + (e.message || e), true); return; }
+  const titlu = "Legitimatie de lucru - " + faraDiac(LEGIT_D && LEGIT_D.full_name || ""), txt = titlu + " (Euro Ecologic)";
+  if(canal !== "sal" && navigator.canShare && navigator.canShare({ files: [f] })){
+    try{ await navigator.share({ files: [f], title: titlu, text: txt }); return; }
+    catch(e){ if(e && e.name === "AbortError") return; if(e && e.name === "NotAllowedError"){ toast("Fișierul e gata — apasă încă o dată butonul"); return; } }
+  }
+  const a = document.createElement("a"); a.href = URL.createObjectURL(f); a.download = f.name; document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 3000);
+  if(canal === "wa") window.open("https://wa.me/?text=" + encodeURIComponent(txt), "_blank", "noopener");
+  else if(canal === "mail") location.href = "mailto:?subject=" + encodeURIComponent(titlu) + "&body=" + encodeURIComponent(txt + "\n\n(fisierul atasat: " + f.name + ")");
+  toast("Salvat în Descărcări: " + f.name + (canal === "sal" ? "" : " — atașează-l în " + (canal === "wa" ? "WhatsApp" : "e-mail")));
 }
 function legitPrint(){
   const f = document.createElement("iframe"); f.style.cssText = "position:fixed;right:0;bottom:0;width:0;height:0;border:0"; document.body.appendChild(f);
