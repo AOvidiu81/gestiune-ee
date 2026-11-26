@@ -134,7 +134,8 @@
 .lg-loc { container-type: inline-size; width: 100%; }
 .lg-card { aspect-ratio: 85.6 / 54; background: #fff; color: #141A2E; border-radius: 3.5cqw; overflow: hidden; display: flex; flex-direction: column;
   box-shadow: 0 8px 28px rgba(0,0,0,.35); font-family: Arial, Helvetica, sans-serif; font-size: 3.2cqw; }
-.lg-cap { display: flex; align-items: center; gap: 3cqw; padding: 2.2cqw 3.5cqw; border-bottom: .9cqw solid #17275A; }
+.lg-cap { display: flex; flex-wrap: wrap; align-items: center; gap: 0 3cqw; padding: 2.2cqw 3.5cqw 1.4cqw; border-bottom: .9cqw solid #17275A; }
+.lg-sediu { flex-basis: 100%; font-size: 2.4cqw; color: #4b5874; margin-top: .9cqw; padding-top: .8cqw; border-top: .2cqw solid #e3e8f0; }
 .lg-cap img { height: 7.5cqw; }
 .lg-titlu { font-weight: 800; font-size: 4.3cqw; color: #17275A; letter-spacing: .2cqw; }
 .lg-firma { font-size: 2.6cqw; color: #4b5874; }

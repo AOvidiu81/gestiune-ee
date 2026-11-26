@@ -1223,7 +1223,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
   <span id="rz-w"><button id="rz-reset" class="pictograma" title="Lățimi implicite — pune coloanele din tabelele acestei file înapoi cum erau">↺ Reset layout</button><i class="rz-sep">|</i></span>
   <span id="tz-w" title="Mărimea tabelului (doar tabelul, restul rămâne la fel), din 5 în 5%. Fiecare meniu își ține minte mărimea lui. Merge și cu Ctrl + rotița mausului, Ctrl + / Ctrl − / Ctrl 0. Dublu clic pe procent = scrii tu valoarea."><button class="pictograma" onclick="tzPas(-1)" aria-label="Micșorează tabelul">−</button><b id="tz-v" ondblclick="tzScrie()" title="Dublu clic = scrii mărimea (ex. 87), Enter">100%</b><input id="tz-in" type="number" min="30" max="300" step="5" style="display:none"><button class="pictograma" onclick="tzPas(1)" aria-label="Mărește tabelul">+</button></span>
-  <span class="ver">v10.26</span>
+  <span class="ver">v10.28</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -14271,7 +14271,7 @@ function contDupa(soferId){
 // nume / funcție / depozit / ACTIV). Datele vin din RPC legitimatie_cont (doar admin). Tipărire la mărimea cardului 85,6 × 54 mm. Nu atinge nicio anexă.
 const LEGIT_CSS = `.lg-loc{container-type:inline-size;width:100%}
 .lg-card{aspect-ratio:85.6/54;background:#fff;color:#141A2E;border-radius:3.5cqw;overflow:hidden;display:flex;flex-direction:column;font-family:Arial,Helvetica,sans-serif;font-size:3.2cqw;border:.25cqw solid #c7d3e4;box-sizing:border-box}
-.lg-cap{display:flex;align-items:center;gap:3cqw;padding:2.2cqw 3.5cqw;border-bottom:.9cqw solid #17275A}.lg-cap img{height:7.5cqw}
+.lg-cap{display:flex;flex-wrap:wrap;align-items:center;gap:0 3cqw;padding:2.2cqw 3.5cqw 1.4cqw;border-bottom:.9cqw solid #17275A}.lg-sediu{flex-basis:100%;font-size:2.4cqw;color:#4b5874;margin-top:.9cqw;padding-top:.8cqw;border-top:.2cqw solid #e3e8f0}.lg-cap img{height:7.5cqw}
 .lg-titlu{font-weight:800;font-size:4.3cqw;color:#17275A;letter-spacing:.2cqw}.lg-firma{font-size:2.6cqw;color:#4b5874}
 .lg-corp{flex:1;display:flex;gap:3cqw;padding:3cqw 3.5cqw 1.5cqw;align-items:center;min-height:0}
 .lg-poza{width:21cqw;height:28cqw;object-fit:cover;border-radius:1.5cqw;border:.3cqw solid #c7d3e4;flex-shrink:0}
@@ -14287,16 +14287,16 @@ async function legitAng(userId){
   const d = data[0];
   if(!window.qrcode){ try{ await fpScript("sofer/qrcode.js"); }catch(e){} }
   let firma = { name: "SC EURO ECOLOGIC SRL", cui: "" };
-  try{ const f = await db.from("company_info").select("name,cui").limit(1); if(f.data && f.data[0]) firma = f.data[0]; }catch(e){}
+  try{ const f = await db.from("company_info").select("name,cui,address").limit(1); if(f.data && f.data[0]) firma = f.data[0]; }catch(e){}
   const logo = new URL("pv/assets/logo/euro_ecologic_logo.png", location.href).href;
   let qr = "";
   if(d.legit_cod && window.qrcode){ const q = qrcode(0, "M"); q.addData("https://aovidiu81.github.io/gestiune-ee/legitimatie.html?c=" + d.legit_cod); q.make(); qr = q.createSvgTag({ cellSize: 4, margin: 0, scalable: true }); }
   const poza = d.foto_url ? `<img class="lg-poza" src="${d.foto_url}" alt="">` : `<div class="lg-poza lg-poza-logo"><img src="${logo}" alt=""></div>`;
-  LEGIT_HTML = `<div class="lg-card"><div class="lg-cap"><img src="${logo}" alt=""><div><div class="lg-titlu">LEGITIMAȚIE DE LUCRU</div><div class="lg-firma">${esc(firma.name)}${firma.cui ? " · CUI " + esc(firma.cui) : ""}</div></div></div>
+  LEGIT_HTML = `<div class="lg-card"><div class="lg-cap"><img src="${logo}" alt=""><div><div class="lg-titlu">LEGITIMAȚIE DE LUCRU</div><div class="lg-firma">${esc(firma.name)}${firma.cui ? " · CUI " + esc(firma.cui) : ""}</div></div>${firma.address ? '<div class="lg-sediu">Sediu: ' + esc(firma.address) + "</div>" : ""}</div>
     <div class="lg-corp">${poza}<div class="lg-date"><div class="lg-nume">${esc(d.full_name || "")}</div><div class="lg-fn">${esc(d.functie || "")}</div>
       <div>Depozit <b>${esc(d.depozit || "-")}</b></div><div>Contract nr. <b>${esc(d.nr_contract || "-")}</b></div><div>Angajat din <b>${esc(fmtD(d.data_angajare || "") || "-")}</b></div></div>
       <div class="lg-qr">${qr}<div>Scanează pentru verificare</div></div></div>
-    <div class="lg-jos">${esc([d.depozit_adresa, d.depozit_telefon].filter(Boolean).join(" · "))}</div></div>`;
+    <div class="lg-jos">${esc([d.depozit_adresa ? "Punct de lucru: " + d.depozit_adresa : "", d.depozit_telefon ? "Tel. " + d.depozit_telefon : ""].filter(Boolean).join(" · "))}</div></div>`;
   let m = $("mod-legit");
   if(!m){
     m = document.createElement("div"); m.id = "mod-legit"; m.className = "modal";
