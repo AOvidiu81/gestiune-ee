@@ -6,51 +6,59 @@
 <meta name="robots" content="noindex, nofollow">
 <meta name="theme-color" content="#1f2a44">
 <title>Verificare legitimație — Euro Ecologic</title>
-<!-- v10.26 (cerut de Ovidiu, 26.11): pagina din codul QR arata EXACT legitimatia (pe tot ecranul, culcata) + banda ACTIV / NU mai este angajat.
-     Date din RPC verifica_legitimatie (aceleasi ca pe card). In portret cardul se roteste 90°, ca sa fie cat mai mare. -->
+<!-- v10.29 (cerut de Ovidiu, 26.11): pagina din codul QR = EXACT legitimatia, pe tot ecranul (culcata; in portret se roteste 90°).
+     Starea apare in randul sediului: „… | ACTIV” (verde) sau „… | INACTIV” (rosu). Date din RPC verifica_legitimatie. -->
 <style>
   html, body { margin: 0; height: 100%; background: #1f2a44; font-family: Arial, Helvetica, sans-serif; overflow: hidden; }
   .rot { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); container-type: inline-size;
-    width: min(calc(100vw - 24px), calc((100dvh - 24px) / 0.8)); }
-  @media (orientation: portrait) { .rot { transform: translate(-50%, -50%) rotate(90deg); width: min(calc(100dvh - 24px), calc((100vw - 16px) / 0.8)); } }
-  .st { font-weight: 800; font-size: 4.6cqw; text-align: center; padding: 1.6cqw; border-radius: 2.5cqw; margin-bottom: 1.8cqw; }
-  .ok { background: #d6f3dc; color: #1e6b2d; } .nu { background: #fde2e2; color: #9b1c1c; } .as { background: #eef3fa; color: #4b5874; }
-  .ora { color: #c9d2e3; font-size: 2.2cqw; text-align: center; margin-top: 1.4cqw; }
+    width: min(calc(100vw - 16px), calc((100dvh - 16px) * 85.6 / 54)); }
+  @media (orientation: portrait) { .rot { transform: translate(-50%, -50%) rotate(90deg); width: min(calc(100dvh - 16px), calc((100vw - 16px) * 85.6 / 54)); } }
+  .msg { background: #eef3fa; color: #4b5874; font-weight: 700; font-size: 4cqw; text-align: center; padding: 3cqw; border-radius: 3cqw; }
+  .msg.nu { background: #fde2e2; color: #9b1c1c; }
   .lg-card{aspect-ratio:85.6/54;background:#fff;color:#141A2E;border-radius:3.5cqw;overflow:hidden;display:flex;flex-direction:column;font-size:3.2cqw;box-shadow:0 8px 28px rgba(0,0,0,.35)}
-  .lg-cap{display:flex;flex-wrap:wrap;align-items:center;gap:0 3cqw;padding:2.2cqw 3.5cqw 1.4cqw;border-bottom:.9cqw solid #17275A}.lg-sediu{flex-basis:100%;font-size:2.4cqw;color:#4b5874;margin-top:.9cqw;padding-top:.8cqw;border-top:.2cqw solid #e3e8f0}.lg-cap img{height:7.5cqw}
+  .lg-cap{display:flex;flex-wrap:wrap;align-items:center;gap:0 3cqw;padding:2.2cqw 3.5cqw 1.4cqw;border-bottom:.9cqw solid #17275A}.lg-cap img{height:7.5cqw}
+  .lg-sediu{flex-basis:100%;font-size:2.4cqw;color:#4b5874;margin-top:.9cqw;padding-top:.8cqw;border-top:.2cqw solid #e3e8f0}
+  .lg-sediu .ok{color:#1e8a36;font-weight:800} .lg-sediu .nu{color:#c81e1e;font-weight:800}
   .lg-titlu{font-weight:800;font-size:4.3cqw;color:#17275A;letter-spacing:.2cqw}.lg-firma{font-size:2.6cqw;color:#4b5874}
   .lg-corp{flex:1;display:flex;gap:3cqw;padding:3cqw 3.5cqw 1.5cqw;align-items:center;min-height:0}
   .lg-poza{width:21cqw;height:28cqw;object-fit:cover;border-radius:1.5cqw;border:.3cqw solid #c7d3e4;flex-shrink:0}
   .lg-poza-logo{display:flex;align-items:center;justify-content:center;background:#f3f6fb}.lg-poza-logo img{width:85%}
   .lg-date{flex:1;min-width:0;line-height:1.45}.lg-nume{font-weight:800;font-size:4.6cqw;color:#17275A;line-height:1.15;margin-bottom:.6cqw}
   .lg-fn{font-weight:700;color:#2E8B3C;margin-bottom:1cqw;text-transform:uppercase}
-  .lg-verif{width:20cqw;flex-shrink:0;text-align:center;font-size:2.3cqw;font-weight:800;border-radius:2cqw;padding:2cqw 1cqw}
-  .lg-verif big{display:block;font-size:9cqw;line-height:1}
+  .lg-qr{width:20cqw;flex-shrink:0;text-align:center;font-size:2cqw;color:#4b5874}.lg-qr svg{width:100%;height:auto;display:block;margin-bottom:.8cqw}
   .lg-jos{background:#17275A;color:#fff;font-size:2.4cqw;text-align:center;padding:1.3cqw 3cqw}
 </style>
+<script src="sofer/qrcode.js"></script>
 </head>
 <body>
-<div class="rot" id="rot"><div class="st as">Se verifică…</div></div>
+<div class="rot" id="rot"><div class="msg">Se verifică…</div></div>
 <script>
 (async () => {
   const URL_DB = "https://xrveoxmsdvryzyemmkqx.supabase.co", CHEIE = "sb_publishable_P1TSfVqqbyr3L-elKVgopg_1FpIpkv4", LOGO = "pv/assets/logo/euro_ecologic_logo.png";
   const esc = t => String(t == null ? "" : t).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
   const dataRo = iso => { const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(iso || "")); return m ? m[3] + "." + m[2] + "." + m[1] : "-"; };
+  const vechime = iso => { const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(iso || "")); if (!m) return "";
+    const d = new Date(+m[1], +m[2] - 1, +m[3]), a = new Date(); let l = (a.getFullYear() - d.getFullYear()) * 12 + a.getMonth() - d.getMonth(); if (a.getDate() < d.getDate()) l--;
+    if (l < 0) return ""; const an = Math.floor(l / 12), r = l % 12;
+    return [an ? an + (an === 1 ? " an" : " ani") : "", r ? r + (r === 1 ? " lună" : " luni") : ""].filter(Boolean).join(" și ") || "sub o lună"; };
   const rot = document.getElementById("rot"), cod = new URLSearchParams(location.search).get("c") || "";
-  const ora = '<div class="ora">Verificat la ' + new Date().toLocaleString("ro-RO") + "</div>";
   try {
     const x = await fetch(URL_DB + "/rest/v1/rpc/verifica_legitimatie", { method: "POST",
       headers: { "Content-Type": "application/json", apikey: CHEIE, Authorization: "Bearer " + CHEIE }, body: JSON.stringify({ p_cod: cod }) });
     const d = x.ok ? await x.json() : null, p = d && d[0];
-    if (!p) { rot.innerHTML = '<div class="st nu">✕ Legitimație necunoscută — codul nu corespunde niciunui angajat Euro Ecologic</div>' + ora; return; }
+    if (!p) { rot.innerHTML = '<div class="msg nu">✕ Legitimație necunoscută — codul nu corespunde niciunui angajat Euro Ecologic</div>'; return; }
+    let qr = "";
+    if (window.qrcode) { const q = qrcode(0, "M"); q.addData(location.href); q.make(); qr = q.createSvgTag({ cellSize: 4, margin: 0, scalable: true }); }
     const poza = p.foto_url ? `<img class="lg-poza" src="${p.foto_url}" alt="">` : `<div class="lg-poza lg-poza-logo"><img src="${LOGO}" alt=""></div>`;
-    const verif = p.activ ? '<div class="lg-verif ok"><big>✔</big>ANGAJAT<br>ACTIV</div>' : '<div class="lg-verif nu"><big>✕</big>NU MAI ESTE<br>ANGAJAT</div>';
-    rot.innerHTML = (p.activ ? '<div class="st ok">✔ ANGAJAT ACTIV · Euro Ecologic</div>' : '<div class="st nu">✕ NU mai este angajat Euro Ecologic</div>') +
-      `<div class="lg-card"><div class="lg-cap"><img src="${LOGO}" alt="Euro Ecologic"><div><div class="lg-titlu">LEGITIMAȚIE DE LUCRU</div><div class="lg-firma">${esc(p.firma || "SC EURO ECOLOGIC SRL")}${p.cui ? " · CUI " + esc(p.cui) : ""}</div></div>${p.firma_adresa ? '<div class="lg-sediu">Sediu: ' + esc(p.firma_adresa) + "</div>" : ""}</div>
+    const st = p.activ ? '<span class="ok">ACTIV</span>' : '<span class="nu">INACTIV</span>';
+    const v = vechime(p.data_angajare);
+    rot.innerHTML = `<div class="lg-card" title="Verificat la ${esc(new Date().toLocaleString("ro-RO"))}"><div class="lg-cap"><img src="${LOGO}" alt="Euro Ecologic"><div><div class="lg-titlu">LEGITIMAȚIE DE LUCRU</div><div class="lg-firma">${esc(p.firma || "SC EURO ECOLOGIC SRL")}${p.cui ? " · CUI " + esc(p.cui) : ""}</div></div>
+      <div class="lg-sediu">${p.firma_adresa ? "Sediu: " + esc(p.firma_adresa) + " | " : ""}${st}</div></div>
       <div class="lg-corp">${poza}<div class="lg-date"><div class="lg-nume">${esc(p.full_name)}</div><div class="lg-fn">${esc(p.functie || "")}</div>
-        <div>Depozit <b>${esc(p.depozit || "-")}</b></div><div>Contract nr. <b>${esc(p.nr_contract || "-")}</b></div><div>Angajat din <b>${dataRo(p.data_angajare)}</b></div></div>${verif}</div>
-      <div class="lg-jos">${esc([p.depozit_adresa ? "Punct de lucru: " + p.depozit_adresa : "", p.depozit_telefon ? "Tel. " + p.depozit_telefon : ""].filter(Boolean).join(" · "))}</div></div>` + ora;
-  } catch (e) { rot.innerHTML = '<div class="st as">Nu se poate verifica acum (fără internet). Încearcă din nou.</div>'; }
+        <div>Depozit <b>${esc(p.depozit || "-")}</b></div><div>Contract nr. <b>${esc(p.nr_contract || "-")}</b></div><div>Angajat din <b>${dataRo(p.data_angajare)}</b></div>${v ? `<div>Vechime <b>${esc(v)}</b></div>` : ""}</div>
+        <div class="lg-qr">${qr}<div>Scanează pentru verificare</div></div></div>
+      <div class="lg-jos">${esc([p.depozit_adresa ? "Punct de lucru: " + p.depozit_adresa : "", p.depozit_telefon ? "Tel. " + p.depozit_telefon : ""].filter(Boolean).join(" · "))}</div></div>`;
+  } catch (e) { rot.innerHTML = '<div class="msg">Nu se poate verifica acum (fără internet). Încearcă din nou.</div>'; }
 })();
 </script>
 </body>

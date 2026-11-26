@@ -27,7 +27,7 @@ import { openHistoryScreen } from '../pv/js/screens-history.js';
 import { buildComenziActive } from '../pv/js/screens-comenzi.js';
 import { openSettingsScreen } from '../pv/js/screens-setup.js';
 
-export const SOFER_VERSION = 's65';
+export const SOFER_VERSION = 's66';
 
 const KEY_ZI = 'ee-sofer-zi'; // ziua deschisa: { zi, coleg, carId, km, trasee, zile, zona, ordine, ruta }
 const KEY_ULTIMA = 'ee-sofer-ultima'; // ultimele alegeri (masina, traseu, zona) — precompletare
@@ -752,7 +752,7 @@ function legitimatieHtml(d, dep) {
     <div class="lg-cap"><img src="${LOGO}" alt="Euro Ecologic"><div><div class="lg-titlu">LEGITIMAȚIE DE LUCRU</div><div class="lg-firma">${escH(COMPANY_INFO.name)} · CUI ${escH(COMPANY_INFO.cui)}</div></div>${COMPANY_INFO.address ? `<div class="lg-sediu">Sediu: ${escH(COMPANY_INFO.address)}</div>` : ''}</div>
     <div class="lg-corp">${poza}
       <div class="lg-date"><div class="lg-nume">${escH(d.name || '')}</div><div class="lg-fn">${escH(d.functia || '')}</div>
-        <div>Depozit <b>${escH(dep?.name || '')}</b></div><div>Contract nr. <b>${escH(d.nrContract || '-')}</b></div><div>Angajat din <b>${escH(dataRo(d.dataAngajare) || '-')}</b></div></div>
+        <div>Depozit <b>${escH(dep?.name || '')}</b></div><div>Contract nr. <b>${escH(d.nrContract || '-')}</b></div><div>Angajat din <b>${escH(dataRo(d.dataAngajare) || '-')}</b></div>${vechime(d.dataAngajare) ? `<div>Vechime <b>${escH(vechime(d.dataAngajare))}</b></div>` : ''}</div>
       <div class="lg-qr">${qr}<div>Scanează pentru verificare</div></div></div>
     <div class="lg-jos">${escH([dep?.address ? 'Punct de lucru: ' + dep.address : '', dep?.representativePhone ? 'Tel. ' + dep.representativePhone : ''].filter(Boolean).join(' · ') || COMPANY_INFO.phone || '')}</div>
   </div>`;
