@@ -1232,7 +1232,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
   <span id="rz-w"><button id="rz-reset" class="pictograma" title="Lățimi implicite — pune coloanele din tabelele acestei file înapoi cum erau">↺ Reset layout</button><i class="rz-sep">|</i></span>
   <span id="tz-w" title="Mărimea tabelului (doar tabelul, restul rămâne la fel), din 5 în 5%. Fiecare meniu își ține minte mărimea lui. Merge și cu Ctrl + rotița mausului, Ctrl + / Ctrl − / Ctrl 0. Dublu clic pe procent = scrii tu valoarea."><button class="pictograma" onclick="tzPas(-1)" aria-label="Micșorează tabelul">−</button><b id="tz-v" ondblclick="tzScrie()" title="Dublu clic = scrii mărimea (ex. 87), Enter">100%</b><input id="tz-in" type="number" min="30" max="300" step="5" style="display:none"><button class="pictograma" onclick="tzPas(1)" aria-label="Mărește tabelul">+</button></span>
-  <span class="ver">v10.36</span>
+  <span class="ver">v10.37</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -15857,8 +15857,8 @@ const A_DEF = {
       {c:"ci_serie",e:"CI serie",t:"text",up:1},
       {c:"ci_numar",e:"CI număr",t:"text"},
       {c:"nr_contract",e:"Nr. contract",t:"text"},
-      {c:"apare_la_soferi",e:"Grup Șofer EE: Da = echipă de rută (îl văd șoferii) · Nu = CONDUCERE (ascuns la șoferi)",t:"bool"},   // v10.36 (cerut de Ovidiu, 26.11)
-      {c:"activ",e:"Activ",t:"bool"}
+      {c:"activ",e:"Activ",t:"bool"},
+      {c:"apare_la_soferi",e:"Grup Șofer EE",t:"bool",rand:1,op2:["🚚 Echipă de rută — îl văd șoferii (la „Cine ești?” și „Alege un coleg”)","🔒 CONDUCERE — ascuns pe telefoanele șoferilor"]}   // v10.36 (cerut de Ovidiu, 26.11): rând separat
     ]
   },
   masini:{
@@ -16153,7 +16153,7 @@ function adminOptiuniRef(ref){
 }
 function adminCampHtml(f){
   const id="af-"+f.c;
-  if(f.t==="bool") return `<div><label>${esc(f.e)}</label><select id="${id}"><option value="true">Da</option><option value="false">Nu</option></select></div>`;
+  if(f.t==="bool") return `<div${f.rand ? ' style="grid-column:1/-1"' : ""}><label>${esc(f.e)}</label><select id="${id}"${f.rand ? ' style="max-width:520px"' : ""}><option value="true">${esc(f.op2 ? f.op2[0] : "Da")}</option><option value="false">${esc(f.op2 ? f.op2[1] : "Nu")}</option></select></div>`;
   if(f.t==="ta")   return `<div><label>${esc(f.e)}</label><textarea id="${id}"></textarea></div>`;
   if(f.t==="sel")  return `<div><label>${esc(f.e)}</label><select id="${id}">${f.op.map(o=>`<option value="${esc(o)}">${esc(o)}</option>`).join("")}</select></div>`;
   if(f.t==="ref")  return `<div><label>${esc(f.e)}</label><select id="${id}"><option value="">—</option>${adminOptiuniRef(f.ref).map(o=>`<option value="${o.v}">${esc(o.t)}</option>`).join("")}</select></div>`;
