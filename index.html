@@ -1223,7 +1223,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
   <span id="rz-w"><button id="rz-reset" class="pictograma" title="Lățimi implicite — pune coloanele din tabelele acestei file înapoi cum erau">↺ Reset layout</button><i class="rz-sep">|</i></span>
   <span id="tz-w" title="Mărimea tabelului (doar tabelul, restul rămâne la fel), din 5 în 5%. Fiecare meniu își ține minte mărimea lui. Merge și cu Ctrl + rotița mausului, Ctrl + / Ctrl − / Ctrl 0. Dublu clic pe procent = scrii tu valoarea."><button class="pictograma" onclick="tzPas(-1)" aria-label="Micșorează tabelul">−</button><b id="tz-v" ondblclick="tzScrie()" title="Dublu clic = scrii mărimea (ex. 87), Enter">100%</b><input id="tz-in" type="number" min="30" max="300" step="5" style="display:none"><button class="pictograma" onclick="tzPas(1)" aria-label="Mărește tabelul">+</button></span>
-  <span class="ver">v10.24</span>
+  <span class="ver">v10.25</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -14266,6 +14266,63 @@ function contDupa(soferId){
   if(typeof renderAdmin === "function") renderAdmin();
 }
 
+// v10.25 (cerut de Ovidiu, 26.11): LEGITIMAȚIA DE LUCRU — aceeași ca în Șofer EE (Contul meu → 🪪 Legitimația mea): logo, firma, poza (selfie-ul
+// făcut de șofer, opțional; fără poză = logo), nume, funcție, depozit, nr. contract, data angajării, QR de verificare (legitimatie.html, arată doar
+// nume / funcție / depozit / ACTIV). Datele vin din RPC legitimatie_cont (doar admin). Tipărire la mărimea cardului 85,6 × 54 mm. Nu atinge nicio anexă.
+const LEGIT_CSS = `.lg-loc{container-type:inline-size;width:100%}
+.lg-card{aspect-ratio:85.6/54;background:#fff;color:#141A2E;border-radius:3.5cqw;overflow:hidden;display:flex;flex-direction:column;font-family:Arial,Helvetica,sans-serif;font-size:3.2cqw;border:.25cqw solid #c7d3e4;box-sizing:border-box}
+.lg-cap{display:flex;align-items:center;gap:3cqw;padding:2.2cqw 3.5cqw;border-bottom:.9cqw solid #17275A}.lg-cap img{height:7.5cqw}
+.lg-titlu{font-weight:800;font-size:4.3cqw;color:#17275A;letter-spacing:.2cqw}.lg-firma{font-size:2.6cqw;color:#4b5874}
+.lg-corp{flex:1;display:flex;gap:3cqw;padding:3cqw 3.5cqw 1.5cqw;align-items:center;min-height:0}
+.lg-poza{width:21cqw;height:28cqw;object-fit:cover;border-radius:1.5cqw;border:.3cqw solid #c7d3e4;flex-shrink:0}
+.lg-poza-logo{display:flex;align-items:center;justify-content:center;background:#f3f6fb}.lg-poza-logo img{width:85%}
+.lg-date{flex:1;min-width:0;line-height:1.45}.lg-nume{font-weight:800;font-size:4.6cqw;color:#17275A;line-height:1.15;margin-bottom:.6cqw}
+.lg-fn{font-weight:700;color:#2E8B3C;margin-bottom:1cqw;text-transform:uppercase}
+.lg-qr{width:20cqw;flex-shrink:0;text-align:center;font-size:2cqw;color:#4b5874}.lg-qr svg{width:100%;height:auto;display:block;margin-bottom:.8cqw}
+.lg-jos{background:#17275A;color:#fff;font-size:2.4cqw;text-align:center;padding:1.3cqw 3cqw;-webkit-print-color-adjust:exact;print-color-adjust:exact}`;
+let LEGIT_HTML = "";
+async function legitAng(userId){
+  const { data, error } = await db.rpc("legitimatie_cont", { p_id: String(userId) });
+  if(error || !data || !data[0]){ toast("Legitimația nu s-a putut citi" + (error ? ": " + error.message : ""), true); return; }
+  const d = data[0];
+  if(!window.qrcode){ try{ await fpScript("sofer/qrcode.js"); }catch(e){} }
+  let firma = { name: "SC EURO ECOLOGIC SRL", cui: "" };
+  try{ const f = await db.from("company_info").select("name,cui").limit(1); if(f.data && f.data[0]) firma = f.data[0]; }catch(e){}
+  const logo = new URL("pv/assets/logo/euro_ecologic_logo.png", location.href).href;
+  let qr = "";
+  if(d.legit_cod && window.qrcode){ const q = qrcode(0, "M"); q.addData("https://aovidiu81.github.io/gestiune-ee/legitimatie.html?c=" + d.legit_cod); q.make(); qr = q.createSvgTag({ cellSize: 4, margin: 0, scalable: true }); }
+  const poza = d.foto_url ? `<img class="lg-poza" src="${d.foto_url}" alt="">` : `<div class="lg-poza lg-poza-logo"><img src="${logo}" alt=""></div>`;
+  LEGIT_HTML = `<div class="lg-card"><div class="lg-cap"><img src="${logo}" alt=""><div><div class="lg-titlu">LEGITIMAȚIE DE LUCRU</div><div class="lg-firma">${esc(firma.name)}${firma.cui ? " · CUI " + esc(firma.cui) : ""}</div></div></div>
+    <div class="lg-corp">${poza}<div class="lg-date"><div class="lg-nume">${esc(d.full_name || "")}</div><div class="lg-fn">${esc(d.functie || "")}</div>
+      <div>Depozit <b>${esc(d.depozit || "-")}</b></div><div>Contract nr. <b>${esc(d.nr_contract || "-")}</b></div><div>Angajat din <b>${esc(fmtD(d.data_angajare || "") || "-")}</b></div></div>
+      <div class="lg-qr">${qr}<div>Scanează pentru verificare</div></div></div>
+    <div class="lg-jos">${esc([d.depozit_adresa, d.depozit_telefon].filter(Boolean).join(" · "))}</div></div>`;
+  let m = $("mod-legit");
+  if(!m){
+    m = document.createElement("div"); m.id = "mod-legit"; m.className = "modal";
+    m.innerHTML = `<div class="box" style="max-width:640px"><h3 class="lux-cap">🪪 Legitimație de lucru</h3><style>${LEGIT_CSS}</style>
+      <div id="legit-nota" class="muted" style="font-size:12px;margin-bottom:8px"></div><div class="lg-loc" id="legit-loc"></div>
+      <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px"><button class="btn sec" onclick="closeModal('mod-legit')">Închide</button>
+      <button class="btn" onclick="legitPrint()" title="Tipărește la mărimea cardului (85,6 × 54 mm), de plastifiat">🖨 Tipărește</button></div></div>`;
+    m.addEventListener("mousedown", e => { if(e.target === m) closeModal("mod-legit"); });
+    document.body.appendChild(m); feFereastra(m, () => closeModal("mod-legit"));
+  }
+  $("legit-loc").innerHTML = LEGIT_HTML;
+  $("legit-nota").innerHTML = (d.foto_url ? "Cu poza făcută de angajat în Șofer EE." : "Fără poză (angajatul nu și-a făcut selfie în Șofer EE → Contul meu) — apare logo-ul.") +
+    (d.active ? "" : " <b style='color:#b3261e'>Contul e DEZACTIVAT — QR-ul arată „NU mai este angajat”.</b>");
+  m.classList.add("on");
+}
+function legitPrint(){
+  const f = document.createElement("iframe"); f.style.cssText = "position:fixed;right:0;bottom:0;width:0;height:0;border:0"; document.body.appendChild(f);
+  const w = f.contentWindow;
+  w.document.open();
+  w.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>Legitimatie</title><style>@page{size:A4;margin:15mm}body{margin:0}${LEGIT_CSS}.lg-loc{width:85.6mm}.lg-card{border-radius:3mm}</style></head><body><div class="lg-loc">${LEGIT_HTML}</div></body></html>`);
+  w.document.close();
+  const gata = () => { w.focus(); w.print(); setTimeout(() => f.remove(), 2000); };
+  const imgs = [...w.document.images]; let n = imgs.filter(i => !i.complete).length;
+  if(!n) setTimeout(gata, 200); else imgs.forEach(i => { if(!i.complete) i.onload = i.onerror = () => { if(--n === 0) setTimeout(gata, 200); }; });
+}
+
 function panouCont(rec){
   const c = contulAngajatului(rec.id);
   const cap = '<div style="grid-column:1/-1;border-top:1px solid var(--bd);margin-top:6px;padding-top:12px">' +
@@ -14280,6 +14337,7 @@ function panouCont(rec){
       '<div><label>Parolă nouă</label><input id="ct-parola" type="password" autocomplete="new-password" placeholder="lasă gol dacă nu o schimbi"></div>' +
       `<div style="flex:0"><label>&nbsp;</label><button class="btn sec" onclick="contReseteaza('${c.id}')">Schimbă parola</button></div>` +
       `<div style="flex:0"><label>&nbsp;</label><button class="btn sec" onclick="contActiv('${c.id}', ${c.active ? "false" : "true"})">${c.active ? "Dezactivează accesul" : "Activează accesul"}</button></div>` +
+      `<div style="flex:0"><label>&nbsp;</label><button class="btn sec" onclick="legitAng('${c.id}')" title="Legitimația de lucru (cu poza din Șofer EE, dacă și-a făcut) — o vezi și o tipărești">🪪 Legitimație</button></div>` +   // v10.25
       `<div style="flex:0"><label>&nbsp;</label><button class="btn danger" onclick="contSterge('${c.id}')">Șterge contul</button></div>` +
       '</div>' + randPin(c) + '</div>';
   }

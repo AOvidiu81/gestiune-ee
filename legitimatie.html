@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Verificare legitimație — Euro Ecologic</title>
+<!-- v10.25 / Sofer EE s62 (cerut de Ovidiu, 26.11): pagina deschisa din codul QR al legitimatiei de lucru.
+     Arata doar numele, functia, depozitul si daca omul e angajat ACTIV (RPC verifica_legitimatie) — fara date personale. -->
+<style>
+  body { margin: 0; font-family: Arial, Helvetica, sans-serif; background: #eef3fa; color: #141A2E; display: flex; min-height: 100vh; align-items: center; justify-content: center; padding: 18px; box-sizing: border-box; }
+  .c { background: #fff; border-radius: 18px; max-width: 420px; width: 100%; padding: 22px; box-shadow: 0 8px 30px rgba(23,39,90,.15); text-align: center; }
+  .c img { height: 46px; margin-bottom: 10px; }
+  .st { font-size: 22px; font-weight: 800; padding: 14px; border-radius: 12px; margin: 12px 0; }
+  .ok { background: #d6f3dc; color: #1e6b2d; } .nu { background: #fde2e2; color: #9b1c1c; } .as { background: #eef3fa; color: #4b5874; font-size: 16px; }
+  .n { font-size: 20px; font-weight: 800; color: #17275A; } .f { color: #2E8B3C; font-weight: 700; margin: 4px 0; }
+  .m { color: #4b5874; font-size: 13px; margin-top: 14px; }
+</style>
+</head>
+<body>
+<div class="c">
+  <img src="pv/assets/logo/euro_ecologic_logo.png" alt="Euro Ecologic">
+  <div id="r"><div class="st as">Se verifică…</div></div>
+  <div class="m" id="ora"></div>
+</div>
+<script>
+(async () => {
+  const URL_DB = "https://xrveoxmsdvryzyemmkqx.supabase.co", CHEIE = "sb_publishable_P1TSfVqqbyr3L-elKVgopg_1FpIpkv4";
+  const esc = t => String(t == null ? "" : t).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
+  const r = document.getElementById("r"), cod = new URLSearchParams(location.search).get("c") || "";
+  document.getElementById("ora").textContent = "Verificat la " + new Date().toLocaleString("ro-RO");
+  try {
+    const x = await fetch(URL_DB + "/rest/v1/rpc/verifica_legitimatie", { method: "POST",
+      headers: { "Content-Type": "application/json", apikey: CHEIE, Authorization: "Bearer " + CHEIE }, body: JSON.stringify({ p_cod: cod }) });
+    const d = x.ok ? await x.json() : null, p = d && d[0];
+    if (!p) { r.innerHTML = '<div class="st nu">✕ Legitimație necunoscută</div><div class="m">Codul nu corespunde niciunui angajat Euro Ecologic.</div>'; return; }
+    r.innerHTML = (p.activ ? '<div class="st ok">✔ ANGAJAT ACTIV</div>' : '<div class="st nu">✕ NU mai este angajat</div>') +
+      `<div class="n">${esc(p.full_name)}</div><div class="f">${esc(p.functie || "")}</div><div>Depozit <b>${esc(p.depozit || "-")}</b></div><div class="m">${esc(p.firma || "Euro Ecologic")}</div>`;
+  } catch (e) { r.innerHTML = '<div class="st as">Nu se poate verifica acum (fără internet). Încearcă din nou.</div>'; }
+})();
+</script>
+</body>
+</html>

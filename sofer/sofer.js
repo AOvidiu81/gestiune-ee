@@ -17,17 +17,17 @@ import { el, APP_VERSION as PV_VERSION, forceUpdateApp } from '../pv/js/utils.js
 import { replaceRoot, pushScreen, popAll } from '../pv/js/router.js';
 import { DriverRepo, CarRepo, DepotRepo } from '../pv/js/db.js';
 import { runLoginGate } from '../pv/js/screens-login.js';
-import { getCurrentProfile, saveOwnSignature, syncMasterData, getTodayBirthdays, getSupabase, listDriversForLogin, signOut, flushPvQueue, pvQueueCount } from '../pv/js/auth.js';
+import { getCurrentProfile, saveOwnSignature, saveOwnPhoto, syncMasterData, getTodayBirthdays, getSupabase, listDriversForLogin, signOut, flushPvQueue, pvQueueCount } from '../pv/js/auth.js';
 import { tile, openModal, primaryButton, outlineButton, sectionCard, captureSignature, confirmDialog, showToast } from '../pv/js/components.js';
 import { blobToDataUrl } from '../pv/js/utils.js';
-import { PROCESS_TYPES } from '../pv/js/catalog-defaults.js';
+import { PROCESS_TYPES, COMPANY_INFO } from '../pv/js/catalog-defaults.js';
 import { openProcessVerbalForm } from '../pv/js/screens-pv-form.js';
 import { openCereriMenu } from '../pv/js/screens-cereri.js';
 import { openHistoryScreen } from '../pv/js/screens-history.js';
 import { buildComenziActive } from '../pv/js/screens-comenzi.js';
 import { openSettingsScreen } from '../pv/js/screens-setup.js';
 
-export const SOFER_VERSION = 's61';
+export const SOFER_VERSION = 's62';
 
 const KEY_ZI = 'ee-sofer-zi'; // ziua deschisa: { zi, coleg, carId, km, trasee, zile, zona, ordine, ruta }
 const KEY_ULTIMA = 'ee-sofer-ultima'; // ultimele alegeri (masina, traseu, zona) — precompletare
@@ -374,13 +374,19 @@ function construiesteZiua({ initial, liste, gata, inapoi, cereColeg, nota }) {
     z.ruta ? null : outlineButton('🏭 Azi la depozit (fără mașină)', () => laDepozit()),
     inapoi ? null : el('div', { style: 'height:10px' }),
     inapoi ? null : el('button', { class: 'btn btn-text btn-block', onclick: () => altSofer() }, ['← Nu sunt eu (alege alt șofer)']),
-    inapoi ? null : el('button', { class: 'btn btn-text btn-block', onclick: () => semnaturaMea() }, ['✍️ Semnătura mea']),   // s61
   ]);
+  // s62 (cerut de Ovidiu, 26.11): sus logo-ul in stanga (apasat = datele firmei / depozitului) si cardul cu cel logat in dreapta (= Contul meu)
   const sus = inapoi ? [] : [
-    el('img', { class: 'brand-logo', src: 'assets/logo/euro_ecologic_logo.png', alt: 'Euro Ecologic' }),
-    el('div', { class: 'app-version-tag' }, [`Șofer EE ${SOFER_VERSION} · PV ${PV_VERSION}`]),
+    el('div', { class: 'sofer-antet' }, [
+      el('button', { class: 'sofer-logo-btn', title: 'Datele firmei și ale depozitului', onclick: () => fereastraFirma() }, [
+        el('img', { src: 'assets/logo/euro_ecologic_logo.png', alt: 'Euro Ecologic' }),
+        el('div', { class: 'sofer-antet-ver' }, [`Șofer EE ${SOFER_VERSION} · PV ${PV_VERSION}`]),
+      ]),
+      cardCont(),
+    ]),
   ];
-  screen.appendChild(el('div', { class: 'screen-scroll' }, [...sus, card]));
+  const jos = inapoi ? [] : [el('div', { class: 'app-semn-autor' }, ['Euro Ecologic · realizat de A. Ovidiu · 2026'])];
+  screen.appendChild(el('div', { class: 'screen-scroll' }, [...sus, card, ...jos]));
   if (cereColeg) setTimeout(async () => { z.coleg = await alegeColeg(liste.colegi, z.coleg, true); arataEchipa(); }, 250);
   return screen;
 }
@@ -576,9 +582,8 @@ function ecranSetari() {
         el('div', { class: 'sofer-info' }, [`Depozit: ${stare.depot?.name || '-'}`]),
         outlineButton('📅 Ziua de azi (coleg, traseu, zonă)', () => { pop(undefined); editeazaZiua(); }),
         outlineButton('🚚 Schimbă mașina', () => { pop(undefined); schimbaMasina(); }),
-        outlineButton('✍️ Semnătura mea', () => semnaturaMea()),   // s61
         outlineButton('⟳ Forțează actualizarea', () => forceUpdateApp()),
-        outlineButton('👤 Cont / Deconectare', () => openSettingsScreen()),
+        outlineButton('👤 Contul meu (date, poză, semnătură, legitimație)', () => contulMeu()),   // s62
       ]),
     ]);
     screen.appendChild(el('div', { class: 'screen-scroll' }, [card]));
@@ -634,6 +639,165 @@ function semnaturaMea() {
     screen.appendChild(el('div', { class: 'screen-scroll' }, [card]));
     return screen;
   });
+}
+
+// ---------- s62 (cerut de Ovidiu, 26.11): Contul meu · Legitimatia de lucru · datele firmei la logo ----------
+const LEGIT_URL = 'https://aovidiu81.github.io/gestiune-ee/legitimatie.html?c=';
+const LOGO = 'assets/logo/euro_ecologic_logo.png';
+const dataRo = (iso) => { const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(iso || '')); return m ? `${m[3]}.${m[2]}.${m[1]}` : ''; };
+function vechime(iso) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(iso || '')); if (!m) return '';
+  const d = new Date(+m[1], +m[2] - 1, +m[3]), a = new Date();
+  let luni = (a.getFullYear() - d.getFullYear()) * 12 + a.getMonth() - d.getMonth(); if (a.getDate() < d.getDate()) luni--;
+  if (luni < 0) return '';
+  const ani = Math.floor(luni / 12), r = luni % 12;
+  return [ani ? ani + (ani === 1 ? ' an' : ' ani') : '', r ? r + (r === 1 ? ' lună' : ' luni') : ''].filter(Boolean).join(' și ') || 'sub o lună';
+}
+const escH = (t) => String(t == null ? '' : t).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
+
+function cardCont() {
+  const d = stare.driver || {};
+  const poza = d.fotoUrl ? el('img', { class: 'sofer-cont-poza', src: d.fotoUrl, alt: '' }) : el('div', { class: 'sofer-cont-poza gol' }, ['👤']);
+  return el('button', { class: 'sofer-cont-card', title: 'Contul meu', onclick: () => contulMeu() }, [
+    poza,
+    el('div', { class: 'sofer-cont-text' }, [
+      el('div', { class: 'sofer-cont-nume' }, [d.name || 'Contul meu']),
+      el('div', { class: 'sofer-cont-functie' }, [d.functia || 'Euro Ecologic']),
+    ]),
+  ]);
+}
+
+// poza din camera (selfie): taiata 3:4 pe mijloc, micsorata la 300×400, JPEG — cam 30 KB
+function alegePoza() {
+  return new Promise((resolve) => {
+    const inp = el('input', { type: 'file', accept: 'image/*', capture: 'user', style: 'display:none' });
+    inp.addEventListener('change', () => {
+      const f = inp.files && inp.files[0]; inp.remove(); if (!f) return resolve(null);
+      const url = URL.createObjectURL(f), img = new Image();
+      img.onload = () => {
+        const W = 300, H = 400, r = W / H; let sw = img.width, sh = img.height;
+        if (sw / sh > r) sw = sh * r; else sh = sw / r;
+        const c = document.createElement('canvas'); c.width = W; c.height = H;
+        c.getContext('2d').drawImage(img, (img.width - sw) / 2, (img.height - sh) / 2, sw, sh, 0, 0, W, H);
+        URL.revokeObjectURL(url); resolve(c.toDataURL('image/jpeg', 0.82));
+      };
+      img.onerror = () => { URL.revokeObjectURL(url); resolve(null); };
+      img.src = url;
+    });
+    document.body.appendChild(inp); inp.click();
+  });
+}
+
+function contulMeu() {
+  return pushScreen(({ pop }) => {
+    const screen = el('div', { class: 'screen' });
+    screen.appendChild(el('div', { class: 'topbar' }, [
+      el('button', { class: 'icon-btn', onclick: () => pop(undefined) }, ['←']),
+      el('div', { class: 'topbar-title' }, ['Contul meu']),
+      el('div', { class: 'topbar-spacer' }),
+    ]));
+    const corp = el('div', {});
+    const deseneaza = () => {
+      const d = stare.driver || {};
+      const rand = (t, v) => el('div', { class: 'sofer-cont-rand' }, [el('span', {}, [t]), el('b', {}, [v || '-'])]);
+      const pozaBox = el('div', { class: 'sofer-cont-pozamare' }, [d.fotoUrl ? el('img', { src: d.fotoUrl, alt: '' }) : el('img', { src: LOGO, alt: '', class: 'logo' })]);
+      const salveazaPoza = async (dataUrl) => {
+        try {
+          if (!navigator.onLine) throw new Error('internet');
+          const prof = await saveOwnPhoto(dataUrl);
+          try { await syncMasterData(prof || await getCurrentProfile()); } catch (e) {}
+          await incarcaLocal(); deseneaza();
+          showToast(dataUrl ? 'Poza salvată — apare pe legitimație.' : 'Poza ștearsă — pe legitimație apare logo-ul.');
+        } catch (e) {
+          showToast(/internet|fetch|network/i.test(e.message) ? 'Ai nevoie de internet ca să salvezi poza.' : 'Nu am putut salva poza: ' + e.message, { danger: true });
+        }
+      };
+      corp.innerHTML = '';
+      corp.appendChild(sectionCard('Date angajat', [
+        rand('Nume', d.name), rand('Funcție', d.functia), rand('Depozit', stare.depot?.name),
+        rand('Nr. contract de muncă', d.nrContract), rand('Data angajării', dataRo(d.dataAngajare)), rand('Vechime', vechime(d.dataAngajare)),
+        el('div', { class: 'sofer-nota', style: 'margin-top:8px' }, ['Datele le schimbă administratorul din GestiuneEE.']),
+      ]));
+      corp.appendChild(sectionCard('Poza (opțională)', [
+        el('div', { class: 'sofer-cont-pozarand' }, [pozaBox, el('div', { class: 'sofer-nota' }, ['Apare pe legitimația de lucru. Dacă nu ai poză, pe legitimație apare logo-ul Euro Ecologic.'])]),
+        outlineButton(d.fotoUrl ? '📷 Schimbă poza' : '📷 Fă-ți o poză (selfie)', async () => { const u = await alegePoza(); if (u) salveazaPoza(u); }),
+        d.fotoUrl ? el('div', { style: 'height:8px' }) : null,
+        d.fotoUrl ? outlineButton('🗑 Șterge poza', async () => {
+          if (await confirmDialog({ title: 'Ștergi poza?', message: 'Pe legitimație va apărea logo-ul Euro Ecologic.', okLabel: 'Șterge', cancelLabel: 'Nu' })) salveazaPoza('');
+        }) : null,
+      ]));
+      corp.appendChild(sectionCard('Semnătura', [
+        d.signatureDataUrl ? el('div', { class: 'sofer-cont-semn' }, [el('img', { src: d.signatureDataUrl, alt: 'semnatura' })]) : el('div', { class: 'sofer-nota' }, ['Nu ai semnătură salvată.']),
+        outlineButton('✍️ Vezi / refă semnătura', async () => { await semnaturaMea(); await incarcaLocal(); deseneaza(); }),
+      ]));
+      corp.appendChild(primaryButton('🪪 Legitimația mea', () => legitimatia()));
+      corp.appendChild(el('div', { style: 'height:12px' }));
+      corp.appendChild(outlineButton('Deconectare', async () => {
+        if (!(await confirmDialog({ title: 'Deconectare', message: 'Ieși din cont pe acest telefon?', okLabel: 'Deconectează-mă', cancelLabel: 'Nu' }))) return;
+        await signOut(); location.reload();
+      }));
+    };
+    deseneaza();
+    screen.appendChild(el('div', { class: 'screen-scroll' }, [corp]));
+    return screen;
+  });
+}
+
+function legitimatieHtml(d, dep) {
+  const cod = d.legitCod || '';
+  let qr = '<div class="lg-faraqr">Codul QR apare după prima sincronizare (cu internet).</div>';
+  if (cod && window.qrcode) { try { const q = window.qrcode(0, 'M'); q.addData(LEGIT_URL + cod); q.make(); qr = q.createSvgTag({ cellSize: 4, margin: 0, scalable: true }); } catch (e) {} }
+  const poza = d.fotoUrl ? `<img class="lg-poza" src="${d.fotoUrl}" alt="">` : `<div class="lg-poza lg-poza-logo"><img src="${LOGO}" alt=""></div>`;
+  return `<div class="lg-card">
+    <div class="lg-cap"><img src="${LOGO}" alt="Euro Ecologic"><div><div class="lg-titlu">LEGITIMAȚIE DE LUCRU</div><div class="lg-firma">${escH(COMPANY_INFO.name)} · CUI ${escH(COMPANY_INFO.cui)}</div></div></div>
+    <div class="lg-corp">${poza}
+      <div class="lg-date"><div class="lg-nume">${escH(d.name || '')}</div><div class="lg-fn">${escH(d.functia || '')}</div>
+        <div>Depozit <b>${escH(dep?.name || '')}</b></div><div>Contract nr. <b>${escH(d.nrContract || '-')}</b></div><div>Angajat din <b>${escH(dataRo(d.dataAngajare) || '-')}</b></div></div>
+      <div class="lg-qr">${qr}<div>Scanează pentru verificare</div></div></div>
+    <div class="lg-jos">${escH([dep?.address, dep?.representativePhone].filter(Boolean).join(' · ') || COMPANY_INFO.phone || '')}</div>
+  </div>`;
+}
+
+function legitimatia() {
+  return pushScreen(({ pop }) => {
+    const screen = el('div', { class: 'screen lg-ecran' });
+    screen.appendChild(el('div', { class: 'topbar' }, [
+      el('button', { class: 'icon-btn', onclick: () => pop(undefined) }, ['←']),
+      el('div', { class: 'topbar-title' }, ['Legitimația mea']),
+      el('div', { class: 'topbar-spacer' }),
+    ]));
+    const box = el('div', { class: 'lg-loc' }); box.innerHTML = legitimatieHtml(stare.driver || {}, stare.depot);
+    screen.appendChild(el('div', { class: 'screen-scroll lg-scroll' }, [box,
+      el('div', { class: 'sofer-nota', style: 'text-align:center;margin-top:12px' }, ['Arată ecranul acesta la poartă / pe șantier. Cine scanează codul QR vede dacă ești angajat ACTIV al Euro Ecologic. Întoarce telefonul pe orizontală pentru o legitimație mai mare.'])]));
+    return screen;
+  });
+}
+
+// logo apasat: datele firmei → (apasare) datele depozitului → (apasare) se inchide; trecere cu fade
+function fereastraFirma() {
+  const c = COMPANY_INFO, dep = stare.depot || {};
+  const pag = [
+    { t: 'Datele firmei', r: [['Firma', c.name], ['CUI', c.cui], ['Reg. Com.', c.regCom], ['Sediu', c.address], ['Telefon', c.phone], ['E-mail', c.email], ['Web', c.website]] },
+    { t: 'Depozit ' + (dep.name || ''), r: [['Adresa', dep.address], ['Responsabil', [dep.representativeName, dep.representativeFunction].filter(Boolean).join(', ')], ['Telefon', dep.representativePhone], ['E-mail', dep.representativeEmail]] },
+  ];
+  let i = 0;
+  const panou = el('div', { class: 'ff-panou' });
+  const fundal = el('div', { class: 'ff-fundal' }, [panou]);
+  const inchide = () => { fundal.classList.remove('on'); setTimeout(() => fundal.remove(), 260); };
+  const arata = () => {
+    const p = pag[i];
+    panou.innerHTML = `<div class="ff-cap"><img src="${LOGO}" alt=""><button class="ff-x" title="Închide">✕</button></div><div class="ff-titlu">${escH(p.t)}</div>` +
+      p.r.filter(([, v]) => v).map(([k, v]) => `<div class="ff-rand"><span>${escH(k)}</span><b>${escH(v)}</b></div>`).join('') +
+      `<div class="ff-hint">${i === 0 ? 'Apasă pentru datele depozitului →' : 'Apasă ca să închizi'}</div>`;
+    panou.querySelector('.ff-x').onclick = (e) => { e.stopPropagation(); inchide(); };
+  };
+  fundal.onclick = () => {
+    if (i >= pag.length - 1) return inchide();
+    panou.classList.add('ff-stins');
+    setTimeout(() => { i++; arata(); panou.classList.remove('ff-stins'); }, 220);
+  };
+  arata(); document.body.appendChild(fundal);
+  requestAnimationFrame(() => fundal.classList.add('on'));
 }
 
 // ---------- seriile pe punctul de ruta (s23) ----------

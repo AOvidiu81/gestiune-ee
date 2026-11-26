@@ -64,7 +64,8 @@ function runLoginScreen() {
           errorBox,
         ]);
 
-        const scroll = el('div', { class: 'screen-scroll', style: 'display:flex;flex-direction:column;justify-content:center;min-height:100%' }, [logo, versionTag, updateBtn, card]);
+        const scroll = el('div', { class: 'screen-scroll', style: 'display:flex;flex-direction:column;justify-content:center;min-height:100%' }, [logo, versionTag, updateBtn, card,
+          el('div', { class: 'app-semn-autor' }, ['Euro Ecologic · realizat de A. Ovidiu · 2026'])]);   // v99 (cerut de Ovidiu, 26.11)
         screen.appendChild(scroll);
 
         (async () => {

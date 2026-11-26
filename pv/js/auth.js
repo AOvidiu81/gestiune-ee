@@ -220,6 +220,22 @@ export async function saveOwnSignature(dataUrl) {
   return profile;
 }
 
+/** s62 / v99 (cerut de Ovidiu, 26.11): poza proprie (selfie, optionala) pentru legitimatia de lucru.
+ * dataUrl gol = sterge poza (legitimatia arata logo-ul). Necesita internet. */
+export async function saveOwnPhoto(dataUrl) {
+  const supabase = await getSupabase().catch(() => {
+    throw new Error('Ai nevoie de internet ca sa-ti salvezi poza.');
+  });
+  const { data: sessionData } = await supabase.auth.getSession();
+  const session = sessionData?.session;
+  if (!session) throw new Error('Sesiune expirata — reloghati-va.');
+  const { error } = await supabase.from('profiles').update({ foto_url: dataUrl || null }).eq('id', session.user.id);
+  if (error) throw new Error(error.message);
+  const profile = await fetchOwnProfile(supabase, session.user.id);
+  if (profile) await MetaRepo.set('lastProfile', profile);
+  return profile;
+}
+
 /** Numele soferilor activi a caror zi de nastere e chiar azi (fus orar RO),
  * indiferent cine e logat — folosit pentru mesajul general "La multi ani"
  * aratat oricui deschide aplicatia in acea zi (vezi app.js). RPC SECURITY
@@ -425,6 +441,8 @@ export async function syncMasterData(profile) {
       // de aici — nu mai e un camp editabil local. Foloseste "profile.functie", nu "" ca inainte.
       functia: profile.functie || '',
       signatureDataUrl: profile.signature_url || '',
+      fotoUrl: profile.foto_url || '',      // s62 / v99: poza optionala (selfie) pentru legitimatia de lucru
+      legitCod: profile.legit_cod || '',    // s62 / v99: codul secret din QR-ul legitimatiei
       nrContract: profile.nr_contract || '',
       dataAngajare: profile.data_angajare || '',
       // Depozitul la care e alocat soferul, setat din admin (tab Soferi) —

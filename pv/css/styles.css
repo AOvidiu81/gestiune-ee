@@ -450,3 +450,6 @@ select.field-input { appearance: none; background-image: linear-gradient(45deg, 
 .ca-tip-rand { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
 .ca-sageata { color: var(--ink-soft); font-weight: 700; font-size: 12px; }
 .ca-rezumat { font-weight: 700; font-size: 14.5px; color: var(--ink); margin-top: 2px; }
+
+/* v99 (cerut de Ovidiu, 26.11): semnatura aplicatiei, jos pe ecranele de pornire */
+.app-semn-autor { text-align: center; font-size: 11px; color: var(--ink-soft); opacity: .7; margin: 18px auto 10px; letter-spacing: .2px; }
