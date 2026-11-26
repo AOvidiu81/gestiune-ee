@@ -1232,7 +1232,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
   <span id="rz-w"><button id="rz-reset" class="pictograma" title="Lățimi implicite — pune coloanele din tabelele acestei file înapoi cum erau">↺ Reset layout</button><i class="rz-sep">|</i></span>
   <span id="tz-w" title="Mărimea tabelului (doar tabelul, restul rămâne la fel), din 5 în 5%. Fiecare meniu își ține minte mărimea lui. Merge și cu Ctrl + rotița mausului, Ctrl + / Ctrl − / Ctrl 0. Dublu clic pe procent = scrii tu valoarea."><button class="pictograma" onclick="tzPas(-1)" aria-label="Micșorează tabelul">−</button><b id="tz-v" ondblclick="tzScrie()" title="Dublu clic = scrii mărimea (ex. 87), Enter">100%</b><input id="tz-in" type="number" min="30" max="300" step="5" style="display:none"><button class="pictograma" onclick="tzPas(1)" aria-label="Mărește tabelul">+</button></span>
-  <span class="ver">v10.37</span>
+  <span class="ver">v10.38</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -12335,16 +12335,31 @@ async function fvFacturat(t, pune){   // ✓ corect → FACTURAT; din ✓ înapo
                           : await db.from("facturare_stare").delete().eq("anexa_id", t.aid).eq("an", an).eq("luna", luna);
   if(r && r.error) toast("STARE LUNA: " + r.error.message, true);
 }
-async function fvRoteste(j){
-  const t = R_FVJ[j]; if(!t) return;
+// v10.38 (cerut de Ovidiu, 26.11): pătratul se schimbă PE LOC la clic (fără să aștepte baza), iar redesenarea de după
+// salvare păstrează poziția derulării — înainte tabelul „sărea” ~1 secundă, ca și cum n-ar fi luat clicul.
+let FV_LUCRU = new Set();
+function fvArata(btn, v){
+  if(!btn) return; btn.className = "fv-sq fv-" + v.replace("-", "x"); btn.textContent = FV_SIM[v] || "–";
+  const tr = btn.closest("tr"); if(tr){ tr.classList.remove("fv-r-V", "fv-r-G", "fv-r-N", "fv-r-x"); tr.classList.add("fv-r-" + v.replace("-", "x")); }
+}
+async function fvRedeseneazaPeLoc(){
+  const tb = $("r-tbl"), L = []; for(let e = tb && tb.parentElement; e; e = e.parentElement) if(e.scrollTop || e.scrollLeft) L.push([e, e.scrollTop, e.scrollLeft]);
+  const wy = window.scrollY, wx = window.scrollX;
+  await raportFacturare();
+  L.forEach(([e, t, l]) => { e.scrollTop = t; e.scrollLeft = l; }); window.scrollTo(wx, wy);
+}
+async function fvRoteste(j, btn){
+  const t = R_FVJ[j]; if(!t || FV_LUCRU.has(t.k)) return;
   const v0 = fvSt(t.k), v = FV_URM[v0];
-  if(!await fvSalveaza(t, { stare: v === "-" ? null : v })) return;
+  FV_LUCRU.add(t.k); fvArata(btn, v); if(btn) btn.style.opacity = ".75";
+  let ok = false; try{ ok = await fvSalveaza(t, { stare: v === "-" ? null : v }); } finally { FV_LUCRU.delete(t.k); if(btn) btn.style.opacity = ""; }
+  if(!ok){ fvArata(btn, v0); return; }
   try{
     if(v === "V" && (t.f[0] === "ACTIV" || t.f[0] === "IN ASTEPTARE FACTURA")) await fvFacturat(t, true);   // v7.16
     else if(v0 === "V" && t.f[0] === "FACTURAT") await fvFacturat(t, false);
   }catch(e){ toast("STARE LUNA: " + (e.message || e), true); }
   toast("Verificare: " + (FV_NUME[v] || "neverificat"));
-  await raportFacturare();
+  await fvRedeseneazaPeLoc();
 }
 async function fvScrie(j, camp, val){
   const t = R_FVJ[j]; if(!t) return;
@@ -13090,7 +13105,7 @@ function deseneazaRaport(){
           if(i === 17) t = `<input class="fv-in" value="${esc(v || "")}" placeholder="nr." onchange="fvScrie(${j},'nr_factura',this.value)">`;
           if(i === 18) t = `<input class="fv-in fv-obs" value="${esc(v || "")}" placeholder="ce e greșit…" onchange="fvScrie(${j},'observatii',this.value)">`;
           if(i === 19){ const s0 = R_FVJ[j] ? fvSt(R_FVJ[j].k) : "-";
-            t = `<button class="fv-sq fv-${s0.replace("-", "x")}" onclick="fvRoteste(${j})" title="Clic: – → ✓ corect → ! greșită → ✗ neprimită → –">${FV_SIM[s0] || "–"}</button>`; }
+            t = `<button class="fv-sq fv-${s0.replace("-", "x")}" onclick="fvRoteste(${j}, this)" title="Clic: – → ✓ corect → ! greșită → ✗ neprimită → –">${FV_SIM[s0] || "–"}</button>`; }
         }
         const ta = fl && i === 16 && accLista(R_ACC[j] || "").length;   // v7.06
         if(ta) t = `<span class="tip-acc" title="Accesorii:&#10;${accLista(R_ACC[j]).map(x => "• " + esc(x)).join("&#10;")}">${t || "—"}</span>`;
