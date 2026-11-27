@@ -1232,7 +1232,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
   <span id="rz-w"><button id="rz-reset" class="pictograma" title="Lățimi implicite — pune coloanele din tabelele acestei file înapoi cum erau">↺ Reset layout</button><i class="rz-sep">|</i></span>
   <span id="tz-w" title="Mărimea tabelului (doar tabelul, restul rămâne la fel), din 5 în 5%. Fiecare meniu își ține minte mărimea lui. Merge și cu Ctrl + rotița mausului, Ctrl + / Ctrl − / Ctrl 0. Dublu clic pe procent = scrii tu valoarea."><button class="pictograma" onclick="tzPas(-1)" aria-label="Micșorează tabelul">−</button><b id="tz-v" ondblclick="tzScrie()" title="Dublu clic = scrii mărimea (ex. 87), Enter">100%</b><input id="tz-in" type="number" min="30" max="300" step="5" style="display:none"><button class="pictograma" onclick="tzPas(1)" aria-label="Mărește tabelul">+</button></span>
-  <span class="ver">v10.46</span>
+  <span class="ver">v10.47</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -11997,7 +11997,7 @@ async function raportFacturare(){
   { const { data: cm } = await db.from("miscari").select("id,anexa_id,cmd_nr,cmd_data").eq("tip_miscare", "EVENIMENT-A").not("anexa_id", "is", null).or("cmd_nr.not.is.null,cmd_data.not.is.null").limit(5000);
     FACT_CMD = {}; (cm || []).sort((x, y) => x.id - y.id).forEach(m => { FACT_CMD[m.anexa_id] = m; }); }
   const [misF, fsR, fpR, scR, flR] = await Promise.all([ miscariLuna(anF, lunaF),
-    db.from("facturare_stare").select("anexa_id,stare,valoare,moneda,dif_ok,refacut_din").eq("an", anF).eq("luna", lunaF),   // v10.09
+    db.from("facturare_stare").select("anexa_id,stare,valoare,moneda,dif_ok,refacut_din,actualizat_la").eq("an", anF).eq("luna", lunaF),   // v10.09; v10.47 + actualizat_la
     db.from("facturare_perioada").select("*"),
     db.from("facturare_servisari").select("*").eq("an", anF).eq("luna", lunaF),   // v6.86
     db.from("facturare_locatii").select("*") ]);   // v6.88
@@ -12379,15 +12379,22 @@ async function fvRedeseneazaPeLoc(){
   await raportFacturare();
   L.forEach(([e, t, l]) => { e.scrollTop = t; e.scrollLeft = l; }); window.scrollTo(wx, wy);
 }
+// v10.47 (Ovidiu, 27.11 — PRISMA PLAZA anexa 2): rândul era deja FACTURAT înainte de verificare (factură cerută separat, ✉ ROG FACTURA).
+// Dacă se scoate ✓, starea FACTURAT se șterge doar dacă a fost pusă chiar de ✓ (aceeași clipă, ±2 min), nu și când exista dinainte.
+function fvPusDeVerificare(t, ex0){
+  if(!t.anx){ return true; }
+  const fs = R_FSX[t.aid], a = fs && fs.actualizat_la ? Date.parse(fs.actualizat_la) : NaN, b = ex0 && ex0.actualizat_la ? Date.parse(ex0.actualizat_la) : NaN;
+  return !isNaN(a) && !isNaN(b) && Math.abs(a - b) < 120000;
+}
 async function fvRoteste(j, btn){
   const t = R_FVJ[j]; if(!t || FV_LUCRU.has(t.k)) return;
-  const v0 = fvSt(t.k), v = FV_URM[v0];
+  const v0 = fvSt(t.k), v = FV_URM[v0], ex0 = Object.assign({}, FVER[t.k] || {});
   FV_LUCRU.add(t.k); fvArata(btn, v); if(btn) btn.style.opacity = ".75";
   let ok = false; try{ ok = await fvSalveaza(t, { stare: v === "-" ? null : v }); } finally { FV_LUCRU.delete(t.k); if(btn) btn.style.opacity = ""; }
   if(!ok){ fvArata(btn, v0); return; }
   try{
     if(v === "V" && (t.f[0] === "ACTIV" || t.f[0] === "IN ASTEPTARE FACTURA")) await fvFacturat(t, true);   // v7.16
-    else if(v0 === "V" && t.f[0] === "FACTURAT") await fvFacturat(t, false);
+    else if(v0 === "V" && t.f[0] === "FACTURAT" && fvPusDeVerificare(t, ex0)) await fvFacturat(t, false);   // v10.47: FACTURAT de dinainte (✉ / pus în „În lucru”) rămâne
   }catch(e){ toast("STARE LUNA: " + (e.message || e), true); }
   toast("Verificare: " + (FV_NUME[v] || "neverificat"));
   await fvRedeseneazaPeLoc();
@@ -13135,6 +13142,9 @@ function deseneazaRaport(){
         if(R_NUME === "Facturare_verificare"){   // v7.05: nr. factură, observație, pătratul de verificare
           if(i === 17) t = `<input class="fv-in" value="${esc(v || "")}" placeholder="nr." onchange="fvScrie(${j},'nr_factura',this.value)">`;
           if(i === 18) t = `<input class="fv-in fv-obs" value="${esc(v || "")}" placeholder="ce e greșit…" onchange="fvScrie(${j},'observatii',this.value)">`;
+          if(i === 0 && R_FVJ[j] && fvSt(R_FVJ[j].k) !== "V" && /^(FACTURAT|IN ASTEPTARE FACTURA)$/.test(R_FVJ[j].f[0])){   // v10.47 (cerut de Ovidiu, 27.11)
+            const fa = R_FVJ[j].f[0] === "FACTURAT";
+            t = `<b title="${fa ? "Rândul e deja FACTURAT în „În lucru” (STARE LUNA) — factura a fost cerută / emisă separat (ex. ✉ ROG FACTURA) sau trecută de mână.\n\nAici doar verifici factura primită de la sediu: dacă e corectă, pune ✓. Starea rămâne FACTURAT; dacă scoți ✓ mai târziu, FACTURAT NU se șterge." : "Factura e cerută la sediu (✉ IN ASTEPTARE FACTURA) — încă nu e marcată primită.\n\nCând o primești și e corectă, pune ✓: starea devine FACTURAT, cu suma cerută."}">${t}</b> <span class="warn-pill" style="background:${fa ? "#2E8B3C" : "#B45309"};cursor:help" title="${fa ? "Deja FACTURAT în „În lucru”" : "Cerută la sediu — așteaptă factura"}">${fa ? "🧾 FACTURAT" : "✉ CERUTĂ"}</span>`; }
           if(i === 19){ const s0 = R_FVJ[j] ? fvSt(R_FVJ[j].k) : "-";
             t = `<button class="fv-sq fv-${s0.replace("-", "x")}" onclick="fvRoteste(${j}, this)" title="Clic: – → ✓ corect → ! greșită → ✗ neprimită → –">${FV_SIM[s0] || "–"}</button>`; }
         }
