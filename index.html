@@ -1232,7 +1232,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
   <span id="rz-w"><button id="rz-reset" class="pictograma" title="Lățimi implicite — pune coloanele din tabelele acestei file înapoi cum erau">↺ Reset layout</button><i class="rz-sep">|</i></span>
   <span id="tz-w" title="Mărimea tabelului (doar tabelul, restul rămâne la fel), din 5 în 5%. Fiecare meniu își ține minte mărimea lui. Merge și cu Ctrl + rotița mausului, Ctrl + / Ctrl − / Ctrl 0. Dublu clic pe procent = scrii tu valoarea."><button class="pictograma" onclick="tzPas(-1)" aria-label="Micșorează tabelul">−</button><b id="tz-v" ondblclick="tzScrie()" title="Dublu clic = scrii mărimea (ex. 87), Enter">100%</b><input id="tz-in" type="number" min="30" max="300" step="5" style="display:none"><button class="pictograma" onclick="tzPas(1)" aria-label="Mărește tabelul">+</button></span>
-  <span class="ver">v10.39</span>
+  <span class="ver">v10.40</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -4769,6 +4769,7 @@ async function mmExtIncarca(){
   const { data, error } = await db.from("miscari").select("id,data,tip_miscare,buc,produs,model,accesorii,client,jud,loc,sat,pers_resp,telefon,frecv_serv,contract")
     .in("contract", sec).not("client", "is", null).order("data", { ascending: false }).order("id", { ascending: false }).limit(3000);
   if(!error) MM_EXT = data || [];
+  mmExtListaUmple();
   if($("mod-m").classList.contains("on")) mmCarduri();
 }
 function mmModClient(){
@@ -4780,6 +4781,7 @@ function mmModClient(){
   $("mm-ctr").closest(".g-cc > div").style.display = ext ? "none" : "";
   $("mm-anexa").closest(".gf").style.display = ext ? "none" : "";
   if(ext){ $("mm-ctr").value = ""; $("mm-anexa").value = ""; }
+  mmExtListaUmple();   // v10.40
   mmXpArata();   // v7.94
   mmCarduri();
 }
@@ -4787,7 +4789,14 @@ function mmCarduriExt(){
   const box = $("mm-carduri"), n = $("mm-client").value.trim().toLowerCase();
   if(!n){ box.innerHTML = ""; return; }
   const ale = MM_EXT.filter(x => String(x.client || "").toLowerCase() === n);
-  if(!ale.length){ box.innerHTML = `<div class="mm-gol">Client exterior nou — nu are comenzi din exterior până acum. Completează locația și contactul în comandă.</div>`; return; }
+  if(!ale.length){
+    const sem = mmExtSeamana($("mm-client").value);   // v10.40: „LAMACOS CONSTRUCT” → „LAMACOS CONSTRUCT SRL”
+    box.innerHTML = sem.length
+      ? `<div class="mm-gol" style="color:var(--t-warn);font-weight:600">⚠ Numele nu e scris exact ca la comenzile / punctele de rută existente. Ai vrut: ` +
+        sem.map(x => `<button type="button" class="btn sm" style="margin:2px 4px" onclick="mmExtPuneNume(this.dataset.n)" data-n="${esc(x)}">${esc(x)}</button>`).join("") +
+        `<br><span style="font-weight:400">Altfel aplicația îl ia drept client nou și „→ Rute” / „✓ Închide ridicarea” nu găsesc punctul de rută.</span></div>`
+      : `<div class="mm-gol">Client exterior nou — nu are comenzi din exterior până acum. Completează locația și contactul în comandă.</div>`;
+    return; }
   const grup = new Map();   // ultima comandă pe fiecare locație
   ale.forEach(x => { const k = [x.jud, x.loc, x.sat].map(v => String(v || "").trim().toLowerCase()).join("|"); if(!grup.has(k)) grup.set(k, x); });
   box.innerHTML = [...grup.values()].map(x => {
@@ -4800,6 +4809,27 @@ function mmCarduriExt(){
       (x.frecv_serv ? `<div class="mu">${esc(x.frecv_serv)}</div>` : "") + `</div>`;
   }).join("");
 }
+// v10.40 (cerut de Ovidiu, 27.11 — LAMACOS): la comanda din exterior clientul se alege dintr-o listă cu clienții din exterior
+// deja cunoscuți (comenzile din exterior + punctele de rută C…), ca numele să fie exact; la un nume asemănător — avertisment cu numele corect.
+function mmExtNume(){
+  const m = new Map();
+  const ad = v => { const t = String(v || "").trim(); const k = extNorm(t); if(t && !m.has(k)) m.set(k, t); };
+  MM_EXT.forEach(x => ad(x.client));
+  (PCT || []).filter(p => /^C\d+/.test(p.client_key || "")).forEach(p => ad(p.client));
+  return [...m.values()].sort((a, b) => a.localeCompare(b, "ro"));
+}
+function mmExtListaUmple(){
+  const inp = $("mm-client"); if(!inp) return;
+  let dl = $("mm-ext-cli"); if(!dl){ dl = document.createElement("datalist"); dl.id = "mm-ext-cli"; document.body.appendChild(dl); }
+  if(typeof mmExterior === "function" && mmExterior()){ dl.innerHTML = mmExtNume().map(n => `<option value="${esc(n)}">`).join(""); inp.setAttribute("list", "mm-ext-cli"); }
+  else if(inp.getAttribute("list") === "mm-ext-cli") inp.removeAttribute("list");
+}
+const mmExtCheie = v => extNorm(v).replace(/\b(S\.?\s?C\.?|S\.?\s?R\.?\s?L\.?|S\.?\s?A\.?|P\.?\s?F\.?\s?A\.?|I\.?\s?I\.?)(?=\s|$)/g, " ").replace(/[^A-Z0-9 ]/g, " ").replace(/\s+/g, " ").trim();
+function mmExtSeamana(nume){
+  const k = mmExtCheie(nume), n = extNorm(nume); if(k.length < 4) return [];
+  return mmExtNume().filter(x => extNorm(x) !== n).filter(x => { const c = mmExtCheie(x); return c === k || (c.length >= 4 && (c.startsWith(k + " ") || k.startsWith(c + " "))); }).slice(0, 4);
+}
+function mmExtPuneNume(n){ const e = $("mm-client"); e.value = n; e.dispatchEvent(new Event("input")); e.dispatchEvent(new Event("change")); mmCarduri(); if(typeof mmLsArata === "function") mmLsArata(); }
 function mmCardExtAlege(id){
   const x = MM_EXT.find(y => y.id === id); if(!x) return;
   $("mm-jud").value = x.jud || ""; $("mm-loc").value = x.loc || ""; $("mm-sat").value = x.sat || "";
