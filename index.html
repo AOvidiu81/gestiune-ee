@@ -1232,7 +1232,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
   <span id="rz-w"><button id="rz-reset" class="pictograma" title="Lățimi implicite — pune coloanele din tabelele acestei file înapoi cum erau">↺ Reset layout</button><i class="rz-sep">|</i></span>
   <span id="tz-w" title="Mărimea tabelului (doar tabelul, restul rămâne la fel), din 5 în 5%. Fiecare meniu își ține minte mărimea lui. Merge și cu Ctrl + rotița mausului, Ctrl + / Ctrl − / Ctrl 0. Dublu clic pe procent = scrii tu valoarea."><button class="pictograma" onclick="tzPas(-1)" aria-label="Micșorează tabelul">−</button><b id="tz-v" ondblclick="tzScrie()" title="Dublu clic = scrii mărimea (ex. 87), Enter">100%</b><input id="tz-in" type="number" min="30" max="300" step="5" style="display:none"><button class="pictograma" onclick="tzPas(1)" aria-label="Mărește tabelul">+</button></span>
-  <span class="ver">v10.48</span>
+  <span class="ver">v10.49</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -18555,7 +18555,7 @@ async function pntIncarca(sid, luna){
     ANG.mas ? Promise.resolve({ data: ANG.mas }) : db.from("masini").select("nr").order("nr")]);
   if(r.error){ toast(r.error.message, true); return; }
   if(PNT.sid !== sid || PNT.luna !== luna) return;
-  ANG.mas = m.data || []; PNT.vir = v.data ? v.data.virament : null;
+  ANG.mas = m.data || []; PNT.vir = v.data ? v.data.virament : null; PNT.pop = v.data ? v.data.popriri : null;   // v10.49
   const by = new Map((r.data || []).map(q => [q.zi, q]));
   PNT.rows = z.map(d => by.has(d) ? pntDinBaza(by.get(d)) : pntGol(d));
   PNT.nAuto = 0;
@@ -18576,6 +18576,7 @@ async function pntAuto(){
 const pntSemn = r => r.sursa === "auto" ? `<span class="muted" style="cursor:help" title="Completat automat${r.rsI ? " · ora reală: " + pntOraLoc(r.rsI) + (r.reI ? " – " + pntOraLoc(r.reI) : " (rută nefinalizată)") : ""}">⚙${r.rsI ? " " + pntOraLoc(r.rsI) + (r.reI ? "–" + pntOraLoc(r.reI) : "") : ""}</span>` : r.sursa === "excel" ? '<span class="muted" title="Adus din Excel">xls</span>' : r.sursa === "manual" && pntPlin(r) ? `<span class="muted" style="cursor:help" title="Scris / corectat de mână — ce ai scris nu se mai schimbă automat${r.rsI ? " · ora reală din rută: " + pntOraLoc(r.rsI) + (r.reI ? " – " + pntOraLoc(r.reI) : " (rută nefinalizată)") : ""}">✎${r.rsI ? " " + pntOraLoc(r.rsI) + (r.reI ? "–" + pntOraLoc(r.reI) : "") : ""}</span>` : "";   // v9.04: și ora reală la rândurile corectate
 function pntStatHtml(){
   const x = ANG.L.find(a => a.id === PNT.sid) || {}, c = pntCalc(PNT.rows, PNT.luna, ANG.priv[x.id], ANG.set), dif = c.oreMin - c.normMin, vir = +PNT.vir || 0;
+  const pop = Math.abs(+PNT.pop || 0), totP = Math.round((c.total - pop) * 100) / 100;   // v10.49 (cerut de Ovidiu, 27.11): popririle se scad din total
   // v9.14 (cerut de Ovidiu, 17.11): rândurile cu valoare (≠ 0) ies în evidență — îngroșat, cu 2 px mai mare, culoarea aplicației;
   // cele cu 0 rămân estompate. Rândurile de referință (zile în lună, ore normate, salariul) rămân normale.
   const REF = /^(Zile în lună|Zile lucrătoare|Ore normate|Salariu de bază|Valoarea orei|Valoarea zilei)/;
@@ -18589,9 +18590,12 @@ function pntStatHtml(){
       <div style="margin-top:6px;font-weight:700;color:${c.lipsa ? "#C0392B" : "#2E8B3C"}">${c.lipsa ? "⚠ Lipsesc coduri pentru " + c.lipsa + (c.lipsa === 1 ? " zi" : " zile") + " (până azi)" : "✓ Toate zilele până azi au cod"}</div></div>
     <div><h4 style="margin:0 0 6px">Ore și km</h4>${t([["Ore normate (zile lucrătoare × ore / zi)", pntOreT(c.normMin) || "0"], ["Ore realizate (fără W)", pntOreT(c.oreMin) || "0"], ["Diferență", (dif < 0 ? "−" : "+") + (pntOreT(Math.abs(dif)) || "0")], ["% realizare", c.normMin ? Math.round(100 * c.oreMin / c.normMin) + "%" : "—"], ["Km parcurși (fără W)", c.km.toLocaleString("ro-RO")]])}</div>
     <div><h4 style="margin:0 0 6px">🔒 Calcul plată (estimativ)</h4>${t([["Salariu de bază", pntLei(c.baza)], ["Mărire salariu", pntLei(c.marire)], ["Spor weekend (" + c.W + " zile)", pntLei(c.sW)], ["Spor sărbătoare legală (" + c.S + (c.S === 1 ? " zi" : " zile") + (c.S && c.V.zi ? " × " + pntLei(c.szi) : "") + ")", pntLei(c.sS)], ["Depășire program (" + c.dep + " zile)", pntLei(c.sD)], ["Transport", pntLei(c.transport)], ["Alte diurne (din Salarizare)", pntLei(c.alte)]])}
-      ${t([["Total sporuri", pntLei(c.sporuri)], ["Total de plată (estimativ)", pntLei(c.total), 1]])}
+      ${t([["Total sporuri", pntLei(c.sporuri)]])}
+      <div class="row" style="margin-top:6px;align-items:center;gap:8px;color:#C0392B;font-weight:700"><div style="flex:1">Popriri (lei) <span style="font-weight:400;font-size:12px">— se scad din total</span></div><div style="flex:0 0 120px">${inp("pop", PNT.pop, "Poprirea din luna aceasta — scrii 1000 sau -1000, se scade oricum; gol = fără poprire").replace('style="text-align:right"', 'style="text-align:right;color:#C0392B;font-weight:700;border-color:#e7a39b"')}</div></div>
+      ${pop ? `<div style="display:flex;justify-content:space-between;color:#C0392B;font-weight:700;margin-top:4px"><span>Popriri</span><span>−${pntLei(pop)}</span></div>` : ""}
+      ${t([["Total de plată (estimativ)" + (pop ? " — după popriri" : ""), pntLei(totP), 1]])}
       <div class="row" style="margin-top:6px;align-items:center;gap:8px"><div style="flex:1">Virament bancar (lei)</div><div style="flex:0 0 120px">${inp("vir", PNT.vir, "Cât s-a dat prin bancă")}</div></div>
-      <div style="display:flex;justify-content:space-between;font-weight:700;margin-top:6px"><span>Rest de plată numerar</span><span>${pntLei(c.total - vir)}</span></div>
+      <div style="display:flex;justify-content:space-between;font-weight:700;margin-top:6px"><span>Rest de plată numerar</span><span${totP - vir < 0 ? ' style="color:#C0392B"' : ""}>${pntLei(totP - vir)}</span></div>
       <div class="muted" style="font-size:12px;margin-top:6px">Calcul pentru uz intern; nu include impozite, contribuții sau alte rețineri. Viramentul se păstrează la <b>Salvează pontajul</b>.${c.baza ? "" : " Salariul nu e completat în fișa angajatului."}</div></div></div>` + pntRefHtml(x, c);
 }
 // v9.16 (cerut de Ovidiu, 17.11): „Valori de referință” într-un chenar separat, pe toată lățimea pontajului, sub statistică:
@@ -18667,7 +18671,7 @@ async function pntSalveaza(){
   const gol = PNT.rows.filter(r => !pntPlin(r) && r.salvat).map(r => r.zi);
   if(up.length){ const { error } = await db.from("pontaj_zile").upsert(up, { onConflict: "sofer_id,zi" }); if(error){ toast(error.message, true); return false; } }
   if(gol.length){ const { error } = await db.from("pontaj_zile").delete().eq("sofer_id", sid).in("zi", gol); if(error){ toast(error.message, true); return false; } }
-  { const { error } = await db.from("pontaj_luna").upsert({ sofer_id: sid, luna, virament: PNT.vir == null ? null : PNT.vir, updated_at: acum }); if(error){ toast(error.message, true); return false; } }
+  { const { error } = await db.from("pontaj_luna").upsert({ sofer_id: sid, luna, virament: PNT.vir == null ? null : PNT.vir, popriri: PNT.pop == null || PNT.pop === "" ? null : Math.abs(+PNT.pop) || null, updated_at: acum }); if(error){ toast(error.message, true); return false; } }
   PNT.rows.forEach(r => r.salvat = pntPlin(r)); PNT.murdar = false; toast("Pontajul s-a salvat (" + up.length + " zile)");
   const an = new Date().getFullYear(), z = await db.from("pontaj_zile").select("sofer_id,cod,zi").gte("zi", an + "-01-01").lte("zi", an + "-12-31").in("cod", ["CO", "CM"]);   // concediile de pe Dashboard
   if(!z.error){ ANG.co = {}; (z.data || []).forEach(q => { const o = ANG.co[q.sofer_id] || (ANG.co[q.sofer_id] = { CO: 0, CM: 0, COazi: 0 }); o[q.cod]++; if(q.cod === "CO" && q.zi <= today()) o.COazi++; }); }
@@ -18687,7 +18691,7 @@ async function pntSumar(){
   if(!$("pnt-sumar") || ANG.tab !== "dash" || PNT.luna !== luna) return;
   const T = { prez: 0, ore: 0, km: 0, tot: 0, vir: 0 }, d = t => `<td style="text-align:right">${t}</td>`;
   const rnd = act.map(x => { const rows = R[x.id].filter(pntPlin), l = (v.data || []).find(q => q.sofer_id === x.id) || {}, vir = +l.virament || 0;
-    const c = pntCalc(rows, luna, ANG.priv[x.id], ANG.set);
+    const c = pntCalc(rows, luna, ANG.priv[x.id], ANG.set); c.total = Math.round((c.total - Math.abs(+l.popriri || 0)) * 100) / 100;   // v10.49: după popriri
     T.prez += c.prez; T.ore += c.oreMin; T.km += c.km; T.tot += c.total; T.vir += vir;
     return `<tr style="cursor:pointer" onclick="angTab('${x.id}')"><td><b>${esc(x.nume)}</b></td>${d(c.prez)}${d(pntOreT(c.oreMin))}${d(pntOreT(c.normMin))}${d(c.dep || "")}${d(c.W || "")}${d(c.S || "")}${d(c.CO || "")}${d(c.CM || "")}${d(c.km ? c.km.toLocaleString("ro-RO") : "")}${d(pntLei(c.total))}${d(vir ? pntLei(vir) : "")}${d(pntLei(c.total - vir))}
       <td style="font-weight:600;color:${!rows.length ? "var(--mut)" : c.lipsa ? "#C0392B" : "#2E8B3C"}">${!rows.length ? "gol" : c.lipsa ? "lipsesc " + c.lipsa + " zile" : "OK"}</td></tr>`; }).join("");
@@ -18725,7 +18729,7 @@ async function pntExcel(){
   rr += 2;
   uneste("B" + rr + ":E" + rr, "STATISTICA ZILE", { font: { bold: true }, al: CE }); uneste("G" + rr + ":J" + rr, "CALCUL PLATA (ESTIMATIV)", { font: { bold: true }, al: CE }); rr++;
   const S1 = [["Zile in luna", c.zile], ["Zile lucratoare (Luni-Vineri)", c.lucr], ["Zile prezente (P+D)", c.prez], ["Zile libere (L)", c.L], ["Concediu odihna (CO)", c.CO], ["Concediu medical (CM)", c.CM], ["Zile weekend (W)", c.W], ["Zile cu depasire (diurne)", c.dep], ["Sarbatoare legala (S)", c.S], ["Absent nemotivat (N)", c.N], ["Absent motivat (I)", c.I], ["Ore normate", pntOreT(c.normMin)]];
-  const S2 = [["Salariu de baza", c.baza], ["Marire salariu", c.marire], ["Spor weekend", c.sW], ["Spor sarbatoare legala", c.sS], ["Depasire program", c.sD], ["Transport", c.transport], ["Alte diurne", c.alte], ["Total sporuri", c.sporuri], ["Total de plata (estimativ)", c.total, 1], ["Virament bancar", vir], ["Rest de plata numerar", c.total - vir, 1]];
+  const S2 = [["Salariu de baza", c.baza], ["Marire salariu", c.marire], ["Spor weekend", c.sW], ["Spor sarbatoare legala", c.sS], ["Depasire program", c.sD], ["Transport", c.transport], ["Alte diurne", c.alte], ["Total sporuri", c.sporuri], ...(Math.abs(+PNT.pop || 0) ? [["Popriri", -Math.abs(+PNT.pop)]] : []), ["Total de plata (estimativ)", c.total - Math.abs(+PNT.pop || 0), 1], ["Virament bancar", vir], ["Rest de plata numerar", c.total - Math.abs(+PNT.pop || 0) - vir, 1]];
   for(let i = 0; i < Math.max(S1.length, S2.length); i++){
     if(S1[i]){ uneste("B" + rr + ":D" + rr, S1[i][0], { al: DR }); pune("E" + rr, S1[i][1], { al: CE }); }
     if(S2[i]){ uneste("G" + rr + ":I" + rr, S2[i][0], { al: DR, font: S2[i][2] ? { bold: true } : {} }); const q = pune("J" + rr, S2[i][1], { al: ST, font: S2[i][2] ? { bold: true } : {} }); q.numFmt = "#,##0.00"; }
