@@ -1232,7 +1232,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
   <span id="rz-w"><button id="rz-reset" class="pictograma" title="Lățimi implicite — pune coloanele din tabelele acestei file înapoi cum erau">↺ Reset layout</button><i class="rz-sep">|</i></span>
   <span id="tz-w" title="Mărimea tabelului (doar tabelul, restul rămâne la fel), din 5 în 5%. Fiecare meniu își ține minte mărimea lui. Merge și cu Ctrl + rotița mausului, Ctrl + / Ctrl − / Ctrl 0. Dublu clic pe procent = scrii tu valoarea."><button class="pictograma" onclick="tzPas(-1)" aria-label="Micșorează tabelul">−</button><b id="tz-v" ondblclick="tzScrie()" title="Dublu clic = scrii mărimea (ex. 87), Enter">100%</b><input id="tz-in" type="number" min="30" max="300" step="5" style="display:none"><button class="pictograma" onclick="tzPas(1)" aria-label="Mărește tabelul">+</button></span>
-  <span class="ver">v10.45</span>
+  <span class="ver">v10.46</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -14354,20 +14354,28 @@ function instrStare(iso, luni){
     c: z < 0 ? "#c81e1e" : z <= 30 ? "#c2410c" : "#1e8a36" };
 }
 function instrPop(ssm, psi, med){
-  const rand = (ic, titlu, s, txt) => `<div style="display:flex;align-items:center;gap:14px;padding:13px 18px;border-bottom:1px solid #e6ebf3">
-    <div style="width:44px;height:44px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:23px;background:#eef6f0;flex-shrink:0">${ic}</div>
-    <div style="flex:1;min-width:0"><div style="font-weight:800;font-size:16px;color:#17275A">${titlu}</div><div style="font-size:13.5px;color:#4b5874;margin-top:3px">${s ? txt(s) : "Nicio dată trecută"}</div></div>
-    <div style="font-weight:800;font-size:12.5px;padding:6px 10px;border-radius:20px;border:2px solid ${s ? s.c : "#9aa3b5"};color:${s ? s.c : "#7a8396"};white-space:nowrap">${s ? s.t : "—"}</div></div>`;
+  const rand = (ic, titlu, s, txt) => `<div class="ip-t">
+    <div class="ip-ic">${ic}</div><div class="ip-ti">${titlu}</div>
+    <div class="ip-tx">${s ? txt(s) : "Nicio dată trecută"}</div>
+    <div class="ip-st" style="border-color:${s ? s.c : "#9aa3b5"};color:${s ? s.c : "#7a8396"}">${s ? s.t : "—"}</div></div>`;
   const a = instrStare(ssm, "per"), b = instrStare(psi, "per"), c = instrStare(med, 0);
-  const ins = s => `Ultima instruire: <b>${s.de}</b> · valabilă până la ${s.pana} (următoarea instruire)`;
+  const ins = s => `Ultima instruire: <b>${s.de}</b><br>valabilă până la <b>${s.pana}</b><br>(următoarea instruire)`;
   let el = document.getElementById("instr-pop"); if(el) el.remove();
   el = document.createElement("div"); el.id = "instr-pop";
-  el.style.cssText = "position:fixed;inset:0;z-index:99999;background:rgba(10,15,30,.6);display:flex;align-items:center;justify-content:center;padding:14px;box-sizing:border-box;font-family:Arial,Helvetica,sans-serif";
-  el.innerHTML = `<div style="background:#fff;border-radius:18px;width:100%;max-width:560px;overflow:hidden;box-shadow:0 12px 40px rgba(0,0,0,.45)">
-    <div style="background:#17275A;color:#fff;padding:14px 18px;display:flex;align-items:center;justify-content:space-between;font-weight:800;font-size:18px">🛡 Instruiri și medicina muncii<span data-x style="cursor:pointer;font-size:22px;opacity:.85;padding:0 4px">✕</span></div>
-    ${rand("⛑️", "SSM — securitate și sănătate în muncă", a, ins)}${rand("🧯", "PSI — situații de urgență", b, ins)}
-    ${rand("🩺", "Medicina muncii", c, s => `Apt · fișa valabilă până la <b>${s.de}</b>`)}
-    <div style="padding:10px 18px;font-size:12px;color:#6b7690;background:#f5f7fb">Informativ · fișele de instruire semnate sunt în caietele SSM / PSI din mașină</div></div>`;
+  el.style.cssText = "position:fixed;inset:0;z-index:99999;background:rgba(10,15,30,.6);display:flex;align-items:center;justify-content:center;overflow:hidden;font-family:Arial,Helvetica,sans-serif";
+  // v10.46 (cerut de Ovidiu, 27.11): fereastra e culcată (landscape) ca legitimația — pe telefon ținut vertical se rotește singură 90°
+  el.innerHTML = `<style>#instr-pop .ip-b{background:#fff;border-radius:18px;width:calc(100vw - 28px);max-width:860px;overflow:hidden;box-shadow:0 12px 40px rgba(0,0,0,.45);flex-shrink:0}
+    @media (orientation:portrait){#instr-pop .ip-b{transform:rotate(90deg);width:calc(100dvh - 28px);max-height:calc(100vw - 24px);overflow:auto}}
+    #instr-pop .ip-h{background:#17275A;color:#fff;padding:12px 18px;display:flex;align-items:center;justify-content:space-between;font-weight:800;font-size:18px}
+    #instr-pop .ip-g{display:grid;grid-template-columns:repeat(3,1fr)}
+    #instr-pop .ip-t{padding:14px 14px 16px;border-right:1px solid #e6ebf3;display:flex;flex-direction:column;align-items:center;text-align:center;gap:6px}#instr-pop .ip-t:last-child{border-right:0}
+    #instr-pop .ip-ic{width:46px;height:46px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:24px;background:#eef6f0}
+    #instr-pop .ip-ti{font-weight:800;font-size:15px;color:#17275A;line-height:1.2}#instr-pop .ip-tx{font-size:13px;color:#4b5874;line-height:1.35;flex:1}
+    #instr-pop .ip-st{font-weight:800;font-size:12.5px;padding:6px 10px;border-radius:20px;border:2px solid;white-space:nowrap}
+    #instr-pop .ip-f{padding:9px 18px;font-size:12px;color:#6b7690;background:#f5f7fb;border-top:1px solid #e6ebf3}</style>
+    <div class="ip-b"><div class="ip-h">🛡 Instruiri și medicina muncii<span data-x style="cursor:pointer;font-size:22px;opacity:.85;padding:0 4px">✕</span></div>
+    <div class="ip-g">${rand("⛑️", "SSM — securitate și sănătate în muncă", a, ins)}${rand("🧯", "PSI — situații de urgență", b, ins)}${rand("🩺", "Medicina muncii", c, s => `Apt · fișa valabilă până la <b>${s.de}</b>`)}</div>
+    <div class="ip-f">Informativ · fișele de instruire semnate sunt în caietele SSM / PSI din mașină</div></div>`;
   el.onclick = e => { if(e.target === el || e.target.closest("[data-x]")) el.remove(); };
   document.body.appendChild(el);
 }
