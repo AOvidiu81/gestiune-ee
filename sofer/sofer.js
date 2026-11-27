@@ -754,7 +754,7 @@ function legitimatieHtml(d, dep) {
       <div class="lg-date"><div class="lg-nume">${escH(d.name || '')}</div><div class="lg-fn">${escH(d.functia || '')}</div>
         <div>Depozit <b>${escH(dep?.name || '')}</b></div><div>Contract nr. <b>${escH(d.nrContract || '-')}</b></div><div>Angajat din <b>${escH(dataRo(d.dataAngajare) || '-')}</b></div>${vechime(d.dataAngajare) ? `<div>Vechime <b>${escH(vechime(d.dataAngajare))}</b></div>` : ''}</div>
       <div class="lg-qr">${qr}<div>Scanează pentru verificare</div></div></div>
-    <div class="lg-jos">${escH([dep?.address ? 'Punct de lucru: ' + dep.address : '', dep?.representativePhone ? 'Tel. ' + dep.representativePhone : ''].filter(Boolean).join(' · ') || COMPANY_INFO.phone || '')}</div>
+    <div class="lg-jos">${escH([dep?.address ? 'Punct de lucru: ' + dep.address : '', dep?.representativePhone ? 'Tel. ' + dep.representativePhone : '', dep?.name ? 'Depozit ' + dep.name : ''].filter(Boolean).join(' · ') || COMPANY_INFO.phone || '')}</div>
   </div>`;
 }
 

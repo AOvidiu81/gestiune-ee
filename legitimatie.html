@@ -62,7 +62,7 @@
         <div class="lg-qr"><div class="lg-stamp${p.activ ? "" : " nu"}"><div class="bif">${p.activ ? "✓" : "✕"}</div><div class="t">${p.activ ? "VERIFICAT" : "NU MAI E ANGAJAT"}</div>
           <div class="ora" id="lg-ora"></div><div class="zi" id="lg-zi"></div></div>
           ${p.depozit_telefon ? `<a class="lg-tel" href="tel:${esc(String(p.depozit_telefon).replace(/[^0-9+]/g, ""))}">📞 Sună depozitul</a>` : ""}</div></div>
-      <div class="lg-jos">${esc([p.depozit_adresa ? "Punct de lucru: " + p.depozit_adresa : "", p.depozit_telefon ? "Tel. " + p.depozit_telefon : ""].filter(Boolean).join(" · "))}</div></div>`;
+      <div class="lg-jos">${esc([p.depozit_adresa ? "Punct de lucru: " + p.depozit_adresa : "", p.depozit_telefon ? "Tel. " + p.depozit_telefon : "", p.depozit ? "Depozit " + p.depozit : ""].filter(Boolean).join(" · "))}</div></div>`;
     const ceas = () => { const a = new Date(), o = document.getElementById("lg-ora"), z = document.getElementById("lg-zi"); if (!o) return;
       o.textContent = a.toLocaleTimeString("ro-RO", { hour: "2-digit", minute: "2-digit", second: "2-digit" }); z.textContent = a.toLocaleDateString("ro-RO", { day: "2-digit", month: "2-digit", year: "numeric" }); };
     ceas(); setInterval(ceas, 1000);
