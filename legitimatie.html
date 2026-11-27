@@ -27,6 +27,7 @@
   .lg-fn{font-weight:700;color:#2E8B3C;margin-bottom:1cqw;text-transform:uppercase}
   .lg-qr{width:20cqw;flex-shrink:0;text-align:center;font-size:2cqw;color:#4b5874}
   /* v10.41 (cerut de Ovidiu, 27.11): după scanare nu mai apare codul QR — în locul lui ștampila verificării, cu ceasul care merge (dovadă că nu e o captură) */
+  .lg-instr{display:inline-block;margin-top:1cqw;border:.3cqw solid #17275A;color:#17275A;border-radius:5cqw;padding:.6cqw .9cqw;font-weight:800;font-size:1.6cqw;white-space:nowrap;cursor:pointer;background:#fff}
   .lg-stamp{border:.6cqw solid #1e8a36;color:#1e8a36;border-radius:2cqw;padding:1.6cqw .8cqw;font-weight:800;line-height:1.25}
   .lg-stamp.nu{border-color:#c81e1e;color:#c81e1e}
   .lg-stamp .bif{font-size:7cqw;line-height:1}.lg-stamp .t{font-size:2.6cqw;letter-spacing:.15cqw}
@@ -38,6 +39,39 @@
 <body>
 <div class="rot" id="rot"><div class="msg">Se verifică…</div></div>
 <script>
+// v10.44 (cerut de Ovidiu, 27.11): SSM / PSI / Medicina muncii — doar informativ, într-o fereastră la atingere (caietele semnate sunt în mașină)
+function instrStare(iso, luni){
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(iso || "")); if(!m) return null;
+  // v10.45 (cerut de Ovidiu, 27.11): instruirile periodice se fac în IANUARIE și IUNIE — o instruire (sau cea de la angajare)
+  // e valabilă până la sfârșitul următoarei luni de instruire: ian.–mai → 30 iunie același an; iun.–dec. → 31 ianuarie anul următor
+  let d = new Date(+m[1], +m[2] - 1, +m[3]);
+  if(luni === "per"){ const l = +m[2], an = +m[1]; d = l < 6 ? new Date(an, 5, 30) : new Date(an + 1, 0, 31); }
+  else if(luni) d.setMonth(d.getMonth() + luni);
+  const azi = new Date(); azi.setHours(0, 0, 0, 0); const z = Math.round((d - azi) / 864e5);
+  const ro = x => String(x.getDate()).padStart(2, "0") + "." + String(x.getMonth() + 1).padStart(2, "0") + "." + x.getFullYear();
+  return { de: m[3] + "." + m[2] + "." + m[1], pana: ro(d), t: z < 0 ? "✕ EXPIRAT" : z <= 30 ? "⚠ EXPIRĂ ÎN " + z + (z === 1 ? " ZI" : " ZILE") : "✓ LA ZI",
+    c: z < 0 ? "#c81e1e" : z <= 30 ? "#c2410c" : "#1e8a36" };
+}
+function instrPop(ssm, psi, med){
+  const rand = (ic, titlu, s, txt) => `<div style="display:flex;align-items:center;gap:14px;padding:13px 18px;border-bottom:1px solid #e6ebf3">
+    <div style="width:44px;height:44px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:23px;background:#eef6f0;flex-shrink:0">${ic}</div>
+    <div style="flex:1;min-width:0"><div style="font-weight:800;font-size:16px;color:#17275A">${titlu}</div><div style="font-size:13.5px;color:#4b5874;margin-top:3px">${s ? txt(s) : "Nicio dată trecută"}</div></div>
+    <div style="font-weight:800;font-size:12.5px;padding:6px 10px;border-radius:20px;border:2px solid ${s ? s.c : "#9aa3b5"};color:${s ? s.c : "#7a8396"};white-space:nowrap">${s ? s.t : "—"}</div></div>`;
+  const a = instrStare(ssm, "per"), b = instrStare(psi, "per"), c = instrStare(med, 0);
+  const ins = s => `Ultima instruire: <b>${s.de}</b> · valabilă până la ${s.pana} (următoarea instruire)`;
+  let el = document.getElementById("instr-pop"); if(el) el.remove();
+  el = document.createElement("div"); el.id = "instr-pop";
+  el.style.cssText = "position:fixed;inset:0;z-index:99999;background:rgba(10,15,30,.6);display:flex;align-items:center;justify-content:center;padding:14px;box-sizing:border-box;font-family:Arial,Helvetica,sans-serif";
+  el.innerHTML = `<div style="background:#fff;border-radius:18px;width:100%;max-width:560px;overflow:hidden;box-shadow:0 12px 40px rgba(0,0,0,.45)">
+    <div style="background:#17275A;color:#fff;padding:14px 18px;display:flex;align-items:center;justify-content:space-between;font-weight:800;font-size:18px">🛡 Instruiri și medicina muncii<span data-x style="cursor:pointer;font-size:22px;opacity:.85;padding:0 4px">✕</span></div>
+    ${rand("⛑️", "SSM — securitate și sănătate în muncă", a, ins)}${rand("🧯", "PSI — situații de urgență", b, ins)}
+    ${rand("🩺", "Medicina muncii", c, s => `Apt · fișa valabilă până la <b>${s.de}</b>`)}
+    <div style="padding:10px 18px;font-size:12px;color:#6b7690;background:#f5f7fb">Informativ · fișele de instruire semnate sunt în caietele SSM / PSI din mașină</div></div>`;
+  el.onclick = e => { if(e.target === el || e.target.closest("[data-x]")) el.remove(); };
+  document.body.appendChild(el);
+}
+
+document.addEventListener("click", e => { const t = e.target.closest && e.target.closest(".lg-instr"); if(!t) return; e.preventDefault(); e.stopPropagation(); instrPop(t.dataset.ssm || "", t.dataset.psi || "", t.dataset.med || ""); }, true);
 (async () => {
   const URL_DB = "https://xrveoxmsdvryzyemmkqx.supabase.co", CHEIE = "sb_publishable_P1TSfVqqbyr3L-elKVgopg_1FpIpkv4", LOGO = "pv/assets/logo/euro_ecologic_logo.png";
   const esc = t => String(t == null ? "" : t).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
@@ -59,9 +93,9 @@
       <div class="lg-sediu">${p.firma_adresa ? "Sediu: " + esc(p.firma_adresa) + " | " : ""}${st}</div></div>
       <div class="lg-corp">${poza}<div class="lg-date"><div class="lg-nume">${esc(p.full_name)}</div><div class="lg-fn">${esc(p.functie || "")}</div>
         <div>Depozit <b>${esc(p.depozit || "-")}</b></div><div>Contract nr. <b>${esc(p.nr_contract || "-")}</b></div><div>Angajat din <b>${dataRo(p.data_angajare)}</b></div>${v ? `<div>Vechime <b>${esc(v)}</b></div>` : ""}</div>
-        <div class="lg-qr"><div class="lg-stamp${p.activ ? "" : " nu"}"><div class="bif">${p.activ ? "✓" : "✕"}</div><div class="t">${p.activ ? "VERIFICAT" : "NU MAI E ANGAJAT"}</div>
+        <div class="lg-qr"><div class="lg-stamp lg-instr${p.activ ? "" : " nu"}" data-ssm="${esc(p.ssm_data || "")}" data-psi="${esc(p.psi_data || "")}" data-med="${esc(p.medicina_expira || "")}" style="cursor:pointer;display:block;border-radius:2cqw;padding:1.6cqw .8cqw;margin:0;font-size:inherit;background:none"><div class="bif">${p.activ ? "✓" : "✕"}</div><div class="t">${p.activ ? "VERIFICAT" : "NU MAI E ANGAJAT"}</div>
           <div class="ora" id="lg-ora"></div><div class="zi" id="lg-zi"></div></div>
-          ${p.depozit_telefon ? `<a class="lg-tel" href="tel:${esc(String(p.depozit_telefon).replace(/[^0-9+]/g, ""))}">📞 Sună depozitul</a>` : ""}</div></div>
+          <div style="font-size:1.8cqw;color:#1e8a36;font-weight:700;margin-top:.8cqw">atinge ștampila pentru SSM · PSI · Medicina muncii</div></div></div>
       <div class="lg-jos">${esc([p.depozit_adresa ? "Punct de lucru: " + p.depozit_adresa : "", p.depozit_telefon ? "Tel. " + p.depozit_telefon : "", p.depozit ? "Depozit " + p.depozit : ""].filter(Boolean).join(" · "))}</div></div>`;
     const ceas = () => { const a = new Date(), o = document.getElementById("lg-ora"), z = document.getElementById("lg-zi"); if (!o) return;
       o.textContent = a.toLocaleTimeString("ro-RO", { hour: "2-digit", minute: "2-digit", second: "2-digit" }); z.textContent = a.toLocaleDateString("ro-RO", { day: "2-digit", month: "2-digit", year: "numeric" }); };

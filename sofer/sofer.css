@@ -147,6 +147,7 @@
 .lg-nume { font-weight: 800; font-size: 4.6cqw; color: #17275A; line-height: 1.15; margin-bottom: .6cqw; overflow-wrap: anywhere; }
 .lg-fn { font-weight: 700; color: #2E8B3C; margin-bottom: 1cqw; text-transform: uppercase; }
 .lg-qr { width: 20cqw; flex-shrink: 0; text-align: center; font-size: 2cqw; color: #4b5874; }
+.lg-instr{display:inline-block;margin-top:1cqw;border:.3cqw solid #17275A;color:#17275A;border-radius:5cqw;padding:.6cqw .9cqw;font-weight:800;font-size:1.6cqw;white-space:nowrap;cursor:pointer;background:#fff}
 .lg-qr svg { width: 100%; height: auto; display: block; margin-bottom: .8cqw; }
 .lg-faraqr { font-size: 2.2cqw; color: #9a3412; }
 .lg-jos { background: #17275A; color: #fff; font-size: 2.4cqw; text-align: center; padding: 1.3cqw 3cqw; }

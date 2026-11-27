@@ -1232,7 +1232,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
   <span id="rz-w"><button id="rz-reset" class="pictograma" title="Lățimi implicite — pune coloanele din tabelele acestei file înapoi cum erau">↺ Reset layout</button><i class="rz-sep">|</i></span>
   <span id="tz-w" title="Mărimea tabelului (doar tabelul, restul rămâne la fel), din 5 în 5%. Fiecare meniu își ține minte mărimea lui. Merge și cu Ctrl + rotița mausului, Ctrl + / Ctrl − / Ctrl 0. Dublu clic pe procent = scrii tu valoarea."><button class="pictograma" onclick="tzPas(-1)" aria-label="Micșorează tabelul">−</button><b id="tz-v" ondblclick="tzScrie()" title="Dublu clic = scrii mărimea (ex. 87), Enter">100%</b><input id="tz-in" type="number" min="30" max="300" step="5" style="display:none"><button class="pictograma" onclick="tzPas(1)" aria-label="Mărește tabelul">+</button></span>
-  <span class="ver">v10.43</span>
+  <span class="ver">v10.45</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -14334,11 +14334,45 @@ const LEGIT_CSS = `.lg-loc{container-type:inline-size;width:100%}
 .lg-date{flex:1;min-width:0;line-height:1.45}.lg-nume{font-weight:800;font-size:4.6cqw;color:#17275A;line-height:1.15;margin-bottom:.6cqw}
 .lg-fn{font-weight:700;color:#2E8B3C;margin-bottom:1cqw;text-transform:uppercase}
 .lg-qr{width:20cqw;flex-shrink:0;text-align:center;font-size:2cqw;color:#4b5874}.lg-qr svg{width:100%;height:auto;display:block;margin-bottom:.8cqw}
-.lg-jos{background:#17275A;color:#fff;font-size:2.4cqw;text-align:center;padding:1.3cqw 3cqw;-webkit-print-color-adjust:exact;print-color-adjust:exact}`;
+.lg-jos{background:#17275A;color:#fff;font-size:2.4cqw;text-align:center;padding:1.3cqw 3cqw;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+.lg-instr{display:inline-block;margin-top:1cqw;border:.3cqw solid #17275A;color:#17275A;border-radius:5cqw;padding:.6cqw .9cqw;font-weight:800;font-size:1.6cqw;white-space:nowrap;cursor:pointer;background:#fff}@media print{.lg-instr{display:none!important}}`;
 function vechimeTxt(iso){ const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(iso || "")); if(!m) return "";
   const d = new Date(+m[1], +m[2] - 1, +m[3]), a = new Date(); let l = (a.getFullYear() - d.getFullYear()) * 12 + a.getMonth() - d.getMonth(); if(a.getDate() < d.getDate()) l--;
   if(l < 0) return ""; const an = Math.floor(l / 12), r = l % 12;
   return [an ? an + (an === 1 ? " an" : " ani") : "", r ? r + (r === 1 ? " lună" : " luni") : ""].filter(Boolean).join(" și ") || "sub o lună"; }
+// v10.44 (cerut de Ovidiu, 27.11): SSM / PSI / Medicina muncii — doar informativ, într-o fereastră la atingere (caietele semnate sunt în mașină)
+function instrStare(iso, luni){
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(iso || "")); if(!m) return null;
+  // v10.45 (cerut de Ovidiu, 27.11): instruirile periodice se fac în IANUARIE și IUNIE — o instruire (sau cea de la angajare)
+  // e valabilă până la sfârșitul următoarei luni de instruire: ian.–mai → 30 iunie același an; iun.–dec. → 31 ianuarie anul următor
+  let d = new Date(+m[1], +m[2] - 1, +m[3]);
+  if(luni === "per"){ const l = +m[2], an = +m[1]; d = l < 6 ? new Date(an, 5, 30) : new Date(an + 1, 0, 31); }
+  else if(luni) d.setMonth(d.getMonth() + luni);
+  const azi = new Date(); azi.setHours(0, 0, 0, 0); const z = Math.round((d - azi) / 864e5);
+  const ro = x => String(x.getDate()).padStart(2, "0") + "." + String(x.getMonth() + 1).padStart(2, "0") + "." + x.getFullYear();
+  return { de: m[3] + "." + m[2] + "." + m[1], pana: ro(d), t: z < 0 ? "✕ EXPIRAT" : z <= 30 ? "⚠ EXPIRĂ ÎN " + z + (z === 1 ? " ZI" : " ZILE") : "✓ LA ZI",
+    c: z < 0 ? "#c81e1e" : z <= 30 ? "#c2410c" : "#1e8a36" };
+}
+function instrPop(ssm, psi, med){
+  const rand = (ic, titlu, s, txt) => `<div style="display:flex;align-items:center;gap:14px;padding:13px 18px;border-bottom:1px solid #e6ebf3">
+    <div style="width:44px;height:44px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:23px;background:#eef6f0;flex-shrink:0">${ic}</div>
+    <div style="flex:1;min-width:0"><div style="font-weight:800;font-size:16px;color:#17275A">${titlu}</div><div style="font-size:13.5px;color:#4b5874;margin-top:3px">${s ? txt(s) : "Nicio dată trecută"}</div></div>
+    <div style="font-weight:800;font-size:12.5px;padding:6px 10px;border-radius:20px;border:2px solid ${s ? s.c : "#9aa3b5"};color:${s ? s.c : "#7a8396"};white-space:nowrap">${s ? s.t : "—"}</div></div>`;
+  const a = instrStare(ssm, "per"), b = instrStare(psi, "per"), c = instrStare(med, 0);
+  const ins = s => `Ultima instruire: <b>${s.de}</b> · valabilă până la ${s.pana} (următoarea instruire)`;
+  let el = document.getElementById("instr-pop"); if(el) el.remove();
+  el = document.createElement("div"); el.id = "instr-pop";
+  el.style.cssText = "position:fixed;inset:0;z-index:99999;background:rgba(10,15,30,.6);display:flex;align-items:center;justify-content:center;padding:14px;box-sizing:border-box;font-family:Arial,Helvetica,sans-serif";
+  el.innerHTML = `<div style="background:#fff;border-radius:18px;width:100%;max-width:560px;overflow:hidden;box-shadow:0 12px 40px rgba(0,0,0,.45)">
+    <div style="background:#17275A;color:#fff;padding:14px 18px;display:flex;align-items:center;justify-content:space-between;font-weight:800;font-size:18px">🛡 Instruiri și medicina muncii<span data-x style="cursor:pointer;font-size:22px;opacity:.85;padding:0 4px">✕</span></div>
+    ${rand("⛑️", "SSM — securitate și sănătate în muncă", a, ins)}${rand("🧯", "PSI — situații de urgență", b, ins)}
+    ${rand("🩺", "Medicina muncii", c, s => `Apt · fișa valabilă până la <b>${s.de}</b>`)}
+    <div style="padding:10px 18px;font-size:12px;color:#6b7690;background:#f5f7fb">Informativ · fișele de instruire semnate sunt în caietele SSM / PSI din mașină</div></div>`;
+  el.onclick = e => { if(e.target === el || e.target.closest("[data-x]")) el.remove(); };
+  document.body.appendChild(el);
+}
+
+document.addEventListener("click", e => { const t = e.target.closest && e.target.closest(".lg-instr"); if(!t) return; e.preventDefault(); e.stopPropagation(); instrPop(t.dataset.ssm || "", t.dataset.psi || "", t.dataset.med || ""); }, true);
 let LEGIT_HTML = "";
 // v10.30 (cerut de Ovidiu, 26.11): „| 🪪 Legitimație” și în capul fișei angajatului, după Medicina muncii
 function legitDinFisa(angId){ const c = contulAngajatului(angId); if(!c){ toast("Angajatul nu are cont de acces — legitimația se face din cont (🔑 Cont de acces și PIN)", true); return; } legitAng(c.id); }
@@ -14356,7 +14390,7 @@ async function legitAng(userId){
   LEGIT_HTML = `<div class="lg-card"><div class="lg-cap"><img src="${logo}" alt=""><div><div class="lg-titlu">LEGITIMAȚIE DE LUCRU</div><div class="lg-firma">${esc(firma.name)}${firma.cui ? " · CUI " + esc(firma.cui) : ""}</div></div>${firma.address ? '<div class="lg-sediu">Sediu: ' + esc(firma.address) + "</div>" : ""}</div>
     <div class="lg-corp">${poza}<div class="lg-date"><div class="lg-nume">${esc(d.full_name || "")}</div><div class="lg-fn">${esc(d.functie || "")}</div>
       <div>Depozit <b>${esc(d.depozit || "-")}</b></div><div>Contract nr. <b>${esc(d.nr_contract || "-")}</b></div><div>Angajat din <b>${esc(fmtD(d.data_angajare || "") || "-")}</b></div>${vechimeTxt(d.data_angajare) ? `<div>Vechime <b>${esc(vechimeTxt(d.data_angajare))}</b></div>` : ""}</div>
-      <div class="lg-qr">${qr}<div>Scanează pentru verificare</div></div></div>
+      <div class="lg-qr">${qr}<div>Scanează pentru verificare</div><div class="lg-instr" data-html2canvas-ignore="true" data-ssm="${esc(d.ssm_data || "")}" data-psi="${esc(d.psi_data || "")}" data-med="${esc(d.medicina_expira || "")}">🛡 SSM · PSI · Med. ›</div></div></div>
     <div class="lg-jos">${esc([d.depozit_adresa ? "Punct de lucru: " + d.depozit_adresa : "", d.depozit_telefon ? "Tel. " + d.depozit_telefon : "", d.depozit ? "Depozit " + d.depozit : ""].filter(Boolean).join(" · "))}</div></div>`;
   let m = $("mod-legit");
   if(!m){
@@ -18313,7 +18347,8 @@ async function angFisa(x){
       <span class="muted noprint" style="margin-left:auto;font-size:12px">${nou ? "" : "clic = arată / ascunde datele angajatului"}</span></summary><div style="margin-top:12px">
     <div class="grid3">${afC("an-nume", "Nume și prenume (ca pe CI)", x.nume)}${afC("an-scurt", "Nume scurt", x.nume_scurt)}${afC("an-functie", "Funcție", x.functie)}
       ${afC("an-tel", "Telefon", x.telefon)}${afC("an-email", "E-mail", x.email)}${afC("an-nastere", "Data nașterii", x.data_nasterii, "date")}
-      ${afC("an-cis", "CI seria", x.ci_serie)}${afC("an-cin", "CI numărul", x.ci_numar)}${afC("an-med", "Medicina muncii — expiră", x.medicina_expira, "date")}</div>
+      ${afC("an-cis", "CI seria", x.ci_serie)}${afC("an-cin", "CI numărul", x.ci_numar)}${afC("an-med", "Medicina muncii — expiră", x.medicina_expira, "date")}
+      ${afC("an-ssm", "Ultima instruire SSM", x.ssm_data, "date", 'title="Instruirile periodice: ianuarie și iunie (la angajat nou = data angajării). Valabilă până la sfârșitul următoarei luni de instruire. Apare informativ pe legitimație."')}${afC("an-psi", "Ultima instruire PSI", x.psi_data, "date", 'title="Instruirile periodice: ianuarie și iunie (la angajat nou = data angajării). Valabilă până la sfârșitul următoarei luni de instruire."')}</div>
     <h4 style="margin:16px 0 8px">Contract</h4>
     <div class="grid3">${afC("an-ctr", "Nr. contract", x.nr_contract)}${afC("an-tip", "Tip contract", x.tip_contract, "text", 'placeholder="Nedeterminat"')}${afC("an-ang", "Data angajării", x.data_angajare, "date")}
       ${afC("an-inc", "Data încetării", x.data_incetare, "date")}${afC("an-co", "Zile concediu alocate / an", x.zile_co_an, "number")}<div></div></div>
@@ -18351,7 +18386,7 @@ async function angSalveaza(id){
   if((v("an-ps") && !v("an-pp")) || (!v("an-ps") && v("an-pp"))){ toast("Programul de birou: completează ambele ore (sau lasă-le goale pe amândouă)", true); return; }
   const nv = [...new Set(v("an-vechi").split(",").map(t => t.trim().toUpperCase()).filter(Boolean).concat(vechi && vechi.nume && vechi.nume !== nume ? [vechi.nume] : []))].filter(t => t !== nume);
   const rec = { nume, nume_scurt: v("an-scurt") || null, functie: v("an-functie").toUpperCase() || null, telefon: v("an-tel") || null, email: v("an-email") || null, data_nasterii: v("an-nastere") || null,
-    ci_serie: v("an-cis").toUpperCase() || null, ci_numar: v("an-cin") || null, medicina_expira: v("an-med") || null, nr_contract: v("an-ctr") || null, tip_contract: v("an-tip") || null,
+    ci_serie: v("an-cis").toUpperCase() || null, ci_numar: v("an-cin") || null, medicina_expira: v("an-med") || null, ssm_data: v("an-ssm") || null, psi_data: v("an-psi") || null, nr_contract: v("an-ctr") || null, tip_contract: v("an-tip") || null,
     data_angajare: v("an-ang") || null, data_incetare: v("an-inc") || null, zile_co_an: afNum(v("an-co")), program_start: v("an-ps") || null, program_stop: v("an-pp") || null,
     apare_la_soferi: $("an-sof").checked, nume_vechi: nv, observatii: v("an-obs") || null, activ: $("an-activ").checked };
   if(vechi && vechi.nume !== nume && !confirm("Schimbi numele din „" + vechi.nume + "” în „" + nume + "”.\n\nNumele nou apare și în aplicațiile șoferilor. Rutele vechi rămân pe numele vechi — îl țin minte la „Nume vechi”, ca pontajul să le găsească.\n\nContinui?")) return;

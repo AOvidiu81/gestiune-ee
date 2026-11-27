@@ -743,6 +743,39 @@ function contulMeu() {
   });
 }
 
+// v10.44 (cerut de Ovidiu, 27.11): SSM / PSI / Medicina muncii — doar informativ, într-o fereastră la atingere (caietele semnate sunt în mașină)
+function instrStare(iso, luni){
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(iso || "")); if(!m) return null;
+  // v10.45 (cerut de Ovidiu, 27.11): instruirile periodice se fac în IANUARIE și IUNIE — o instruire (sau cea de la angajare)
+  // e valabilă până la sfârșitul următoarei luni de instruire: ian.–mai → 30 iunie același an; iun.–dec. → 31 ianuarie anul următor
+  let d = new Date(+m[1], +m[2] - 1, +m[3]);
+  if(luni === "per"){ const l = +m[2], an = +m[1]; d = l < 6 ? new Date(an, 5, 30) : new Date(an + 1, 0, 31); }
+  else if(luni) d.setMonth(d.getMonth() + luni);
+  const azi = new Date(); azi.setHours(0, 0, 0, 0); const z = Math.round((d - azi) / 864e5);
+  const ro = x => String(x.getDate()).padStart(2, "0") + "." + String(x.getMonth() + 1).padStart(2, "0") + "." + x.getFullYear();
+  return { de: m[3] + "." + m[2] + "." + m[1], pana: ro(d), t: z < 0 ? "✕ EXPIRAT" : z <= 30 ? "⚠ EXPIRĂ ÎN " + z + (z === 1 ? " ZI" : " ZILE") : "✓ LA ZI",
+    c: z < 0 ? "#c81e1e" : z <= 30 ? "#c2410c" : "#1e8a36" };
+}
+function instrPop(ssm, psi, med){
+  const rand = (ic, titlu, s, txt) => `<div style="display:flex;align-items:center;gap:14px;padding:13px 18px;border-bottom:1px solid #e6ebf3">
+    <div style="width:44px;height:44px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:23px;background:#eef6f0;flex-shrink:0">${ic}</div>
+    <div style="flex:1;min-width:0"><div style="font-weight:800;font-size:16px;color:#17275A">${titlu}</div><div style="font-size:13.5px;color:#4b5874;margin-top:3px">${s ? txt(s) : "Nicio dată trecută"}</div></div>
+    <div style="font-weight:800;font-size:12.5px;padding:6px 10px;border-radius:20px;border:2px solid ${s ? s.c : "#9aa3b5"};color:${s ? s.c : "#7a8396"};white-space:nowrap">${s ? s.t : "—"}</div></div>`;
+  const a = instrStare(ssm, "per"), b = instrStare(psi, "per"), c = instrStare(med, 0);
+  const ins = s => `Ultima instruire: <b>${s.de}</b> · valabilă până la ${s.pana} (următoarea instruire)`;
+  let el = document.getElementById("instr-pop"); if(el) el.remove();
+  el = document.createElement("div"); el.id = "instr-pop";
+  el.style.cssText = "position:fixed;inset:0;z-index:99999;background:rgba(10,15,30,.6);display:flex;align-items:center;justify-content:center;padding:14px;box-sizing:border-box;font-family:Arial,Helvetica,sans-serif";
+  el.innerHTML = `<div style="background:#fff;border-radius:18px;width:100%;max-width:560px;overflow:hidden;box-shadow:0 12px 40px rgba(0,0,0,.45)">
+    <div style="background:#17275A;color:#fff;padding:14px 18px;display:flex;align-items:center;justify-content:space-between;font-weight:800;font-size:18px">🛡 Instruiri și medicina muncii<span data-x style="cursor:pointer;font-size:22px;opacity:.85;padding:0 4px">✕</span></div>
+    ${rand("⛑️", "SSM — securitate și sănătate în muncă", a, ins)}${rand("🧯", "PSI — situații de urgență", b, ins)}
+    ${rand("🩺", "Medicina muncii", c, s => `Apt · fișa valabilă până la <b>${s.de}</b>`)}
+    <div style="padding:10px 18px;font-size:12px;color:#6b7690;background:#f5f7fb">Informativ · fișele de instruire semnate sunt în caietele SSM / PSI din mașină</div></div>`;
+  el.onclick = e => { if(e.target === el || e.target.closest("[data-x]")) el.remove(); };
+  document.body.appendChild(el);
+}
+
+document.addEventListener("click", e => { const t = e.target.closest && e.target.closest(".lg-instr"); if(!t) return; e.preventDefault(); e.stopPropagation(); instrPop(t.dataset.ssm || "", t.dataset.psi || "", t.dataset.med || ""); }, true);
 function legitimatieHtml(d, dep) {
   const cod = d.legitCod || '';
   let qr = '<div class="lg-faraqr">Codul QR apare după prima sincronizare (cu internet).</div>';
@@ -753,7 +786,7 @@ function legitimatieHtml(d, dep) {
     <div class="lg-corp">${poza}
       <div class="lg-date"><div class="lg-nume">${escH(d.name || '')}</div><div class="lg-fn">${escH(d.functia || '')}</div>
         <div>Depozit <b>${escH(dep?.name || '')}</b></div><div>Contract nr. <b>${escH(d.nrContract || '-')}</b></div><div>Angajat din <b>${escH(dataRo(d.dataAngajare) || '-')}</b></div>${vechime(d.dataAngajare) ? `<div>Vechime <b>${escH(vechime(d.dataAngajare))}</b></div>` : ''}</div>
-      <div class="lg-qr">${qr}<div>Scanează pentru verificare</div></div></div>
+      <div class="lg-qr">${qr}<div>Scanează pentru verificare</div><div class="lg-instr" data-ssm="${escH(d.ssm || '')}" data-psi="${escH(d.psi || '')}" data-med="${escH(d.med || '')}">🛡 SSM · PSI · Med. ›</div></div></div>
     <div class="lg-jos">${escH([dep?.address ? 'Punct de lucru: ' + dep.address : '', dep?.representativePhone ? 'Tel. ' + dep.representativePhone : '', dep?.name ? 'Depozit ' + dep.name : ''].filter(Boolean).join(' · ') || COMPANY_INFO.phone || '')}</div>
   </div>`;
 }
@@ -770,7 +803,7 @@ function legitimatia() {
     // s67 (cerut de Ovidiu, 26.11): o singura legitimatie pe om — contul legat (ex. contul de sofer al lui Ovidiu) arata
     // datele fisei principale (nume, functie, contract, QR) + poza; tinuta minte pentru folosirea fara semnal
     const arata = (L) => { const d = { ...(stare.driver || {}) }, dep = { ...(stare.depot || {}) };
-      if (L) { Object.assign(d, { name: L.full_name || d.name, functia: L.functie || d.functia, nrContract: L.nr_contract || d.nrContract, dataAngajare: L.data_angajare || d.dataAngajare, fotoUrl: L.foto_url || d.fotoUrl, legitCod: L.legit_cod || d.legitCod });
+      if (L) { Object.assign(d, { name: L.full_name || d.name, functia: L.functie || d.functia, nrContract: L.nr_contract || d.nrContract, dataAngajare: L.data_angajare || d.dataAngajare, fotoUrl: L.foto_url || d.fotoUrl, legitCod: L.legit_cod || d.legitCod, ssm: L.ssm_data || '', psi: L.psi_data || '', med: L.medicina_expira || '' });
         if (L.depozit) Object.assign(dep, { name: L.depozit, address: L.depozit_adresa || dep.address, representativePhone: L.depozit_telefon || dep.representativePhone }); }
       box.innerHTML = legitimatieHtml(d, dep); };
     let L = null; try { L = JSON.parse(localStorage.getItem('ee-sofer-legit') || 'null'); } catch (e) {}
