@@ -1116,7 +1116,7 @@ let dayStart = {}; // {brand, plate, kmStart, driver1, driver2, startTime}
 let lastRouteRows = [];
 
 // --- Șofer EE: aplicatia ruleaza in fila „Rută” (../sofer/), care trimite datele zilei ---
-const EE_RUTA_VERSION = 'v57'; // aceeasi cu VERSIUNE din sw.js; Șofer EE o arata langa rotita
+const EE_RUTA_VERSION = 'v58'; // aceeasi cu VERSIUNE din sw.js; Șofer EE o arata langa rotita
 const SOFER_MODE = new URLSearchParams(location.search).get('sofer') === '1';
 let multiZile = null;   // mai multe zile bifate (ruta complementara), altfel null
 let multiTrasee = null; // mai multe trasee bifate, altfel null
@@ -1923,7 +1923,7 @@ listEl.addEventListener('click', (e)=>{
     eeEcranAprins();
     delete cardOverrides[key];
     finalizeCardVisually(key, 700);
-    if(type === 'LA' && TEST_LA && r) laIntreaba(r);   // v45: dovada cu poză (test); v52: OPȚIONALĂ — întâi întrebarea
+    if(type === 'LA' && r) laIntreaba(r);   // v58 (cerut de Ovidiu, 27.11): dovada cu poză la TOȚI, fără bifă   // v45: dovada cu poză (test); v52: OPȚIONALĂ — întâi întrebarea
   } else if(obsCancel){
     const key = obsCancel.dataset.key;
     if(visitLog[key]) delete visitLog[key]._obsOpen;
@@ -3309,9 +3309,10 @@ function laDeseneaza(){
       ${LA.ok1 ? `<div class="la-2" style="align-items:center"><span class="la-ok">✓ P1 acceptată</span><label class="la-btn" style="padding:9px">↺ Refac P1<input type="file" accept="image/*" capture="environment" style="display:none" id="laFile1"></label></div>`
         : `<div class="la-2"><div class="la-btn prim" data-la="ok1">✓ E bună</div><label class="la-btn" style="border-color:#b42318;color:#b42318">↺ Refac P1<input type="file" accept="image/*" capture="environment" style="display:none" id="laFile1"></label></div>`}</div>` : ''}
     ${LA.st ? `<div class="la-st ${LA.stErr ? 'err' : ''}">${LA.st}</div>` : ''}
-    <div class="la-btn prim ${gata ? '' : 'dis'}" data-la="pdf">📤 Trimite PDF pe WhatsApp</div>
+    ${LA.id || LA.inCoada ? '' : `<div class="la-btn prim ${gata && !LA.salvare ? '' : 'dis'}" data-la="save">💾 Salvează dovada în GestiuneEE</div>`}
+    <div class="la-btn ${gata ? '' : 'dis'}" data-la="pdf">📤 Trimite și pe WhatsApp (PDF)</div>
     ${laP1Ok() && !LA.ok1 ? '<div class="la-mut" style="margin-top:-6px;color:#b42318;font-weight:600">Apasă întâi „✓ E bună” la previzualizarea P1.</div>' : ''}
-    <div class="la-mut" style="margin-top:-4px">Se deschide fereastra de trimitere → alegi <b>WhatsApp</b> și contactul. Fișa se salvează și în GestiuneEE.</div>
+    <div class="la-mut" style="margin-top:-4px">Dovada ajunge la birou, în GestiuneEE. WhatsApp e opțional: se deschide fereastra de trimitere → alegi <b>WhatsApp</b> și contactul.</div>
     <div class="la-btn" data-la="x">${LA.id || LA.inCoada ? '✔ Gata' : 'Închide fără dovadă'}</div>
     <div class="la-mut">„Lipsă acces” e deja înregistrat la punct. Pozele se pun într-o fișă cu data, ora, GPS-ul, mașina, traseul, clientul și contractul.</div>
   </div>`;
@@ -3328,6 +3329,7 @@ document.addEventListener('click', e => {
   else if(a === 'ok1'){ LA.ok1 = true; LA.st = ''; LA.stErr = false; laDeseneaza(); }
   else if(a === 'mot'){ const m = t.textContent; LA.motive.has(m) ? LA.motive.delete(m) : LA.motive.add(m); laDeseneaza(); }
   else if(a === 'pdf') laTrimitePdf();
+  else if(a === 'save') laSalveazaDoar();
 });
 function laLiniiChenar(){
   const r = LA.r, f = LA.fix, c = LA.ctr || {}, L = [];
@@ -3551,22 +3553,33 @@ async function laSalveaza(fisa){   // pregătește tot pe telefon → coadă →
   try{ const id = await laQTrimite(it); if(inCoada) try{ await laQScoate(uid); }catch(e){} laQBadge(); return id; }
   catch(e){ if(!inCoada) throw e; laQBadge(); return null; }   // fără semnal → rămâne pe telefon
 }
+// v58 (cerut de Ovidiu, 27.11): salvarea în GestiuneEE are butonul ei — WhatsApp e doar opțional
+function laPornesteSalvarea(fisa){
+  if(LA.id || LA.salvare || !sb) return;
+  const la = LA; la.inLucru = true;
+    LA.salvare = laSalveaza(fisa).then(id => { la.inLucru = false; if(id){ la.id = id; la.inCoada = false; la.st = '✅ Salvat în GestiuneEE.' + (la.trimis ? ' PDF-ul a plecat.' : ''); }
+        else { la.inCoada = true; la.st = '📦 Fără semnal — dovada e salvată pe telefon și pleacă singură în GestiuneEE când ai semnal. Poți apăsa „Gata”.'; }
+        la.stErr = false; if(LA === la) laDeseneaza(); })
+      .catch(e => { la.inLucru = false; if(LA !== la) return; LA.salvare = null; LA.st = '⚠️ Nu s-a salvat în GestiuneEE (' + escapeHtml(e.message || 'fără semnal') + ') — apasă din nou când ai semnal.'; LA.stErr = true; laDeseneaza(); });
+}
+async function laSalveazaDoar(){
+  if(!LA || !laP1Ok() || !LA.ok1 || LA.merge || LA.id || LA.salvare) return;
+  const ob = document.getElementById('laObs'); if(ob && ob.value !== (LA.obs || '')){ LA.obs = ob.value; }
+  LA.st = '⏳ Se salvează…'; LA.stErr = false; laDeseneaza();
+  let fisa = LA.pdf && LA.pdfVer === LA.ver ? LA.pdf : null;
+  if(!fisa){ const jpg = await laFisa(); fisa = (await laFisaPdf(jpg)) || jpg; LA.pdf = fisa; LA.pdfVer = LA.ver; }
+  laPornesteSalvarea(fisa); laDeseneaza();
+}
 async function laTrimitePdf(){
   if(!LA || !laP1Ok() || !LA.ok1 || LA.merge) return;
   const ob = document.getElementById('laObs'); if(ob && ob.value !== (LA.obs || '')){ LA.obs = ob.value; }
   let fisa = LA.pdf && LA.pdfVer === LA.ver ? LA.pdf : null, intarziat = false;
   if(!fisa){ intarziat = true; const jpg = await laFisa(); fisa = (await laFisaPdf(jpg)) || jpg; LA.pdf = fisa; LA.pdfVer = LA.ver; }
   const pdf = fisa.type === 'application/pdf', file = new File([fisa], laNumeFisier() + (pdf ? '.pdf' : '.jpg'), { type: fisa.type });
-  if(!LA.id && !LA.salvare && sb){   // salvarea pornește odată cu partajarea, nu o așteaptă
-    const la = LA; la.inLucru = true;
-    LA.salvare = laSalveaza(fisa).then(id => { la.inLucru = false; if(id){ la.id = id; la.inCoada = false; la.st = '✅ Salvat în GestiuneEE.' + (la.trimis ? ' PDF-ul a plecat.' : ''); }
-        else { la.inCoada = true; la.st = '📦 Fără semnal — dovada e salvată pe telefon și pleacă singură în GestiuneEE când ai semnal. Poți apăsa „Gata”.'; }
-        la.stErr = false; if(LA === la) laDeseneaza(); })
-      .catch(e => { la.inLucru = false; if(LA !== la) return; LA.salvare = null; LA.st = '⚠️ Nu s-a salvat în GestiuneEE (' + escapeHtml(e.message || 'fără semnal') + ') — apasă din nou când ai semnal.'; LA.stErr = true; laDeseneaza(); });
-  }
+  laPornesteSalvarea(fisa);   // salvarea pornește odată cu partajarea, nu o așteaptă
   if(navigator.canShare && navigator.canShare({ files: [file] })){
     try{ await navigator.share({ files: [file], title: 'Lipsă acces — ' + (LA.r.client || '') }); LA.trimis = true; if(LA.id){ LA.st = '✅ Salvat în GestiuneEE. PDF-ul a plecat.'; LA.stErr = false; laDeseneaza(); } }
-    catch(e){ if(e && e.name === 'NotAllowedError' && intarziat){ LA.st = '👉 PDF-ul e gata — apasă încă o dată „Trimite PDF pe WhatsApp”.'; LA.stErr = false; laDeseneaza(); } }
+    catch(e){ if(e && e.name === 'NotAllowedError' && intarziat){ LA.st = '👉 PDF-ul e gata — apasă încă o dată „Trimite și pe WhatsApp”.'; LA.stErr = false; laDeseneaza(); } }
   } else {   // calculator / telefon fără partajare de fișiere → se descarcă
     const a = document.createElement('a'); a.href = URL.createObjectURL(file); a.download = file.name; document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 4000);
     LA.st = '⬇️ PDF-ul s-a descărcat — trimite-l din WhatsApp.'; LA.stErr = false; laDeseneaza();
