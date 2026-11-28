@@ -109,6 +109,10 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   .tip-acc{font-weight:700;text-decoration:underline dotted;text-underline-offset:3px;cursor:help}
   .acc-ic{display:inline-block;min-width:18px;height:18px;line-height:16px;padding:0 3px;border:1px solid var(--blue);color:var(--blue);border-radius:4px;font-size:11px;font-weight:700;cursor:help}
   #m-tbl .cl-pop{cursor:pointer}
+  /* v10.56 (cerut de Ovidiu, 28.11): comutatorul Lista vie / Toată lista, ca la tema închisă / deschisă */
+  .mvie{white-space:nowrap;min-width:138px} .mvie .mv-sw{display:inline-block;width:30px;height:16px;border-radius:9px;background:#2E8B3C;position:relative;vertical-align:-3px;margin-right:7px;transition:background .2s}
+  .mvie .mv-sw i{position:absolute;top:2px;left:2px;width:12px;height:12px;border-radius:50%;background:#fff;transition:left .2s}
+  .mvie.tot .mv-sw{background:#2563EB} .mvie.tot .mv-sw i{left:16px} .mvie:disabled{opacity:.55;cursor:default}
   #cl-pop{display:none;position:fixed;z-index:9999;min-width:220px;max-width:360px;background:var(--card);color:var(--tx);border:1px solid var(--bd);border-radius:8px;box-shadow:0 6px 24px rgba(0,0,0,.25);padding:8px}
   #cl-pop .clp-t{font-weight:700;font-size:12px;margin:0 2px 6px;color:var(--mut)}
   #cl-pop .clp-b{display:flex;align-items:center;gap:8px;width:100%;text-align:left;background:transparent;color:inherit;border:1px solid var(--bd);border-radius:6px;padding:6px 8px;margin-top:4px;cursor:pointer;font:inherit}
@@ -1232,7 +1236,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
   <span id="rz-w"><button id="rz-reset" class="pictograma" title="Lățimi implicite — pune coloanele din tabelele acestei file înapoi cum erau">↺ Reset layout</button><i class="rz-sep">|</i></span>
   <span id="tz-w" title="Mărimea tabelului (doar tabelul, restul rămâne la fel), din 5 în 5%. Fiecare meniu își ține minte mărimea lui. Merge și cu Ctrl + rotița mausului, Ctrl + / Ctrl − / Ctrl 0. Dublu clic pe procent = scrii tu valoarea."><button class="pictograma" onclick="tzPas(-1)" aria-label="Micșorează tabelul">−</button><b id="tz-v" ondblclick="tzScrie()" title="Dublu clic = scrii mărimea (ex. 87), Enter">100%</b><input id="tz-in" type="number" min="30" max="300" step="5" style="display:none"><button class="pictograma" onclick="tzPas(1)" aria-label="Mărește tabelul">+</button></span>
-  <span class="ver">v10.55</span>
+  <span class="ver">v10.56</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -1376,8 +1380,9 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
       <div><label>Produs</label><select id="f-prod" onchange="loadMiscari()"><option value="">Toate</option></select></div>
       <div><label>Depozit</label><select id="f-dep" onchange="loadMiscari()"><option value="">Toate</option></select></div>
       <div style="flex:0"><button class="btn sec" onclick="fResetTot()" title="Golește căutarea și pune toate filtrele pe Toți / Toate">↺ Resetează tot</button></div>
-      <div style="flex:0"><button class="btn sec" onclick="exportMiscari()">Export Excel</button></div>
+      <div style="flex:0"><button class="btn sec" onclick="exportMiscari()" title="Pe lista vie exportă TOATE comenzile (și cele vechi închise), după filtrele Tip / Produs / Depozit">Export Excel</button></div>
       <div style="flex:0"><button class="btn sec" onclick="window.print()">PDF / Print</button></div>
+      <div style="flex:0"><button id="m-vie-btn" class="btn sec mvie" onclick="mVieComuta(!M_TOT)"><span class="mv-sw"><i></i></span><span class="mv-t">Lista vie</span></button></div><!-- v10.56 -->
     </div>
   </div>
   <div class="kpi" id="m-kpi" style="display:none"></div><!-- v4.73: căsuțele Comenzi / Amplasate / Ridicate / Net ascunse deocamdată (cerut de Ovidiu, 07.10); se scoate style ca să revină -->
@@ -4422,17 +4427,21 @@ var MISC_CERERE=0, MISC_TQ=null;   // v5.92
 let M_TOT = false, M_ASCUNSE = 0; const M_TINUTE = new Set();   // M_TINUTE = comenzi salvate acum (rămân în listă chiar dacă sunt vechi și închise)
 const mVieEste = () => !M_TOT && !$("f-an").value && !$("f-q").value.trim();
 const mVieDe = () => { const d = new Date(); d.setMonth(d.getMonth() - 3); return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0"); };
-// v10.54: butonul spune ce vrei (nu comută) și se blochează cât se încarcă — apăsat de mai multe ori nu mai întoarce lista înapoi
-function mVieComuta(tot){ if(M_TOT === tot) return; M_TOT = tot; const e = $("m-vie");
-  if(e) e.innerHTML = `<b>${tot ? "Aduc toate comenzile" : "Revin la lista vie"}…</b> <button class="btn sm sec" disabled style="opacity:.5">se încarcă…</button>`;
+// v10.54/v10.56: comutatorul spune ce vrei; cât se încarcă e blocat (apăsat de mai multe ori nu mai întoarce lista)
+function mVieComuta(tot){ if(M_TOT === tot || $("f-an").value || $("f-q").value.trim()) return; M_TOT = tot;
+  const b = $("m-vie-btn"); if(b){ b.classList.toggle("tot", tot); b.disabled = true; b.querySelector(".mv-t").textContent = "se încarcă…"; }
+  const e = $("m-vie"); if(e){ e.innerHTML = `<b>${tot ? "Aduc toate comenzile" : "Revin la lista vie"}…</b>`; e.style.display = ""; }
   loadMiscari(); }
 function mVieBara(){
-  const e = $("m-vie"); if(!e) return;
-  if(mVieEste()) e.innerHTML = `<b>Lista vie:</b> comenzile din ultimele 3 luni (de la ${fmtD(mVieDe())}) + cele viitoare + cele mai vechi încă deschise` +
-    (M_ASCUNSE ? ` · <span class="muted">${M_ASCUNSE} mai vechi, închise (toate bifele V), nu se văd</span>` : "") +
-    ` <button class="btn sm sec" onclick="mVieComuta(true)" title="Aduce și comenzile vechi închise. Din bază nu se pierde nimic — lista vie doar le ascunde.">Arată și cele mai vechi</button>`;
-  else if(M_TOT && !$("f-an").value && !$("f-q").value.trim()) e.innerHTML = `<b>Toate comenzile</b> <button class="btn sm sec" onclick="mVieComuta(false)" title="Înapoi la lista vie: ultimele 3 luni + viitoare + cele vechi încă deschise">Doar lista vie</button>`;
-  else e.innerHTML = "";
+  const e = $("m-vie"), b = $("m-vie-btn"), filtru = !!($("f-an").value || $("f-q").value.trim());
+  if(b){ const tot = M_TOT || filtru; b.classList.toggle("tot", tot); b.disabled = filtru;
+    b.querySelector(".mv-t").textContent = tot ? "Toată lista" : "Lista vie";
+    b.title = filtru ? "Ai ales un An sau cauți ceva → se văd toate comenzile care se potrivesc (și cele vechi). Lista vie revine când golești An și Caută."
+      : M_TOT ? `Acum: TOATĂ LISTA — ${MISC.length} comenzi, și cele vechi închise.\nClic → LISTA VIE: ascunde comenzile mai vechi de 3 luni (înainte de ${fmtD(mVieDe())}) care au toate bifele V.\nDin bază nu se ascunde nimic.`
+      : `Acum: LISTA VIE — ${MISC.length} comenzi: din ultimele 3 luni (de la ${fmtD(mVieDe())}), cele viitoare și cele mai vechi încă deschise (cel puțin o bifă care nu e V).\nAscunse: ${M_ASCUNSE} comenzi vechi închise (toate bifele V) — din bază nu se pierde nimic.\nClic → TOATĂ LISTA.`; }
+  if(!e) return;
+  e.innerHTML = filtru ? "" : mVieEste() ? `<b>Lista vie:</b> ultimele 3 luni (de la ${fmtD(mVieDe())}) + viitoare + cele mai vechi încă deschise` + (M_ASCUNSE ? ` · <span class="muted">${M_ASCUNSE} mai vechi, închise (toate bifele V), nu se văd</span>` : "")
+    : `<b>Toată lista</b> · <span class="muted">${MISC.length} comenzi</span>`;
   e.style.display = e.innerHTML ? "" : "none";
 }
 async function loadMiscari(){
@@ -4702,8 +4711,15 @@ function renderMiscari(){
   $("m-tbl").style.setProperty("--m-lat", M_LAT.reduce((t,w)=>t+w,0)+"px");
   $("m-tbl").className = "ds-" + DATA_STIL;
 }
-function exportMiscari(){
-  const rows=MISC.map(r=>({AN:r.data.slice(0,4),LUNA:LUNI[+r.data.slice(5,7)-1],DATA:fmtD(r.data),MISCARE:r.tip_miscare,BUC:r.buc,PRODUSE:r.produs,TIP:r.model,ACCESORII:r.accesorii||"",CLIENT:r.client,"NR CONTRACT":(CTR.find(x=>x.id===r.contract_id)||{}).nr_ctr||"","ANEXA":(ANX.find(x=>x.id===r.anexa_id)||{}).anexa||"",JUD:r.jud,"LOC. / COM.":r.loc,"SAT / STR. / LOCATIE":r.sat,CONTRACT:r.contract,DEPOZIT:r.depozit,"RESP SANTIER":r.pers_resp,TELEFON:r.telefon,Rpt:r.rpt,RT:r.rt,FAC:r.fac,PV:r.pv,ACT:r.act,WaAp:r.waap,"Frecv. Serv":r.frecv_serv,OBS:r.observatii,"COMANDA CL. NR":r.cmd_nr||"","COMANDA CL. DIN":r.cmd_data?fmtD(r.cmd_data):"","PRIMITA PE":r.cmd_canal||""}));
+async function exportMiscari(){
+  // v10.56 (cerut de Ovidiu, 28.11): pe lista vie exportul ia TOATE comenzile (cu filtrele Tip / Produs / Depozit), nu doar cele afișate
+  let L = MISC;
+  if(mVieEste()){
+    let q = db.from("miscari").select("*").order("data",{ascending:false}).order("id",{ascending:false}).limit(20000);
+    if($("f-tip").value) q=q.eq("tip_miscare",$("f-tip").value); if($("f-prod").value) q=q.eq("produs",$("f-prod").value); if($("f-dep").value) q=q.eq("depozit",$("f-dep").value);
+    toast("Export: aduc toate comenzile…"); const { data, error } = await q; if(error){ toast(error.message, true); return; } L = data || [];
+  }
+  const rows=L.map(r=>({AN:r.data.slice(0,4),LUNA:LUNI[+r.data.slice(5,7)-1],DATA:fmtD(r.data),MISCARE:r.tip_miscare,BUC:r.buc,PRODUSE:r.produs,TIP:r.model,ACCESORII:r.accesorii||"",CLIENT:r.client,"NR CONTRACT":(CTR.find(x=>x.id===r.contract_id)||{}).nr_ctr||"","ANEXA":(ANX.find(x=>x.id===r.anexa_id)||{}).anexa||"",JUD:r.jud,"LOC. / COM.":r.loc,"SAT / STR. / LOCATIE":r.sat,CONTRACT:r.contract,DEPOZIT:r.depozit,"RESP SANTIER":r.pers_resp,TELEFON:r.telefon,Rpt:r.rpt,RT:r.rt,FAC:r.fac,PV:r.pv,ACT:r.act,WaAp:r.waap,"Frecv. Serv":r.frecv_serv,OBS:r.observatii,"COMANDA CL. NR":r.cmd_nr||"","COMANDA CL. DIN":r.cmd_data?fmtD(r.cmd_data):"","PRIMITA PE":r.cmd_canal||""}));
   const ws=XLSX.utils.json_to_sheet(rows); const wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,ws,"COMENZI"); XLSX.writeFile(wb,`Comenzi_${today()}.xlsx`);
 }
 // ---- flags
