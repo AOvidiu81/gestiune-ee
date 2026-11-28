@@ -1262,7 +1262,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
   <span id="rz-w"><button id="rz-reset" class="pictograma" title="Lățimi implicite — pune coloanele din tabelele acestei file înapoi cum erau">↺ Reset layout</button><i class="rz-sep">|</i></span>
   <button id="az-btn" class="pictograma az-btn" onclick="azComuta()">Auto</button><i class="rz-sep">|</i><span id="tz-w" title="Mărimea tabelului (doar tabelul, restul rămâne la fel), din 5 în 5%. Fiecare meniu își ține minte mărimea lui. Merge și cu Ctrl + rotița mausului, Ctrl + / Ctrl − / Ctrl 0. Dublu clic pe procent = scrii tu valoarea."><button class="pictograma" onclick="tzPas(-1)" aria-label="Micșorează tabelul">−</button><b id="tz-v" ondblclick="tzScrie()" title="Dublu clic = scrii mărimea (ex. 87), Enter">100%</b><input id="tz-in" type="number" min="30" max="300" step="5" style="display:none"><button class="pictograma" onclick="tzPas(1)" aria-label="Mărește tabelul">+</button></span>
-  <span class="ver">v10.57</span>
+  <span class="ver">v10.59</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -18461,14 +18461,16 @@ function angDash(){
       <div${exp ? ' class="kpi-amb"' : ""}>Medicina muncii expirată<b>${exp}</b></div><div${at ? ' class="kpi-amb"' : ""}>Expiră în 30 de zile<b>${at}</b></div></div></div>
     <div class="card"><div class="tw"><table><thead><tr><th>Angajat</th><th>Funcție</th><th>Nr. contract</th><th>Tip</th><th>Data angajării</th><th>Vechime</th><th>Medicina muncii</th>
       <th title="Concediu de odihnă cuvenit anul acesta: zilele pe an întreg, proporțional cu perioada de contract din an (de la angajare / 1 ianuarie până la 31 decembrie / încetare)">CO cuvenit ${new Date().getFullYear()}</th><th title="Cât i s-a strâns de la angajare (sau 1 ianuarie) până azi">Cuvenit până azi</th><th title="Zile CO din pontaj, anul acesta">CO luat</th><th title="Cuvenit pe an − luat">Rămas pe an</th><th title="Cuvenit până azi (în jos) − luat: câte zile își poate lua acum">Poate lua azi</th><th title="Concediu medical anul acesta (din pontaj)">CM</th><th>Program</th>
-      ${adm ? "<th style='text-align:right'>Salariu bază</th><th style='text-align:right'>Mărire</th><th style='text-align:right'>Transport</th><th style='text-align:right' title='Se adaugă la totalul de plată din pontaj'>Alte diurne</th><th style='text-align:right' title='Net, program fix 8 h × 5 zile: (bază + mărire) / orele lunii (media anului) × 8 = valoarea unei zile de CO / spor pe o zi de sărbătoare lucrată'>Valoare zi</th><th style='text-align:right' title='Zile CO rămase pe an × valoarea zilei (net)'>Valoare CO rămas</th>" : ""}<th>La șoferi</th><th>Status</th></tr></thead><tbody>` +
+      ${adm ? "<th style='text-align:right'>Salariu bază</th><th style='text-align:right'>Mărire</th><th style='text-align:right'>Transport</th><th style='text-align:right' title='Se adaugă la totalul de plată din pontaj'>Alte diurne</th><th style='text-align:right' title='Net, program fix 8 h × 5 zile: (bază + mărire) / orele lunii (media anului) × 8 = valoarea unei zile de CO / spor pe o zi de sărbătoare lucrată'>Valoare zi</th><th style='text-align:right' title='Zile CO rămase pe an × valoarea zilei (net)'>Valoare CO rămas</th><th style='text-align:right;border-left:2px solid var(--bd)' title='Salariul brut lunar din contract (din fișa angajatului)'>Salariu brut</th><th style='text-align:right' title='Art. 150 Codul muncii: media zilnică din ultimele 3 luni (brut × 3 / zilele lucrătoare), dar nu mai puțin decât brutul / zilele lucrătoare din luna curentă. Mouse pe valoare = calculul.'>Zi CO brut</th><th style='text-align:right' title='Zile CO rămase pe an × ziua de CO brut. Estimare — din brut se rețin taxele; suma oficială o calculează contabilitatea.'>CO rămas brut</th><th style='text-align:right' title='CO rămas brut − CAS 25% − CASS 10% − impozit 10% (fără deducere personală) ≈ brut × 0,585. De comparat cu „Valoare CO rămas” (calculul tău pe net). Cu deducere personală / persoane în întreținere netul iese puțin mai mare.'>CO rămas net (din brut)</th>" : ""}<th>La șoferi</th><th>Status</th></tr></thead><tbody>` +
     L.map(x => { const c = ANG.co[x.id] || { CO: 0, CM: 0 }, pv = ANG.priv[x.id] || {};
       return `<tr style="cursor:pointer${x.activ === false ? ";opacity:.5" : ""}" onclick="angTab('${x.id}')"><td><b>${esc(x.nume)}</b></td><td>${esc(x.functie || "")}</td><td>${esc(x.nr_contract || "")}</td><td>${esc(x.tip_contract || "")}</td>
         <td>${fmtD(x.data_angajare)}</td><td>${afVechime(x.data_angajare)}</td><td>${afSem(x.medicina_expira)}</td>
         ${(k => !k ? '<td colspan="5" class="muted">zilele de CO / an necompletate</td>' : `<td title="${k.n} zile / an întreg${k.partial ? " · proporțional: " + angCOz(k.exact) + " zile (contract în anul curent din " + fmtD(ziLocala(k.st)) + ")" : ""}">${k.alocat}${k.partial ? ` <span class="muted" style="font-size:11px">din ${k.n}</span>` : ""}</td><td>${angCOz(k.cuvAzi)}</td><td>${k.luat}</td><td><b${k.ramas < 0 ? ' style="color:#C0392B"' : ""}>${k.ramas}</b></td><td><b style="color:${k.poate > 0 ? "#2E8B3C" : "#C0392B"}">${k.poate}</b></td>`)(angCO(x, c.CO))}<td>${c.CM || ""}</td>
         <td>${x.program_start ? "birou " + afOra(x.program_start) + "–" + afOra(x.program_stop) : "din rute"}</td>
         ${adm ? `<td style="text-align:right">${lei(pv.salariu_baza)}</td><td style="text-align:right">${lei(pv.marire)}</td><td style="text-align:right">${lei(pv.transport_luna)}</td><td style="text-align:right">${lei(pv.alte_diurne)}</td>` +
-          ((V, k) => `<td style="text-align:right">${V.zi ? pntLei2(V.zi) : ""}</td><td style="text-align:right">${V.zi && k ? `<b>${pntLei2(k.ramas * V.zi)}</b>` : ""}</td>`)(pntValori(pv, new Date().getFullYear(), today()), angCO(x, c.CO)) : ""}
+          ((V, k, B) => `<td style="text-align:right">${V.zi ? pntLei2(V.zi) : ""}</td><td style="text-align:right">${V.zi && k ? `<b>${pntLei2(k.ramas * V.zi)}</b>` : ""}</td>` +
+            `<td style="text-align:right;border-left:2px solid var(--bd)">${lei(pv.salariu_brut)}</td><td style="text-align:right" title="${esc(pntBrutTit(B))}">${B ? pntLei2(B.zi) : ""}</td><td style="text-align:right" title="${esc(pntBrutTit(B))}">${B && k ? `<b>${pntLei2(k.ramas * B.zi)}</b>` : ""}</td>` +
+            `<td style="text-align:right" title="${B && k ? esc("Brut " + pntLei2(k.ramas * B.zi) + "\n− CAS 25%: " + pntLei2(k.ramas * B.zi * .25) + "\n− CASS 10%: " + pntLei2(k.ramas * B.zi * .10) + "\n− impozit 10%: " + pntLei2(k.ramas * B.zi * .065) + "\n= net " + pntLei2(pntNetDinBrut(k.ramas * B.zi)) + (V.zi ? "\nCalculul tău pe net: " + pntLei2(k.ramas * V.zi) + " (diferență " + pntLei2(pntNetDinBrut(k.ramas * B.zi) - k.ramas * V.zi) + ")" : "") + "\nFără deducere personală — estimare.") : ""}">${B && k ? `<b>${pntLei2(pntNetDinBrut(k.ramas * B.zi))}</b>` : ""}</td>`)(pntValori(pv, new Date().getFullYear(), today()), angCO(x, c.CO), pntBrut(pv, today())) : ""}
         <td>${x.apare_la_soferi ? "da" : '<span class="muted">nu</span>'}</td><td>${x.activ === false ? "INACTIV" : "ACTIV"}</td></tr>`; }).join("") +
     `</tbody></table></div><p class="muted" style="margin:10px 0 0">Pontajul pe zile, contul de acces și PIN-ul sunt în fișa fiecărui angajat (clic pe rând). Foile de parcurs, prezența la depozit și cererile făcute pe telefon sunt în filele de sus.</p></div><div class="card" id="pnt-sumar"></div>`;
   pntSumar();   // v8.59
@@ -18476,13 +18478,17 @@ function angDash(){
 // v9.13 (cerut de Ovidiu, 17.11): raportul de sfârșit de an — zilele de CO rămase × valoarea zilei (net), pe fiecare angajat activ
 function angRaportCO(){
   const an = new Date().getFullYear(), N = pntNorma(an);
-  const rows = ANG.L.filter(x => x.activ !== false).map(x => { const c = ANG.co[x.id] || { CO: 0 }, k = angCO(x, c.CO), V = pntValori(ANG.priv[x.id] || {}, an, today());
+  const rows = ANG.L.filter(x => x.activ !== false).map(x => { const c = ANG.co[x.id] || { CO: 0 }, k = angCO(x, c.CO), V = pntValori(ANG.priv[x.id] || {}, an, today()), B = pntBrut(ANG.priv[x.id] || {}, today());
     return { "Angajat": x.nume, "Functie": x.functie || "", "CO cuvenit an": k ? k.alocat : "", "CO luat": k ? k.luat : c.CO, "CO ramas": k ? k.ramas : "",
       "Salariu baza + marire (net)": V.sal || "", "Valoare ora (net)": V.ora ? Math.round(V.ora * 100) / 100 : "", "Valoare zi (net)": V.zi ? Math.round(V.zi * 100) / 100 : "",
-      "Valoare CO ramas (net)": V.zi && k ? Math.round(k.ramas * V.zi * 100) / 100 : "" }; });
+      "Valoare CO ramas (net)": V.zi && k ? Math.round(k.ramas * V.zi * 100) / 100 : "",
+      "Salariu brut": B ? B.brut : "", "Zile lucratoare 3 luni": B ? B.z3 : "", "Media zilnica brut (3 luni)": B ? Math.round(B.media * 100) / 100 : "", "Minim brut / zile luna curenta": B ? Math.round(B.minim * 100) / 100 : "",
+      "Zi CO brut": B ? Math.round(B.zi * 100) / 100 : "", "Valoare CO ramas (brut)": B && k ? Math.round(k.ramas * B.zi * 100) / 100 : "",
+      "CO ramas net din brut (fara deducere)": B && k ? Math.round(pntNetDinBrut(k.ramas * B.zi) * 100) / 100 : "" }; });
   if(!rows.length){ toast("Niciun angajat activ", true); return; }
-  const tot = rows.reduce((t, r) => t + (+r["Valoare CO ramas (net)"] || 0), 0);
-  rows.push({}, { "Angajat": "TOTAL", "Valoare CO ramas (net)": Math.round(tot * 100) / 100 },
+  const tot = rows.reduce((t, r) => t + (+r["Valoare CO ramas (net)"] || 0), 0), totB = rows.reduce((t, r) => t + (+r["Valoare CO ramas (brut)"] || 0), 0), totBN = rows.reduce((t, r) => t + (+r["CO ramas net din brut (fara deducere)"] || 0), 0);
+  rows.push({}, { "Angajat": "TOTAL", "Valoare CO ramas (net)": Math.round(tot * 100) / 100, "Valoare CO ramas (brut)": Math.round(totB * 100) / 100, "CO ramas net din brut (fara deducere)": Math.round(totBN * 100) / 100 },
+    { "Angajat": "Brut (art. 150 Codul muncii): salariu brut x 3 / zilele lucratoare din ultimele 3 luni incheiate, dar nu mai putin decat brut / zilele lucratoare din luna curenta. Estimare - din brut se retin taxele; suma oficiala o calculeaza contabilitatea." },
     { "Angajat": "Calcul: program fix 8 h x 5 zile; " + an + ": " + N.zile + " zile lucratoare (" + N.lv + " luni-vineri - " + N.sbL + " sarbatori legale) = " + (Math.round(N.oreLuna * 100) / 100) + " ore / luna; ora = salariu / ore pe luna; ziua = ora x 8. Valori nete, estimative." });
   const ws = XLSX.utils.json_to_sheet(rows), wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, "CO ramas " + an);
   XLSX.writeFile(wb, "Raport_CO_ramas_" + an + "_" + today() + ".xlsx");
@@ -18510,7 +18516,7 @@ async function angFisa(x){
       ${afBif("an-activ", "angajat activ", x.activ !== false)}</div>
     <p class="muted" style="margin:6px 0 0">Program de birou completat = zilele lucrătoare se pontează singure cu aceste ore (ziua cu rută ia orele rutei). Gol = pontajul vine din rute.</p>
     ${ANG.admin ? `<h4 style="margin:16px 0 8px">🔒 Salarizare <span class="muted" style="font-weight:400;font-size:12px">— vizibil doar administratorului</span></h4>
-    <div class="grid3" style="grid-template-columns:repeat(5,minmax(130px,1fr))">${afC("an-sal", "Salariu de bază (lei)", pv.salariu_baza, "number")}${afC("an-mar", "Mărire salariu (lei)", pv.marire, "number")}${afC("an-dmar", "Data măririi", pv.data_marire, "date")}${afC("an-tr", "Transport (lei / lună)", pv.transport_luna, "number")}${afC("an-ad", "Alte diurne (lei)", pv.alte_diurne == null ? 0 : pv.alte_diurne, "number", 'title="După performanță — o completezi tu la final de lună; se adaugă la totalul de plată din pontaj"')}</div>
+    <div class="grid3" style="grid-template-columns:repeat(6,minmax(120px,1fr))">${afC("an-sal", "Salariu de bază NET (lei)", pv.salariu_baza, "number")}${afC("an-mar", "Mărire salariu (lei)", pv.marire, "number")}${afC("an-dmar", "Data măririi", pv.data_marire, "date")}${afC("an-tr", "Transport (lei / lună)", pv.transport_luna, "number")}${afC("an-ad", "Alte diurne (lei)", pv.alte_diurne == null ? 0 : pv.alte_diurne, "number", 'title="După performanță — o completezi tu la final de lună; se adaugă la totalul de plată din pontaj"')}${afC("an-brut", "Salariu BRUT din contract (lei)", pv.salariu_brut, "number", 'title="v10.58: brutul lunar din contractul de muncă — pentru valoarea CO după Codul muncii (media pe ultimele 3 luni). Nu schimbă pontajul și plățile nete."')}</div>
     <!-- v10.42 (cerut de Ovidiu, 27.11): CTR. și dovada de lipsă acces sunt acum la toți — bifele nu mai contează, rămân ascunse -->
     <div style="display:none"><h4 style="margin:16px 0 4px">🧪 Funcții noi în aplicația de rută <span class="muted" style="font-weight:400;font-size:12px">— de test; le vede doar acest angajat când se loghează în aplicația de rută</span></h4>
     <div class="grid3">${afBif("an-vctr", "atinge „CTR.” pe card → vede agentul contractului cu telefonul (apelabil)", pv.vede_contract, "v9.42: eticheta CTR. / DEP. o văd acum toți șoferii; agentul și telefonul doar cine e bifat aici.")}${afBif("an-tla", "test: lipsă acces cu poză și WhatsApp către agentul contractului", pv.test_lipsa_acces, "v9.39 (Ruta v45): la „Lipsă acces” se deschide pagina de dovadă — poză cu chenar de date, motiv, observații, trimitere pe WhatsApp. Doar pentru cine e bifat.")}</div></div>` : ""}
@@ -18543,7 +18549,7 @@ async function angSalveaza(id){
   let sid = id;
   if(id){ const { error } = await db.from("soferi").update(rec).eq("id", id); if(error){ toast(error.message, true); return; } }
   else { rec.depozit_id = (ANG.L.find(x => x.depozit_id) || {}).depozit_id || null; const { data, error } = await db.from("soferi").insert(rec).select("id").single(); if(error){ toast(error.message, true); return; } sid = data.id; }
-  if(ANG.admin){ const { error } = await db.from("angajati_privat").upsert({ sofer_id: sid, salariu_baza: afNum(v("an-sal")), marire: afNum(v("an-mar")), data_marire: v("an-dmar") || null, transport_luna: afNum(v("an-tr")), alte_diurne: afNum(v("an-ad")) || 0, vede_contract: !!($("an-vctr") && $("an-vctr").checked), test_lipsa_acces: !!($("an-tla") && $("an-tla").checked), updated_at: new Date().toISOString() });
+  if(ANG.admin){ const { error } = await db.from("angajati_privat").upsert({ sofer_id: sid, salariu_baza: afNum(v("an-sal")), marire: afNum(v("an-mar")), data_marire: v("an-dmar") || null, transport_luna: afNum(v("an-tr")), alte_diurne: afNum(v("an-ad")) || 0, salariu_brut: afNum(v("an-brut")), vede_contract: !!($("an-vctr") && $("an-vctr").checked), test_lipsa_acces: !!($("an-tla") && $("an-tla").checked), updated_at: new Date().toISOString() });
     if(error){ toast("Angajatul s-a salvat, salarizarea nu: " + error.message, true); return; } }
   toast("Salvat: " + nume); PNT.murdar = false; ANG.tab = sid; angIncarca();
 }
@@ -18598,6 +18604,26 @@ function pntNorma(an){
   for(let d = new Date(an, 0, 1); d.getFullYear() === an; d.setDate(d.getDate() + 1)){ const w = d.getDay(); if(w >= 1 && w <= 5){ lv++; if(sb.has(ziLocala(d))) sbL++; } }
   const zile = lv - sbL; return (PNT_NORMA[an] = { an, lv, sbL, zile, oreLuna: zile * 8 / 12 });
 }
+// v10.58 (cerut de Ovidiu, 28.11): CO pe BRUT, după art. 150 Codul muncii — media zilnică din ultimele 3 luni ÎNCHEIATE
+// (salariul brut × 3 / zilele lucrătoare din cele 3 luni, fără sărbătorile legale), dar nu mai puțin decât brutul / zilele lucrătoare
+// din luna curentă. Brutul e cel din fișă (același în toate cele 3 luni — sporurile variabile nu sunt în aplicație). Estimare; suma oficială = contabilitatea.
+function pntZileLucr(an, luna){   // luna 1–12
+  const sb = new Set(kalSarbatori(an).map(x => ziLocala(x.d))); let n = 0;
+  for(let d = new Date(an, luna - 1, 1); d.getMonth() === luna - 1; d.setDate(d.getDate() + 1)){ const w = d.getDay(); if(w >= 1 && w <= 5 && !sb.has(ziLocala(d))) n++; }
+  return n;
+}
+function pntBrut(pv, ziua){
+  const brut = +(pv || {}).salariu_brut || 0; if(!brut) return null;
+  const a = new Date((ziua || today()) + "T12:00:00"), L = [];
+  for(let i = 3; i >= 1; i--){ const d = new Date(a.getFullYear(), a.getMonth() - i, 1); L.push({ an: d.getFullYear(), luna: d.getMonth() + 1, z: pntZileLucr(d.getFullYear(), d.getMonth() + 1) }); }
+  const z3 = L.reduce((t, x) => t + x.z, 0), zL = pntZileLucr(a.getFullYear(), a.getMonth() + 1);
+  const media = z3 ? brut * 3 / z3 : 0, minim = zL ? brut / zL : 0;
+  return { brut, L, z3, zL, media, minim, zi: Math.max(media, minim) };
+}
+// v10.59 (cerut de Ovidiu, 28.11): brut → net, fără deducere personală: − CAS 25% − CASS 10% − impozit 10% din (brut − CAS − CASS) = brut × 0,585
+const pntNetDinBrut = b => { const cas = b * .25, cass = b * .10; return b - cas - cass - (b - cas - cass) * .10; };
+const pntBrutTit = B => !B ? "" : "Brut " + pntLei2(B.brut) + " × 3 luni / " + B.z3 + " zile lucrătoare (" + B.L.map(x => LUNI[x.luna - 1].slice(0, 3) + " " + x.z).join(", ") + ") = " + pntLei2(B.media) +
+  "\nMinimul legal: brut / " + B.zL + " zile lucrătoare luna aceasta = " + pntLei2(B.minim) + "\n→ ziua de CO brut = " + pntLei2(B.zi) + " (cea mai mare). Estimare — suma oficială o calculează contabilitatea.";
 function pntValori(pv, an, panaLa){
   const N = pntNorma(an), sal = (+(pv || {}).salariu_baza || 0) + ((pv || {}).marire && (!pv.data_marire || !panaLa || pv.data_marire <= panaLa) ? +pv.marire : 0);
   const ora = sal && N.oreLuna ? sal / N.oreLuna : 0; return { N, sal, ora, zi: ora * 8 };
