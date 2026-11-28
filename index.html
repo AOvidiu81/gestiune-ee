@@ -1262,7 +1262,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
   <span id="rz-w"><button id="rz-reset" class="pictograma" title="Lățimi implicite — pune coloanele din tabelele acestei file înapoi cum erau">↺ Reset layout</button><i class="rz-sep">|</i></span>
   <button id="az-btn" class="pictograma az-btn" onclick="azComuta()">Auto</button><i class="rz-sep">|</i><span id="tz-w" title="Mărimea tabelului (doar tabelul, restul rămâne la fel), din 5 în 5%. Fiecare meniu își ține minte mărimea lui. Merge și cu Ctrl + rotița mausului, Ctrl + / Ctrl − / Ctrl 0. Dublu clic pe procent = scrii tu valoarea."><button class="pictograma" onclick="tzPas(-1)" aria-label="Micșorează tabelul">−</button><b id="tz-v" ondblclick="tzScrie()" title="Dublu clic = scrii mărimea (ex. 87), Enter">100%</b><input id="tz-in" type="number" min="30" max="300" step="5" style="display:none"><button class="pictograma" onclick="tzPas(1)" aria-label="Mărește tabelul">+</button></span>
-  <span class="ver">v10.60</span>
+  <span class="ver">v10.61</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -18483,20 +18483,22 @@ async function xlsTabel(o){
   const nc = o.cols.length, ws = wb.addWorksheet(o.foaie || "Raport", { views: [{ state: "frozen", ySplit: 4, xSplit: o.xSplit || 1 }] });
   const fill = h => ({ type: "pattern", pattern: "solid", fgColor: { argb: "FF" + h } }), B = { top: { style: "thin", color: { argb: "FFB7C9BC" } }, left: { style: "thin", color: { argb: "FFB7C9BC" } }, bottom: { style: "thin", color: { argb: "FFB7C9BC" } }, right: { style: "thin", color: { argb: "FFB7C9BC" } } };
   const FN = "Calibri", col = i => { let n = i + 1, t = ""; while(n){ const m = (n - 1) % 26; t = String.fromCharCode(65 + m) + t; n = Math.floor((n - 1) / 26); } return t; }, ult = col(nc - 1);
-  ws.columns = o.cols.map(c => ({ width: c.w || 14 }));
-  ws.mergeCells("A1:" + ult + "1"); Object.assign(ws.getCell("A1"), { value: faraDiac(o.titlu) }); ws.getCell("A1").font = { name: FN, size: 15, bold: true, color: { argb: "FF1F5A33" } }; ws.getRow(1).height = 24;
-  ws.mergeCells("A2:" + ult + "2"); ws.getCell("A2").value = faraDiac(o.sub || ""); ws.getCell("A2").font = { name: FN, size: 10, italic: true, color: { argb: "FF555555" } };
+  // v10.61 (cerut de Ovidiu, 28.11, după ce l-a reglat el în Excel): text 18, rânduri de 30, coloane mai late pe măsură
+  const FS = 18, RH = 30, LAT = 1.6;
+  ws.columns = o.cols.map(c => ({ width: Math.round((c.w || 14) * LAT * 10) / 10 }));
+  ws.mergeCells("A1:" + ult + "1"); Object.assign(ws.getCell("A1"), { value: faraDiac(o.titlu) }); ws.getCell("A1").font = { name: FN, size: FS, bold: true, color: { argb: "FF1F5A33" } }; ws.getRow(1).height = RH;
+  ws.mergeCells("A2:" + ult + "2"); ws.getCell("A2").value = faraDiac(o.sub || ""); ws.getCell("A2").font = { name: FN, size: 16, italic: true, color: { argb: "FF555555" } }; ws.getRow(2).height = 26;
   // rând 3 = grupe de coloane (opțional)
-  if(o.grupe){ o.grupe.forEach(g => { const a = col(g.de) + "3", b = col(g.pana) + "3"; if(g.de !== g.pana) ws.mergeCells(a + ":" + b); const q = ws.getCell(a); q.value = faraDiac(g.t); q.font = { name: FN, size: 10, bold: true, color: { argb: "FFFFFFFF" } }; q.fill = fill(g.c || "2E8B3C"); q.alignment = { horizontal: "center", vertical: "middle" }; q.border = B; }); ws.getRow(3).height = 18; }
-  const hr = ws.getRow(4); o.cols.forEach((c, i) => { const q = hr.getCell(i + 1); q.value = faraDiac(c.h); q.font = { name: FN, size: 10, bold: true, color: { argb: "FF1F3B2A" } }; q.fill = fill(c.hf || "E6F3EA"); q.border = B; q.alignment = { horizontal: "center", vertical: "middle", wrapText: true }; }); hr.height = 42;
+  if(o.grupe){ o.grupe.forEach(g => { const a = col(g.de) + "3", b = col(g.pana) + "3"; if(g.de !== g.pana) ws.mergeCells(a + ":" + b); const q = ws.getCell(a); q.value = faraDiac(g.t); q.font = { name: FN, size: 16, bold: true, color: { argb: "FFFFFFFF" } }; q.fill = fill(g.c || "2E8B3C"); q.alignment = { horizontal: "center", vertical: "middle" }; q.border = B; }); ws.getRow(3).height = 26; }
+  const hr = ws.getRow(4); o.cols.forEach((c, i) => { const q = hr.getCell(i + 1); q.value = faraDiac(c.h); q.font = { name: FN, size: FS, bold: true, color: { argb: "FF1F3B2A" } }; q.fill = fill(c.hf || "E6F3EA"); q.border = B; q.alignment = { horizontal: "center", vertical: "middle", wrapText: true }; }); hr.height = 50;
   let r = 5;
   o.rows.forEach((row, k) => { const R = ws.getRow(r); row.forEach((v, i) => { const c = o.cols[i], q = R.getCell(i + 1); q.value = typeof v === "string" ? faraDiac(v) : (v === "" || v == null ? null : v);
-      q.font = { name: FN, size: 11, bold: !!c.b, color: c.fc ? { argb: "FF" + c.fc } : undefined }; q.border = B; if(c.fmt) q.numFmt = c.fmt;
-      q.alignment = { horizontal: c.al || (typeof v === "number" ? "right" : "left"), vertical: "middle" }; if(k % 2) q.fill = fill("F7FAF8"); if(c.bg) q.fill = fill(c.bg); }); r++; });
+      q.font = { name: FN, size: FS, bold: !!c.b, color: c.fc ? { argb: "FF" + c.fc } : undefined }; q.border = B; if(c.fmt) q.numFmt = c.fmt;
+      q.alignment = { horizontal: c.al || (typeof v === "number" ? "right" : "left"), vertical: "middle" }; if(k % 2) q.fill = fill("F7FAF8"); if(c.bg) q.fill = fill(c.bg); }); R.height = RH; r++; });
   if(o.total){ const R = ws.getRow(r); o.total.forEach((v, i) => { const c = o.cols[i], q = R.getCell(i + 1); q.value = typeof v === "string" ? faraDiac(v) : (v === "" || v == null ? null : v);
-      q.font = { name: FN, size: 11, bold: true }; q.fill = fill("DDEEE2"); q.border = { ...B, top: { style: "medium", color: { argb: "FF2E8B3C" } } }; if(c.fmt) q.numFmt = c.fmt; q.alignment = { horizontal: typeof v === "number" ? "right" : "left", vertical: "middle" }; }); r++; }
+      q.font = { name: FN, size: FS, bold: true }; q.fill = fill("DDEEE2"); q.border = { ...B, top: { style: "medium", color: { argb: "FF2E8B3C" } } }; if(c.fmt) q.numFmt = c.fmt; q.alignment = { horizontal: typeof v === "number" ? "right" : "left", vertical: "middle" }; }); R.height = RH; r++; }
   ws.autoFilter = { from: "A4", to: ult + "4" };
-  r++; (o.note || []).forEach(t => { ws.mergeCells("A" + r + ":" + ult + r); const q = ws.getCell("A" + r); q.value = faraDiac(t); q.font = { name: FN, size: 9, italic: true, color: { argb: "FF555555" } }; q.alignment = { wrapText: true, vertical: "top" }; ws.getRow(r).height = Math.max(15, Math.ceil(t.length / 170) * 14); r++; });
+  r++; (o.note || []).forEach(t => { ws.mergeCells("A" + r + ":" + ult + r); const q = ws.getCell("A" + r); q.value = faraDiac(t); q.font = { name: FN, size: 12, italic: true, color: { argb: "FF555555" } }; q.alignment = { wrapText: true, vertical: "middle" }; ws.getRow(r).height = Math.max(RH, Math.ceil(t.length / 200) * 18); r++; });
   ws.pageSetup = { orientation: "landscape", paperSize: 9, fitToPage: true, fitToWidth: 1, fitToHeight: 0, printTitlesRow: "4:4", margins: { left: 0.3, right: 0.3, top: 0.5, bottom: 0.5, header: 0.3, footer: 0.3 } };
   ws.headerFooter = { oddFooter: "&L" + faraDiac(o.titlu) + "&RPagina &P din &N" };
   const buf = await wb.xlsx.writeBuffer(); expDescarca(new Blob([buf], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" }), faraDiac(o.fisier));
