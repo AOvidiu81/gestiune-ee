@@ -1232,7 +1232,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
   <span id="rz-w"><button id="rz-reset" class="pictograma" title="Lățimi implicite — pune coloanele din tabelele acestei file înapoi cum erau">↺ Reset layout</button><i class="rz-sep">|</i></span>
   <span id="tz-w" title="Mărimea tabelului (doar tabelul, restul rămâne la fel), din 5 în 5%. Fiecare meniu își ține minte mărimea lui. Merge și cu Ctrl + rotița mausului, Ctrl + / Ctrl − / Ctrl 0. Dublu clic pe procent = scrii tu valoarea."><button class="pictograma" onclick="tzPas(-1)" aria-label="Micșorează tabelul">−</button><b id="tz-v" ondblclick="tzScrie()" title="Dublu clic = scrii mărimea (ex. 87), Enter">100%</b><input id="tz-in" type="number" min="30" max="300" step="5" style="display:none"><button class="pictograma" onclick="tzPas(1)" aria-label="Mărește tabelul">+</button></span>
-  <span class="ver">v10.54</span>
+  <span class="ver">v10.55</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -4662,7 +4662,8 @@ function mGrupDif(r, f){ if(!mGrupStrans(r.id)) return ""; const v = x => String
 let M_SEL = null;
 function mSelDin(tr, pus){ if(tr && tr.dataset && tr.dataset.mid && tr.closest("#m-tbl")) M_SEL = pus ? +tr.dataset.mid : (M_SEL === +tr.dataset.mid ? null : M_SEL); }
 // v10.53 (cerut de Ovidiu, 28.11): tabelul Comenzi nu se mai rescrie tot — rândurile la fel rămân pe loc, se înlocuiesc doar cele schimbate
-function mScrieTabel(html){
+function mScrieTabel(html){ try{ mScrieTabel0(html); }catch(e){ console.warn("mScrieTabel", e); $("m-tbl").innerHTML = html; } }   // v10.55: orice eroare → tabelul scris întreg, ca înainte
+function mScrieTabel0(html){
   const t = $("m-tbl"), vechi = [...t.querySelectorAll("tr[data-mid]")];
   const tmp = document.createElement("table"); tmp.innerHTML = html;
   const noi = [...tmp.querySelectorAll("tr[data-mid]")], thN = tmp.querySelector("tr:not([data-mid])"), thV = t.querySelector("tr:not([data-mid])");
@@ -4674,7 +4675,7 @@ function mScrieTabel(html){
   const corp = cap.parentNode; let ref = cap.nextSibling;
   for(const n of noi){
     const o = hv.get(n.dataset.mid), r = (o && o.outerHTML === n.outerHTML) ? o : n;
-    if(o && r !== o) o.remove(); hv.delete(n.dataset.mid);
+    if(o && r !== o){ if(o === ref) ref = o.nextSibling; o.remove(); } hv.delete(n.dataset.mid);   // v10.55: rândul scos era chiar locul de inserare → eroare, tabelul rămânea neterminat
     if(r !== ref) corp.insertBefore(r, ref); ref = r.nextSibling;
   }
   hv.forEach(o => o.remove());
