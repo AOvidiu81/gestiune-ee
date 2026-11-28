@@ -37,6 +37,31 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   eeFontPune("Roboto");   /* v5.60: ales de Ovidiu (13.10) — Roboto peste tot; lista de probă din bara de sus a fost scoasă */
   /* v5.56: meniul din stânga strâns (doar iconițe) sau întreg — ținut minte pe calculator */
   try{ if(localStorage.getItem("gee_nav") === "mic") document.documentElement.dataset.nav = "mic"; }catch(e){}
+  /* v10.57 (cerut de Ovidiu, 28.11): POTRIVIRE AUTOMATĂ PE ECRAN — aplicația arată pe orice ecran ca la el (Full HD cu Chrome pe 80% = 2400 px lățime),
+     cu textul niciodată mai mic decât la el. Pe ecranele mai mici meniul se strânge la iconițe (dacă nu l-ai reglat tu). Zoom-ul Chrome nu mai contează.
+     Se oprește din butonul „Auto” de sus (ținut minte pe fiecare calculator). Doar afișare. */
+  window.EE_AZ = 1; window.EE_REF = 2400;
+  window.azC = function(v){ return v / (window.EE_AZ || 1); };
+  window.azW = function(){ return window.innerWidth / (window.EE_AZ || 1); };
+  window.azH = function(){ return window.innerHeight / (window.EE_AZ || 1); };
+  window.azR = function(r){ var z = window.EE_AZ || 1; return z === 1 ? r : { left: r.left / z, top: r.top / z, right: r.right / z, bottom: r.bottom / z, width: r.width / z, height: r.height / z, x: r.left / z, y: r.top / z }; };
+  window.eeAuto = function(){
+    var h = document.documentElement, on = true, nav = null; try{ on = localStorage.getItem("gee_auto") !== "0"; nav = localStorage.getItem("gee_nav"); }catch(e){}
+    var w = window.innerWidth, d = window.devicePixelRatio || 1, s = 1;   // devicePixelRatio = scalarea Windows × zoom Chrome (zoom-ul nostru CSS nu intră)
+    if(on && w >= 900 && !h.classList.contains("mob")){
+      s = Math.min(1.6, Math.max(w / window.EE_REF, 0.8 / d));   // 0.8 / d = textul cel puțin cât la el (Full HD, Chrome 80%)
+      s = Math.round(s * 100) / 100; if(Math.abs(s - 1) < 0.03) s = 1;
+      if(nav === null){ if(w / s < 2250) h.dataset.nav = "mic"; else delete h.dataset.nav; }
+    }
+    window.EE_AZ = s; h.style.zoom = s === 1 ? "" : String(s);
+    var b = document.getElementById("az-btn");
+    if(b){ b.classList.toggle("on", on); b.textContent = on ? "Auto " + Math.round(s * 100) + "%" : "Auto oprit";
+      b.title = on ? "POTRIVIRE AUTOMATĂ PE ECRAN — pornită (" + Math.round(s * 100) + "%).\nAplicația se potrivește singură pe ecranul acesta, ca să arate ca pe ecranul tău Full HD; textul nu ajunge mai mic decât la tine.\nZoom-ul din Chrome nu mai contează; − / + de lângă (mărimea tabelului) merge în continuare.\nClic = oprește (rămâne cum reglezi tu cu zoom-ul Chrome). Ținut minte pe acest calculator."
+        : "POTRIVIRE AUTOMATĂ PE ECRAN — oprită. Mărimea o reglezi tu cu zoom-ul din Chrome.\nClic = pornește."; }
+  };
+  window.eeAuto();
+  window.addEventListener("resize", function(){ clearTimeout(window.__azT); window.__azT = setTimeout(window.eeAuto, 150); });
+  window.azComuta = function(){ var on = true; try{ on = localStorage.getItem("gee_auto") !== "0"; localStorage.setItem("gee_auto", on ? "0" : "1"); }catch(e){} window.eeAuto(); };
 </script>
 <style>
   :root{--g:#1b5e3a;--g2:#2e7d4f;--gl:#e6f3ea;--bg:#f3f5f4;--card:#fff;--tx:#1e2a24;--mut:#6b7a72;--bd:#d9e0dc;--red:#b3261e;--amb:#b26a00;--blue:#1d4ed8}
@@ -109,6 +134,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   .tip-acc{font-weight:700;text-decoration:underline dotted;text-underline-offset:3px;cursor:help}
   .acc-ic{display:inline-block;min-width:18px;height:18px;line-height:16px;padding:0 3px;border:1px solid var(--blue);color:var(--blue);border-radius:4px;font-size:11px;font-weight:700;cursor:help}
   #m-tbl .cl-pop{cursor:pointer}
+  .az-btn{width:auto!important;padding:0 9px!important;font-size:11px;font-weight:700;white-space:nowrap;border-radius:13px!important} .az-btn.on{background:#2E8B3C!important;border-color:#2E8B3C!important;color:#fff!important}
   /* v10.56 (cerut de Ovidiu, 28.11): comutatorul Lista vie / Toată lista, ca la tema închisă / deschisă */
   .mvie{white-space:nowrap;min-width:138px} .mvie .mv-sw{display:inline-block;width:30px;height:16px;border-radius:9px;background:#2E8B3C;position:relative;vertical-align:-3px;margin-right:7px;transition:background .2s}
   .mvie .mv-sw i{position:absolute;top:2px;left:2px;width:12px;height:12px;border-radius:50%;background:#fff;transition:left .2s}
@@ -1235,8 +1261,8 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <button id="btn-mob" class="btn sec" style="padding:5px 10px;font-size:12px" onclick="mobPC(false)" title="Înapoi la varianta de telefon">📱 Telefon</button>
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
   <span id="rz-w"><button id="rz-reset" class="pictograma" title="Lățimi implicite — pune coloanele din tabelele acestei file înapoi cum erau">↺ Reset layout</button><i class="rz-sep">|</i></span>
-  <span id="tz-w" title="Mărimea tabelului (doar tabelul, restul rămâne la fel), din 5 în 5%. Fiecare meniu își ține minte mărimea lui. Merge și cu Ctrl + rotița mausului, Ctrl + / Ctrl − / Ctrl 0. Dublu clic pe procent = scrii tu valoarea."><button class="pictograma" onclick="tzPas(-1)" aria-label="Micșorează tabelul">−</button><b id="tz-v" ondblclick="tzScrie()" title="Dublu clic = scrii mărimea (ex. 87), Enter">100%</b><input id="tz-in" type="number" min="30" max="300" step="5" style="display:none"><button class="pictograma" onclick="tzPas(1)" aria-label="Mărește tabelul">+</button></span>
-  <span class="ver">v10.56</span>
+  <button id="az-btn" class="pictograma az-btn" onclick="azComuta()">Auto</button><i class="rz-sep">|</i><span id="tz-w" title="Mărimea tabelului (doar tabelul, restul rămâne la fel), din 5 în 5%. Fiecare meniu își ține minte mărimea lui. Merge și cu Ctrl + rotița mausului, Ctrl + / Ctrl − / Ctrl 0. Dublu clic pe procent = scrii tu valoarea."><button class="pictograma" onclick="tzPas(-1)" aria-label="Micșorează tabelul">−</button><b id="tz-v" ondblclick="tzScrie()" title="Dublu clic = scrii mărimea (ex. 87), Enter">100%</b><input id="tz-in" type="number" min="30" max="300" step="5" style="display:none"><button class="pictograma" onclick="tzPas(1)" aria-label="Mărește tabelul">+</button></span>
+  <span class="ver">v10.57</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -4625,10 +4651,10 @@ function clPopArata(b){
   if(!k && !a) h.push(`<div class="clp-m">${ctrExterior(r) ? "Fără contract la tine — contract pe depozitul " + esc(r.contract || "") : "Comanda nu e legată de un contract / o anexă"}</div>`);
   else if(k && !a) h.push(`<div class="clp-m">Fără anexă pe comandă</div>`);
   p.innerHTML = h.join("");
-  const q = b.getBoundingClientRect(); p.style.display = "block";
+  const q = azR(b.getBoundingClientRect()); p.style.display = "block";
   const w = p.offsetWidth, hh = p.offsetHeight;
-  p.style.left = Math.max(8, Math.min(q.left, innerWidth - w - 8)) + "px";
-  p.style.top = (q.bottom + 4 + hh > innerHeight ? Math.max(8, q.top - hh - 4) : q.bottom + 4) + "px";
+  p.style.left = Math.max(8, Math.min(q.left, azW() - w - 8)) + "px";
+  p.style.top = (q.bottom + 4 + hh > azH() ? Math.max(8, q.top - hh - 4) : q.bottom + 4) + "px";
 }
 function clPopAscunde(){ const p = $("cl-pop"); if(p) p.style.display = "none"; clearTimeout(CLP_T); clearTimeout(CLP_IESE); }
 function clPopIese(){ clearTimeout(CLP_IESE); CLP_IESE = setTimeout(clPopAscunde, 350); }
@@ -8205,7 +8231,7 @@ function feFereastra(m, inchide){
     g.querySelector(".fe-mx").innerHTML = mare ? SV.rest : SV.max; g.querySelector(".fe-mx").title = mare ? "Înapoi la mărimea de dinainte" : "Mărește pe tot ecranul"; };
   g.querySelector(".fe-x").onclick = () => { scoateChip(); (inchide || (() => m.remove()))(); };
   cap.appendChild(g);
-  const mv = e => { if(!start) return; dx = e.clientX - start.x; dy = Math.max(e.clientY - start.y, -start.top); box.style.transform = "translate(" + dx + "px," + dy + "px)"; };
+  const mv = e => { if(!start) return; dx = e.clientX - start.x; dy = Math.max(e.clientY - start.y, -start.top); box.style.transform = "translate(" + azC(dx) + "px," + azC(dy) + "px)"; };
   const up = () => { start = null; };
   cap.addEventListener("mousedown", e => { if(e.target.closest("button")) return; start = { x: e.clientX - dx, y: e.clientY - dy, top: box.getBoundingClientRect().top - dy }; e.preventDefault(); });
   document.addEventListener("mousemove", mv); document.addEventListener("mouseup", up);
@@ -8807,7 +8833,7 @@ function ofEvForm(id, copie){
   { const tm = $("ev-ment"); if(tm){ tm.style.height = "auto"; tm.style.height = (tm.scrollHeight + 2) + "px"; } }
   { const bx = w.querySelector(".box"); bx.classList.remove("fe-max");
     let m0 = null; try{ m0 = JSON.parse(localStorage.getItem("ev-box") || "null"); }catch(e){}
-    bx.style.width = m0 && m0.w ? Math.min(m0.w, window.innerWidth * 0.98) + "px" : "min(1320px, 96vw)"; if(m0 && m0.h) bx.style.height = Math.min(m0.h, window.innerHeight * 0.96) + "px";
+    bx.style.width = m0 && m0.w ? Math.min(m0.w, azW() * 0.98) + "px" : "min(1320px, 96vw)"; if(m0 && m0.h) bx.style.height = Math.min(m0.h, azH() * 0.96) + "px";
     let t0 = 0; if(window.ResizeObserver) new ResizeObserver(() => { clearTimeout(t0); t0 = setTimeout(() => { if(!bx.isConnected || bx.classList.contains("fe-max")) return;
       try{ localStorage.setItem("ev-box", JSON.stringify({ w: Math.round(bx.offsetWidth), h: bx.style.height ? Math.round(bx.offsetHeight) : 0 })); }catch(e){} }, 400); }).observe(bx); }
   w.addEventListener("input", ofEvSuma); w.addEventListener("change", ofEvSuma); ofEvZile(k.servisari || []);
@@ -11276,7 +11302,7 @@ function catRapid(f, c, btn){
     ${eTip ? "" : `<label style="display:flex;gap:6px;align-items:center;margin-top:8px;font-size:13px"><input type="checkbox" id="cat-serie"> Are serie (se trec serii pe bucată)</label>`}
     <div class="cp-b"><button type="button" class="btn sm sec" onclick="catInchide()">Renunță</button><button type="button" class="btn sm" onclick="catSalveaza('${f}','${c}')">Adaugă în catalog</button></div>`;
   document.body.appendChild(d);
-  const r = btn.getBoundingClientRect(); d.style.left = Math.max(8, Math.min(r.left, innerWidth - 300)) + "px"; d.style.top = Math.min(r.bottom + 6, innerHeight - d.offsetHeight - 8) + "px";
+  const r = azR(btn.getBoundingClientRect()); d.style.left = Math.max(8, Math.min(r.left, azW() - 300)) + "px"; d.style.top = Math.min(r.bottom + 6, azH() - d.offsetHeight - 8) + "px";
   const i = $("cat-val"); i.focus(); i.onkeydown = e => { if(e.key === "Enter") catSalveaza(f, c); if(e.key === "Escape") catInchide(); };
   setTimeout(() => document.addEventListener("mousedown", catAfara), 0);
 }
@@ -11287,7 +11313,7 @@ function catRapidMF(f, btn){
     <input type="text" id="cat-val" placeholder="ex. 14 WC">
     <div class="cp-b"><button type="button" class="btn sm sec" onclick="catInchide()">Renunță</button><button type="button" class="btn sm" onclick="catSalveazaMF('${f}')">Adaugă în catalog</button></div>`;
   document.body.appendChild(d);
-  const r = btn.getBoundingClientRect(); d.style.left = Math.max(8, Math.min(r.left, innerWidth - 300)) + "px"; d.style.top = Math.min(r.bottom + 6, innerHeight - d.offsetHeight - 8) + "px";
+  const r = azR(btn.getBoundingClientRect()); d.style.left = Math.max(8, Math.min(r.left, azW() - 300)) + "px"; d.style.top = Math.min(r.bottom + 6, azH() - d.offsetHeight - 8) + "px";
   const i = $("cat-val"); i.focus(); i.onkeydown = e => { if(e.key === "Enter") catSalveazaMF(f); if(e.key === "Escape") catInchide(); };
   setTimeout(() => document.addEventListener("mousedown", catAfara), 0);
 }
@@ -18036,11 +18062,11 @@ function calendarDeschide(inp){
 }
 function calendarAseaza(){
   if(!CAL_EL || !CAL_INP) return;
-  const r = CAL_INP.getBoundingClientRect();
+  const r = azR(CAL_INP.getBoundingClientRect());
   const h = CAL_EL.offsetHeight, w = CAL_EL.offsetWidth;
   let sus = r.bottom + 4, stanga = r.left;
-  if(sus + h > window.innerHeight - 8) sus = Math.max(8, r.top - h - 4);   // se întoarce deasupra
-  if(stanga + w > window.innerWidth - 8) stanga = Math.max(8, window.innerWidth - w - 8);
+  if(sus + h > azH() - 8) sus = Math.max(8, r.top - h - 4);   // se întoarce deasupra
+  if(stanga + w > azW() - 8) stanga = Math.max(8, azW() - w - 8);
   CAL_EL.style.top = sus + "px";
   CAL_EL.style.left = stanga + "px";
 }
@@ -18115,14 +18141,14 @@ function cautaInchide(){
 }
 function cautaAseaza(){
   if(!CT_PANOU || !CT_INP) return;
-  const r = CT_INP.getBoundingClientRect();
+  const r = azR(CT_INP.getBoundingClientRect());
   CT_PANOU.style.minWidth = Math.max(220, r.width) + "px";
-  CT_PANOU.style.maxWidth = Math.max(260, Math.min(520, window.innerWidth - 16)) + "px";
+  CT_PANOU.style.maxWidth = Math.max(260, Math.min(520, azW() - 16)) + "px";
   const h = CT_PANOU.offsetHeight;
   let sus = r.bottom + 4;
-  if(sus + h > window.innerHeight - 8) sus = Math.max(8, r.top - h - 4);
+  if(sus + h > azH() - 8) sus = Math.max(8, r.top - h - 4);
   CT_PANOU.style.top = sus + "px";
-  CT_PANOU.style.left = Math.max(8, Math.min(r.left, window.innerWidth - CT_PANOU.offsetWidth - 8)) + "px";
+  CT_PANOU.style.left = Math.max(8, Math.min(r.left, azW() - CT_PANOU.offsetWidth - 8)) + "px";
 }
 function cautaDeseneaza(){
   if(!CT_PANOU) return;
@@ -19886,18 +19912,18 @@ function ghidPune(el, ctx){
   const p = GH.poz[ctx];
   if(!p){ el.classList.remove("mutat"); el.style.left = el.style.top = ""; return; }
   el.classList.add("mutat"); document.body.appendChild(el);   // deasupra paginii, nu în fereastra care se mută și ea
-  el.style.left = Math.max(0, Math.min(p.x, innerWidth - 120)) + "px";
-  el.style.top = Math.max(0, Math.min(p.y, innerHeight - 40)) + "px";
+  el.style.left = Math.max(0, Math.min(p.x, azW() - 120)) + "px";
+  el.style.top = Math.max(0, Math.min(p.y, azH() - 40)) + "px";
 }
 function ghidTrage(e, ctx){
   if(e.button !== 0) return;
   const el = document.getElementById("ghid-" + ctx); if(!el) return;
   e.preventDefault();
-  const r = el.getBoundingClientRect(), dx = e.clientX - r.left, dy = e.clientY - r.top;
+  const r = azR(el.getBoundingClientRect()), dx = azC(e.clientX) - r.left, dy = azC(e.clientY) - r.top;
   if(!el.classList.contains("mutat")){ el.classList.add("mutat"); document.body.appendChild(el); el.style.left = r.left + "px"; el.style.top = r.top + "px"; }
   const muta = ev => {
-    el.style.left = Math.max(0, Math.min(ev.clientX - dx, innerWidth - 120)) + "px";
-    el.style.top = Math.max(0, Math.min(ev.clientY - dy, innerHeight - 40)) + "px";
+    el.style.left = Math.max(0, Math.min(azC(ev.clientX) - dx, azW() - 120)) + "px";
+    el.style.top = Math.max(0, Math.min(azC(ev.clientY) - dy, azH() - 40)) + "px";
   };
   const gata = () => {
     document.removeEventListener("mousemove", muta); document.removeEventListener("mouseup", gata);
@@ -19931,7 +19957,7 @@ window.addEventListener("hashchange", () => deschideSectiune((location.hash || "
     dx = e.clientX - start.x; dy = e.clientY - start.y;
     const r = box.getBoundingClientRect(), tx = r.top - dy_aplicat;   // antetul nu iese deasupra ecranului
     if(tx + dy < 0) dy = -tx;
-    dy_aplicat = dy; box.style.transform = "translate(" + dx + "px," + dy + "px)"; });
+    dy_aplicat = dy; box.style.transform = "translate(" + azC(dx) + "px," + azC(dy) + "px)"; });
   document.addEventListener("mouseup", () => { start = null; });
   cap.addEventListener("dblclick", e => { if(e.target.closest("button")) return; dx = dy = dy_aplicat = 0; box.style.transform = ""; box.style.width = ""; box.style.height = ""; });
   var dy_aplicat = 0;
@@ -19945,7 +19971,7 @@ window.addEventListener("hashchange", () => deschideSectiune((location.hash || "
   cap.addEventListener("mousedown", e => { if(e.target.closest("button")) return; start = { x: e.clientX - dx, y: e.clientY - dy, top: box.getBoundingClientRect().top - dy }; e.preventDefault(); });
   document.addEventListener("mousemove", e => { if(!start) return;
     dx = e.clientX - start.x; dy = Math.max(e.clientY - start.y, -start.top);   // titlul nu iese deasupra ecranului
-    box.style.transform = "translate(" + dx + "px," + dy + "px)"; });
+    box.style.transform = "translate(" + azC(dx) + "px," + azC(dy) + "px)"; });
   document.addEventListener("mouseup", () => { start = null; });
   cap.addEventListener("dblclick", () => { dx = dy = 0; box.style.transform = ""; box.style.width = ""; box.style.height = ""; });
 });
@@ -20326,9 +20352,9 @@ function ptMeniu(ev, id){
     it("📅 Schimbă zilele / frecvența", `openSchZi(${l ? l.anexa : 0},'${key}')`, areAnx, areAnx ? "Zile adăugate / scoase, frecvența, de la o dată" : "Punctul nu ține de o anexă") +
     it("📍 Deschide harta", `window.open('https://www.google.com/maps?q=${+r.lat},${+r.lon}','_blank','noopener')`, gps, gps ? "Google Maps" : "Punctul nu are coordonate GPS");
   m.style.display = "block";
-  const b = ev.currentTarget.getBoundingClientRect(), w = 240;
-  m.style.left = Math.max(8, Math.min(window.innerWidth - w - 8, b.right - w)) + "px";
-  const h = m.offsetHeight; m.style.top = (b.bottom + 4 + h > window.innerHeight ? Math.max(8, b.top - h - 4) : b.bottom + 4) + "px";
+  const b = azR(ev.currentTarget.getBoundingClientRect()), w = 240;
+  m.style.left = Math.max(8, Math.min(azW() - w - 8, b.right - w)) + "px";
+  const h = m.offsetHeight; m.style.top = (b.bottom + 4 + h > azH() ? Math.max(8, b.top - h - 4) : b.bottom + 4) + "px";
 }
 // v5.44 (cerut de Ovidiu, 12.10): butoanele din colțul ferestrelor, ca în Windows — ‒ minimizează · ☐ mărește / ❐ înapoi · ✕ închide.
 // ✕ face exact ce face butonul Renunță / Anulează al ferestrei (ciornele se păstrează la fel).
@@ -20394,6 +20420,7 @@ const mobEste = () => document.documentElement.classList.contains("mob");
 function mobPC(pc){
   try{ pc ? localStorage.setItem("ee-pc", "1") : localStorage.removeItem("ee-pc"); }catch(e){}
   document.documentElement.classList.toggle("mob", !pc);
+  if(typeof eeAuto === "function") eeAuto();   // v10.57
   if(pc){ if(INIT_GATA) loadMiscari(); } else mobDupaInit();
 }
 function mobAzi(){
@@ -20764,11 +20791,11 @@ function tcArata(td){
   const r = tr.getBoundingClientRect(), h = r.height || 28, th = tb.tHead ? tb.tHead.getBoundingClientRect().height : 0;
   const bara = sc === document.scrollingElement ? 0 : (sc.offsetHeight - sc.clientHeight);
   const sus = rs.top + th + 4 * h, jos = rs.bottom - bara - 4 * h;
-  if(r.top < sus) sc.scrollTop -= (sus - r.top);
-  else if(r.bottom > jos) sc.scrollTop += (r.bottom - jos);
+  if(r.top < sus) sc.scrollTop -= azC(sus - r.top);
+  else if(r.bottom > jos) sc.scrollTop += azC(r.bottom - jos);
   const c = td.getBoundingClientRect();
-  if(c.left < rs.left) sc.scrollLeft -= (rs.left - c.left + 8);
-  else if(c.right > rs.right - 16) sc.scrollLeft += (c.right - rs.right + 24);
+  if(c.left < rs.left) sc.scrollLeft -= azC(rs.left - c.left + 8);
+  else if(c.right > rs.right - 16) sc.scrollLeft += azC(c.right - rs.right + 24);
 }
 function tcModalDeschis(){ return !!document.querySelector(".modal.on") || !!(document.getElementById("info-mod") && document.getElementById("info-mod").offsetParent !== null); }
 function tcMuta(tr, td, dr, dc){
@@ -20921,7 +20948,7 @@ porneste();
   const scrie = (k, m) => { try { Object.keys(m).length ? localStorage.setItem(k, JSON.stringify(m)) : localStorage.removeItem(k); } catch(e){} };
   const antet = t => [...t.rows].find(r => r.querySelector("th"));
   const colsDe = t => { const cg = t.querySelector(":scope > colgroup"); return cg ? [...cg.children] : null; };
-  const zoom = t => t.closest("main .page.on .tw") ? (TZ || 1) : 1;
+  const zoom = t => (t.closest("main .page.on .tw") ? (TZ || 1) : 1) * (window.EE_AZ || 1);   // v10.57: și potrivirea automată
   function harta(tr){
     const out = [], nr = {}; let i = 0, ok = true;
     [...tr.cells].forEach(c => {
@@ -21002,14 +21029,14 @@ porneste();
     // v7.56 (cerut de Ovidiu, 02.11): cât de lată e coloana, în timp ce o tragi (ca să le poți face egale)
     trag.px = document.createElement("div"); trag.px.className = "rz-px"; document.body.appendChild(trag.px);
     trag.pxT = w => { trag.px.innerHTML = `<b>${esc((th.innerText || "").replace(/\s+/g, " ").trim() || "coloana")}</b>: ${w} px` + (w !== Math.round(trag.w0) ? ` <span>(era ${Math.round(trag.w0)})</span>` : ""); };
-    trag.pxT(Math.round(trag.w0)); trag.px.style.left = (e.clientX + 14) + "px"; trag.px.style.top = (e.clientY + 16) + "px";
+    trag.pxT(Math.round(trag.w0)); trag.px.style.left = (azC(e.clientX) + 14) + "px"; trag.px.style.top = (azC(e.clientY) + 16) + "px";
   }, true);
   document.addEventListener("mousemove", e => {
     if(!trag) return;
     const w = Math.max(24, Math.round(trag.w0 + (e.clientX - trag.x0) / trag.z));
     if(Math.abs(e.clientX - trag.x0) > 2) trag.mutat = true;
     trag.col.style.width = w + "px"; total(trag.t, trag.cols);
-    if(trag.px){ trag.pxT(w); trag.px.style.left = (e.clientX + 14) + "px"; trag.px.style.top = (e.clientY + 16) + "px"; }
+    if(trag.px){ trag.pxT(w); trag.px.style.left = (azC(e.clientX) + 14) + "px"; trag.px.style.top = (azC(e.clientY) + 16) + "px"; }
   });
   document.addEventListener("mouseup", () => {
     if(!trag) return;
@@ -21121,7 +21148,7 @@ function locAuto(jId, lId, sId){
     if(!lista.length){ inchide(); return; }
     if(!box){ box = document.createElement("div"); box.className = "loc-box"; document.body.appendChild(box);
       box.addEventListener("mousedown", ev => { const d = ev.target.closest("[data-i]"); if(d){ ev.preventDefault(); alege(+d.dataset.i); } }); }
-    const r = el.getBoundingClientRect();
+    const r = azR(el.getBoundingClientRect());
     box.style.left = r.left + "px"; box.style.top = (r.bottom + 2) + "px"; box.style.minWidth = Math.max(r.width, 300) + "px";
     box.innerHTML = lista.map((e, i) => `<div data-i="${i}" class="${i === sel ? "on" : ""}"><b>${esc(e.nume)}</b> <span>— ${esc(e.t)}</span><i>${esc(e.j)}</i></div>`).join("") +
       `<div class="loc-sursa">lista oficială SIRUTA (INS)</div>`;
@@ -21251,7 +21278,7 @@ function satAuto(jId, lId, sId){
     if(!lista.length){ inchide(); return; }
     if(!box){ box = document.createElement("div"); box.className = "loc-box loc-box-sat"; document.body.appendChild(box);
       box.addEventListener("mousedown", ev => { const d = ev.target.closest("[data-i]"); ev.preventDefault(); if(d) alege(+d.dataset.i); }); }
-    const r = el.getBoundingClientRect();
+    const r = azR(el.getBoundingClientRect());
     box.style.left = r.left + "px"; box.style.top = (r.bottom + 2) + "px"; box.style.minWidth = Math.max(r.width, 300) + "px";
     const U = u != null ? LOCX.U[u] : null, tipU = U ? (U[1] === "C" ? "comunei " : U[1] === "M" ? "municipiului " : "orașului ") + esc(locTitlu(U[0])) : "";
     let h = "", cap = "";
@@ -21650,5 +21677,6 @@ async function expWord(D, an, luna, lunaT, sufix){
   expDescarca(await Packer.toBlob(doc), `${zi2(luna)}. MISCARI RAPORT LUNA - ${lunaT} - DEPOZIT ${depPrincipal() || "HUNEDOARA"}.docx`);
 }
 </script>
+<script>try{ eeAuto(); }catch(e){}</script><!-- v10.57: butonul Auto primește starea -->
 </body>
 </html>
