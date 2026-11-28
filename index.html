@@ -1232,7 +1232,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
   <span id="rz-w"><button id="rz-reset" class="pictograma" title="Lățimi implicite — pune coloanele din tabelele acestei file înapoi cum erau">↺ Reset layout</button><i class="rz-sep">|</i></span>
   <span id="tz-w" title="Mărimea tabelului (doar tabelul, restul rămâne la fel), din 5 în 5%. Fiecare meniu își ține minte mărimea lui. Merge și cu Ctrl + rotița mausului, Ctrl + / Ctrl − / Ctrl 0. Dublu clic pe procent = scrii tu valoarea."><button class="pictograma" onclick="tzPas(-1)" aria-label="Micșorează tabelul">−</button><b id="tz-v" ondblclick="tzScrie()" title="Dublu clic = scrii mărimea (ex. 87), Enter">100%</b><input id="tz-in" type="number" min="30" max="300" step="5" style="display:none"><button class="pictograma" onclick="tzPas(1)" aria-label="Mărește tabelul">+</button></span>
-  <span class="ver">v10.53</span>
+  <span class="ver">v10.54</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -4422,13 +4422,16 @@ var MISC_CERERE=0, MISC_TQ=null;   // v5.92
 let M_TOT = false, M_ASCUNSE = 0; const M_TINUTE = new Set();   // M_TINUTE = comenzi salvate acum (rămân în listă chiar dacă sunt vechi și închise)
 const mVieEste = () => !M_TOT && !$("f-an").value && !$("f-q").value.trim();
 const mVieDe = () => { const d = new Date(); d.setMonth(d.getMonth() - 3); return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0"); };
-function mVieComuta(){ M_TOT = !M_TOT; loadMiscari(); }
+// v10.54: butonul spune ce vrei (nu comută) și se blochează cât se încarcă — apăsat de mai multe ori nu mai întoarce lista înapoi
+function mVieComuta(tot){ if(M_TOT === tot) return; M_TOT = tot; const e = $("m-vie");
+  if(e) e.innerHTML = `<b>${tot ? "Aduc toate comenzile" : "Revin la lista vie"}…</b> <button class="btn sm sec" disabled style="opacity:.5">se încarcă…</button>`;
+  loadMiscari(); }
 function mVieBara(){
   const e = $("m-vie"); if(!e) return;
   if(mVieEste()) e.innerHTML = `<b>Lista vie:</b> comenzile din ultimele 3 luni (de la ${fmtD(mVieDe())}) + cele viitoare + cele mai vechi încă deschise` +
     (M_ASCUNSE ? ` · <span class="muted">${M_ASCUNSE} mai vechi, închise (toate bifele V), nu se văd</span>` : "") +
-    ` <button class="btn sm sec" onclick="mVieComuta()" title="Aduce și comenzile vechi închise. Din bază nu se pierde nimic — lista vie doar le ascunde.">Arată și cele mai vechi</button>`;
-  else if(M_TOT && !$("f-an").value && !$("f-q").value.trim()) e.innerHTML = `<b>Toate comenzile</b> <button class="btn sm sec" onclick="mVieComuta()" title="Înapoi la lista vie: ultimele 3 luni + viitoare + cele vechi încă deschise">Doar lista vie</button>`;
+    ` <button class="btn sm sec" onclick="mVieComuta(true)" title="Aduce și comenzile vechi închise. Din bază nu se pierde nimic — lista vie doar le ascunde.">Arată și cele mai vechi</button>`;
+  else if(M_TOT && !$("f-an").value && !$("f-q").value.trim()) e.innerHTML = `<b>Toate comenzile</b> <button class="btn sm sec" onclick="mVieComuta(false)" title="Înapoi la lista vie: ultimele 3 luni + viitoare + cele vechi încă deschise">Doar lista vie</button>`;
   else e.innerHTML = "";
   e.style.display = e.innerHTML ? "" : "none";
 }
