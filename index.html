@@ -1232,7 +1232,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <button id="btn-instaleaza" class="btn sec" style="display:none;padding:5px 11px;font-size:12px;white-space:nowrap" onclick="instaleaza()">⬇ Instalează</button>
   <span id="rz-w"><button id="rz-reset" class="pictograma" title="Lățimi implicite — pune coloanele din tabelele acestei file înapoi cum erau">↺ Reset layout</button><i class="rz-sep">|</i></span>
   <span id="tz-w" title="Mărimea tabelului (doar tabelul, restul rămâne la fel), din 5 în 5%. Fiecare meniu își ține minte mărimea lui. Merge și cu Ctrl + rotița mausului, Ctrl + / Ctrl − / Ctrl 0. Dublu clic pe procent = scrii tu valoarea."><button class="pictograma" onclick="tzPas(-1)" aria-label="Micșorează tabelul">−</button><b id="tz-v" ondblclick="tzScrie()" title="Dublu clic = scrii mărimea (ex. 87), Enter">100%</b><input id="tz-in" type="number" min="30" max="300" step="5" style="display:none"><button class="pictograma" onclick="tzPas(1)" aria-label="Mărește tabelul">+</button></span>
-  <span class="ver">v10.52</span>
+  <span class="ver">v10.53</span>
   <button id="btn-tema" class="pictograma" title="Schimbă tema (închisă / deschisă)" onclick="schimbaTema()">☀</button>
   <span id="conn" class="ver">●</span>
 </header>
@@ -1383,6 +1383,7 @@ try{ if(matchMedia("(max-width:760px)").matches && localStorage.getItem("ee-pc")
   <div class="kpi" id="m-kpi" style="display:none"></div><!-- v4.73: căsuțele Comenzi / Amplasate / Ridicate / Net ascunse deocamdată (cerut de Ovidiu, 07.10); se scoate style ca să revină -->
   <div id="m-leg"><b class="muted">Data:</b><span style="color:var(--z-azi)">Azi</span><span style="color:var(--z-sa)">Săptămâna asta (luni–duminică)</span><span style="color:var(--z-st)">Săptămâna trecută</span><span style="color:var(--z-sv)">Săptămâna viitoare</span>
     <b class="muted" style="margin-left:10px">Client:</b><span style="color:var(--cl-toate,#4ADE80)">toate bifele V</span><span style="color:var(--cl-unele,#F59E0B)">în lucru (cel puțin o bifă)</span><span class="lg-n">nicio bifă</span><span class="tel-v">📱 de verificat</span> = făcută pe telefon, încă nesalvată pe PC</div>
+  <div id="m-vie" class="noprint" style="display:none;margin:4px 0 6px;font-size:13px"></div><!-- v10.53: lista vie -->
   <div class="tw"><table id="m-tbl"></table></div>
 </section>
 
@@ -3113,7 +3114,7 @@ document.querySelectorAll("nav button").forEach(b=>b.onclick=(ev)=>{
   if(VER && b.dataset.p!=="miscari" && (b.dataset.h||b.dataset.p)!==VER_FILE[VER.f].h) VER=null;   // v4.82: verificarea începută din Comenzi se abandonează
   if(b.dataset.p==="atentie") loadAtentie();
   if(b.dataset.p==="stoc") loadStoc();
-  if(b.dataset.p==="miscari" && !MISC_INCARCAT) loadMiscari();   // v9.60: MISC poate avea câteva comenzi puse de De urmărit → nu mai e semn că lista s-a încărcat
+  if(b.dataset.p==="miscari"){ if(!MISC_INCARCAT) loadMiscari(); else if(!$("m-tbl").querySelector("tr")) renderMiscari(); }   // v10.53: tabelul gol la intrare se desenează mereu   // v9.60: MISC poate avea câteva comenzi puse de De urmărit → nu mai e semn că lista s-a încărcat
   if(b.dataset.p==="rapoarte"){ if(b.dataset.r) $("r-tip").value = b.dataset.r;
     if(!VER){ const a=new Date(); $("r-an").value=a.getFullYear(); $("r-luna").value=a.getMonth()+1; $("r-client").value=""; }   // v6.13/v6.14 (cerut de Ovidiu, 15.10): Facturare și Raport lună pornesc pe luna și anul curent, fără client în filtru
     genereazaRaport(); }
@@ -4376,11 +4377,11 @@ async function schAnuleaza(){
   closeModal("mod-admin"); toast("Schimbarea programată a fost scoasă");
   await adminReimprospateaza();
 }
-async function incarcaPct(){
+async function incarcaPct(faraRender){   // v10.53: faraRender = îl desenează cine l-a cerut (loadMiscari), o singură dată
   await aplicaSchimbariRute();
   const { data, error } = await db.from("clients").select("client_key,lat,lon,anexe_ids,schimbare,masina,status,toalete,containere,garduri,ziua,client,jud,localitate,locatie,gps_stare").limit(5000);
   if(error) return;
-  PCT = data || []; if(MISC.length) renderMiscari();
+  PCT = data || []; if(MISC.length && !faraRender) renderMiscari();
 }
 // v6.25 (cerut de Ovidiu, 15.10): comanda din exterior (fără anexă) — punctele C… de la aceeași locație și același client
 const extNorm = v => faraDiac(String(v || "")).trim().toUpperCase().replace(/\s+/g, " ");
@@ -4415,21 +4416,56 @@ function ruteStil(r){
   return `style="background:${c};border-color:${c};color:#fff" data-gps="${ok ? "da" : !p.length ? "fara punct" : "fara coordonate"}" data-rute="${esc(de)}"`;
 }
 var MISC_CERERE=0, MISC_TQ=null;   // v5.92
+// v10.53 (cerut de Ovidiu, 28.11): lista „vie” — fără an și fără căutare, Comenzi arată comenzile din ultimele 3 luni + cele viitoare
+// + cele mai vechi încă deschise (clientul nu e verde: nu toate bifele care contează sunt V). Cele vechi închise: „Arată și cele mai vechi”.
+// Din bază nu se ascunde nimic; cu An ales sau cu Caută se văd toate, ca înainte.
+let M_TOT = false, M_ASCUNSE = 0; const M_TINUTE = new Set();   // M_TINUTE = comenzi salvate acum (rămân în listă chiar dacă sunt vechi și închise)
+const mVieEste = () => !M_TOT && !$("f-an").value && !$("f-q").value.trim();
+const mVieDe = () => { const d = new Date(); d.setMonth(d.getMonth() - 3); return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0"); };
+function mVieComuta(){ M_TOT = !M_TOT; loadMiscari(); }
+function mVieBara(){
+  const e = $("m-vie"); if(!e) return;
+  if(mVieEste()) e.innerHTML = `<b>Lista vie:</b> comenzile din ultimele 3 luni (de la ${fmtD(mVieDe())}) + cele viitoare + cele mai vechi încă deschise` +
+    (M_ASCUNSE ? ` · <span class="muted">${M_ASCUNSE} mai vechi, închise (toate bifele V), nu se văd</span>` : "") +
+    ` <button class="btn sm sec" onclick="mVieComuta()" title="Aduce și comenzile vechi închise. Din bază nu se pierde nimic — lista vie doar le ascunde.">Arată și cele mai vechi</button>`;
+  else if(M_TOT && !$("f-an").value && !$("f-q").value.trim()) e.innerHTML = `<b>Toate comenzile</b> <button class="btn sm sec" onclick="mVieComuta()" title="Înapoi la lista vie: ultimele 3 luni + viitoare + cele vechi încă deschise">Doar lista vie</button>`;
+  else e.innerHTML = "";
+  e.style.display = e.innerHTML ? "" : "none";
+}
 async function loadMiscari(){
-  incarcaPct();
-  let q=db.from("miscari").select("*").order("data",{ascending:false}).order("id",{ascending:false}).limit(3000);
+  const pPct = incarcaPct(true);   // v10.53: punctele de rută vin în paralel, dar tabelul se desenează o singură dată
+  const vie = mVieEste(), de = vie ? mVieDe() : null;
+  const filtre = q => { if($("f-tip").value) q=q.eq("tip_miscare",$("f-tip").value);
+    if($("f-prod").value) q=q.eq("produs",$("f-prod").value);
+    if($("f-dep").value) q=q.eq("depozit",$("f-dep").value); return q; };
+  let q=filtre(db.from("miscari").select("*").order("data",{ascending:false}).order("id",{ascending:false}).limit(3000));
   const an=$("f-an").value, luna=$("f-luna").value;
   if(an){ const m=luna?+luna:null; const from=m?`${an}-${String(m).padStart(2,"0")}-01`:`${an}-01-01`; const to=m?new Date(an,m,0).toISOString().slice(0,10):`${an}-12-31`; q=q.gte("data",from).lte("data",to); }
-  if($("f-tip").value) q=q.eq("tip_miscare",$("f-tip").value);
-  if($("f-prod").value) q=q.eq("produs",$("f-prod").value);
-  if($("f-dep").value) q=q.eq("depozit",$("f-dep").value);
+  else if(vie) q=q.gte("data",de);
   const s=$("f-q").value.trim().replace(/[,()]/g," ").trim(); if(s) q=q.or(`client.ilike.%${s}%,loc.ilike.%${s}%,sat.ilike.%${s}%,contract.ilike.%${s}%,jud.ilike.%${s}%`);
   const nr=++MISC_CERERE;
-  const {data,error}=await q; if(nr!==MISC_CERERE) return;   // v5.92: a venit deja o căutare mai nouă
+  // cele vechi: întâi doar bifele (puțin de adus), apoi complet doar cele încă deschise
+  const pVechi = vie ? filtre(db.from("miscari").select("id,data,grup_id,tip_miscare,contract,depozit,anexa_id,desp_factureaza,locatii,rpt,rt,fac,pv,act,waap").lt("data",de).limit(20000)) : null;
+  const [{data,error}, rv] = await Promise.all([q, pVechi || Promise.resolve(null)]); if(nr!==MISC_CERERE) return;   // v5.92: a venit deja o căutare mai nouă
   if(error){toast(error.message,true);return;}
+  if(rv && rv.error){toast(rv.error.message,true);return;}
   if(!DOC_ACT) await incarcaDocAct();   // v6.64
   await incarcaFactStc();   // v10.05: FAC după Facturare
-  MISC=data; MISC_INCARCAT=true; renderMiscari(); incarcaCma();
+  let tot = data || [];
+  if(vie){
+    const V = rv.data || [], tin = new Set([...M_TINUTE, M_SEL].filter(Boolean));
+    const deschise = new Set(V.filter(r => clStare(r) !== "cl-toate" || tin.has(r.id)).map(r => r.grup_id || r.id));
+    const ids = V.filter(r => deschise.has(r.grup_id || r.id)).map(r => r.id);
+    M_ASCUNSE = V.length - ids.length;
+    for(let k = 0; k < ids.length; k += 200){
+      const { data: d2, error: e2 } = await db.from("miscari").select("*").in("id", ids.slice(k, k + 200));
+      if(nr!==MISC_CERERE) return; if(e2){ toast(e2.message, true); return; }
+      tot = tot.concat(d2 || []);
+    }
+    tot.sort((a, b) => (b.data || "").localeCompare(a.data || "") || b.id - a.id);
+  } else M_ASCUNSE = 0;
+  await pPct; if(nr!==MISC_CERERE) return;
+  MISC=tot; MISC_INCARCAT=true; renderMiscari(); incarcaCma();
 }
 $("f-q").addEventListener("keydown",e=>{if(e.key==="Enter"){clearTimeout(MISC_TQ);loadMiscari();}});
 // v5.92 (cerut de Ovidiu, 14.10): căutarea din Comenzi filtrează singură cât scrii (după o mică pauză)
@@ -4622,6 +4658,24 @@ function mGrupDif(r, f){ if(!mGrupStrans(r.id)) return ""; const v = x => String
 // (ex. după „→ Rute” / Edit / Salvează) — până alegi alt rând sau îl demarchezi cu încă un clic / Esc.
 let M_SEL = null;
 function mSelDin(tr, pus){ if(tr && tr.dataset && tr.dataset.mid && tr.closest("#m-tbl")) M_SEL = pus ? +tr.dataset.mid : (M_SEL === +tr.dataset.mid ? null : M_SEL); }
+// v10.53 (cerut de Ovidiu, 28.11): tabelul Comenzi nu se mai rescrie tot — rândurile la fel rămân pe loc, se înlocuiesc doar cele schimbate
+function mScrieTabel(html){
+  const t = $("m-tbl"), vechi = [...t.querySelectorAll("tr[data-mid]")];
+  const tmp = document.createElement("table"); tmp.innerHTML = html;
+  const noi = [...tmp.querySelectorAll("tr[data-mid]")], thN = tmp.querySelector("tr:not([data-mid])"), thV = t.querySelector("tr:not([data-mid])");
+  const hv = new Map(); vechi.forEach(r => hv.set(r.dataset.mid, r));
+  if(!vechi.length || !noi.length || !thN || !thV || hv.size !== vechi.length || thV.parentNode.querySelectorAll("tr:not([data-mid])").length !== 1){ t.innerHTML = html; return; }
+  const cgN = tmp.querySelector("colgroup"), cgV = t.querySelector("colgroup");
+  if(cgN && cgV){ if(cgN.outerHTML !== cgV.outerHTML) cgV.replaceWith(cgN); } else { t.innerHTML = html; return; }
+  let cap = thV; if(thV.outerHTML !== thN.outerHTML){ thV.replaceWith(thN); cap = thN; }
+  const corp = cap.parentNode; let ref = cap.nextSibling;
+  for(const n of noi){
+    const o = hv.get(n.dataset.mid), r = (o && o.outerHTML === n.outerHTML) ? o : n;
+    if(o && r !== o) o.remove(); hv.delete(n.dataset.mid);
+    if(r !== ref) corp.insertBefore(r, ref); ref = r.nextSibling;
+  }
+  hv.forEach(o => o.remove());
+}
 function renderMiscari(){
   aplicaSortarea();
   const sumA=MISC.filter(r=>r.buc>0).reduce((s,r)=>s+r.buc,0), sumR=MISC.filter(r=>r.buc<0).reduce((s,r)=>s+r.buc,0);
@@ -4639,7 +4693,8 @@ function renderMiscari(){
   const sTit = M_SORT.camp === "data" ? (M_SORT.dir < 0 ? "Acum: nou → vechi. Apasă: vechi → nou" : M_SORT.dir > 0 ? "Acum: vechi → nou. Apasă: pe grupe (Azi, săptămâna asta, trecută, viitoare)" : "Acum: pe grupe (Azi, săptămâna asta, trecută, viitoare, apoi restul). Apasă: nou → vechi") : "Apasă ca să sortezi după dată";
   let h=`<tr><th class="sortabil" onclick="sorteazaComenzi('data')" title="${sTit}">Data${sg("data")}</th><th>Comandă</th><th>Buc</th><th>Produs</th><th title="Tip îngroșat și subliniat = are accesorii (lista la mouse)">Tip</th><th title="Dublu clic pe nume (sau ține mouse-ul 1,5 s) → contractul și anexa">Client</th><th>Jud</th><th>Loc./Com.</th><th>Sat/Str./Locație</th><th>Contract</th><th>Depozit</th><th>Resp. șantier</th><th>Telefon</th><th>Rpt</th><th>RT</th><th>FAC</th><th>PV</th><th>ACT</th><th>WaAp</th><th>Frecv.</th><th class="noprint"></th></tr>`;
   h+=mOrdonat(MISC.filter(r=>!(r.grup_id&&r.grup_id!==r.id&&MISC.some(x=>x.id===r.grup_id)&&mGrupStrans(r.grup_id)))).map(r=>{const sr=subReferinta(r); const gS=r.grup_id===r.id&&mGrupStrans(r.id), gD=r.grup_id===r.id&&M_DESCHISE.has(r.id)&&mGrupFii(r.id).length, gF=gS?mGrupFii(r.id):[]; const gz=grupaZilei(r.data); return `<tr data-mid="${r.id}"${M_SEL===r.id?' class="r-ales"':''}><td${gz?` class="zd-${gz}"`:""}><span class="zd">${ziScurtData(r.data)}</span>${sr?` <span class="pill p-T" title="Mai veche decât data de referință a stocului (${fmtD(sr)}) — nu intră în stoc">sub referință</span>`:""}</td><td${ppEste(r)?` class="pp-cel" title="${esc(ppTitlu(r.tip_miscare, r.contract, r.depozit))}"`:""}>${gS||gD?`<span class="${clCls(r)}" style="cursor:pointer;user-select:none;font-size:13px" title="${gS?"Comanda are "+(gF.length+1)+" produse — clic ca să le vezi pe rânduri":"Clic ca să strângi produsele într-un rând"}" onclick="mGrupComuta(${r.id})">${gS?"▶":"▼"}</span> `:""}${r.grup_id&&r.grup_id!==r.id?'<span class="muted" title="Produs din aceeași comandă cu #'+r.grup_id+'">↳ </span>':""}${tipTxt(r.tip_miscare, r)}${r.grup_id===r.id?' <span class="muted" title="Comanda are mai multe produse">+'+MISC.filter(x=>x.grup_id===r.id&&x.id!==r.id).length+'</span>':""}</td><td class="tc tc-${tipLit(r.tip_miscare)}"${gS?` title="${esc([r, ...gF].map(x => Math.abs(+x.buc || 0) + " " + (x.produs || "")).join(" + "))}"`:""}>${gS?[r, ...gF].reduce((t,x)=>t+(+x.buc||0),0):r.buc}</td><td>${gS && mAmestec(r, gF) ? `<b class="muted" style="cursor:help" title="${esc([r, ...gF].map(x => Math.abs(+x.buc || 0) + " " + prodN(x.produs || "", x.buc) + " " + [x.model, x.model_fizic].filter(Boolean).join(" ")).join("\n"))}">PRODUSE</b>` : esc(prodN(r.produs, gS ? [r, ...gF].reduce((t,x)=>t+(+x.buc||0),0) : r.buc))}${gS && !mAmestec(r, gF)?` <span class="muted" title="${esc(gF.map(x => Math.abs(+x.buc || 0) + " " + (x.produs || "") + (x.model ? " " + x.model : "")).join("\n"))}">+ ${esc(gF.map(x => [x.model, x.model_fizic].filter(Boolean).join(" ") || x.produs || "").join(", "))}</span>`:""}</td><td>${gS && mAmestec(r, gF) ? '<span class="muted">—</span>' : tipAcc([r.model, r.model_fizic].filter(Boolean).join(" "), r.accesorii)}</td><td><b class="${clCls(r)} cl-pop" data-mid="${r.id}">${esc(r.client)}</b>${r.din_telefon?' <span class="tel-v" title="Făcută pe telefon — deschide cu Edit, verifică și apasă Salvează pe PC">📱 de verificat</span>':""}</td><td>${esc(r.jud)}</td><td>${svLoc(r)?svlLocCel(r):esc(r.loc)}</td><td>${svLoc(r)?svlSatCel(r):esc(r.sat)}</td><td${depCls(r.contract)}>${esc(r.contract)}</td><td${depCls(r.depozit)}>${esc(r.depozit)}</td><td>${esc(r.pers_resp)}</td><td>${esc(r.telefon)}</td><td>${flNC(r, "rpt", flVer(r, "rpt"))}${mGrupDif(r,"rpt")}</td><td>${flNC(r, "rt", flVer(r, "rt"))}${mGrupDif(r,"rt")}</td><td>${flNC(facR(r), "fac", svLoc(r) ? flagBtn(r, "fac") : flVer(facR(r), "fac"))}${mGrupDif(r,"fac")}</td><td>${flNC(pvR(r), "pv", pvFlag(r))}${mGrupDif(r,"pv")}</td><td>${flNC(actR(r), "act", flVer(actR(r), "act"))}${mGrupDif(r,"act")}</td><td>${flNC(r, "waap", flVer(r, "waap"))}${mGrupDif(r,"waap")}</td><td>${esc(r.frecv_serv)}</td><td class="noprint actions">${riEditBtn(r)} ${livrExterior(r) ? `<button class="btn sm sec" disabled style="opacity:.45;cursor:default" title="Livrat din depozitul ${esc(r.depozit)} — fără punct de rută la tine (rămân Facturare și Raport lună)">→ Rute</button>` : /^Transfer/i.test(r.tip_miscare || "") ? `<button class="btn sm sec" disabled style="opacity:.45;cursor:default" title="Transfer între depozite — fără punct de rută">→ Rute</button>` : `<button class="btn sm" ${ruteStil(r)} onclick="spreRute(${r.id})" title="Verde = comanda e trecută pe rută (RT = V) și punctul are GPS; portocaliu = mai ai de făcut (RT nu e V, fără punct sau fără GPS). Deschide punctul de rută completat din comandă. Nu se salvează nimic până nu verifici și apeși Salvează.">→ Rute</button>`}</td></tr>`;}).join("");
-  $("m-tbl").innerHTML=(h?`<colgroup>${M_LAT.map(w=>`<col style="width:${w}px">`).join("")}</colgroup>`+h:"<tr><td>Nicio comandă.</td></tr>");   // v6.65
+  mScrieTabel(h?`<colgroup>${M_LAT.map(w=>`<col style="width:${w}px">`).join("")}</colgroup>`+h:"<tr><td>Nicio comandă.</td></tr>");   // v6.65   // v10.53: doar rândurile schimbate
+  mVieBara();
   $("m-tbl").style.setProperty("--m-lat", M_LAT.reduce((t,w)=>t+w,0)+"px");
   $("m-tbl").className = "ds-" + DATA_STIL;
 }
@@ -6975,6 +7030,7 @@ async function saveMiscareBaza(genereaza){
     ? "Comandă salvată. Nu intra în filtrele de acum, așa că am pus " + largite.join(", ") + "."
     : "Comandă salvată");
   if(textDeCopiat !== null){ $("cmd-text").value = textDeCopiat; cmdDoi(textRid); $("mod-cmd").classList.add("on"); }
+  M_TINUTE.add(salvat.id);   // v10.53: rămâne în lista vie chiar dacă e veche și închisă
   await loadMiscari(); loadStoc();
   // v6.99 (cerut de Ovidiu, 25.10): ACT = V pus din formular → ca la bifa din listă: dacă anexa n-are încă rând în Registru,
   // se deschide Registrul completat (alegi PRIMIT / IN ASTEPTARE și apeși Salvează). Ex.: ACOMIN ANEXA NR 50, comanda 174.
